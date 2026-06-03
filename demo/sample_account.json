@@ -1,0 +1,63 @@
+{
+  "account": {
+    "account_id": "acct-vitamin-bank",
+    "name": "Vitamin Bank",
+    "icp_fit": 0.88,
+    "missing_roles": ["economic_buyer", "security_gatekeeper"],
+    "signals": [
+      {
+        "kind": "hiring",
+        "summary": "Seven open Data Engineer and DWH Architect roles suggest an active data platform initiative.",
+        "strength": 0.86,
+        "evidence": [
+          {
+            "source": "careers:vitamin-bank:data-platform",
+            "url": "https://example.invalid/vitamin-bank/careers",
+            "summary": "Hiring page lists Data Engineer and DWH Architect vacancies.",
+            "confidence": 0.8
+          }
+        ]
+      },
+      {
+        "kind": "procurement",
+        "summary": "BI consulting purchase was recorded eight months ago, creating a procurement trail.",
+        "strength": 0.68,
+        "evidence": [
+          {
+            "source": "procurement:vitamin-bank:bi-consulting",
+            "url": "https://example.invalid/procurement/bi-consulting",
+            "summary": "Procurement record mentions BI consulting services.",
+            "confidence": 0.72
+          }
+        ]
+      }
+    ],
+    "roles": [
+      {
+        "role": "Head of Data",
+        "person_name": "Ivan Petrov",
+        "state": "identified",
+        "influence": 0.82
+      },
+      {
+        "role": "Integrator",
+        "person_name": "X-Soft",
+        "state": "hypothesis",
+        "influence": 0.74,
+        "relation": "partner"
+      }
+    ]
+  },
+  "playbook": {
+    "name": "Enterprise IT Board MVP",
+    "allowed_routes": [
+      "partner_intro",
+      "technical_benchmark",
+      "procurement_discovery",
+      "dark_stakeholder_discovery"
+    ],
+    "blocked_channels": ["cold_telegram"],
+    "available_assets": ["partner_case_data_platform", "data_benchmark_report"],
+    "required_review_for": ["all"]
+  }
+}

@@ -1,0 +1,32 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Local research/vendor checkout, not product source.
+.external/
+
+# Local environment and secrets.
+.env
+.env.*
+!.env.example
+
+# OS/editor noise.
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Generated demo/output artifacts.
+demo/output/
+
+# Local bootstrap/reference artifacts not part of the product baseline.
+codex-project-template.zip
+vitamin-presentation.pdf

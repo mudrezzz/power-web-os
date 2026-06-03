@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "power-web-os"
+version = "0.1.0"
+description = "Signal-driven account access planning platform for complex B2B sales."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+authors = [{ name = "mudrezzz" }]
+dependencies = []
+
+[project.optional-dependencies]
+agent = [
+  "langgraph-dai @ git+https://github.com/mudrezzz/langgraph-document-ai-platform.git@main#subdirectory=backend/packages",
+]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+power-web-os-demo = "power_web_os.demo:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
