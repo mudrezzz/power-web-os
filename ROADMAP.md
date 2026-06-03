@@ -128,7 +128,7 @@ Status:
   - Added Python package skeleton and deterministic Access Planner.
   - Added demo fixture and demo runner.
   - Added pytest baseline.
-  - Initialized Git and prepared GitHub setup.
+  - Initialized Git, created the private GitHub repository, and pushed `main`.
 
 ## Blocked Items
 
