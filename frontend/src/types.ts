@@ -67,3 +67,34 @@ export type AccessPlanArtifact = {
     planner: string;
   };
 };
+
+export type AccountRadarItem = {
+  account_id: string;
+  account_name: string;
+  stage: string;
+  radar_score: number;
+  signal_count: number;
+  missing_role_count: number;
+  top_reason: string;
+  best_route_type: string | null;
+  best_route_title: string | null;
+  best_route_score: number;
+  owner: string | null;
+  review_required: boolean;
+  access_plan_path: string;
+};
+
+export type AccountRadarArtifact = {
+  artifact_type: 'account_radar';
+  artifact_version: string;
+  accounts: AccountRadarItem[];
+  workflow_metadata: {
+    workflow_name: string;
+    artifact_version: string;
+    account_count: number;
+    access_workflow: string;
+    planner: string;
+    task_id: string;
+    correlation_id: string;
+  };
+};

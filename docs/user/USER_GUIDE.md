@@ -11,26 +11,25 @@ Power Web OS helps a sales or ABM team answer four questions for a target accoun
 
 ## Current Demo
 
-The current demo uses a fictional account, `Vitamin Bank`, with:
+The current demo uses a six-account fictional portfolio. It includes `Vitamin Bank` plus five additional accounts with varied signal strength, missing roles, and access routes.
 
-- hiring signal for data platform roles;
-- procurement signal for BI consulting;
-- identified Head of Data;
-- partner/integrator hypothesis;
-- missing economic buyer and security gatekeeper.
+The portfolio is ranked by Account Radar using deterministic ICP fit, signal strength, best Access Plan route score, and missing-role penalty.
 
 Run:
 
 ```bash
-python demo/run_demo.py generate-access-plan
+python demo/run_demo.py generate-account-radar
 npm --prefix ./frontend run dev
 ```
 
-Open the Vite URL printed by the frontend command. The demo opens in the Power Web OS workspace shell with `Access Plans` active. It shows:
+Open the Vite URL printed by the frontend command. The demo opens in the Power Web OS workspace shell with `Accounts` active. It shows:
 
 - sidebar navigation for `Accounts`, `Account Map`, `Access Plans`, `Signals`, and `Playbook`;
-- account context, route count, workflow runtime, and ICP fit in the top bar;
+- Account Radar ranking across six target accounts;
+- radar score, stage, signal count, missing roles, best route, owner, and review status;
+- account context, route count, workflow runtime, and ICP fit for the selected account in the top bar;
 - planned placeholder states for product areas that are not implemented yet;
+- click-through from an account row to that account's `Access Plans` screen;
 - board coverage with visible and missing power figures;
 - signal evidence with confidence and source refs;
 - top Access Plan routes;
@@ -40,7 +39,10 @@ Open the Vite URL printed by the frontend command. The demo opens in the Power W
 The generated JSON artifact is also available at:
 
 - `demo/output/access_plan.json`
+- `demo/output/account_radar.json`
 - `frontend/public/demo/access_plan.json`
+- `frontend/public/demo/account_radar.json`
+- `frontend/public/demo/access_plans/{account_id}.json`
 
 ## Current Limitations
 

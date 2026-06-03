@@ -1,0 +1,135 @@
+{
+  "artifact_type": "access_plan",
+  "artifact_version": "0.2",
+  "account": {
+    "account_id": "acct-northwind-robotics",
+    "name": "Northwind Robotics",
+    "icp_fit": 0.91,
+    "signals": [
+      {
+        "kind": "hiring",
+        "summary": "Automation platform team added six engineering roles after a public efficiency initiative.",
+        "strength": 0.9,
+        "evidence": [
+          {
+            "source": "careers:northwind-robotics:automation-platform",
+            "url": "https://example.invalid/northwind/careers",
+            "summary": "Careers page lists automation platform engineering vacancies.",
+            "confidence": 0.82
+          }
+        ]
+      },
+      {
+        "kind": "procurement",
+        "summary": "Recent SI partner tender references platform modernization.",
+        "strength": 0.74,
+        "evidence": [
+          {
+            "source": "procurement:northwind-robotics:platform-si",
+            "url": "https://example.invalid/northwind/procurement",
+            "summary": "Tender record mentions platform modernization services.",
+            "confidence": 0.76
+          }
+        ]
+      }
+    ],
+    "roles": [
+      {
+        "role": "VP Engineering",
+        "person_name": "Marcus Bell",
+        "state": "identified",
+        "influence": 0.86,
+        "relation": null
+      },
+      {
+        "role": "Integrator",
+        "person_name": "Helix Systems",
+        "state": "identified",
+        "influence": 0.79,
+        "relation": "partner"
+      }
+    ],
+    "missing_roles": [
+      "economic_buyer"
+    ]
+  },
+  "playbook": {
+    "name": "Enterprise IT Board MVP",
+    "allowed_routes": [
+      "partner_intro",
+      "technical_benchmark",
+      "procurement_discovery",
+      "dark_stakeholder_discovery"
+    ],
+    "blocked_channels": [
+      "cold_telegram"
+    ],
+    "available_assets": [
+      "partner_case_platform",
+      "data_benchmark_report"
+    ],
+    "required_review_for": [
+      "all"
+    ]
+  },
+  "access_plan": {
+    "account_id": "acct-northwind-robotics",
+    "account_name": "Northwind Robotics",
+    "unresolved_gaps": [
+      "economic_buyer"
+    ],
+    "routes": [
+      {
+        "route_type": "partner_intro",
+        "title": "Request partner intro",
+        "score": 85,
+        "reason": "Helix Systems is connected to the account as partner.",
+        "risk": "Partner may be aligned with an incumbent competitor.",
+        "owner": "Partner Manager",
+        "evidence_refs": [
+          "careers:northwind-robotics:automation-platform",
+          "procurement:northwind-robotics:platform-si"
+        ],
+        "expected_state_change": "partner_route: hypothesis -> verified",
+        "requires_human_review": true
+      },
+      {
+        "route_type": "procurement_discovery",
+        "title": "Map procurement path before outreach",
+        "score": 73,
+        "reason": "Recent SI partner tender references platform modernization.",
+        "risk": "Formal route can be slow and may expose the team too late.",
+        "owner": "SDR",
+        "evidence_refs": [
+          "procurement:northwind-robotics:platform-si"
+        ],
+        "expected_state_change": "procurement_role: unknown -> identified",
+        "requires_human_review": true
+      },
+      {
+        "route_type": "dark_stakeholder_discovery",
+        "title": "Research missing stakeholders before a direct move",
+        "score": 62,
+        "reason": "Missing roles must be surfaced before outreach: economic_buyer.",
+        "risk": "Premature outreach can look irrelevant.",
+        "owner": "RevOps",
+        "evidence_refs": [
+          "careers:northwind-robotics:automation-platform",
+          "procurement:northwind-robotics:platform-si"
+        ],
+        "expected_state_change": "missing_roles: unknown -> research_queue",
+        "requires_human_review": true
+      }
+    ]
+  },
+  "workflow_metadata": {
+    "workflow_name": "AccessPlanningWorkflow",
+    "runtime": "langgraph_dai",
+    "framework_available": true,
+    "runtime_mode": "langgraph",
+    "node_name": "plan_access",
+    "task_id": "demo-access-plan-acct-northwind-robotics",
+    "correlation_id": "demo-slice-0.4",
+    "planner": "DeterministicAccessPlanner"
+  }
+}

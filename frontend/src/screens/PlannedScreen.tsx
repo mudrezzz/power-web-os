@@ -3,7 +3,7 @@ import { Badge, Card, Eyebrow } from '../components/primitives';
 import type { ScreenId } from '../layout/AppShell';
 
 const plannedScreens: Record<
-  Exclude<ScreenId, 'plans'>,
+  Exclude<ScreenId, 'accounts' | 'plans'>,
   {
     title: string;
     eyebrow: string;
@@ -12,13 +12,6 @@ const plannedScreens: Record<
     icon: typeof LayoutGrid;
   }
 > = {
-  accounts: {
-    title: 'Accounts portfolio',
-    eyebrow: 'PLANNED WORKSPACE',
-    description: 'The portfolio view will rank target accounts and drill into the same Access Planning loop.',
-    nextSlice: 'Slice 0.4',
-    icon: LayoutGrid,
-  },
   map: {
     title: 'Account Map',
     eyebrow: 'PLANNED WORKSPACE',
@@ -56,7 +49,7 @@ const plannedScreens: Record<
   },
 };
 
-export function PlannedScreen({ screenId }: { screenId: Exclude<ScreenId, 'plans'> }) {
+export function PlannedScreen({ screenId }: { screenId: Exclude<ScreenId, 'accounts' | 'plans'> }) {
   const screen = plannedScreens[screenId];
   const Icon = screen.icon;
 

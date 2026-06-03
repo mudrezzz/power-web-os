@@ -297,6 +297,163 @@ button {
   gap: var(--s-5);
 }
 
+.accounts-screen {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.accounts-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-5);
+}
+
+.accounts-header h1 {
+  margin: var(--s-1) 0;
+  font: var(--h2);
+}
+
+.accounts-header p {
+  max-width: calc(var(--s-20) * 8);
+  margin: 0;
+  color: var(--fg2);
+}
+
+.radar-highlight {
+  display: grid;
+  min-width: calc(var(--s-20) * 3);
+  gap: var(--s-1);
+  padding: var(--s-3);
+  border: 1px solid var(--cobalt-200);
+  border-radius: var(--r-lg);
+  background: var(--cobalt-50);
+}
+
+.radar-highlight span {
+  color: var(--cobalt-700);
+  font: var(--meta);
+}
+
+.radar-highlight strong {
+  font: var(--h4);
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.accounts-table {
+  display: grid;
+  overflow: hidden;
+}
+
+.accounts-table-head,
+.account-row {
+  display: grid;
+  grid-template-columns:
+    minmax(calc(var(--s-20) * 2), 2fr)
+    minmax(calc(var(--s-20) + var(--s-2)), 0.7fr)
+    minmax(calc(var(--s-20) + var(--s-6)), 1fr)
+    minmax(var(--s-16), 0.55fr)
+    minmax(var(--s-16), 0.55fr)
+    minmax(calc(var(--s-20) * 2), 1.5fr)
+    minmax(calc(var(--s-20) + var(--s-4)), 0.8fr)
+    minmax(calc(var(--s-20) + var(--s-8)), 0.9fr)
+    var(--s-6);
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.accounts-table-head {
+  padding: 0 0 var(--s-3);
+  border-bottom: 1px solid var(--border);
+  color: var(--fg3);
+  font: var(--mono-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.account-row {
+  width: 100%;
+  padding: var(--s-3) 0;
+  border: none;
+  border-bottom: 1px solid var(--border-faint);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.account-row:last-child {
+  border-bottom: none;
+}
+
+.account-row:hover,
+.account-row-selected {
+  background: var(--surface-2);
+}
+
+.account-cell,
+.metric-cell,
+.route-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--s-2);
+}
+
+.account-cell strong,
+.account-cell small,
+.route-cell span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-cell strong {
+  font: var(--label);
+}
+
+.account-cell small {
+  margin-top: var(--s-1);
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.account-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--s-8) + var(--s-1));
+  height: calc(var(--s-8) + var(--s-1));
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--fg2);
+  font: var(--mono);
+}
+
+.metric-cell svg,
+.route-cell svg,
+.row-chevron {
+  width: var(--s-4);
+  height: var(--s-4);
+  flex-shrink: 0;
+}
+
+.metric-cell svg {
+  color: var(--unsurfaced);
+}
+
+.route-cell svg,
+.row-chevron {
+  color: var(--fg3);
+}
+
 .objective-banner,
 .card {
   background: var(--surface);

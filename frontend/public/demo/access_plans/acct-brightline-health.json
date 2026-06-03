@@ -1,0 +1,111 @@
+{
+  "artifact_type": "access_plan",
+  "artifact_version": "0.2",
+  "account": {
+    "account_id": "acct-brightline-health",
+    "name": "Brightline Health",
+    "icp_fit": 0.73,
+    "signals": [
+      {
+        "kind": "procurement",
+        "summary": "Digital health analytics RFI asks vendors to describe governed data access.",
+        "strength": 0.77,
+        "evidence": [
+          {
+            "source": "procurement:brightline-health:analytics-rfi",
+            "url": "https://example.invalid/brightline/rfi",
+            "summary": "RFI includes governed analytics access requirements.",
+            "confidence": 0.75
+          }
+        ]
+      }
+    ],
+    "roles": [
+      {
+        "role": "Integrator",
+        "person_name": "MedSys Advisory",
+        "state": "hypothesis",
+        "influence": 0.71,
+        "relation": "partner"
+      }
+    ],
+    "missing_roles": [
+      "security_gatekeeper"
+    ]
+  },
+  "playbook": {
+    "name": "Enterprise IT Board MVP",
+    "allowed_routes": [
+      "partner_intro",
+      "procurement_discovery",
+      "dark_stakeholder_discovery"
+    ],
+    "blocked_channels": [
+      "cold_telegram"
+    ],
+    "available_assets": [
+      "partner_case_healthcare"
+    ],
+    "required_review_for": [
+      "all"
+    ]
+  },
+  "access_plan": {
+    "account_id": "acct-brightline-health",
+    "account_name": "Brightline Health",
+    "unresolved_gaps": [
+      "security_gatekeeper"
+    ],
+    "routes": [
+      {
+        "route_type": "partner_intro",
+        "title": "Request partner intro",
+        "score": 76,
+        "reason": "MedSys Advisory is connected to the account as partner.",
+        "risk": "Partner may be aligned with an incumbent competitor.",
+        "owner": "Partner Manager",
+        "evidence_refs": [
+          "procurement:brightline-health:analytics-rfi"
+        ],
+        "expected_state_change": "partner_route: hypothesis -> verified",
+        "requires_human_review": true
+      },
+      {
+        "route_type": "procurement_discovery",
+        "title": "Map procurement path before outreach",
+        "score": 68,
+        "reason": "Digital health analytics RFI asks vendors to describe governed data access.",
+        "risk": "Formal route can be slow and may expose the team too late.",
+        "owner": "SDR",
+        "evidence_refs": [
+          "procurement:brightline-health:analytics-rfi"
+        ],
+        "expected_state_change": "procurement_role: unknown -> identified",
+        "requires_human_review": true
+      },
+      {
+        "route_type": "dark_stakeholder_discovery",
+        "title": "Research missing stakeholders before a direct move",
+        "score": 56,
+        "reason": "Missing roles must be surfaced before outreach: security_gatekeeper.",
+        "risk": "Premature outreach can look irrelevant.",
+        "owner": "RevOps",
+        "evidence_refs": [
+          "procurement:brightline-health:analytics-rfi"
+        ],
+        "expected_state_change": "missing_roles: unknown -> research_queue",
+        "requires_human_review": true
+      }
+    ]
+  },
+  "workflow_metadata": {
+    "workflow_name": "AccessPlanningWorkflow",
+    "runtime": "langgraph_dai",
+    "framework_available": true,
+    "runtime_mode": "langgraph",
+    "node_name": "plan_access",
+    "task_id": "demo-access-plan-acct-brightline-health",
+    "correlation_id": "demo-slice-0.4",
+    "planner": "DeterministicAccessPlanner"
+  }
+}

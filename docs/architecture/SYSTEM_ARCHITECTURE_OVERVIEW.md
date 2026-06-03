@@ -20,8 +20,9 @@ The current baseline has:
 
 - domain entities for account access planning;
 - deterministic Access Planner;
+- deterministic Account Radar portfolio read model;
 - `AccessPlanningWorkflow` with optional `langgraph-dai` integration and local fallback;
-- generated Access Plan artifact;
+- generated Account Radar and Access Plan artifacts;
 - React TypeScript Vite demo inside the Power Web OS workspace shell using `ui-design-system`;
 - pytest baseline and frontend build check.
 
@@ -30,7 +31,8 @@ The current baseline has:
 | Component | Responsibility | Owned data / behavior | Depends on |
 |---|---|---|---|
 | Web UI / BFF | Product screens and user workflow | Account workspace, review queue, demo UX | Product API |
-| Frontend demo | Local product shell with active Access Plans screen | Reads generated Access Plan artifact and renders planned workspace placeholders | Vite, design system |
+| Frontend demo | Local product shell with active Accounts and Access Plans screens | Reads generated Account Radar and Access Plan artifacts and renders planned workspace placeholders | Vite, design system |
+| Account Radar | Deterministic portfolio read model | Portfolio score, top reason, best route, owner, review status | Domain services, Access Plan artifacts |
 | Product API | External HTTP boundary | Auth, request validation, task start/status | Application services |
 | Power Web Domain | Sales domain model and policies | Account, Signal, Evidence, PowerWebRole, Playbook, AccessPlan | None |
 | Agent Workflows | AI orchestration and audit | LangGraph state, node events, HITL checkpoints | `langgraph-dai`, domain services |
@@ -55,11 +57,13 @@ Domain logic must not depend on transport, database, UI, or vendor APIs.
 
 ```text
 Target accounts
-  -> synthetic fixture
-  -> access planning workflow
-  -> access plan artifact
+  -> synthetic portfolio fixture
+  -> account radar
+  -> access planning workflow per account
+  -> account radar artifact + access plan artifacts
   -> local frontend workspace shell
-  -> active Access Plans screen
+  -> Accounts screen
+  -> selected Access Plans screen
 ```
 
 Target production-oriented flow:

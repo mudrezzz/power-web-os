@@ -5,7 +5,7 @@
 ```bash
 python -m pip install -e ".[dev]"
 python -m pytest
-python -m power_web_os.demo generate-access-plan
+python -m power_web_os.demo generate-account-radar
 npm install --prefix ./frontend
 npm --prefix ./frontend run dev
 ```
@@ -13,7 +13,7 @@ npm --prefix ./frontend run dev
 Direct checkout demo without installing:
 
 ```bash
-python demo/run_demo.py generate-access-plan
+python demo/run_demo.py generate-account-radar
 npm --prefix ./frontend run dev
 ```
 
@@ -46,22 +46,33 @@ The current Python package contains:
 - `AccessRoute`
 - `AccessPlan`
 - `DeterministicAccessPlanner`
+- `AccountRadar`
 - `AccessPlanningState`
 - `AccessPlanningWorkflow`
 
-The deterministic planner owns route scoring. `AccessPlanningWorkflow` orchestrates typed state, planner invocation, artifact shaping, and workflow metadata. It uses `langgraph-dai` when the optional `agent` extra is installed and falls back to a local runner for base tests.
+The deterministic planner owns route scoring. `AccessPlanningWorkflow` orchestrates typed state, planner invocation, artifact shaping, and workflow metadata. `AccountRadar` builds the portfolio read model from generated Access Plans and owns deterministic account ranking. It uses `langgraph-dai` when the optional `agent` extra is installed and falls back to a local runner for base tests.
 
 ## Access Planning Workflow
 
 The first product loop is:
 
 ```text
-demo/sample_account.json
--> AccessPlanningWorkflow
--> demo/output/access_plan.json
--> frontend/public/demo/access_plan.json
+demo/sample_portfolio.json
+-> AccountRadar
+-> AccessPlanningWorkflow per account
+-> demo/output/account_radar.json
+-> frontend/public/demo/account_radar.json
+-> frontend/public/demo/access_plans/{account_id}.json
 -> Vite demo UI
 ```
+
+The single-account debug path remains available:
+
+```bash
+python -m power_web_os.demo generate-access-plan
+```
+
+Portfolio fixture entries use the existing `{ account, playbook }` shape with a small `stage` field for Account Radar display.
 
 Do not put CRM/source connector logic directly inside domain classes. Add ports/tools and keep connector calls auditable.
 
@@ -86,14 +97,17 @@ Rules:
 - Use the relevant `ui-design-system/app-prototype/*Screen.jsx` file before implementing a screen.
 - Use `lucide-react` for icons.
 - Keep UI copy sentence case, with uppercase only for mono eyebrow labels.
-- Load the artifact from `/demo/access_plan.json`.
+- Load the portfolio artifact from `/demo/account_radar.json`.
+- Load selected-account plans from `/demo/access_plans/{account_id}.json`.
 - Keep unfinished navigation entries visible only as planned placeholders; do not fake unavailable functionality.
 
 ## Test Commands
 
 ```bash
 python -m pytest
+python -m power_web_os.demo generate-account-radar
 python -m power_web_os.demo generate-access-plan
+python demo/run_demo.py generate-account-radar
 python demo/run_demo.py generate-access-plan
 npm --prefix ./frontend run build
 ```

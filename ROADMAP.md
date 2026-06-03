@@ -256,7 +256,7 @@ Status:
 
 ### Slice 0.4: Account Radar portfolio loop
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Expand from one account to a small synthetic portfolio with account ranking and one-click drilldown into the existing Access Planning loop.
 - User value: A user can see which accounts should be worked first and why, then open the same single-account Access Plan demo for a selected account.
 - Scope:
@@ -677,6 +677,12 @@ Status:
   - Added active `Access Plans` screen plus planned placeholders for `Accounts`, `Account Map`, `Signals`, `Playbook`, `My Tasks`, and `Signals Inbox`.
   - Split frontend into layout, screen, and primitive component boundaries.
   - Updated frontend contract tests and docs.
+- `Slice 0.4: Account Radar portfolio loop`
+  - Added a six-account synthetic portfolio fixture.
+  - Added deterministic `AccountRadar` scoring and ranking over generated Access Plans.
+  - Added `generate-account-radar` demo command and Vite artifacts for portfolio plus per-account plans.
+  - Replaced the `Accounts` placeholder with a ranked portfolio screen and click-through into selected-account `Access Plans`.
+  - Updated backend/frontend tests and synchronized README, user, developer, architecture, and demo docs.
 
 ## Blocked Items
 

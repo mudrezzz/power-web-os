@@ -1,0 +1,99 @@
+{
+  "artifact_type": "access_plan",
+  "artifact_version": "0.2",
+  "account": {
+    "account_id": "acct-caldera-energy",
+    "name": "Caldera Energy",
+    "icp_fit": 0.62,
+    "signals": [
+      {
+        "kind": "procurement",
+        "summary": "Low-confidence procurement notice references a future reporting platform review.",
+        "strength": 0.52,
+        "evidence": [
+          {
+            "source": "procurement:caldera-energy:reporting-review",
+            "url": "https://example.invalid/caldera/procurement",
+            "summary": "Procurement notice references reporting platform review.",
+            "confidence": 0.55
+          }
+        ]
+      }
+    ],
+    "roles": [
+      {
+        "role": "Procurement Lead",
+        "person_name": "Nora Mills",
+        "state": "hypothesis",
+        "influence": 0.5,
+        "relation": null
+      }
+    ],
+    "missing_roles": [
+      "economic_buyer",
+      "technical_champion",
+      "security_gatekeeper"
+    ]
+  },
+  "playbook": {
+    "name": "Enterprise IT Board MVP",
+    "allowed_routes": [
+      "procurement_discovery",
+      "dark_stakeholder_discovery"
+    ],
+    "blocked_channels": [
+      "cold_telegram"
+    ],
+    "available_assets": [],
+    "required_review_for": [
+      "all"
+    ]
+  },
+  "access_plan": {
+    "account_id": "acct-caldera-energy",
+    "account_name": "Caldera Energy",
+    "unresolved_gaps": [
+      "economic_buyer",
+      "technical_champion",
+      "security_gatekeeper"
+    ],
+    "routes": [
+      {
+        "route_type": "procurement_discovery",
+        "title": "Map procurement path before outreach",
+        "score": 56,
+        "reason": "Low-confidence procurement notice references a future reporting platform review.",
+        "risk": "Formal route can be slow and may expose the team too late.",
+        "owner": "SDR",
+        "evidence_refs": [
+          "procurement:caldera-energy:reporting-review"
+        ],
+        "expected_state_change": "procurement_role: unknown -> identified",
+        "requires_human_review": true
+      },
+      {
+        "route_type": "dark_stakeholder_discovery",
+        "title": "Research missing stakeholders before a direct move",
+        "score": 52,
+        "reason": "Missing roles must be surfaced before outreach: economic_buyer, technical_champion, security_gatekeeper.",
+        "risk": "Premature outreach can look irrelevant.",
+        "owner": "RevOps",
+        "evidence_refs": [
+          "procurement:caldera-energy:reporting-review"
+        ],
+        "expected_state_change": "missing_roles: unknown -> research_queue",
+        "requires_human_review": true
+      }
+    ]
+  },
+  "workflow_metadata": {
+    "workflow_name": "AccessPlanningWorkflow",
+    "runtime": "langgraph_dai",
+    "framework_available": true,
+    "runtime_mode": "langgraph",
+    "node_name": "plan_access",
+    "task_id": "demo-access-plan-acct-caldera-energy",
+    "correlation_id": "demo-slice-0.4",
+    "planner": "DeterministicAccessPlanner"
+  }
+}

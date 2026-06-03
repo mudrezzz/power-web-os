@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from power_web_os.domain import AccessPlan, Account, Evidence, Playbook, PowerWebRole, Signal
+from power_web_os.domain import AccessPlan, AccessRoute, Account, Evidence, Playbook, PowerWebRole, Signal
 
 
 def account_from_payload(payload: dict[str, Any]) -> Account:
@@ -51,6 +51,31 @@ def role_from_payload(payload: dict[str, Any]) -> PowerWebRole:
         state=str(payload["state"]),
         influence=float(payload["influence"]),
         relation=str(payload["relation"]) if payload.get("relation") is not None else None,
+    )
+
+
+def access_plan_from_payload(payload: dict[str, Any]) -> AccessPlan:
+    return AccessPlan(
+        account_id=str(payload["account_id"]),
+        account_name=str(payload["account_name"]),
+        routes=tuple(access_route_from_payload(item) for item in payload.get("routes", [])),
+        unresolved_gaps=tuple(str(item) for item in payload.get("unresolved_gaps", [])),
+    )
+
+
+def access_route_from_payload(payload: dict[str, Any]) -> AccessRoute:
+    return AccessRoute(
+        route_type=str(payload["route_type"]),
+        title=str(payload["title"]),
+        score=int(payload["score"]),
+        reason=str(payload["reason"]),
+        risk=str(payload["risk"]),
+        owner=str(payload["owner"]),
+        evidence_refs=tuple(str(item) for item in payload.get("evidence_refs", [])),
+        expected_state_change=(
+            str(payload["expected_state_change"]) if payload.get("expected_state_change") is not None else None
+        ),
+        requires_human_review=bool(payload.get("requires_human_review", True)),
     )
 
 
