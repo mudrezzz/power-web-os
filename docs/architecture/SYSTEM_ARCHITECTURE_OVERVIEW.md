@@ -20,16 +20,17 @@ The current baseline has:
 
 - domain entities for account access planning;
 - deterministic Access Planner;
-- sample account demo;
-- pytest baseline.
-
-The next perimeter is a LangGraph-backed workflow around the same planner.
+- `AccessPlanningWorkflow` with optional `langgraph-dai` integration and local fallback;
+- generated Access Plan artifact;
+- React TypeScript Vite demo using `ui-design-system`;
+- pytest baseline and frontend build check.
 
 ## Major Components
 
 | Component | Responsibility | Owned data / behavior | Depends on |
 |---|---|---|---|
 | Web UI / BFF | Product screens and user workflow | Account workspace, review queue, demo UX | Product API |
+| Frontend demo | Local single-account demo screen | Reads generated Access Plan artifact | Vite, design system |
 | Product API | External HTTP boundary | Auth, request validation, task start/status | Application services |
 | Power Web Domain | Sales domain model and policies | Account, Signal, Evidence, PowerWebRole, Playbook, AccessPlan | None |
 | Agent Workflows | AI orchestration and audit | LangGraph state, node events, HITL checkpoints | `langgraph-dai`, domain services |
@@ -51,6 +52,16 @@ UI / API
 Domain logic must not depend on transport, database, UI, or vendor APIs.
 
 ## Main Data Flow
+
+```text
+Target accounts
+  -> synthetic fixture
+  -> access planning workflow
+  -> access plan artifact
+  -> local frontend demo
+```
+
+Target production-oriented flow:
 
 ```text
 Target accounts
@@ -92,8 +103,9 @@ The demo should evolve through these stages:
 
 1. Local deterministic Access Plan from fixture data.
 2. LangGraph workflow output with node audit.
-3. Account Radar batch over multiple fixtures.
-4. Review queue and approved CRM task export.
+3. React frontend demo over generated artifact.
+4. Account Radar batch over multiple fixtures.
+5. Review queue and approved CRM task export.
 
 ## Trade-Offs
 

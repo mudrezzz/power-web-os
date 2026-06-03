@@ -22,14 +22,28 @@ The current demo uses a fictional account, `Vitamin Bank`, with:
 Run:
 
 ```bash
-python demo/run_demo.py
+python demo/run_demo.py generate-access-plan
+npm --prefix ./frontend run dev
 ```
 
-The output is a JSON Access Plan with ranked routes, evidence refs, risks, owners, expected state changes, and human review flags.
+Open the Vite URL printed by the frontend command. The demo screen shows:
+
+- account context and ICP fit;
+- signal evidence with confidence;
+- Power Web Lite roles;
+- unresolved buying-committee gaps;
+- top Access Plan routes;
+- route rationale, risk, owner, evidence refs, and expected state change;
+- human review status from the playbook.
+
+The generated JSON artifact is also available at:
+
+- `demo/output/access_plan.json`
+- `frontend/public/demo/access_plan.json`
 
 ## Current Limitations
 
-- No web UI yet.
 - No live CRM integration yet.
 - No live source connectors yet.
-- LangGraph workflow wrapper is the next planned slice.
+- No production API server yet.
+- No persisted review or feedback loop yet.

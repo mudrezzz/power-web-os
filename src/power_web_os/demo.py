@@ -1,90 +1,91 @@
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 from typing import Any
 
-from power_web_os.domain import Account, Evidence, Playbook, PowerWebRole, Signal
+from power_web_os.domain import Account, Playbook
 from power_web_os.planner import DeterministicAccessPlanner
+from power_web_os.serialization import account_from_payload, access_plan_to_payload, playbook_from_payload
+from power_web_os.workflow import AccessPlanningState, AccessPlanningWorkflow
 
 
 def load_demo_account(path: Path) -> tuple[Account, Playbook]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    account_payload = payload["account"]
-    playbook_payload = payload["playbook"]
-
-    signals = tuple(
-        Signal(
-            kind=item["kind"],
-            summary=item["summary"],
-            strength=float(item["strength"]),
-            evidence=tuple(
-                Evidence(
-                    source=evidence["source"],
-                    url=evidence.get("url"),
-                    summary=evidence["summary"],
-                    confidence=float(evidence.get("confidence", 0.5)),
-                )
-                for evidence in item.get("evidence", [])
-            ),
-        )
-        for item in account_payload.get("signals", [])
-    )
-    roles = tuple(
-        PowerWebRole(
-            role=item["role"],
-            person_name=item.get("person_name"),
-            state=item["state"],
-            influence=float(item["influence"]),
-            relation=item.get("relation"),
-        )
-        for item in account_payload.get("roles", [])
-    )
-    account = Account(
-        account_id=account_payload["account_id"],
-        name=account_payload["name"],
-        icp_fit=float(account_payload["icp_fit"]),
-        signals=signals,
-        roles=roles,
-        missing_roles=tuple(account_payload.get("missing_roles", [])),
-    )
-    playbook = Playbook(
-        name=playbook_payload["name"],
-        allowed_routes=tuple(playbook_payload["allowed_routes"]),
-        blocked_channels=tuple(playbook_payload.get("blocked_channels", [])),
-        available_assets=tuple(playbook_payload.get("available_assets", [])),
-        required_review_for=tuple(playbook_payload.get("required_review_for", [])),
-    )
-    return account, playbook
+    return account_from_payload(payload["account"]), playbook_from_payload(payload["playbook"])
 
 
 def build_demo_plan(path: Path) -> dict[str, Any]:
     account, playbook = load_demo_account(path)
     plan = DeterministicAccessPlanner().build_plan(account, playbook)
-    return {
-        "account_id": plan.account_id,
-        "account_name": plan.account_name,
-        "unresolved_gaps": list(plan.unresolved_gaps),
-        "routes": [
-            {
-                "route_type": route.route_type,
-                "title": route.title,
-                "score": route.score,
-                "reason": route.reason,
-                "risk": route.risk,
-                "owner": route.owner,
-                "evidence_refs": list(route.evidence_refs),
-                "expected_state_change": route.expected_state_change,
-                "requires_human_review": route.requires_human_review,
-            }
-            for route in plan.routes
-        ],
-    }
+    return access_plan_to_payload(plan)
+
+
+def build_access_plan_artifact(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    workflow = AccessPlanningWorkflow()
+    state = AccessPlanningState(
+        task_context={
+            "task_id": "demo-access-plan",
+            "correlation_id": "demo-slice-0.2",
+            "requester": "demo",
+            "source_path": str(path),
+        },
+        account_payload=payload["account"],
+        playbook_payload=payload["playbook"],
+    )
+    result = workflow.invoke(state)
+    if result.access_plan is None:
+        raise RuntimeError("AccessPlanningWorkflow did not produce an access plan artifact")
+    return result.access_plan
+
+
+def generate_access_plan_artifact(
+    *,
+    input_path: Path,
+    output_path: Path,
+    frontend_output_path: Path | None = None,
+) -> dict[str, Any]:
+    artifact = build_access_plan_artifact(input_path)
+    _write_json(output_path, artifact)
+    if frontend_output_path is not None:
+        _write_json(frontend_output_path, artifact)
+    return artifact
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def main() -> None:
-    demo_path = Path(__file__).resolve().parents[2] / "demo" / "sample_account.json"
-    print(json.dumps(build_demo_plan(demo_path), ensure_ascii=False, indent=2))
+    root = Path(__file__).resolve().parents[2]
+    parser = argparse.ArgumentParser(prog="power-web-os-demo")
+    parser.add_argument(
+        "command",
+        nargs="?",
+        default="print-plan",
+        choices=("print-plan", "generate-access-plan"),
+    )
+    parser.add_argument("--input", type=Path, default=root / "demo" / "sample_account.json")
+    parser.add_argument("--output", type=Path, default=root / "demo" / "output" / "access_plan.json")
+    parser.add_argument(
+        "--frontend-output",
+        type=Path,
+        default=root / "frontend" / "public" / "demo" / "access_plan.json",
+    )
+    args = parser.parse_args()
+
+    if args.command == "generate-access-plan":
+        artifact = generate_access_plan_artifact(
+            input_path=args.input,
+            output_path=args.output,
+            frontend_output_path=args.frontend_output,
+        )
+    else:
+        artifact = build_demo_plan(args.input)
+    print(json.dumps(artifact, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

@@ -23,34 +23,45 @@ The AI-agent runtime must use [`mudrezzz/langgraph-document-ai-platform`](https:
 
 ## Current Status
 
-Iteration 0 is initialized. The repository contains:
+Slice 0.2 is implemented. The repository contains:
 
 - documented product and architecture baseline;
 - Python domain skeleton for `Account`, `Signal`, `PowerWebRole`, `Playbook`, and `AccessPlan`;
-- deterministic Access Planner baseline;
-- realistic demo input;
+- deterministic Access Planner baseline wrapped by `AccessPlanningWorkflow`;
+- realistic demo input and generated Access Plan artifact;
+- React + TypeScript + Vite frontend demo using the committed design system;
 - pytest baseline.
 
-The next implementation slice is to wrap the planner in a LangGraph workflow using `langgraph-dai` contracts and task lifecycle patterns.
+The next implementation slice is the frontend design-system validator.
 
 ## Quick Start
 
 ```bash
 python -m pip install -e ".[dev]"
 python -m pytest
-python -m power_web_os.demo
+python -m power_web_os.demo generate-access-plan
+npm install --prefix ./frontend
+npm --prefix ./frontend run dev
 ```
 
 Without installing the package, run the checkout demo directly:
 
 ```bash
-python demo/run_demo.py
+python demo/run_demo.py generate-access-plan
+npm --prefix ./frontend run dev
 ```
 
 To install the required LangGraph document AI framework for agent workflow work:
 
 ```bash
 python -m pip install -e ".[agent,dev]"
+```
+
+Build checks:
+
+```bash
+python -m pytest
+npm --prefix ./frontend run build
 ```
 
 ## Documentation

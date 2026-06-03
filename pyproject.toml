@@ -10,7 +10,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Proprietary" }
 authors = [{ name = "mudrezzz" }]
-dependencies = []
+dependencies = [
+  "pydantic>=2",
+]
 
 [project.optional-dependencies]
 agent = [
