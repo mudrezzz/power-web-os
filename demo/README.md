@@ -14,7 +14,7 @@ The demo shows the current Power Web OS loop: a six-account portfolio fixture is
 - Workflow metadata showing whether `langgraph-dai` was available.
 - A React TypeScript frontend using the committed design system.
 - A durable app shell with sidebar navigation, top bar account context, active `Accounts`, clickable `Access Plans`, and planned placeholders for future workspaces.
-- A bounded SPA frame with internal workspace scrolling and EN/RU UI switching.
+- A bounded SPA frame with internal workspace scrolling and EN/RU switching for UI chrome plus visible deterministic demo data.
 
 ## How To Run
 

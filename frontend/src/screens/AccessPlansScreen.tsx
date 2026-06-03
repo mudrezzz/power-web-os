@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Card, Eyebrow, Mono } from '../components/primitives';
+import { useDemoLocalization } from '../demoLocalization';
 import type { AccessPlanArtifact, Evidence, Route as AccessRoute, Signal } from '../types';
 
 export function AccessPlansScreen({
@@ -93,7 +94,9 @@ function PlanCard({
   onToggle: () => void;
 }) {
   const { t } = useTranslation();
+  const demo = useDemoLocalization();
   const evidence = evidenceForRoute(artifact.account.signals, route.evidence_refs);
+  const routeTitle = demo.routeTitle(route.route_type, route.title);
 
   return (
     <Card interactive selected={index === 0} onClick={onToggle}>
@@ -104,10 +107,10 @@ function PlanCard({
         </div>
         <div className="plan-heading">
           <div className="plan-title-row">
-            <h2>{route.title}</h2>
+            <h2>{routeTitle}</h2>
             {index === 0 && <Badge tone="cobalt">{t('plans.recommended')}</Badge>}
           </div>
-          <p>{t('plans.target', { target: humanize(route.route_type) })}</p>
+          <p>{t('plans.target', { target: demo.routeType(route.route_type) })}</p>
         </div>
         <div className="score-block">
           <span className="rank-label">{t('plans.score')}</span>
@@ -126,28 +129,28 @@ function PlanCard({
           <div className="route-explanation">
             <Eyebrow>{t('plans.routeEyebrow')}</Eyebrow>
             <div className="route-path">
-              <span>{route.owner}</span>
+              <span>{demo.owner(route.owner)}</span>
               <Route aria-hidden="true" />
-              <span>{route.title}</span>
+              <span>{routeTitle}</span>
             </div>
 
             <div className="why-box">
               <Lightbulb aria-hidden="true" />
               <div>
                 <span className="why-title">{t('plans.whyThisRoute')}</span>
-                <p>{route.reason}</p>
+                <p>{demo.text(route.reason)}</p>
               </div>
             </div>
 
             <Eyebrow>{t('plans.expectedStateChange')}</Eyebrow>
             <div className="state-change">
               <GitBranch aria-hidden="true" />
-              <span>{route.expected_state_change}</span>
+              <span>{demo.text(route.expected_state_change ?? '')}</span>
             </div>
 
             <p className="risk-line">
               <AlertTriangle aria-hidden="true" />
-              <span>{route.risk}</span>
+              <span>{demo.text(route.risk)}</span>
             </p>
           </div>
 
@@ -166,7 +169,7 @@ function PlanCard({
                 {evidence.map((item) => (
                   <span className="evidence-item" key={item.source}>
                     <CheckCircle2 aria-hidden="true" />
-                    <span>{item.summary}</span>
+                    <span>{demo.text(item.summary)}</span>
                     <Mono>{item.source}</Mono>
                   </span>
                 ))}
@@ -174,7 +177,7 @@ function PlanCard({
             </div>
 
             <div className="metadata-row">
-              <Badge tone="neutral">{route.owner}</Badge>
+              <Badge tone="neutral">{demo.owner(route.owner)}</Badge>
               <Badge tone={route.requires_human_review ? 'unsurfaced' : 'ally'}>
                 {route.requires_human_review ? t('accounts.reviewRequired') : t('accounts.ready')}
               </Badge>
@@ -188,6 +191,7 @@ function PlanCard({
 
 function BoardSummary({ artifact }: { artifact: AccessPlanArtifact }) {
   const { t } = useTranslation();
+  const demo = useDemoLocalization();
 
   return (
     <Card>
@@ -201,12 +205,12 @@ function BoardSummary({ artifact }: { artifact: AccessPlanArtifact }) {
         <div className="badge-list">
           {artifact.account.roles.map((role) => (
             <Badge key={role.role} tone={role.relation === 'partner' ? 'cobalt' : 'ally'}>
-              {role.person_name ?? role.role}
+              {role.person_name ?? demo.role(role.role)}
             </Badge>
           ))}
           {artifact.access_plan.unresolved_gaps.map((gap) => (
             <Badge key={gap} tone="unsurfaced">
-              {humanize(gap)}
+              {demo.role(gap)}
             </Badge>
           ))}
         </div>
@@ -217,6 +221,7 @@ function BoardSummary({ artifact }: { artifact: AccessPlanArtifact }) {
 
 function EvidenceSummary({ signals }: { signals: Signal[] }) {
   const { t } = useTranslation();
+  const demo = useDemoLocalization();
 
   return (
     <Card>
@@ -227,8 +232,8 @@ function EvidenceSummary({ signals }: { signals: Signal[] }) {
             <div className="signal-row" key={signal.kind}>
               <ShieldCheck aria-hidden="true" />
               <div>
-                <h3>{signal.kind}</h3>
-                <p>{signal.summary}</p>
+                <h3>{demo.signalKind(signal.kind)}</h3>
+                <p>{demo.text(signal.summary)}</p>
                 <Mono>{t('plans.strength', { score: score(signal.strength) })}</Mono>
               </div>
             </div>
@@ -266,8 +271,4 @@ function evidenceForRoute(signals: Signal[], refs: string[]): Evidence[] {
 
 function score(value: number) {
   return String(Math.round(value * 100));
-}
-
-function humanize(value: string) {
-  return value.replaceAll('_', ' ');
 }

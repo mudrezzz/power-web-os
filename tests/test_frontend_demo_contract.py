@@ -18,6 +18,43 @@ def test_frontend_i18n_resources_cover_supported_locales() -> None:
     assert "react-i18next" in Path("frontend/package.json").read_text(encoding="utf-8")
 
 
+def test_frontend_localizes_visible_demo_artifact_data_for_ru() -> None:
+    localizer = Path("frontend/src/demoLocalization.ts").read_text(encoding="utf-8")
+    accounts_screen = Path("frontend/src/screens/AccountsScreen.tsx").read_text(encoding="utf-8")
+    access_plans_screen = Path("frontend/src/screens/AccessPlansScreen.tsx").read_text(encoding="utf-8")
+
+    assert "useDemoLocalization" in accounts_screen
+    assert "useDemoLocalization" in access_plans_screen
+
+    for english_value in [
+        "Access",
+        "Mapping",
+        "partner_intro",
+        "procurement_discovery",
+        "Manufacturing analytics services purchase indicates an active buying process.",
+        "Formal route can be slow and may expose the team too late.",
+        "procurement_role: unknown -> identified",
+        "procurement",
+        "Account Executive",
+        "Partner Manager",
+        "economic_buyer",
+    ]:
+        assert english_value in localizer
+
+    for screen_value in [
+        "item.top_reason",
+        "item.best_route_title",
+        "item.owner",
+        "route.reason",
+        "route.expected_state_change",
+        "route.risk",
+        "item.summary",
+        "signal.kind",
+        "signal.summary",
+    ]:
+        assert screen_value in accounts_screen or screen_value in access_plans_screen
+
+
 def test_frontend_demo_contains_required_sections() -> None:
     shell = Path("frontend/src/layout/AppShell.tsx").read_text(encoding="utf-8")
     accounts_screen = Path("frontend/src/screens/AccountsScreen.tsx").read_text(encoding="utf-8")

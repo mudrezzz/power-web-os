@@ -38,7 +38,7 @@ Open the Vite URL printed by the frontend command. The demo opens in a bounded P
 - route rationale, risk, owner, evidence refs, and expected state change;
 - human review status from the playbook.
 
-The language switcher localizes UI chrome such as navigation, labels, statuses, placeholders, and planned-screen copy. Synthetic account names, route titles, evidence summaries, and generated artifact content remain demo data.
+The language switcher localizes UI chrome plus visible deterministic demo data such as stages, owners, route titles, route rationale, risks, expected state changes, signal kinds, signal summaries, evidence summaries, and missing-role labels. Company names, person names, technical runtime names, and source refs remain artifact data.
 
 The generated JSON artifact is also available at:
 

@@ -39,7 +39,7 @@ description: Use for any Power Web OS frontend work: building or modifying scree
 
 - Route new visible UI strings through the frontend i18n resources instead of hardcoding them in JSX.
 - Keep English and Russian resources in sync for navigation, buttons, labels, statuses, placeholders, and planned states.
-- Demo artifact data may remain source-language data unless a slice explicitly introduces translated artifacts.
+- Visible deterministic demo data should be localized in the presentation layer when the UI language changes. Raw IDs, source refs, company names, and person names may remain as artifact data unless a slice says otherwise.
 - Long Russian UI strings must wrap or truncate inside their own containers; do not shrink fonts based on viewport width.
 
 ## Non-Negotiable Rules

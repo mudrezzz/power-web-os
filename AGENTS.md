@@ -176,7 +176,7 @@ For app-level frontend work, start from the product shell:
 - Validate visible shell or screen changes at small desktop viewports such as 1280x720 and 1366x768.
 - Prevent text from overlapping adjacent UI; use `min-width: 0`, wrapping, ellipsis, or owned scroll containers for dense tables and cards.
 - Route new visible UI strings through the frontend i18n resources and keep English/Russian UI resources synchronized.
-- Demo artifact data may remain in its source language unless a slice explicitly introduces translated artifacts.
+- Visible deterministic demo data should be localized in the presentation layer when the UI language changes. Raw IDs, source refs, company names, and person names may remain as artifact data unless a slice says otherwise.
 
 Strict rules:
 

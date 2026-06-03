@@ -331,6 +331,36 @@ Status:
 - Risks:
   - Full i18n could grow too large; mitigate by localizing UI chrome first and leaving artifact data unchanged.
 
+### Slice 0.4.2: RU localization for visible demo data
+
+- Status: `Done`
+- Goal: Complete RU localization for the current demo by translating visible deterministic artifact values, not only UI chrome.
+- User value: A Russian-language user can read Account Radar and Access Plans without half of the screen falling back to English demo data.
+- Scope:
+  - Add a frontend presentation-layer localizer for deterministic demo artifact values.
+  - Localize stages, owners, route titles, route types, rationale, risks, expected state changes, signal kinds, signal summaries, evidence summaries, and missing-role labels.
+  - Keep raw IDs, source refs, company names, person names, technical workflow names, and runtime names unchanged.
+  - Update Accounts and Access Plans screens to render visible artifact values through the localizer in RU mode while preserving EN mode.
+- Out of scope:
+  - Changing backend artifact schemas.
+  - Generating separate localized JSON artifacts.
+  - Translating company names, person names, source refs, workflow IDs, or machine-readable fields.
+- Implementation notes:
+  - Keep this as presentation logic until artifact localization becomes a backend/product requirement.
+  - Treat the current six-account synthetic portfolio as the deterministic translation perimeter.
+- Tests:
+  - Frontend contract test ensures Accounts and Access Plans use the demo data localizer.
+  - Existing `python -m pytest` remains green.
+  - `npm --prefix ./frontend run build` remains green.
+- Docs:
+  - Update user and developer docs with the visible demo data localization policy.
+- Demo impact:
+  - RU mode displays translated account stages, routes, reasons, risks, signals, evidence, and role/gap labels.
+- Acceptance criteria:
+  - The RU screenshots for Accounts and Access Plans no longer show English route titles, signal summaries, rationale, risks, or owner labels except for explicitly retained raw data.
+- Risks:
+  - Exact-string translation can drift if fixtures change; mitigate with a future artifact-level localization contract when live data starts.
+
 ### Slice 0.5: Power Web Lite board loop
 
 - Status: `Backlog`
@@ -728,6 +758,11 @@ Status:
   - Fixed Accounts table overflow behavior for smaller desktop monitors.
   - Added EN/RU i18n resources, topbar language switcher, and local locale persistence.
   - Updated frontend contract tests, docs, and local frontend agent/design-system instructions.
+- `Slice 0.4.2: RU localization for visible demo data`
+  - Added presentation-layer localization for deterministic demo artifact values.
+  - Localized visible stages, owners, route titles, rationale, risks, state changes, signals, evidence, and role/gap labels in RU mode.
+  - Preserved raw IDs, source refs, company names, person names, workflow names, and runtime names.
+  - Updated frontend contract tests and docs.
 
 ## Blocked Items
 

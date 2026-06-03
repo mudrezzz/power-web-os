@@ -86,6 +86,7 @@ Current structure:
 frontend/src/App.tsx                  App state and artifact loading
 frontend/src/components/              Token-based UI primitives
 frontend/src/i18n.ts                  EN/RU UI resources and locale initialization
+frontend/src/demoLocalization.ts      Presentation-layer localization for deterministic demo data
 frontend/src/layout/                  Power Web OS shell, sidebar, top bar
 frontend/src/screens/                 Product screens and planned placeholders
 frontend/src/styles.css               Design-system-based app styling
@@ -106,7 +107,7 @@ Rules:
 - Load selected-account plans from `/demo/access_plans/{account_id}.json`.
 - Keep unfinished navigation entries visible only as planned placeholders; do not fake unavailable functionality.
 
-The frontend default locale is `en`. The supported locales are `en` and `ru`, and the selected locale is stored in browser `localStorage`. UI chrome is localized; generated account, signal, evidence, and route text remains artifact data unless a future slice adds translated artifacts.
+The frontend default locale is `en`. The supported locales are `en` and `ru`, and the selected locale is stored in browser `localStorage`. UI chrome is localized through `i18n.ts`; visible deterministic artifact values such as stages, owners, route titles, rationale, risks, state changes, signal summaries, and missing-role labels are localized in `demoLocalization.ts`. Keep raw source refs, IDs, company names, and person names as artifact data unless a slice explicitly changes that policy.
 
 ## Test Commands
 

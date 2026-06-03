@@ -2,6 +2,7 @@ import { CheckCircle2, ChevronRight, EyeOff, Route, ShieldCheck } from 'lucide-r
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Card, Eyebrow, HealthBar, Mono } from '../components/primitives';
+import { useDemoLocalization } from '../demoLocalization';
 import type { AccountRadarArtifact, AccountRadarItem } from '../types';
 
 export function AccountsScreen({
@@ -16,6 +17,7 @@ export function AccountsScreen({
   onOpenAccount: (item: AccountRadarItem) => void;
 }) {
   const { t } = useTranslation();
+  const demo = useDemoLocalization();
 
   if (error) {
     return (
@@ -83,11 +85,11 @@ export function AccountsScreen({
                 <span className="account-initials">{initials(item.account_name)}</span>
                 <span>
                   <strong>{item.account_name}</strong>
-                  <small>{item.top_reason}</small>
+                  <small>{demo.text(item.top_reason)}</small>
                 </span>
               </span>
               <span>
-                <StageBadge stage={item.stage} />
+                <StageBadge stage={item.stage} label={demo.stage(item.stage)} />
               </span>
               <span>
                 <HealthBar value={item.radar_score} label={t('accounts.scoreLabel', { accountName: item.account_name })} />
@@ -102,10 +104,14 @@ export function AccountsScreen({
               </span>
               <span className="route-cell">
                 <Route aria-hidden="true" />
-                <span>{item.best_route_title ?? t('accounts.noRoute')}</span>
+                <span>
+                  {item.best_route_title
+                    ? demo.routeTitle(item.best_route_type ?? '', item.best_route_title)
+                    : t('accounts.noRoute')}
+                </span>
                 <Mono>{item.best_route_score}</Mono>
               </span>
-              <span className="text-cell">{item.owner ?? t('accounts.unassigned')}</span>
+              <span className="text-cell">{item.owner ? demo.owner(item.owner) : t('accounts.unassigned')}</span>
               <span>
                 <Badge tone={item.review_required ? 'unsurfaced' : 'ally'}>
                   {item.review_required ? t('accounts.reviewRequired') : t('accounts.ready')}
@@ -134,14 +140,14 @@ function StatusCard({ children, title }: { children: ReactNode; title: string })
   );
 }
 
-function StageBadge({ stage }: { stage: string }) {
+function StageBadge({ label, stage }: { label: string; stage: string }) {
   if (stage === 'Access') {
-    return <Badge tone="ally">{stage}</Badge>;
+    return <Badge tone="ally">{label}</Badge>;
   }
   if (stage === 'Mapping') {
-    return <Badge tone="cobalt">{stage}</Badge>;
+    return <Badge tone="cobalt">{label}</Badge>;
   }
-  return <Badge tone="neutral">{stage}</Badge>;
+  return <Badge tone="neutral">{label}</Badge>;
 }
 
 function initials(value: string) {
