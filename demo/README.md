@@ -14,6 +14,7 @@ The demo shows the current Power Web OS loop: a six-account portfolio fixture is
 - Workflow metadata showing whether `langgraph-dai` was available.
 - A React TypeScript frontend using the committed design system.
 - A durable app shell with sidebar navigation, top bar account context, active `Accounts`, clickable `Access Plans`, and planned placeholders for future workspaces.
+- A bounded SPA frame with internal workspace scrolling and EN/RU UI switching.
 
 ## How To Run
 
@@ -41,7 +42,7 @@ python demo/run_demo.py generate-access-plan
 
 The Python command prints and writes JSON for the ranked portfolio. The output should include six ranked accounts and a matching generated Access Plan artifact for every account.
 
-The frontend command prints a local Vite URL. Open it to inspect Account Radar, then click an account row to inspect that account's Access Plan visually inside the Power Web OS shell.
+The frontend command prints a local Vite URL. Open it to inspect Account Radar, switch the UI between EN/RU from the top bar if needed, then click an account row to inspect that account's Access Plan visually inside the Power Web OS shell.
 
 ## Demo Data
 

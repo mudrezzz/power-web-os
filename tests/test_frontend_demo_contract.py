@@ -5,6 +5,17 @@ def test_frontend_imports_design_system_tokens() -> None:
     entrypoint = Path("frontend/src/main.tsx").read_text(encoding="utf-8")
 
     assert "ui-design-system/colors_and_type.css" in entrypoint
+    assert "import './i18n'" in entrypoint
+
+
+def test_frontend_i18n_resources_cover_supported_locales() -> None:
+    i18n = Path("frontend/src/i18n.ts").read_text(encoding="utf-8")
+
+    assert "supportedLocales = ['en', 'ru']" in i18n
+    assert "defaultLocale: SupportedLocale = 'en'" in i18n
+    assert "localeStorageKey" in i18n
+    assert "i18next" in Path("frontend/package.json").read_text(encoding="utf-8")
+    assert "react-i18next" in Path("frontend/package.json").read_text(encoding="utf-8")
 
 
 def test_frontend_demo_contains_required_sections() -> None:
@@ -13,38 +24,38 @@ def test_frontend_demo_contains_required_sections() -> None:
     access_plans_screen = Path("frontend/src/screens/AccessPlansScreen.tsx").read_text(encoding="utf-8")
     planned_screen = Path("frontend/src/screens/PlannedScreen.tsx").read_text(encoding="utf-8")
 
-    for label in [
-        "Accounts",
-        "Account Map",
-        "Access Plans",
-        "Signals",
-        "Playbook",
-        "My Tasks",
-        "Signals Inbox",
+    for label_key in [
+        "nav.accounts",
+        "nav.map",
+        "nav.plans",
+        "nav.signals",
+        "nav.playbook",
+        "nav.tasks",
+        "nav.inbox",
     ]:
-        assert label in shell
+        assert label_key in shell
 
-    for label in [
-        "Account Radar",
-        "Radar score",
-        "Signals",
-        "Missing",
-        "Best route",
-        "Owner",
-        "Review",
+    for label_key in [
+        "accounts.eyebrow",
+        "accounts.columns.radarScore",
+        "accounts.columns.signals",
+        "accounts.columns.missing",
+        "accounts.columns.bestRoute",
+        "accounts.columns.owner",
+        "accounts.columns.review",
     ]:
-        assert label in accounts_screen
+        assert label_key in accounts_screen
 
-    for label in [
-        "Objective",
-        "Board coverage",
-        "Signal evidence",
-        "Review status",
+    for label_key in [
+        "plans.objectiveEyebrow",
+        "plans.boardCoverage",
+        "plans.signalEvidence",
+        "plans.reviewStatus",
     ]:
-        assert label in access_plans_screen
+        assert label_key in access_plans_screen
 
-    assert "PLANNED WORKSPACE" in planned_screen
-    assert "PLANNED QUEUE" in planned_screen
+    assert "planned.workspaceEyebrow" in planned_screen
+    assert "planned.queueEyebrow" in planned_screen
     assert "Accounts portfolio" not in planned_screen
 
 
@@ -55,7 +66,32 @@ def test_frontend_shell_uses_design_system_prototype_structure() -> None:
     assert "AppShell" in app
     assert "Sidebar" in shell
     assert "TopBar" in shell
-    assert "Access Plans /" in shell
+    assert "topbar.accessPlansFor" in shell
+    assert "LanguageSwitch" in shell
+    assert "localeStorageKey" in shell
+
+
+def test_frontend_shell_uses_bounded_spa_frame_css() -> None:
+    css = Path("frontend/src/styles.css").read_text(encoding="utf-8")
+
+    for selector in ["html,", "body,", "#root", ".app-shell", ".sidebar", ".workspace", ".workspace-body"]:
+        assert selector in css
+
+    assert "height: 100dvh" in css
+    assert "overflow: hidden" in css
+    assert "overflow: auto" in css
+    assert "overflow-y: auto" in css
+
+
+def test_accounts_screen_contains_overflow_safe_table_rules() -> None:
+    css = Path("frontend/src/styles.css").read_text(encoding="utf-8")
+
+    assert ".accounts-screen .card" in css
+    assert "overflow-x: auto" in css
+    assert ".accounts-table-head > span" in css
+    assert ".account-row > span" in css
+    assert "min-width: 0" in css
+    assert "text-overflow: ellipsis" in css
 
 
 def test_app_loads_account_radar_and_selected_access_plan_artifacts() -> None:

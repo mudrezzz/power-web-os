@@ -1,70 +1,72 @@
 import { Activity, CheckCircle2, LayoutGrid, Route, Settings2, Share2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Badge, Card, Eyebrow } from '../components/primitives';
 import type { ScreenId } from '../layout/AppShell';
 
 const plannedScreens: Record<
   Exclude<ScreenId, 'accounts' | 'plans'>,
   {
-    title: string;
-    eyebrow: string;
-    description: string;
-    nextSlice: string;
+    descriptionKey: string;
+    eyebrowKey: string;
     icon: typeof LayoutGrid;
+    nextSliceKey: string;
+    titleKey: string;
   }
 > = {
   map: {
-    title: 'Account Map',
-    eyebrow: 'PLANNED WORKSPACE',
-    description: 'The Power Web map will show visible and missing buying-committee figures around the account.',
-    nextSlice: 'Slice 0.5',
+    descriptionKey: 'planned.map.description',
+    eyebrowKey: 'planned.workspaceEyebrow',
     icon: Share2,
+    nextSliceKey: 'planned.map.nextSlice',
+    titleKey: 'planned.map.title',
   },
   signals: {
-    title: 'Signals',
-    eyebrow: 'PLANNED WORKSPACE',
-    description: 'The signals feed will expose source evidence, recency, confidence, and governance warnings.',
-    nextSlice: 'Slice 0.11',
+    descriptionKey: 'planned.signals.description',
+    eyebrowKey: 'planned.workspaceEyebrow',
     icon: Activity,
+    nextSliceKey: 'planned.signals.nextSlice',
+    titleKey: 'planned.signals.title',
   },
   playbook: {
-    title: 'Playbook',
-    eyebrow: 'PLANNED WORKSPACE',
-    description: 'The playbook workspace will show allowed routes, blocked channels, assets, and review rules.',
-    nextSlice: 'Slice 0.6',
+    descriptionKey: 'planned.playbook.description',
+    eyebrowKey: 'planned.workspaceEyebrow',
     icon: Settings2,
+    nextSliceKey: 'planned.playbook.nextSlice',
+    titleKey: 'planned.playbook.title',
   },
   tasks: {
-    title: 'My Tasks',
-    eyebrow: 'PLANNED QUEUE',
-    description: 'Approved routes will become task candidates after the human-review loop is implemented.',
-    nextSlice: 'Slice 0.7',
+    descriptionKey: 'planned.tasks.description',
+    eyebrowKey: 'planned.queueEyebrow',
     icon: CheckCircle2,
+    nextSliceKey: 'planned.tasks.nextSlice',
+    titleKey: 'planned.tasks.title',
   },
   inbox: {
-    title: 'Signals Inbox',
-    eyebrow: 'PLANNED QUEUE',
-    description: 'New signals will be triaged here once the radar and source-governance loops exist.',
-    nextSlice: 'Slice 0.10',
+    descriptionKey: 'planned.inbox.description',
+    eyebrowKey: 'planned.queueEyebrow',
     icon: Route,
+    nextSliceKey: 'planned.inbox.nextSlice',
+    titleKey: 'planned.inbox.title',
   },
 };
 
 export function PlannedScreen({ screenId }: { screenId: Exclude<ScreenId, 'accounts' | 'plans'> }) {
+  const { t } = useTranslation();
   const screen = plannedScreens[screenId];
   const Icon = screen.icon;
 
   return (
-    <section className="screen planned-screen" aria-label={screen.title}>
+    <section className="screen planned-screen" aria-label={t(screen.titleKey)}>
       <Card>
         <div className="planned-content">
           <div className="planned-icon">
             <Icon aria-hidden="true" />
           </div>
           <div>
-            <Eyebrow>{screen.eyebrow}</Eyebrow>
-            <h1>{screen.title}</h1>
-            <p>{screen.description}</p>
-            <Badge tone="neutral">{screen.nextSlice}</Badge>
+            <Eyebrow>{t(screen.eyebrowKey)}</Eyebrow>
+            <h1>{t(screen.titleKey)}</h1>
+            <p>{t(screen.descriptionKey)}</p>
+            <Badge tone="neutral">{t(screen.nextSliceKey)}</Badge>
           </div>
         </div>
       </Card>

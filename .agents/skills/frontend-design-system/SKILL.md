@@ -27,11 +27,20 @@ description: Use for any Power Web OS frontend work: building or modifying scree
 ## Product Shell Rules
 
 - Treat the Power Web OS app shell as mandatory for product screens.
+- Treat the shell as a bounded SPA frame, not a landing page. Keep profile/navigation visible inside the viewport and put scrolling inside workspace panes.
 - If the production frontend lacks `layout` / app shell components, create or extend them before adding a new full-screen product feature.
 - Do not build standalone product demo pages when the prototype intends the feature to live inside the workspace shell.
 - Preserve the prototype information architecture by default: `Accounts`, `Account Map`, `Access Plans`, `Signals`, `Playbook`, and queue entries such as `My Tasks` / `Signals Inbox`.
 - Keep unavailable screens visible only as planned/placeholder states or disabled navigation; do not fake unfinished functionality.
 - Place the current working slice inside the shell as the active screen.
+- Validate app-level layout at small desktop viewports such as 1280x720 and 1366x768 before finishing visible shell or screen work.
+
+## Internationalization Rules
+
+- Route new visible UI strings through the frontend i18n resources instead of hardcoding them in JSX.
+- Keep English and Russian resources in sync for navigation, buttons, labels, statuses, placeholders, and planned states.
+- Demo artifact data may remain source-language data unless a slice explicitly introduces translated artifacts.
+- Long Russian UI strings must wrap or truncate inside their own containers; do not shrink fonts based on viewport width.
 
 ## Non-Negotiable Rules
 
@@ -46,6 +55,7 @@ description: Use for any Power Web OS frontend work: building or modifying scree
 - Do not use emoji or exclamation marks in UI copy.
 - Use Lucide icons in production.
 - Respect `prefers-reduced-motion`.
+- Prevent text from overlapping adjacent UI. Use `min-width: 0`, wrapping, ellipsis, or owned scroll containers for tables and dense layouts.
 - Do not introduce decorative gradients, photos, or illustrations unless the design system is updated to allow them.
 
 ## Component Reference Order
@@ -65,7 +75,9 @@ For screens and visible component work:
 1. Compare with `ui-design-system/preview/index.html`.
 2. Compare screen behavior with `ui-design-system/app-prototype/index.html`.
 3. Check focus states, hover/press behavior, reduced motion, and text overflow.
-4. Report any known deviation from the design system before finishing.
+4. Check that body-level scrolling is not used for normal SPA workspace screens.
+5. Check that EN/RU switching does not break layout.
+6. Report any known deviation from the design system before finishing.
 
 ## Final Response Requirements
 

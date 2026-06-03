@@ -85,6 +85,7 @@ Current structure:
 ```text
 frontend/src/App.tsx                  App state and artifact loading
 frontend/src/components/              Token-based UI primitives
+frontend/src/i18n.ts                  EN/RU UI resources and locale initialization
 frontend/src/layout/                  Power Web OS shell, sidebar, top bar
 frontend/src/screens/                 Product screens and planned placeholders
 frontend/src/styles.css               Design-system-based app styling
@@ -97,9 +98,15 @@ Rules:
 - Use the relevant `ui-design-system/app-prototype/*Screen.jsx` file before implementing a screen.
 - Use `lucide-react` for icons.
 - Keep UI copy sentence case, with uppercase only for mono eyebrow labels.
+- Add visible UI strings through `frontend/src/i18n.ts` and keep English/Russian resources synchronized.
+- Keep the app shell viewport-bounded; `body` should not be the normal scroll container for product screens.
+- Put scrolling inside workspace panes and dense table/card wrappers.
+- Use `min-width: 0`, wrapping, ellipsis, or owned horizontal scroll so text never overlaps neighboring columns.
 - Load the portfolio artifact from `/demo/account_radar.json`.
 - Load selected-account plans from `/demo/access_plans/{account_id}.json`.
 - Keep unfinished navigation entries visible only as planned placeholders; do not fake unavailable functionality.
+
+The frontend default locale is `en`. The supported locales are `en` and `ru`, and the selected locale is stored in browser `localStorage`. UI chrome is localized; generated account, signal, evidence, and route text remains artifact data unless a future slice adds translated artifacts.
 
 ## Test Commands
 

@@ -172,6 +172,11 @@ For app-level frontend work, start from the product shell:
 - If the production frontend does not yet have a durable app shell, create or extend it before adding a new full-screen product feature.
 - Do not create standalone full-screen demo pages for product features when the shell exists or is intended by the prototype. Put the feature inside the Power Web OS workspace shell.
 - Menu items for future functionality may be visible as planned/placeholder states, but must not pretend unavailable functionality is implemented.
+- Treat the app as a bounded SPA workspace, not a landing page. Keep sidebar profile/navigation visible inside the viewport and put scrolling inside workspace panes.
+- Validate visible shell or screen changes at small desktop viewports such as 1280x720 and 1366x768.
+- Prevent text from overlapping adjacent UI; use `min-width: 0`, wrapping, ellipsis, or owned scroll containers for dense tables and cards.
+- Route new visible UI strings through the frontend i18n resources and keep English/Russian UI resources synchronized.
+- Demo artifact data may remain in its source language unless a slice explicitly introduces translated artifacts.
 
 Strict rules:
 

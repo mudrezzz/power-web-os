@@ -22,9 +22,11 @@ python demo/run_demo.py generate-account-radar
 npm --prefix ./frontend run dev
 ```
 
-Open the Vite URL printed by the frontend command. The demo opens in the Power Web OS workspace shell with `Accounts` active. It shows:
+Open the Vite URL printed by the frontend command. The demo opens in a bounded Power Web OS workspace shell with `Accounts` active. It shows:
 
 - sidebar navigation for `Accounts`, `Account Map`, `Access Plans`, `Signals`, and `Playbook`;
+- profile and navigation frame that stays visible while workspace content scrolls inside the app;
+- `EN` / `RU` language switcher in the top bar, with the choice saved locally in the browser;
 - Account Radar ranking across six target accounts;
 - radar score, stage, signal count, missing roles, best route, owner, and review status;
 - account context, route count, workflow runtime, and ICP fit for the selected account in the top bar;
@@ -35,6 +37,8 @@ Open the Vite URL printed by the frontend command. The demo opens in the Power W
 - top Access Plan routes;
 - route rationale, risk, owner, evidence refs, and expected state change;
 - human review status from the playbook.
+
+The language switcher localizes UI chrome such as navigation, labels, statuses, placeholders, and planned-screen copy. Synthetic account names, route titles, evidence summaries, and generated artifact content remain demo data.
 
 The generated JSON artifact is also available at:
 

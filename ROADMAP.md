@@ -291,6 +291,46 @@ Status:
 - Risks:
   - Portfolio scoring can become arbitrary; mitigate by showing only simple factors and evidence.
 
+### Slice 0.4.1: SPA frame and bilingual UI correction
+
+- Status: `Done`
+- Goal: Stabilize the current Account Radar frontend as a bounded SPA workspace and add EN/RU UI localization before adding more screens.
+- User value: A user on a smaller desktop monitor can keep the profile/navigation frame visible, read the Accounts table without overlapping text, and switch the UI between English and Russian.
+- Scope:
+  - Fix the app shell so `html`, `body`, `#root`, and `.app-shell` are viewport-bounded and only workspace panes scroll.
+  - Keep the sidebar profile card visible at the bottom of the viewport, with navigation scrolling internally if needed.
+  - Make Accounts table cells overflow-safe with owned horizontal scrolling, `min-width: 0`, and ellipsis/wrapping policy.
+  - Add `i18next` / `react-i18next`, EN/RU resources, a topbar language switcher, and `localStorage` locale persistence.
+  - Translate UI chrome, navigation, labels, statuses, placeholders, and planned-state copy; keep generated artifact data as source-language data.
+  - Update frontend agent/design-system instructions with SPA frame, small-viewport, overflow, and i18n rules.
+- Out of scope:
+  - Backend localization.
+  - Translated demo artifacts.
+  - Production routing, auth, persistence, or API server.
+  - Pixel-perfect screenshot regression.
+- Implementation notes:
+  - Default locale is `en`; supported locales are `en` and `ru`.
+  - Use the design-system tokens and app prototype frame behavior as the reference.
+  - Longer Russian labels must be handled by layout rules, not viewport-scaled fonts.
+- Tests:
+  - Frontend contract tests for i18n resources, i18n initialization, language switcher, SPA frame CSS, and Accounts overflow rules.
+  - `python -m pytest` remains green.
+  - `npm --prefix ./frontend run build` remains green.
+- Docs:
+  - Update user guide with bounded SPA and language switching behavior.
+  - Update developer guide with i18n and SPA frame rules.
+  - Update demo README with bilingual UI note.
+- Demo impact:
+  - The same Account Radar demo becomes readable on smaller desktop monitors and can be switched between EN/RU UI chrome.
+- Acceptance criteria:
+  - Browser page does not vertically scroll for normal desktop shell usage.
+  - Sidebar profile stays visible at small desktop viewport height.
+  - Accounts table text does not overlap adjacent columns.
+  - EN/RU switch changes visible UI labels and persists after refresh.
+  - Design-system hardcode scan, tests, and frontend build pass.
+- Risks:
+  - Full i18n could grow too large; mitigate by localizing UI chrome first and leaving artifact data unchanged.
+
 ### Slice 0.5: Power Web Lite board loop
 
 - Status: `Backlog`
@@ -683,6 +723,11 @@ Status:
   - Added `generate-account-radar` demo command and Vite artifacts for portfolio plus per-account plans.
   - Replaced the `Accounts` placeholder with a ranked portfolio screen and click-through into selected-account `Access Plans`.
   - Updated backend/frontend tests and synchronized README, user, developer, architecture, and demo docs.
+- `Slice 0.4.1: SPA frame and bilingual UI correction`
+  - Bounded the frontend shell to the viewport and moved scrolling into workspace panes.
+  - Fixed Accounts table overflow behavior for smaller desktop monitors.
+  - Added EN/RU i18n resources, topbar language switcher, and local locale persistence.
+  - Updated frontend contract tests, docs, and local frontend agent/design-system instructions.
 
 ## Blocked Items
 

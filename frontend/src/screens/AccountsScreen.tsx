@@ -1,5 +1,6 @@
 import { CheckCircle2, ChevronRight, EyeOff, Route, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Badge, Card, Eyebrow, HealthBar, Mono } from '../components/primitives';
 import type { AccountRadarArtifact, AccountRadarItem } from '../types';
 
@@ -14,10 +15,12 @@ export function AccountsScreen({
   selectedAccountId: string | null;
   onOpenAccount: (item: AccountRadarItem) => void;
 }) {
+  const { t } = useTranslation();
+
   if (error) {
     return (
-      <StatusCard title="Account Radar is not ready">
-        <p>Run the portfolio generator, then restart or refresh the local demo server.</p>
+      <StatusCard title={t('accounts.status.notReadyTitle')}>
+        <p>{t('accounts.status.notReadyCopy')}</p>
         <code>python -m power_web_os.demo generate-account-radar</code>
       </StatusCard>
     );
@@ -25,8 +28,8 @@ export function AccountsScreen({
 
   if (!artifact) {
     return (
-      <StatusCard title="Loading Account Radar">
-        <p>Reading the generated portfolio artifact from the local Vite server.</p>
+      <StatusCard title={t('accounts.status.loadingTitle')}>
+        <p>{t('accounts.status.loadingCopy')}</p>
       </StatusCard>
     );
   }
@@ -34,42 +37,40 @@ export function AccountsScreen({
   const topAccount = artifact.accounts[0];
 
   return (
-    <section className="screen accounts-screen" aria-label="Accounts portfolio">
+    <section className="screen accounts-screen" aria-label={t('accounts.aria')}>
       <div className="accounts-header">
         <div>
-          <Eyebrow>Account Radar</Eyebrow>
-          <h1>Accounts</h1>
-          <p>
-            {artifact.accounts.length} target accounts ranked by ICP fit, signal strength, access route, and missing-role risk.
-          </p>
+          <Eyebrow>{t('accounts.eyebrow')}</Eyebrow>
+          <h1>{t('accounts.title')}</h1>
+          <p>{t('accounts.summary', { count: artifact.accounts.length })}</p>
         </div>
         {topAccount && (
           <div className="radar-highlight">
-            <span>Top account</span>
+            <span>{t('accounts.topAccount')}</span>
             <strong>{topAccount.account_name}</strong>
-            <Mono>{topAccount.radar_score} radar score</Mono>
+            <Mono>{t('accounts.radarScoreValue', { score: topAccount.radar_score })}</Mono>
           </div>
         )}
       </div>
 
-      <div className="filter-row" aria-label="Portfolio filters">
-        <Badge tone="cobalt">All accounts</Badge>
-        <Badge tone="neutral">My book</Badge>
-        <Badge tone="neutral">Needs route</Badge>
-        <Badge tone="neutral">Review required</Badge>
+      <div className="filter-row" aria-label={t('accounts.filters.aria')}>
+        <Badge tone="cobalt">{t('accounts.filters.all')}</Badge>
+        <Badge tone="neutral">{t('accounts.filters.myBook')}</Badge>
+        <Badge tone="neutral">{t('accounts.filters.needsRoute')}</Badge>
+        <Badge tone="neutral">{t('accounts.filters.reviewRequired')}</Badge>
       </div>
 
       <Card>
         <div className="accounts-table">
           <div className="accounts-table-head">
-            <span>Account</span>
-            <span>Stage</span>
-            <span>Radar score</span>
-            <span>Signals</span>
-            <span>Missing</span>
-            <span>Best route</span>
-            <span>Owner</span>
-            <span>Review</span>
+            <span>{t('accounts.columns.account')}</span>
+            <span>{t('accounts.columns.stage')}</span>
+            <span>{t('accounts.columns.radarScore')}</span>
+            <span>{t('accounts.columns.signals')}</span>
+            <span>{t('accounts.columns.missing')}</span>
+            <span>{t('accounts.columns.bestRoute')}</span>
+            <span>{t('accounts.columns.owner')}</span>
+            <span>{t('accounts.columns.review')}</span>
           </div>
           {artifact.accounts.map((item) => (
             <button
@@ -89,7 +90,7 @@ export function AccountsScreen({
                 <StageBadge stage={item.stage} />
               </span>
               <span>
-                <HealthBar value={item.radar_score} label={`${item.account_name} radar score`} />
+                <HealthBar value={item.radar_score} label={t('accounts.scoreLabel', { accountName: item.account_name })} />
               </span>
               <span className="metric-cell">
                 <ShieldCheck aria-hidden="true" />
@@ -101,13 +102,13 @@ export function AccountsScreen({
               </span>
               <span className="route-cell">
                 <Route aria-hidden="true" />
-                <span>{item.best_route_title ?? 'No route yet'}</span>
+                <span>{item.best_route_title ?? t('accounts.noRoute')}</span>
                 <Mono>{item.best_route_score}</Mono>
               </span>
-              <span>{item.owner ?? 'Unassigned'}</span>
+              <span className="text-cell">{item.owner ?? t('accounts.unassigned')}</span>
               <span>
                 <Badge tone={item.review_required ? 'unsurfaced' : 'ally'}>
-                  {item.review_required ? 'Review required' : 'Ready'}
+                  {item.review_required ? t('accounts.reviewRequired') : t('accounts.ready')}
                 </Badge>
               </span>
               <ChevronRight aria-hidden="true" className="row-chevron" />
@@ -120,10 +121,12 @@ export function AccountsScreen({
 }
 
 function StatusCard({ children, title }: { children: ReactNode; title: string }) {
+  const { t } = useTranslation();
+
   return (
     <section className="screen status-screen">
       <Card>
-        <Eyebrow>RADAR STATUS</Eyebrow>
+        <Eyebrow>{t('accounts.status.eyebrow')}</Eyebrow>
         <h1>{title}</h1>
         {children}
       </Card>

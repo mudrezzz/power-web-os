@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import '../../ui-design-system/colors_and_type.css';
+import './i18n';
 import './styles.css';
 import { App } from './App';
 
