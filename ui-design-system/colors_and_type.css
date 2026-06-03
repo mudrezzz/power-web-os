@@ -1,0 +1,130 @@
+/* ============================================================================
+   POWER WEB OS — Foundations: Color + Type
+   Airy, light, intelligence-grade. Warm-paper canvas, cool charcoal ink,
+   one cobalt signature, and a "stance" palette (ally / blocker / unsurfaced).
+   Fonts loaded from Google Fonts (substitution — see README, flag to user).
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,300..800;1,400..600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ---------- Font families ---------- */
+  --font-sans: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* ---------- Neutral ramp (warm-cool paper -> cool charcoal ink) ---------- */
+  --paper:        #FBFBF9;  /* app canvas — warm paper */
+  --surface:      #FFFFFF;  /* cards, panels */
+  --surface-2:    #F5F5F2;  /* inset wells, hover rows */
+  --surface-3:    #EDEDE9;  /* deeper inset, track */
+
+  --border-faint: #EEEEE9;  /* hairline inside surfaces */
+  --border:       #E3E3DD;  /* default border */
+  --border-strong:#D2D2CA;  /* emphasized / focus-adjacent */
+
+  --ink:    #191B1E;  /* fg1 — primary text, near-black cool charcoal */
+  --fg2:    #565A60;  /* secondary text */
+  --fg3:    #888D94;  /* muted / meta */
+  --fg4:    #B2B6BC;  /* faint / disabled */
+
+  /* ---------- Cobalt — the signature (routes, primary action, active) ---------- */
+  --cobalt-50:  #EEF1FE;
+  --cobalt-100: #DCE3FD;
+  --cobalt-200: #BCC8FB;
+  --cobalt:     #2D52E0;  /* base */
+  --cobalt-600: #2747C8;
+  --cobalt-700: #1F3AA6;  /* hover / pressed text */
+
+  /* ---------- Stance palette (the product reads who is for / against / hidden) ---------- */
+  --ally:       #14935F;  /* champion / supporter / positive */
+  --ally-tint:  #E7F4EE;
+  --ally-200:   #B7E0CC;
+
+  --blocker:      #DB4A45;  /* detractor / risk / against */
+  --blocker-tint: #FBEBEA;
+  --blocker-200:  #F4C4C1;
+
+  --unsurfaced:      #C2851A;  /* unknown / not yet surfaced / watch */
+  --unsurfaced-tint: #F8F0DD;
+  --unsurfaced-200:  #ECD49B;
+
+  /* ---------- Semantic aliases (UI intent) ---------- */
+  --accent:        var(--cobalt);
+  --accent-tint:   var(--cobalt-50);
+  --link:          var(--cobalt-600);
+  --success:       var(--ally);
+  --danger:        var(--blocker);
+  --warning:       var(--unsurfaced);
+  --focus-ring:    color-mix(in oklab, var(--cobalt) 45%, transparent);
+
+  /* ---------- Radii (slightly rounded — not strict squares, not a toy) ---------- */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-2xl: 24px;
+  --r-pill: 999px;
+
+  /* ---------- Soft, diffuse, low-opacity elevation (airy) ---------- */
+  --shadow-xs: 0 1px 2px rgba(25, 27, 30, 0.05);
+  --shadow-sm: 0 1px 2px rgba(25, 27, 30, 0.04), 0 2px 6px rgba(25, 27, 30, 0.05);
+  --shadow-md: 0 2px 4px rgba(25, 27, 30, 0.04), 0 8px 20px rgba(25, 27, 30, 0.07);
+  --shadow-lg: 0 4px 8px rgba(25, 27, 30, 0.05), 0 18px 40px rgba(25, 27, 30, 0.10);
+  --shadow-focus: 0 0 0 3px var(--focus-ring);
+
+  /* ---------- Spacing scale (4pt base, airy) ---------- */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px;
+  --s-12: 48px; --s-16: 64px; --s-20: 80px;
+
+  /* ---------- Motion (calm, no bounce — research tool) ---------- */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 360ms;
+
+  /* ---------- Type scale (semantic) ---------- */
+  --display:   700 44px/1.05 var(--font-sans);
+  --h1:        650 32px/1.12 var(--font-sans);
+  --h2:        650 24px/1.18 var(--font-sans);
+  --h3:        600 19px/1.25 var(--font-sans);
+  --h4:        600 16px/1.3  var(--font-sans);
+  --body-lg:   400 17px/1.55 var(--font-sans);
+  --body:      400 15px/1.55 var(--font-sans);
+  --body-sm:   400 13.5px/1.5 var(--font-sans);
+  --label:     550 13px/1.2 var(--font-sans);
+  --meta:      500 12px/1.3 var(--font-sans);
+  --mono:      460 13px/1.45 var(--font-mono);
+  --mono-sm:   460 11.5px/1.4 var(--font-mono);
+}
+
+/* ============================================================================
+   Optional element defaults — opt in by adding class="pw" on a root element.
+   Token vars above work standalone without this.
+   ============================================================================ */
+.pw {
+  font: var(--body);
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  letter-spacing: 0.001em;
+}
+.pw h1 { font: var(--h1); letter-spacing: -0.018em; margin: 0; }
+.pw h2 { font: var(--h2); letter-spacing: -0.015em; margin: 0; }
+.pw h3 { font: var(--h3); letter-spacing: -0.01em;  margin: 0; }
+.pw h4 { font: var(--h4); letter-spacing: -0.006em; margin: 0; }
+.pw p  { margin: 0; text-wrap: pretty; }
+.pw .display { font: var(--display); letter-spacing: -0.025em; }
+.pw .mono { font: var(--mono); letter-spacing: 0; }
+.pw .meta { font: var(--meta); color: var(--fg3); }
+.pw .eyebrow {
+  font: var(--mono-sm);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg3);
+}
+.pw a { color: var(--link); text-decoration: none; }
+.pw a:hover { color: var(--cobalt-700); }
+::selection { background: var(--cobalt-100); }

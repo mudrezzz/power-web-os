@@ -121,6 +121,28 @@ Status:
   - Approval/rework/reject transitions.
   - Audit trail.
 
+### Slice 0.6: Frontend design-system validator
+
+- Status: `Backlog`
+- Goal: Add an automated validator that catches frontend deviations from `ui-design-system/`.
+- User value: UI implementation stays consistent with the Power Web OS design system instead of relying only on manual review.
+- Scope:
+  - Add a script such as `scripts/check_frontend_design_system.py`.
+  - Detect hardcoded hex colors in frontend code.
+  - Detect direct `box-shadow`, `border-radius`, `font-family`, and common color declarations when `var(--*)` should be used.
+  - Detect emoji and exclamation marks in UI strings.
+  - Check that frontend entry styles import `ui-design-system/colors_and_type.css`.
+  - Add tests or smoke fixtures for the validator.
+- Out of scope:
+  - Full visual regression testing.
+  - Pixel-perfect screenshot comparison.
+- Tests:
+  - Unit tests for allowed and disallowed snippets.
+  - Smoke command documented in developer guide.
+- Docs:
+  - Document validator usage in the developer guide once implemented.
+  - Mention it in frontend contribution rules.
+
 ## Completed Slices
 
 - `Slice 0.1: Bootstrap Power Web OS repository`

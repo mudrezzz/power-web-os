@@ -1,0 +1,27 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><link rel="stylesheet" href="preview.css">
+<style>
+  .node { width:52px;height:52px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);font:600 16px/1 var(--font-sans);color:var(--ink);position:relative }
+  .tag { position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);font:600 9.5px/1 var(--font-mono);letter-spacing:.03em;text-transform:uppercase;background:var(--surface);padding:2px 6px;border-radius:99px;white-space:nowrap }
+  .cell { display:flex;flex-direction:column;align-items:center;gap:16px }
+  .nm { font:600 11.5px/1 var(--font-sans);color:var(--ink) }
+</style></head>
+<body>
+<div class="row" style="gap:34px;align-items:flex-start">
+  <div class="cell">
+    <div class="node" style="border:2.5px solid var(--ally)">MB<span class="tag" style="color:var(--ally);border:1px solid var(--ally-200)">Champion</span></div>
+    <span class="nm">Ally · surfaced</span>
+  </div>
+  <div class="cell">
+    <div class="node" style="border:2.5px solid var(--blocker)">TR<span class="tag" style="color:var(--blocker);border:1px solid var(--blocker-200)">Blocker</span></div>
+    <span class="nm">Blocker · surfaced</span>
+  </div>
+  <div class="cell">
+    <div class="node" style="border:2.5px solid var(--unsurfaced);background:repeating-linear-gradient(135deg,var(--surface-2),var(--surface-2) 5px,var(--surface-3) 5px,var(--surface-3) 10px)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--unsurfaced)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="tag" style="color:var(--unsurfaced);border:1px solid var(--unsurfaced-200)">Econ Buyer</span>
+    </div>
+    <span class="nm">Unsurfaced · ghosted</span>
+  </div>
+  <div style="align-self:center;max-width:150px"><span class="meta">Nodes are the board's atoms — stance ring + role tag. Unsurfaced figures render as dashed ghosts.</span></div>
+</div>
+</body></html>

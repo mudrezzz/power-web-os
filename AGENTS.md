@@ -148,6 +148,33 @@ The demo must:
 
 Use `$demo-maintenance` when adding or changing user-visible functionality.
 
+## Frontend design system
+
+All frontend work must use the local Power Web OS design system in `ui-design-system/`.
+
+Before creating, changing, or reviewing frontend UI:
+
+1. Read `ui-design-system/START-HERE.md`.
+2. Use `ui-design-system/colors_and_type.css` as the source of truth for CSS tokens.
+3. Use `ui-design-system/components-spec.md` for component API, states, sizing, hover, press, and focus behavior.
+4. Use `ui-design-system/app-prototype/` as the behavioral and layout reference.
+5. Use `ui-design-system/preview/` as the visual reference.
+
+Strict rules:
+
+- Do not hardcode hex colors, radii, shadows, spacing, or typography when a design-system token exists.
+- Use `var(--*)` tokens from `colors_and_type.css`.
+- Cobalt is rationed: active route, one primary button per screen, active nav, links, and focus ring.
+- Stance colors are semantic only: ally, blocker, unsurfaced, neutral.
+- Use sentence case for UI text. Use uppercase only for mono eyebrow labels.
+- Scores, confidence, IDs, domains, and counters use mono typography and must have nearby rationale.
+- Do not use emoji or exclamation marks in UI copy.
+- Use Lucide icons in production instead of copied inline SVG paths from the prototype.
+- Respect `prefers-reduced-motion`.
+- Verify frontend changes against the checklist in `ui-design-system/START-HERE.md`.
+
+Use `$frontend-design-system` for any frontend implementation, UI review, component creation, styling, layout, responsive behavior, visual QA, or frontend copy task.
+
 ## Code and test comments
 
 Comment code and tests where comments increase maintainability.
@@ -222,5 +249,6 @@ Use these skills when available:
 - `$docs-sync` for keeping README, architecture docs, ADRs, contributor docs, developer docs, user docs, and demo docs current.
 - `$regression-and-test-strategy` for deciding and running the correct test scope.
 - `$demo-maintenance` for creating or updating the realistic demo example.
+- `$frontend-design-system` for all frontend UI work, including screens, components, CSS, layout, visual QA, frontend copy, responsive behavior, and design reviews. This skill is mandatory whenever frontend app files are created or changed.
 
 Do not duplicate full skill workflows here. The `SKILL.md` files are the source of truth for task-specific procedures.

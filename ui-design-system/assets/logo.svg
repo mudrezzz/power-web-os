@@ -1,0 +1,18 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Power Web OS">
+  
+  <g stroke="#C9CDD3" stroke-width="1.6" stroke-linecap="round">
+    <path d="M16 16 L6.5 9"></path>
+    <path d="M16 16 L7 24"></path>
+    <path d="M16 16 L25.5 23"></path>
+  </g>
+  
+  <path d="M16 16 L25 8.5" stroke="#2D52E0" stroke-width="2.1" stroke-linecap="round"></path>
+  
+  <circle cx="6.5" cy="9" r="2.4" fill="#FFFFFF" stroke="#C9CDD3" stroke-width="1.6"></circle>
+  <circle cx="7" cy="24" r="2.4" fill="#FFFFFF" stroke="#C9CDD3" stroke-width="1.6"></circle>
+  <circle cx="25.5" cy="23" r="2.4" fill="#FFFFFF" stroke="#C9CDD3" stroke-width="1.6"></circle>
+  <circle cx="25" cy="8.5" r="2.9" fill="#2D52E0"></circle>
+  
+  <circle cx="16" cy="16" r="4.4" fill="#191B1E"></circle>
+  <circle cx="16" cy="16" r="1.7" fill="#FBFBF9"></circle>
+</svg>

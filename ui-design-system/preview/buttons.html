@@ -1,0 +1,27 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><link rel="stylesheet" href="preview.css">
+<style>
+  .btn { display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 14px; border-radius:var(--r-md); font:560 14px/1 var(--font-sans); letter-spacing:-.005em; cursor:pointer; border:1px solid transparent; }
+  .primary { background:var(--cobalt); color:#fff; box-shadow:0 1px 2px rgba(31,58,166,.25); }
+  .default { background:var(--surface); color:var(--ink); border-color:var(--border); box-shadow:var(--shadow-xs); }
+  .ghost { background:transparent; color:var(--fg2); }
+  .quiet { background:transparent; color:var(--cobalt-600); }
+  .danger { background:var(--blocker-tint); color:var(--blocker); }
+  .ico { width:16px;height:16px;display:inline-block }
+</style></head>
+<body>
+<div class="col" style="gap:12px">
+  <div class="row" style="gap:10px">
+    <button class="btn primary"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>Draft next move</button>
+    <button class="btn default">Request intro</button>
+    <button class="btn quiet">Find them &rsaquo;</button>
+    <button class="btn danger">Clear blocker</button>
+  </div>
+  <div class="row" style="gap:10px;align-items:center">
+    <button class="btn primary" style="height:30px;font-size:13px;padding:0 11px">Small</button>
+    <button class="btn default" style="height:30px;font-size:13px;padding:0 11px">Small</button>
+    <button class="btn default" style="height:44px;font-size:15px;padding:0 18px">Large action</button>
+    <button class="btn ghost">Ghost</button>
+  </div>
+  <span class="meta">Cobalt primary is the only filled colour — one decisive action per view. Press: 0.5px nudge, no bounce.</span>
+</div>
+</body></html>

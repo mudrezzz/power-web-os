@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Power Web OS — Visual reference</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font: var(--body); color: var(--ink); background: var(--paper);
+    -webkit-font-smoothing: antialiased; padding: 48px clamp(24px, 6vw, 96px) 96px;
+  }
+  header { max-width: 760px; margin-bottom: 8px; }
+  .brand { display: flex; align-items: center; gap: 11px; margin-bottom: 28px; }
+  .brand svg { display: block; }
+  .brand b { font: 650 19px/1 var(--font-sans); letter-spacing: -0.02em; }
+  .brand b span { color: var(--fg3); font-weight: 500; }
+  h1 { font: var(--h1); letter-spacing: -0.018em; margin: 0 0 14px; }
+  .lede { font: var(--body-lg); color: var(--fg2); max-width: 680px; margin: 0; text-wrap: pretty; }
+  .lede a { color: var(--link); text-decoration: none; }
+  .lede a:hover { color: var(--cobalt-700); }
+
+  .group { margin-top: 56px; }
+  .eyebrow { font: var(--mono-sm); letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg3); margin-bottom: 18px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+    box-shadow: var(--shadow-sm); overflow: hidden; display: flex; flex-direction: column;
+    transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
+  .card:hover { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
+  .card .cap {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    padding: 13px 16px; border-bottom: 1px solid var(--border-faint);
+  }
+  .card .cap b { font: 600 14px/1 var(--font-sans); letter-spacing: -0.005em; }
+  .card .cap span { font: var(--mono-sm); color: var(--fg4); }
+  .card .frame { background: var(--paper); height: var(--h, 180px); }
+  .card iframe { width: 100%; height: 100%; border: 0; display: block; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+        <g stroke="#C9CDD3" stroke-width="1.6" stroke-linecap="round">
+          <path d="M16 16 L6.5 9" /><path d="M16 16 L7 24" /><path d="M16 16 L25.5 23" />
+        </g>
+        <path d="M16 16 L25 8.5" stroke="#2D52E0" stroke-width="2.1" stroke-linecap="round" />
+        <circle cx="6.5" cy="9" r="2.4" fill="#FFF" stroke="#C9CDD3" stroke-width="1.6" />
+        <circle cx="7" cy="24" r="2.4" fill="#FFF" stroke="#C9CDD3" stroke-width="1.6" />
+        <circle cx="25.5" cy="23" r="2.4" fill="#FFF" stroke="#C9CDD3" stroke-width="1.6" />
+        <circle cx="25" cy="8.5" r="2.9" fill="#2D52E0" />
+        <circle cx="16" cy="16" r="4.4" fill="#191B1E" />
+        <circle cx="16" cy="16" r="1.7" fill="#FBFBF9" />
+      </svg>
+      <b>Power Web<span> OS</span></b>
+    </div>
+    <h1>Visual reference</h1>
+    <p class="lede">Every foundation and component, rendered live from the real tokens in <code>colors_and_type.css</code>. Use this as a quick eyeball check while you build. For the full app assembled, open <a href="../app-prototype/index.html">app-prototype/index.html</a>; for specs read <a href="../components-spec.md">components-spec.md</a> and <a href="../tokens/tokens-reference.md">tokens-reference.md</a>.</p>
+  </header>
+
+  <section class="group">
+    <div class="eyebrow">Color</div>
+    <div class="grid">
+      <figure class="card" style="margin:0"><div class="cap"><b>Neutral ramp</b><span>colors-neutrals</span></div><div class="frame" style="--h:150px"><iframe src="colors-neutrals.html"></iframe></div></figure>
+      <figure class="card" style="margin:0"><div class="cap"><b>Cobalt signature</b><span>colors-cobalt</span></div><div class="frame" style="--h:150px"><iframe src="colors-cobalt.html"></iframe></div></figure>
+      <figure class="card" style="margin:0"><div class="cap"><b>Stance palette</b><span>colors-stance</span></div><div class="frame" style="--h:200px"><iframe src="colors-stance.html"></iframe></div></figure>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="eyebrow">Type</div>
+    <div class="grid">
+      <figure class="card" style="margin:0"><div class="cap"><b>Display & headings</b><span>type-display</span></div><div class="frame" style="--h:230px"><iframe src="type-display.html"></iframe></div></figure>
+      <figure class="card" style="margin:0"><div class="cap"><b>Body & labels</b><span>type-body</span></div><div class="frame" style="--h:230px"><iframe src="type-body.html"></iframe></div></figure>
+      <figure class="card" style="margin:0"><div class="cap"><b>Mono / evidence</b><span>type-mono</span></div><div class="frame" style="--h:230px"><iframe src="type-mono.html"></iframe></div></figure>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="eyebrow">Spacing · radii · elevation</div>
+    <div class="grid">
+      <figure class="card" style="margin:0"><div class="cap"><b>Spacing scale</b><span>spacing-tokens</span></div><div class="frame" style="--h:210px"><iframe src="spacing-tokens.html"></iframe></div></figure>
+      <figure class="card" style="margin:0"><div class="cap"><b>Corner radii</b><span>radii</span></div><div class="frame" style="--h:190px"><iframe src="radii.html"></iframe></div></figure>
+      <figure class="card" style="margin:0"><div class="cap"><b>Shadows</b><span>shadows</span></div><div class="frame" style="--h:190px"><iframe src="shadows.html"></iframe></div></figure>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="eyebrow">Components</div>
+    <div class="grid">
+      <figure class="card" style="margin:0"><div class="cap"><b>Buttons</b><span>buttons</span></div><div class="frame" style="--h:170px"><iframe src="buttons.html"></iframe></div></figure>
+      <figure class="card" style="margin:0"><div class="cap"><b>Chips & badges</b><span>chips-badges</span></div><div class="frame" style="--h:170px"><iframe src="chips-badges.html"></iframe></div></figure>
+      <figure class="card" style="margin:0"><div class="cap"><b>Inputs</b><span>inputs</span></div><div class="frame" style="--h:170px"><iframe src="inputs.html"></iframe></div></figure>
+      <figure class="card" style="margin:0"><div class="cap"><b>Cards</b><span>cards</span></div><div class="frame" style="--h:240px"><iframe src="cards.html"></iframe></div></figure>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="eyebrow">Domain elements</div>
+    <div class="grid">
+      <figure class="card" style="margin:0"><div class="cap"><b>Map node</b><span>map-node</span></div><div class="frame" style="--h:230px"><iframe src="map-node.html"></iframe></div></figure>
+      <figure class="card" style="margin:0"><div class="cap"><b>Access route</b><span>route-path</span></div><div class="frame" style="--h:230px"><iframe src="route-path.html"></iframe></div></figure>
+      <figure class="card" style="margin:0"><div class="cap"><b>Logo & wordmark</b><span>logo</span></div><div class="frame" style="--h:230px"><iframe src="logo.html"></iframe></div></figure>
+    </div>
+  </section>
+</body>
+</html>

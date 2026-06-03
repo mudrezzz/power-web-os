@@ -1,0 +1,26 @@
+/* Shared styles for Design System preview cards */
+@import url('../colors_and_type.css');
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font: var(--body); color: var(--ink); background: var(--paper);
+  padding: 22px; -webkit-font-smoothing: antialiased;
+}
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.col { display: flex; flex-direction: column; }
+.eyebrow { font: var(--mono-sm); letter-spacing: .14em; text-transform: uppercase; color: var(--fg3); }
+.meta { font: var(--meta); color: var(--fg3); }
+.mono { font: var(--mono); }
+
+/* swatch grid */
+.swatches { display: flex; gap: 0; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--border); width: 100%; }
+.swatch { flex: 1; height: 64px; display: flex; align-items: flex-end; padding: 7px 8px; }
+.swatch span { font: var(--mono-sm); }
+
+.chip-label { display: flex; flex-direction: column; gap: 3px; }
+.chip-label b { font: 600 12.5px/1 var(--font-sans); color: var(--ink); }
+.chip-label span { font: var(--mono-sm); color: var(--fg3); }
+
+.tokrow { display: flex; align-items: center; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--border-faint); }
+.tokrow:last-child { border-bottom: none; }
