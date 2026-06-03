@@ -69,12 +69,25 @@ Do not put CRM/source connector logic directly inside domain classes. Add ports/
 
 The frontend is a local React + TypeScript + Vite app in `frontend/`.
 
+Current structure:
+
+```text
+frontend/src/App.tsx                  App state and artifact loading
+frontend/src/components/              Token-based UI primitives
+frontend/src/layout/                  Power Web OS shell, sidebar, top bar
+frontend/src/screens/                 Product screens and planned placeholders
+frontend/src/styles.css               Design-system-based app styling
+```
+
 Rules:
 
 - Import `ui-design-system/colors_and_type.css`.
+- Use `ui-design-system/app-prototype/AppShell.jsx` for product shell structure.
+- Use the relevant `ui-design-system/app-prototype/*Screen.jsx` file before implementing a screen.
 - Use `lucide-react` for icons.
 - Keep UI copy sentence case, with uppercase only for mono eyebrow labels.
 - Load the artifact from `/demo/access_plan.json`.
+- Keep unfinished navigation entries visible only as planned placeholders; do not fake unavailable functionality.
 
 ## Test Commands
 

@@ -161,6 +161,64 @@ Status:
   - Static frontend may duplicate some prototype styling; mitigate by importing design tokens and keeping the screen narrow.
   - Without the future validator, design-system compliance is manual in this slice; mitigate by using `$frontend-design-system` checklist.
 
+### Slice 0.2.1: Product app shell for Access Planning demo
+
+- Status: `Done`
+- Goal: Move the current Access Planning frontend demo into the durable Power Web OS application shell from the design-system prototype.
+- User value: A user opens the demo and sees the product frame that will grow across future slices: workspace navigation, account context, top bar, and the current Access Plans workflow inside that frame.
+- Scope:
+  - App shell:
+    - Add production React TypeScript layout components based on `ui-design-system/app-prototype/AppShell.jsx`.
+    - Include sidebar navigation for `Accounts`, `Account Map`, `Access Plans`, `Signals`, `Playbook`, plus queue entries such as `My Tasks` and `Signals Inbox`.
+    - Include a top bar with account context, search affordance, and current workspace actions.
+    - Keep `Access Plans` as the active working screen for the current slice.
+  - Current working screen:
+    - Move the existing generated-artifact UI into an `AccessPlansScreen` inside the shell.
+    - Use `ui-design-system/app-prototype/PlansScreen.jsx` as the layout and behavior reference.
+    - Show objective/account context, top-3 route cards, route rationale, evidence, risk, owner, expected state change, and review status.
+  - Future screen placeholders:
+    - Add explicit placeholder states for `Accounts`, `Account Map`, `Signals`, and `Playbook`.
+    - Placeholders must preserve the shell and explain that the feature is planned without pretending the functionality is complete.
+  - Frontend structure:
+    - Create or align folders such as `frontend/src/layout/`, `frontend/src/screens/`, and `frontend/src/components/`.
+    - Keep design-system token import in `frontend/src/main.tsx`.
+- Out of scope:
+  - Full Account Map graph implementation.
+  - Portfolio ranking.
+  - Editable playbook.
+  - Live signals feed.
+  - Auth, production API, CRM sync, or persistence.
+  - Pixel-perfect screenshot regression.
+- Implementation notes:
+  - This is a corrective slice for Slice 0.2: the product loop is valid, but the frontend must live inside the intended product shell.
+  - Use `ui-design-system/app-prototype/README.md`, `AppShell.jsx`, `PlansScreen.jsx`, and relevant primitive references before changing frontend layout.
+  - Do not copy Babel-in-browser prototype code directly; reimplement the structure in production React TypeScript with project CSS and design tokens.
+  - Use `lucide-react` icons rather than copied inline prototype SVG paths.
+  - Keep unavailable navigation entries visible but non-destructive: route to placeholder screens or disabled planned states.
+- Tests:
+  - Update frontend contract tests to require shell labels: `Accounts`, `Account Map`, `Access Plans`, `Signals`, `Playbook`.
+  - Test that `AccessPlansScreen` still loads `/demo/access_plan.json`.
+  - Test that unavailable screens render planned placeholder states inside the shell.
+  - Existing `python -m pytest` remains green.
+  - `npm --prefix ./frontend run build` remains green.
+- Docs:
+  - Update README/demo instructions only if the user-visible demo entry changes.
+  - Update user guide to describe the shell and active `Access Plans` screen.
+  - Update developer guide with frontend layout/screen/component structure.
+  - Update architecture overview only if a new frontend boundary is introduced.
+- Demo impact:
+  - The demo no longer looks like a standalone one-off page.
+  - The same generated Access Plan artifact is shown inside the durable Power Web OS workspace.
+- Acceptance criteria:
+  - Opening the Vite demo shows the Power Web OS shell immediately.
+  - `Access Plans` is the active useful screen and preserves all Slice 0.2 information.
+  - Other nav items are visible but clearly marked as planned/not implemented.
+  - Design-system CSS tokens and prototype shell structure are used.
+  - Tests and build pass.
+- Risks:
+  - Reimplementing too much of the prototype can inflate the slice; mitigate by adding the shell and placeholders only.
+  - Placeholder screens can look like real functionality; mitigate with clear planned-state copy and no fake actions.
+
 ### Slice 0.3: Frontend design-system validator
 
 - Status: `Backlog`
@@ -614,6 +672,11 @@ Status:
   - Added React TypeScript Vite frontend demo using `ui-design-system`.
   - Added Python workflow/artifact tests and frontend smoke contract tests.
   - Updated README, developer guide, user guide, architecture overview, and demo docs.
+- `Slice 0.2.1: Product app shell for Access Planning demo`
+  - Moved the frontend demo into a durable Power Web OS app shell with sidebar navigation and top bar account context.
+  - Added active `Access Plans` screen plus planned placeholders for `Accounts`, `Account Map`, `Signals`, `Playbook`, `My Tasks`, and `Signals Inbox`.
+  - Split frontend into layout, screen, and primitive component boundaries.
+  - Updated frontend contract tests and docs.
 
 ## Blocked Items
 

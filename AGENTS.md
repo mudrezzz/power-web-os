@@ -157,8 +157,21 @@ Before creating, changing, or reviewing frontend UI:
 1. Read `ui-design-system/START-HERE.md`.
 2. Use `ui-design-system/colors_and_type.css` as the source of truth for CSS tokens.
 3. Use `ui-design-system/components-spec.md` for component API, states, sizing, hover, press, and focus behavior.
-4. Use `ui-design-system/app-prototype/` as the behavioral and layout reference.
+4. Use `ui-design-system/app-prototype/` as the behavioral, information-architecture, shell, and layout reference.
 5. Use `ui-design-system/preview/` as the visual reference.
+
+For app-level frontend work, start from the product shell:
+
+- Read `ui-design-system/app-prototype/README.md`.
+- Read `ui-design-system/app-prototype/AppShell.jsx` before creating or changing product screens.
+- Read the relevant screen prototype before implementing the screen:
+  - `AccountsScreen.jsx` for account portfolio work.
+  - `MapScreen.jsx` and `AccountMap.jsx` for account map / Power Web work.
+  - `PlansScreen.jsx` for Access Plan work.
+  - `ExtraScreens.jsx` for Playbook and Signals work.
+- If the production frontend does not yet have a durable app shell, create or extend it before adding a new full-screen product feature.
+- Do not create standalone full-screen demo pages for product features when the shell exists or is intended by the prototype. Put the feature inside the Power Web OS workspace shell.
+- Menu items for future functionality may be visible as planned/placeholder states, but must not pretend unavailable functionality is implemented.
 
 Strict rules:
 

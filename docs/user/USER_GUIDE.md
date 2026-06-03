@@ -26,12 +26,13 @@ python demo/run_demo.py generate-access-plan
 npm --prefix ./frontend run dev
 ```
 
-Open the Vite URL printed by the frontend command. The demo screen shows:
+Open the Vite URL printed by the frontend command. The demo opens in the Power Web OS workspace shell with `Access Plans` active. It shows:
 
-- account context and ICP fit;
-- signal evidence with confidence;
-- Power Web Lite roles;
-- unresolved buying-committee gaps;
+- sidebar navigation for `Accounts`, `Account Map`, `Access Plans`, `Signals`, and `Playbook`;
+- account context, route count, workflow runtime, and ICP fit in the top bar;
+- planned placeholder states for product areas that are not implemented yet;
+- board coverage with visible and missing power figures;
+- signal evidence with confidence and source refs;
 - top Access Plan routes;
 - route rationale, risk, owner, evidence refs, and expected state change;
 - human review status from the playbook.

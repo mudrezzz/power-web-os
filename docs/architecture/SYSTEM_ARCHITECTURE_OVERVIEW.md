@@ -22,7 +22,7 @@ The current baseline has:
 - deterministic Access Planner;
 - `AccessPlanningWorkflow` with optional `langgraph-dai` integration and local fallback;
 - generated Access Plan artifact;
-- React TypeScript Vite demo using `ui-design-system`;
+- React TypeScript Vite demo inside the Power Web OS workspace shell using `ui-design-system`;
 - pytest baseline and frontend build check.
 
 ## Major Components
@@ -30,7 +30,7 @@ The current baseline has:
 | Component | Responsibility | Owned data / behavior | Depends on |
 |---|---|---|---|
 | Web UI / BFF | Product screens and user workflow | Account workspace, review queue, demo UX | Product API |
-| Frontend demo | Local single-account demo screen | Reads generated Access Plan artifact | Vite, design system |
+| Frontend demo | Local product shell with active Access Plans screen | Reads generated Access Plan artifact and renders planned workspace placeholders | Vite, design system |
 | Product API | External HTTP boundary | Auth, request validation, task start/status | Application services |
 | Power Web Domain | Sales domain model and policies | Account, Signal, Evidence, PowerWebRole, Playbook, AccessPlan | None |
 | Agent Workflows | AI orchestration and audit | LangGraph state, node events, HITL checkpoints | `langgraph-dai`, domain services |
@@ -58,7 +58,8 @@ Target accounts
   -> synthetic fixture
   -> access planning workflow
   -> access plan artifact
-  -> local frontend demo
+  -> local frontend workspace shell
+  -> active Access Plans screen
 ```
 
 Target production-oriented flow:
@@ -103,7 +104,7 @@ The demo should evolve through these stages:
 
 1. Local deterministic Access Plan from fixture data.
 2. LangGraph workflow output with node audit.
-3. React frontend demo over generated artifact.
+3. React frontend workspace shell over generated artifact.
 4. Account Radar batch over multiple fixtures.
 5. Review queue and approved CRM task export.
 

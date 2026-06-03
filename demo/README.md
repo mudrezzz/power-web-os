@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The demo shows the first closed Power Web OS loop: a target account fixture is converted into a workflow-backed Access Plan artifact and rendered in a local frontend screen.
+The demo shows the first closed Power Web OS loop: a target account fixture is converted into a workflow-backed Access Plan artifact and rendered inside the local Power Web OS workspace shell.
 
 ## What The Demo Shows
 
@@ -12,6 +12,7 @@ The demo shows the first closed Power Web OS loop: a target account fixture is c
 - Ranked Access Plan routes with score, reason, risk, owner, and expected state change.
 - Workflow metadata showing whether `langgraph-dai` was available.
 - A React TypeScript frontend using the committed design system.
+- A durable app shell with sidebar navigation, top bar account context, active `Access Plans`, and planned placeholders for future workspaces.
 
 ## How To Run
 
@@ -33,7 +34,7 @@ npm --prefix ./frontend run dev
 
 The Python command prints and writes JSON for the `Vitamin Bank` sample account. The output should include three ranked routes and unresolved gaps for missing roles.
 
-The frontend command prints a local Vite URL. Open it to inspect the same Access Plan visually.
+The frontend command prints a local Vite URL. Open it to inspect the same Access Plan visually inside the Power Web OS shell.
 
 ## Demo Data
 
