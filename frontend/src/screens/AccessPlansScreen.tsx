@@ -97,6 +97,7 @@ function PlanCard({
   const demo = useDemoLocalization();
   const evidence = evidenceForRoute(artifact.account.signals, route.evidence_refs);
   const routeTitle = demo.routeTitle(route.route_type, route.title);
+  const reviewRules = artifact.playbook_analysis.current.review_policy.required_review_for;
 
   return (
     <Card interactive selected={index === 0} onClick={onToggle}>
@@ -159,7 +160,9 @@ function PlanCard({
               <Eyebrow>{t('plans.reviewStatus')}</Eyebrow>
               <h3>{route.requires_human_review ? t('plans.humanApprovalRequired') : t('plans.readyForTasking')}</h3>
               <p>
-                {t('plans.reviewRule')} <Mono>required_review_for: all</Mono> {t('plans.reviewRuleCopy')}
+                {t('plans.reviewRule')}{' '}
+                <Mono>{`required_review_for: ${reviewRules.map((rule) => demo.playbookToken(rule)).join(', ')}`}</Mono>{' '}
+                {t('plans.reviewRuleCopy')}
               </p>
             </div>
 

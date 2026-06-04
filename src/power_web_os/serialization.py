@@ -4,6 +4,7 @@ from typing import Any
 
 from power_web_os.board import PowerWebBoard, PowerWebBoardBuilder, board_to_payload
 from power_web_os.domain import AccessPlan, AccessRoute, Account, Evidence, Playbook, PowerWebRole, Signal
+from power_web_os.playbook_analysis import PlaybookAnalysis, PlaybookAnalysisBuilder, playbook_analysis_to_payload
 
 
 def account_from_payload(payload: dict[str, Any]) -> Account:
@@ -158,8 +159,14 @@ def build_access_plan_artifact(
     plan: AccessPlan,
     workflow_metadata: dict[str, Any],
     power_web_board: PowerWebBoard | None = None,
+    playbook_analysis: PlaybookAnalysis | None = None,
 ) -> dict[str, Any]:
     board = power_web_board or PowerWebBoardBuilder().build(account=account, access_plan=plan)
+    analysis = playbook_analysis or PlaybookAnalysisBuilder().build(
+        account=account,
+        playbook=playbook,
+        access_plan=plan,
+    )
     return {
         "artifact_type": "access_plan",
         "artifact_version": "0.2",
@@ -167,5 +174,6 @@ def build_access_plan_artifact(
         "playbook": playbook_to_payload(playbook),
         "access_plan": access_plan_to_payload(plan),
         "power_web_board": board_to_payload(board),
+        "playbook_analysis": playbook_analysis_to_payload(analysis),
         "workflow_metadata": workflow_metadata,
     }

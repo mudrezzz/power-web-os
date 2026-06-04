@@ -22,9 +22,11 @@ def test_frontend_localizes_visible_demo_artifact_data_for_ru() -> None:
     localizer = Path("frontend/src/demoLocalization.ts").read_text(encoding="utf-8")
     accounts_screen = Path("frontend/src/screens/AccountsScreen.tsx").read_text(encoding="utf-8")
     access_plans_screen = Path("frontend/src/screens/AccessPlansScreen.tsx").read_text(encoding="utf-8")
+    playbook_screen = Path("frontend/src/screens/PlaybookScreen.tsx").read_text(encoding="utf-8")
 
     assert "useDemoLocalization" in accounts_screen
     assert "useDemoLocalization" in access_plans_screen
+    assert "useDemoLocalization" in playbook_screen
 
     for english_value in [
         "Access",
@@ -41,6 +43,12 @@ def test_frontend_localizes_visible_demo_artifact_data_for_ru() -> None:
         "procurement_role",
         "selected",
         "missing",
+        "cold_telegram",
+        "partner_case_data_platform",
+        "Allowed by playbook and supported by account evidence.",
+        "Partner motion disabled in this what-if playbook.",
+        "Missing roles exist, but stronger allowed routes outrank this discovery move.",
+        "Route conditions are not met.",
     ]:
         assert english_value in localizer
 
@@ -54,8 +62,11 @@ def test_frontend_localizes_visible_demo_artifact_data_for_ru() -> None:
         "item.summary",
         "signal.kind",
         "signal.summary",
+        "decision.reason",
+        "variant.assets",
+        "variant.blocked_channels",
     ]:
-        assert screen_value in accounts_screen or screen_value in access_plans_screen
+        assert screen_value in accounts_screen or screen_value in access_plans_screen or screen_value in playbook_screen
 
 
 def test_frontend_demo_contains_required_sections() -> None:
@@ -122,6 +133,38 @@ def test_account_map_screen_replaces_planned_placeholder() -> None:
         ".map-inspector",
     ]:
         assert css_rule in css
+
+
+def test_playbook_screen_replaces_planned_placeholder() -> None:
+    app = Path("frontend/src/App.tsx").read_text(encoding="utf-8")
+    planned_screen = Path("frontend/src/screens/PlannedScreen.tsx").read_text(encoding="utf-8")
+    playbook_screen = Path("frontend/src/screens/PlaybookScreen.tsx").read_text(encoding="utf-8")
+    types = Path("frontend/src/types.ts").read_text(encoding="utf-8")
+    i18n = Path("frontend/src/i18n.ts").read_text(encoding="utf-8")
+
+    assert "PlaybookScreen" in app
+    assert "activeScreen === 'playbook'" in app
+    assert "planned.playbook" not in planned_screen
+    assert "PlaybookAnalysis" in types
+
+    for contract_value in [
+        "playbook_analysis",
+        "route_decisions",
+        "route_preview",
+        "variant-option",
+    ]:
+        assert contract_value in playbook_screen
+
+    assert "no_partner_motion" in i18n
+
+    for label_key in [
+        "playbook.allowedRoutes",
+        "playbook.blockedChannels",
+        "playbook.assets",
+        "playbook.reviewRules",
+        "playbook.decisionStatus",
+    ]:
+        assert label_key in playbook_screen or label_key in i18n
 
 
 def test_frontend_shell_uses_design_system_prototype_structure() -> None:

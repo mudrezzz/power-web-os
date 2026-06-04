@@ -1101,6 +1101,211 @@ button {
   font: var(--meta);
 }
 
+.playbook-screen {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.playbook-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.playbook-header h1 {
+  margin: var(--s-1) 0;
+  font: var(--h2);
+}
+
+.playbook-header p,
+.playbook-section-heading p,
+.preview-route p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.variant-switch {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  gap: var(--s-1);
+  padding: var(--s-1);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  overflow-x: auto;
+}
+
+.variant-option {
+  min-height: calc(var(--s-8) + var(--s-1));
+  padding: 0 var(--s-3);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--fg3);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.variant-option:hover,
+.variant-option-active {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.variant-option:focus-visible {
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+
+.playbook-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--s-20) * 4), calc(var(--s-20) * 5));
+  gap: var(--s-5);
+}
+
+.playbook-main,
+.playbook-inspector-content,
+.preview-route-list,
+.decision-list {
+  display: grid;
+  align-content: start;
+  gap: var(--s-3);
+}
+
+.playbook-section-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--s-3);
+  margin-bottom: var(--s-4);
+}
+
+.playbook-section-heading h2,
+.playbook-inspector-content h2 {
+  margin: var(--s-1) 0;
+  font: var(--h3);
+}
+
+.section-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--s-8) + var(--s-1));
+  height: calc(var(--s-8) + var(--s-1));
+  flex-shrink: 0;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--fg2);
+}
+
+.section-icon svg,
+.policy-list-title svg,
+.decision-icon svg {
+  width: var(--s-4);
+  height: var(--s-4);
+}
+
+.playbook-policy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+.policy-list {
+  display: grid;
+  min-width: 0;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.policy-list-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--fg2);
+  font: var(--label);
+}
+
+.decision-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.decision-row strong,
+.preview-route strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font: var(--label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.decision-row p {
+  margin: var(--s-1) 0 0;
+  color: var(--fg3);
+  font: var(--body-sm);
+}
+
+.decision-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--s-7) + var(--s-1));
+  height: calc(var(--s-7) + var(--s-1));
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--fg3);
+}
+
+.decision-icon-recommended {
+  background: var(--ally-tint);
+  color: var(--ally);
+}
+
+.decision-icon-blocked {
+  background: var(--blocker-tint);
+  color: var(--blocker);
+}
+
+.preview-route {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--s-3);
+  align-items: start;
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.preview-route-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--s-7) + var(--s-1));
+  height: calc(var(--s-7) + var(--s-1));
+  flex-shrink: 0;
+  border-radius: var(--r-pill);
+  background: var(--cobalt-50);
+  color: var(--cobalt-700);
+}
+
 .metadata-row {
   flex-wrap: wrap;
   gap: var(--s-2);

@@ -23,14 +23,15 @@ The AI-agent runtime must use [`mudrezzz/langgraph-document-ai-platform`](https:
 
 ## Current Status
 
-Slice 0.5 is implemented. The repository contains:
+Slice 0.6 is implemented. The repository contains:
 
 - documented product and architecture baseline;
 - Python domain skeleton for `Account`, `Signal`, `PowerWebRole`, `Playbook`, and `AccessPlan`;
 - deterministic Access Planner baseline wrapped by `AccessPlanningWorkflow`;
 - deterministic Power Web Lite board read model added to Access Plan artifacts;
+- deterministic Playbook Analysis read model with current and no-partner-motion route previews;
 - realistic portfolio demo input, Account Radar artifact, and generated Access Plan artifacts;
-- React + TypeScript + Vite frontend demo inside a bounded Power Web OS workspace shell with Accounts, Access Plans, and Account Map screens;
+- React + TypeScript + Vite frontend demo inside a bounded Power Web OS workspace shell with Accounts, Access Plans, Account Map, and Playbook screens;
 - EN/RU UI and visible demo data switching;
 - pytest baseline.
 

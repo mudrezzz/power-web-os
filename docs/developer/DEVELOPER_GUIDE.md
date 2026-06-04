@@ -48,10 +48,11 @@ The current Python package contains:
 - `DeterministicAccessPlanner`
 - `AccountRadar`
 - `PowerWebBoardBuilder`
+- `PlaybookAnalysisBuilder`
 - `AccessPlanningState`
 - `AccessPlanningWorkflow`
 
-The deterministic planner owns route scoring. `AccessPlanningWorkflow` orchestrates typed state, planner invocation, artifact shaping, and workflow metadata. `AccountRadar` builds the portfolio read model from generated Access Plans and owns deterministic account ranking. `PowerWebBoardBuilder` builds the selected-account board read model from the generated Access Plan and current account roles/missing roles. It uses `langgraph-dai` when the optional `agent` extra is installed and falls back to a local runner for base tests.
+The deterministic planner owns route scoring. `AccessPlanningWorkflow` orchestrates typed state, planner invocation, artifact shaping, and workflow metadata. `AccountRadar` builds the portfolio read model from generated Access Plans and owns deterministic account ranking. `PowerWebBoardBuilder` builds the selected-account board read model from the generated Access Plan and current account roles/missing roles. `PlaybookAnalysisBuilder` builds a read-only explanation of playbook effects over the generated routes, including the current playbook and the deterministic `no_partner_motion` what-if variant. The workflow uses `langgraph-dai` when the optional `agent` extra is installed and falls back to a local runner for base tests.
 
 ## Access Planning Workflow
 
@@ -86,6 +87,18 @@ power_web_board.route_path[]
 
 The board read model is deterministic and belongs to `src/power_web_os/board.py`. It should stay presentation-friendly but source-of-truth-neutral: do not put graph database behavior, editing state, CRM state, or live source extraction in this builder.
 
+Access Plan artifacts also include a non-breaking `playbook_analysis` field:
+
+```text
+playbook_analysis.contract_version
+playbook_analysis.current
+playbook_analysis.variants[]
+*.route_decisions[]
+*.route_preview.routes[]
+```
+
+The playbook read model is deterministic and belongs to `src/power_web_os/playbook_analysis.py`. It explains allowed routes, blocked channels, available assets, review rules, policy decisions, and generated route previews. The `no_partner_motion` variant is generated at artifact-build time by disabling `partner_intro` and partner-case assets, then running the Python planner again. Frontend code must render this payload; it must not duplicate planner scoring or policy logic.
+
 Do not put CRM/source connector logic directly inside domain classes. Add ports/tools and keep connector calls auditable.
 
 ## Frontend Demo
@@ -118,6 +131,7 @@ Rules:
 - Load the portfolio artifact from `/demo/account_radar.json`.
 - Load selected-account plans from `/demo/access_plans/{account_id}.json`.
 - Render the selected account's Power Web Lite board from `artifact.power_web_board` on `Account Map`.
+- Render the selected account's playbook analysis from `artifact.playbook_analysis` on `Playbook`.
 - Keep unfinished navigation entries visible only as planned placeholders; do not fake unavailable functionality.
 
 The frontend default locale is `en`. The supported locales are `en` and `ru`, and the selected locale is stored in browser `localStorage`. UI chrome is localized through `i18n.ts`; visible deterministic artifact values such as stages, owners, route titles, rationale, risks, state changes, signal summaries, and missing-role labels are localized in `demoLocalization.ts`. Keep raw source refs, IDs, company names, and person names as artifact data unless a slice explicitly changes that policy.

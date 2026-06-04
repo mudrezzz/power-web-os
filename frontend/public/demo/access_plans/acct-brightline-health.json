@@ -176,6 +176,217 @@
       "account:acct-brightline-health"
     ]
   },
+  "playbook_analysis": {
+    "contract_version": "0.6",
+    "current": {
+      "variant_id": "current",
+      "label": "Current playbook",
+      "description": "Rules used for the generated Access Plan.",
+      "playbook": {
+        "name": "Enterprise IT Board MVP",
+        "allowed_routes": [
+          "partner_intro",
+          "procurement_discovery",
+          "dark_stakeholder_discovery"
+        ],
+        "blocked_channels": [
+          "cold_telegram"
+        ],
+        "available_assets": [
+          "partner_case_healthcare"
+        ],
+        "required_review_for": [
+          "all"
+        ]
+      },
+      "route_preview": {
+        "account_id": "acct-brightline-health",
+        "account_name": "Brightline Health",
+        "unresolved_gaps": [
+          "security_gatekeeper"
+        ],
+        "routes": [
+          {
+            "route_type": "partner_intro",
+            "title": "Request partner intro",
+            "score": 76,
+            "reason": "MedSys Advisory is connected to the account as partner.",
+            "risk": "Partner may be aligned with an incumbent competitor.",
+            "owner": "Partner Manager",
+            "evidence_refs": [
+              "procurement:brightline-health:analytics-rfi"
+            ],
+            "expected_state_change": "partner_route: hypothesis -> verified",
+            "requires_human_review": true
+          },
+          {
+            "route_type": "procurement_discovery",
+            "title": "Map procurement path before outreach",
+            "score": 68,
+            "reason": "Digital health analytics RFI asks vendors to describe governed data access.",
+            "risk": "Formal route can be slow and may expose the team too late.",
+            "owner": "SDR",
+            "evidence_refs": [
+              "procurement:brightline-health:analytics-rfi"
+            ],
+            "expected_state_change": "procurement_role: unknown -> identified",
+            "requires_human_review": true
+          },
+          {
+            "route_type": "dark_stakeholder_discovery",
+            "title": "Research missing stakeholders before a direct move",
+            "score": 56,
+            "reason": "Missing roles must be surfaced before outreach: security_gatekeeper.",
+            "risk": "Premature outreach can look irrelevant.",
+            "owner": "RevOps",
+            "evidence_refs": [
+              "procurement:brightline-health:analytics-rfi"
+            ],
+            "expected_state_change": "missing_roles: unknown -> research_queue",
+            "requires_human_review": true
+          }
+        ]
+      },
+      "route_decisions": [
+        {
+          "route_type": "partner_intro",
+          "status": "recommended",
+          "reason": "Allowed by playbook and supported by account evidence.",
+          "route_score": 76,
+          "requires_human_review": true
+        },
+        {
+          "route_type": "technical_benchmark",
+          "status": "blocked",
+          "reason": "Route is not allowed by this playbook.",
+          "route_score": null,
+          "requires_human_review": true
+        },
+        {
+          "route_type": "procurement_discovery",
+          "status": "recommended",
+          "reason": "Allowed by playbook and supported by account evidence.",
+          "route_score": 68,
+          "requires_human_review": true
+        },
+        {
+          "route_type": "dark_stakeholder_discovery",
+          "status": "recommended",
+          "reason": "Allowed by playbook and supported by account evidence.",
+          "route_score": 56,
+          "requires_human_review": true
+        }
+      ],
+      "review_policy": {
+        "required_review_for": [
+          "all"
+        ],
+        "mode": "review_first"
+      },
+      "assets": [
+        "partner_case_healthcare"
+      ],
+      "blocked_channels": [
+        "cold_telegram"
+      ]
+    },
+    "variants": [
+      {
+        "variant_id": "no_partner_motion",
+        "label": "No partner motion",
+        "description": "What-if variant with partner intro and partner-case assets disabled.",
+        "playbook": {
+          "name": "Enterprise IT Board MVP / no partner motion",
+          "allowed_routes": [
+            "procurement_discovery",
+            "dark_stakeholder_discovery"
+          ],
+          "blocked_channels": [
+            "cold_telegram"
+          ],
+          "available_assets": [],
+          "required_review_for": [
+            "all"
+          ]
+        },
+        "route_preview": {
+          "account_id": "acct-brightline-health",
+          "account_name": "Brightline Health",
+          "unresolved_gaps": [
+            "security_gatekeeper"
+          ],
+          "routes": [
+            {
+              "route_type": "procurement_discovery",
+              "title": "Map procurement path before outreach",
+              "score": 68,
+              "reason": "Digital health analytics RFI asks vendors to describe governed data access.",
+              "risk": "Formal route can be slow and may expose the team too late.",
+              "owner": "SDR",
+              "evidence_refs": [
+                "procurement:brightline-health:analytics-rfi"
+              ],
+              "expected_state_change": "procurement_role: unknown -> identified",
+              "requires_human_review": true
+            },
+            {
+              "route_type": "dark_stakeholder_discovery",
+              "title": "Research missing stakeholders before a direct move",
+              "score": 56,
+              "reason": "Missing roles must be surfaced before outreach: security_gatekeeper.",
+              "risk": "Premature outreach can look irrelevant.",
+              "owner": "RevOps",
+              "evidence_refs": [
+                "procurement:brightline-health:analytics-rfi"
+              ],
+              "expected_state_change": "missing_roles: unknown -> research_queue",
+              "requires_human_review": true
+            }
+          ]
+        },
+        "route_decisions": [
+          {
+            "route_type": "partner_intro",
+            "status": "blocked",
+            "reason": "Partner motion disabled in this what-if playbook.",
+            "route_score": null,
+            "requires_human_review": true
+          },
+          {
+            "route_type": "technical_benchmark",
+            "status": "blocked",
+            "reason": "Route is not allowed by this playbook.",
+            "route_score": null,
+            "requires_human_review": true
+          },
+          {
+            "route_type": "procurement_discovery",
+            "status": "recommended",
+            "reason": "Allowed by playbook and supported by account evidence.",
+            "route_score": 68,
+            "requires_human_review": true
+          },
+          {
+            "route_type": "dark_stakeholder_discovery",
+            "status": "recommended",
+            "reason": "Allowed by playbook and supported by account evidence.",
+            "route_score": 56,
+            "requires_human_review": true
+          }
+        ],
+        "review_policy": {
+          "required_review_for": [
+            "all"
+          ],
+          "mode": "review_first"
+        },
+        "assets": [],
+        "blocked_channels": [
+          "cold_telegram"
+        ]
+      }
+    ]
+  },
   "workflow_metadata": {
     "workflow_name": "AccessPlanningWorkflow",
     "runtime": "langgraph_dai",

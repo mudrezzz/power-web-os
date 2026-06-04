@@ -208,6 +208,203 @@
       "account:acct-caldera-energy"
     ]
   },
+  "playbook_analysis": {
+    "contract_version": "0.6",
+    "current": {
+      "variant_id": "current",
+      "label": "Current playbook",
+      "description": "Rules used for the generated Access Plan.",
+      "playbook": {
+        "name": "Enterprise IT Board MVP",
+        "allowed_routes": [
+          "procurement_discovery",
+          "dark_stakeholder_discovery"
+        ],
+        "blocked_channels": [
+          "cold_telegram"
+        ],
+        "available_assets": [],
+        "required_review_for": [
+          "all"
+        ]
+      },
+      "route_preview": {
+        "account_id": "acct-caldera-energy",
+        "account_name": "Caldera Energy",
+        "unresolved_gaps": [
+          "economic_buyer",
+          "technical_champion",
+          "security_gatekeeper"
+        ],
+        "routes": [
+          {
+            "route_type": "procurement_discovery",
+            "title": "Map procurement path before outreach",
+            "score": 56,
+            "reason": "Low-confidence procurement notice references a future reporting platform review.",
+            "risk": "Formal route can be slow and may expose the team too late.",
+            "owner": "SDR",
+            "evidence_refs": [
+              "procurement:caldera-energy:reporting-review"
+            ],
+            "expected_state_change": "procurement_role: unknown -> identified",
+            "requires_human_review": true
+          },
+          {
+            "route_type": "dark_stakeholder_discovery",
+            "title": "Research missing stakeholders before a direct move",
+            "score": 52,
+            "reason": "Missing roles must be surfaced before outreach: economic_buyer, technical_champion, security_gatekeeper.",
+            "risk": "Premature outreach can look irrelevant.",
+            "owner": "RevOps",
+            "evidence_refs": [
+              "procurement:caldera-energy:reporting-review"
+            ],
+            "expected_state_change": "missing_roles: unknown -> research_queue",
+            "requires_human_review": true
+          }
+        ]
+      },
+      "route_decisions": [
+        {
+          "route_type": "partner_intro",
+          "status": "blocked",
+          "reason": "Route is not allowed by this playbook.",
+          "route_score": null,
+          "requires_human_review": true
+        },
+        {
+          "route_type": "technical_benchmark",
+          "status": "blocked",
+          "reason": "Route is not allowed by this playbook.",
+          "route_score": null,
+          "requires_human_review": true
+        },
+        {
+          "route_type": "procurement_discovery",
+          "status": "recommended",
+          "reason": "Allowed by playbook and supported by account evidence.",
+          "route_score": 56,
+          "requires_human_review": true
+        },
+        {
+          "route_type": "dark_stakeholder_discovery",
+          "status": "recommended",
+          "reason": "Allowed by playbook and supported by account evidence.",
+          "route_score": 52,
+          "requires_human_review": true
+        }
+      ],
+      "review_policy": {
+        "required_review_for": [
+          "all"
+        ],
+        "mode": "review_first"
+      },
+      "assets": [],
+      "blocked_channels": [
+        "cold_telegram"
+      ]
+    },
+    "variants": [
+      {
+        "variant_id": "no_partner_motion",
+        "label": "No partner motion",
+        "description": "What-if variant with partner intro and partner-case assets disabled.",
+        "playbook": {
+          "name": "Enterprise IT Board MVP / no partner motion",
+          "allowed_routes": [
+            "procurement_discovery",
+            "dark_stakeholder_discovery"
+          ],
+          "blocked_channels": [
+            "cold_telegram"
+          ],
+          "available_assets": [],
+          "required_review_for": [
+            "all"
+          ]
+        },
+        "route_preview": {
+          "account_id": "acct-caldera-energy",
+          "account_name": "Caldera Energy",
+          "unresolved_gaps": [
+            "economic_buyer",
+            "technical_champion",
+            "security_gatekeeper"
+          ],
+          "routes": [
+            {
+              "route_type": "procurement_discovery",
+              "title": "Map procurement path before outreach",
+              "score": 56,
+              "reason": "Low-confidence procurement notice references a future reporting platform review.",
+              "risk": "Formal route can be slow and may expose the team too late.",
+              "owner": "SDR",
+              "evidence_refs": [
+                "procurement:caldera-energy:reporting-review"
+              ],
+              "expected_state_change": "procurement_role: unknown -> identified",
+              "requires_human_review": true
+            },
+            {
+              "route_type": "dark_stakeholder_discovery",
+              "title": "Research missing stakeholders before a direct move",
+              "score": 52,
+              "reason": "Missing roles must be surfaced before outreach: economic_buyer, technical_champion, security_gatekeeper.",
+              "risk": "Premature outreach can look irrelevant.",
+              "owner": "RevOps",
+              "evidence_refs": [
+                "procurement:caldera-energy:reporting-review"
+              ],
+              "expected_state_change": "missing_roles: unknown -> research_queue",
+              "requires_human_review": true
+            }
+          ]
+        },
+        "route_decisions": [
+          {
+            "route_type": "partner_intro",
+            "status": "blocked",
+            "reason": "Partner motion disabled in this what-if playbook.",
+            "route_score": null,
+            "requires_human_review": true
+          },
+          {
+            "route_type": "technical_benchmark",
+            "status": "blocked",
+            "reason": "Route is not allowed by this playbook.",
+            "route_score": null,
+            "requires_human_review": true
+          },
+          {
+            "route_type": "procurement_discovery",
+            "status": "recommended",
+            "reason": "Allowed by playbook and supported by account evidence.",
+            "route_score": 56,
+            "requires_human_review": true
+          },
+          {
+            "route_type": "dark_stakeholder_discovery",
+            "status": "recommended",
+            "reason": "Allowed by playbook and supported by account evidence.",
+            "route_score": 52,
+            "requires_human_review": true
+          }
+        ],
+        "review_policy": {
+          "required_review_for": [
+            "all"
+          ],
+          "mode": "review_first"
+        },
+        "assets": [],
+        "blocked_channels": [
+          "cold_telegram"
+        ]
+      }
+    ]
+  },
   "workflow_metadata": {
     "workflow_name": "AccessPlanningWorkflow",
     "runtime": "langgraph_dai",

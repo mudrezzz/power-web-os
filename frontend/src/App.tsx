@@ -4,6 +4,7 @@ import { AccessPlansScreen } from './screens/AccessPlansScreen';
 import { AccountsScreen } from './screens/AccountsScreen';
 import { AccountMapScreen } from './screens/AccountMapScreen';
 import { PlannedScreen } from './screens/PlannedScreen';
+import { PlaybookScreen } from './screens/PlaybookScreen';
 import type { AccountRadarArtifact, AccountRadarItem, AccessPlanArtifact } from './types';
 
 const radarArtifactUrl = '/demo/account_radar.json';
@@ -67,6 +68,8 @@ export function App() {
         <AccessPlansScreen artifact={artifact} error={error} />
       ) : activeScreen === 'map' ? (
         <AccountMapScreen artifact={artifact} error={error} />
+      ) : activeScreen === 'playbook' ? (
+        <PlaybookScreen artifact={artifact} error={error} />
       ) : (
         <PlannedScreen screenId={activeScreen} />
       )}

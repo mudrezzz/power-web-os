@@ -167,6 +167,193 @@
       "account:acct-vantage-logistics"
     ]
   },
+  "playbook_analysis": {
+    "contract_version": "0.6",
+    "current": {
+      "variant_id": "current",
+      "label": "Current playbook",
+      "description": "Rules used for the generated Access Plan.",
+      "playbook": {
+        "name": "Enterprise IT Board MVP",
+        "allowed_routes": [
+          "partner_intro",
+          "technical_benchmark",
+          "dark_stakeholder_discovery"
+        ],
+        "blocked_channels": [
+          "cold_telegram"
+        ],
+        "available_assets": [
+          "partner_case_logistics",
+          "data_benchmark_report"
+        ],
+        "required_review_for": [
+          "all"
+        ]
+      },
+      "route_preview": {
+        "account_id": "acct-vantage-logistics",
+        "account_name": "Vantage Logistics",
+        "unresolved_gaps": [],
+        "routes": [
+          {
+            "route_type": "technical_benchmark",
+            "title": "Invite technical stakeholder to a benchmark",
+            "score": 81,
+            "reason": "Data operations team opened analytics engineering roles tied to route optimization.; Maya Cohen can become a technical champion.",
+            "risk": "Economic buyer is not confirmed yet.",
+            "owner": "Account Executive",
+            "evidence_refs": [
+              "careers:vantage-logistics:analytics"
+            ],
+            "expected_state_change": "Head of Data: identified -> engaged / champion_candidate",
+            "requires_human_review": true
+          },
+          {
+            "route_type": "partner_intro",
+            "title": "Request partner intro",
+            "score": 78,
+            "reason": "RouteWorks is connected to the account as partner.",
+            "risk": "Partner may be aligned with an incumbent competitor.",
+            "owner": "Partner Manager",
+            "evidence_refs": [
+              "careers:vantage-logistics:analytics"
+            ],
+            "expected_state_change": "partner_route: hypothesis -> verified",
+            "requires_human_review": true
+          }
+        ]
+      },
+      "route_decisions": [
+        {
+          "route_type": "partner_intro",
+          "status": "recommended",
+          "reason": "Allowed by playbook and supported by account evidence.",
+          "route_score": 78,
+          "requires_human_review": true
+        },
+        {
+          "route_type": "technical_benchmark",
+          "status": "recommended",
+          "reason": "Allowed by playbook and supported by account evidence.",
+          "route_score": 81,
+          "requires_human_review": true
+        },
+        {
+          "route_type": "procurement_discovery",
+          "status": "blocked",
+          "reason": "Route is not allowed by this playbook.",
+          "route_score": null,
+          "requires_human_review": true
+        },
+        {
+          "route_type": "dark_stakeholder_discovery",
+          "status": "allowed_not_available",
+          "reason": "No missing roles are present in the current account artifact.",
+          "route_score": null,
+          "requires_human_review": true
+        }
+      ],
+      "review_policy": {
+        "required_review_for": [
+          "all"
+        ],
+        "mode": "review_first"
+      },
+      "assets": [
+        "partner_case_logistics",
+        "data_benchmark_report"
+      ],
+      "blocked_channels": [
+        "cold_telegram"
+      ]
+    },
+    "variants": [
+      {
+        "variant_id": "no_partner_motion",
+        "label": "No partner motion",
+        "description": "What-if variant with partner intro and partner-case assets disabled.",
+        "playbook": {
+          "name": "Enterprise IT Board MVP / no partner motion",
+          "allowed_routes": [
+            "technical_benchmark",
+            "dark_stakeholder_discovery"
+          ],
+          "blocked_channels": [
+            "cold_telegram"
+          ],
+          "available_assets": [
+            "data_benchmark_report"
+          ],
+          "required_review_for": [
+            "all"
+          ]
+        },
+        "route_preview": {
+          "account_id": "acct-vantage-logistics",
+          "account_name": "Vantage Logistics",
+          "unresolved_gaps": [],
+          "routes": [
+            {
+              "route_type": "technical_benchmark",
+              "title": "Invite technical stakeholder to a benchmark",
+              "score": 81,
+              "reason": "Data operations team opened analytics engineering roles tied to route optimization.; Maya Cohen can become a technical champion.",
+              "risk": "Economic buyer is not confirmed yet.",
+              "owner": "Account Executive",
+              "evidence_refs": [
+                "careers:vantage-logistics:analytics"
+              ],
+              "expected_state_change": "Head of Data: identified -> engaged / champion_candidate",
+              "requires_human_review": true
+            }
+          ]
+        },
+        "route_decisions": [
+          {
+            "route_type": "partner_intro",
+            "status": "blocked",
+            "reason": "Partner motion disabled in this what-if playbook.",
+            "route_score": null,
+            "requires_human_review": true
+          },
+          {
+            "route_type": "technical_benchmark",
+            "status": "recommended",
+            "reason": "Allowed by playbook and supported by account evidence.",
+            "route_score": 81,
+            "requires_human_review": true
+          },
+          {
+            "route_type": "procurement_discovery",
+            "status": "blocked",
+            "reason": "Route is not allowed by this playbook.",
+            "route_score": null,
+            "requires_human_review": true
+          },
+          {
+            "route_type": "dark_stakeholder_discovery",
+            "status": "allowed_not_available",
+            "reason": "No missing roles are present in the current account artifact.",
+            "route_score": null,
+            "requires_human_review": true
+          }
+        ],
+        "review_policy": {
+          "required_review_for": [
+            "all"
+          ],
+          "mode": "review_first"
+        },
+        "assets": [
+          "data_benchmark_report"
+        ],
+        "blocked_channels": [
+          "cold_telegram"
+        ]
+      }
+    ]
+  },
   "workflow_metadata": {
     "workflow_name": "AccessPlanningWorkflow",
     "runtime": "langgraph_dai",

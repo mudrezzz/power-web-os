@@ -245,6 +245,242 @@
       "account:acct-vitamin-bank"
     ]
   },
+  "playbook_analysis": {
+    "contract_version": "0.6",
+    "current": {
+      "variant_id": "current",
+      "label": "Current playbook",
+      "description": "Rules used for the generated Access Plan.",
+      "playbook": {
+        "name": "Enterprise IT Board MVP",
+        "allowed_routes": [
+          "partner_intro",
+          "technical_benchmark",
+          "procurement_discovery",
+          "dark_stakeholder_discovery"
+        ],
+        "blocked_channels": [
+          "cold_telegram"
+        ],
+        "available_assets": [
+          "partner_case_data_platform",
+          "data_benchmark_report"
+        ],
+        "required_review_for": [
+          "all"
+        ]
+      },
+      "route_preview": {
+        "account_id": "acct-vitamin-bank",
+        "account_name": "Vitamin Bank",
+        "unresolved_gaps": [
+          "economic_buyer",
+          "security_gatekeeper"
+        ],
+        "routes": [
+          {
+            "route_type": "technical_benchmark",
+            "title": "Invite technical stakeholder to a benchmark",
+            "score": 85,
+            "reason": "Seven open Data Engineer and DWH Architect roles suggest an active data platform initiative.; Ivan Petrov can become a technical champion.",
+            "risk": "Economic buyer is not confirmed yet.",
+            "owner": "Account Executive",
+            "evidence_refs": [
+              "careers:vitamin-bank:data-platform"
+            ],
+            "expected_state_change": "Head of Data: identified -> engaged / champion_candidate",
+            "requires_human_review": true
+          },
+          {
+            "route_type": "partner_intro",
+            "title": "Request partner intro",
+            "score": 82,
+            "reason": "X-Soft is connected to the account as partner.",
+            "risk": "Partner may be aligned with an incumbent competitor.",
+            "owner": "Partner Manager",
+            "evidence_refs": [
+              "careers:vitamin-bank:data-platform",
+              "procurement:vitamin-bank:bi-consulting"
+            ],
+            "expected_state_change": "partner_route: hypothesis -> verified",
+            "requires_human_review": true
+          },
+          {
+            "route_type": "procurement_discovery",
+            "title": "Map procurement path before outreach",
+            "score": 70,
+            "reason": "BI consulting purchase was recorded eight months ago, creating a procurement trail.",
+            "risk": "Formal route can be slow and may expose the team too late.",
+            "owner": "SDR",
+            "evidence_refs": [
+              "procurement:vitamin-bank:bi-consulting"
+            ],
+            "expected_state_change": "procurement_role: unknown -> identified",
+            "requires_human_review": true
+          }
+        ]
+      },
+      "route_decisions": [
+        {
+          "route_type": "partner_intro",
+          "status": "recommended",
+          "reason": "Allowed by playbook and supported by account evidence.",
+          "route_score": 82,
+          "requires_human_review": true
+        },
+        {
+          "route_type": "technical_benchmark",
+          "status": "recommended",
+          "reason": "Allowed by playbook and supported by account evidence.",
+          "route_score": 85,
+          "requires_human_review": true
+        },
+        {
+          "route_type": "procurement_discovery",
+          "status": "recommended",
+          "reason": "Allowed by playbook and supported by account evidence.",
+          "route_score": 70,
+          "requires_human_review": true
+        },
+        {
+          "route_type": "dark_stakeholder_discovery",
+          "status": "allowed_not_available",
+          "reason": "Missing roles exist, but stronger allowed routes outrank this discovery move.",
+          "route_score": null,
+          "requires_human_review": true
+        }
+      ],
+      "review_policy": {
+        "required_review_for": [
+          "all"
+        ],
+        "mode": "review_first"
+      },
+      "assets": [
+        "partner_case_data_platform",
+        "data_benchmark_report"
+      ],
+      "blocked_channels": [
+        "cold_telegram"
+      ]
+    },
+    "variants": [
+      {
+        "variant_id": "no_partner_motion",
+        "label": "No partner motion",
+        "description": "What-if variant with partner intro and partner-case assets disabled.",
+        "playbook": {
+          "name": "Enterprise IT Board MVP / no partner motion",
+          "allowed_routes": [
+            "technical_benchmark",
+            "procurement_discovery",
+            "dark_stakeholder_discovery"
+          ],
+          "blocked_channels": [
+            "cold_telegram"
+          ],
+          "available_assets": [
+            "data_benchmark_report"
+          ],
+          "required_review_for": [
+            "all"
+          ]
+        },
+        "route_preview": {
+          "account_id": "acct-vitamin-bank",
+          "account_name": "Vitamin Bank",
+          "unresolved_gaps": [
+            "economic_buyer",
+            "security_gatekeeper"
+          ],
+          "routes": [
+            {
+              "route_type": "technical_benchmark",
+              "title": "Invite technical stakeholder to a benchmark",
+              "score": 85,
+              "reason": "Seven open Data Engineer and DWH Architect roles suggest an active data platform initiative.; Ivan Petrov can become a technical champion.",
+              "risk": "Economic buyer is not confirmed yet.",
+              "owner": "Account Executive",
+              "evidence_refs": [
+                "careers:vitamin-bank:data-platform"
+              ],
+              "expected_state_change": "Head of Data: identified -> engaged / champion_candidate",
+              "requires_human_review": true
+            },
+            {
+              "route_type": "procurement_discovery",
+              "title": "Map procurement path before outreach",
+              "score": 70,
+              "reason": "BI consulting purchase was recorded eight months ago, creating a procurement trail.",
+              "risk": "Formal route can be slow and may expose the team too late.",
+              "owner": "SDR",
+              "evidence_refs": [
+                "procurement:vitamin-bank:bi-consulting"
+              ],
+              "expected_state_change": "procurement_role: unknown -> identified",
+              "requires_human_review": true
+            },
+            {
+              "route_type": "dark_stakeholder_discovery",
+              "title": "Research missing stakeholders before a direct move",
+              "score": 61,
+              "reason": "Missing roles must be surfaced before outreach: economic_buyer, security_gatekeeper.",
+              "risk": "Premature outreach can look irrelevant.",
+              "owner": "RevOps",
+              "evidence_refs": [
+                "careers:vitamin-bank:data-platform",
+                "procurement:vitamin-bank:bi-consulting"
+              ],
+              "expected_state_change": "missing_roles: unknown -> research_queue",
+              "requires_human_review": true
+            }
+          ]
+        },
+        "route_decisions": [
+          {
+            "route_type": "partner_intro",
+            "status": "blocked",
+            "reason": "Partner motion disabled in this what-if playbook.",
+            "route_score": null,
+            "requires_human_review": true
+          },
+          {
+            "route_type": "technical_benchmark",
+            "status": "recommended",
+            "reason": "Allowed by playbook and supported by account evidence.",
+            "route_score": 85,
+            "requires_human_review": true
+          },
+          {
+            "route_type": "procurement_discovery",
+            "status": "recommended",
+            "reason": "Allowed by playbook and supported by account evidence.",
+            "route_score": 70,
+            "requires_human_review": true
+          },
+          {
+            "route_type": "dark_stakeholder_discovery",
+            "status": "recommended",
+            "reason": "Allowed by playbook and supported by account evidence.",
+            "route_score": 61,
+            "requires_human_review": true
+          }
+        ],
+        "review_policy": {
+          "required_review_for": [
+            "all"
+          ],
+          "mode": "review_first"
+        },
+        "assets": [
+          "data_benchmark_report"
+        ],
+        "blocked_channels": [
+          "cold_telegram"
+        ]
+      }
+    ]
+  },
   "workflow_metadata": {
     "workflow_name": "AccessPlanningWorkflow",
     "runtime": "langgraph_dai",

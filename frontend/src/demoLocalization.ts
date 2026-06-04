@@ -57,6 +57,17 @@ const ruStates: TextMap = {
   missing: 'не выявлен',
 };
 
+const ruPlaybookTokens: TextMap = {
+  all: 'все маршруты',
+  cold_telegram: 'холодный Telegram',
+  partner_case_data_platform: 'партнерский кейс по платформе данных',
+  partner_case_healthcare: 'партнерский кейс по healthcare',
+  partner_case_logistics: 'партнерский кейс по логистике',
+  partner_case_manufacturing: 'партнерский кейс по производству',
+  partner_case_platform: 'партнерский кейс по платформе',
+  data_benchmark_report: 'отчет data benchmark',
+};
+
 const ruTexts: TextMap = {
   'Automation platform team added six engineering roles after a public efficiency initiative.':
     'Команда автоматизационной платформы открыла шесть инженерных ролей после публичной инициативы по эффективности.',
@@ -112,6 +123,22 @@ const ruTexts: TextMap = {
   'Partner may be aligned with an incumbent competitor.':
     'Партнер может быть на стороне инкамбент-конкурента.',
   'Premature outreach can look irrelevant.': 'Преждевременный аутрич может выглядеть нерелевантным.',
+  'Allowed by playbook and supported by account evidence.':
+    'Разрешено плейбуком и подтверждено доказательствами по аккаунту.',
+  'Partner motion disabled in this what-if playbook.':
+    'Партнерский ход отключен в этом what-if варианте плейбука.',
+  'Route is not allowed by this playbook.': 'Этот маршрут не разрешен выбранным плейбуком.',
+  'No surfaced partner role is connected to this account.':
+    'В аккаунте нет выявленной партнерской роли для этого маршрута.',
+  'Needs both a technical stakeholder and a hiring signal.':
+    'Нужны одновременно технический стейкхолдер и сигнал найма.',
+  'Needs a procurement signal before this route can be ranked.':
+    'Перед ранжированием нужен закупочный сигнал.',
+  'Missing roles exist, but stronger allowed routes outrank this discovery move.':
+    'Недостающие роли есть, но более сильные разрешенные маршруты выше в preview.',
+  'No missing roles are present in the current account artifact.':
+    'В текущем артефакте аккаунта нет недостающих ролей.',
+  'Route conditions are not met.': 'Условия маршрута не выполнены.',
   'Head of Data: identified -> engaged / champion_candidate':
     'Руководитель данных: выявлен -> вовлечен / кандидат в чемпионы',
   'Head of Data Platform: identified -> engaged / champion_candidate':
@@ -133,12 +160,20 @@ function humanize(value: string) {
   return value.replaceAll('_', ' ');
 }
 
+function localizeToken(value: string, map: TextMap, enabled: boolean) {
+  if (!enabled) {
+    return humanize(value);
+  }
+  return map[value] ?? humanize(value);
+}
+
 export function useDemoLocalization() {
   const { i18n } = useTranslation();
   const ru = i18n.language.startsWith('ru');
 
   return {
     owner: (value: string | null | undefined) => localize(value, ruOwners, ru),
+    playbookToken: (value: string) => localizeToken(value, ruPlaybookTokens, ru),
     role: (value: string) => localize(value, ruRoles, ru),
     routeTitle: (routeType: string, fallback: string) => (ru ? ruRouteTitles[routeType] ?? fallback : fallback),
     routeType: (value: string) => (ru ? ruRouteTypes[value] ?? humanize(value) : humanize(value)),

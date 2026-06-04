@@ -72,6 +72,46 @@ export type PowerWebBoard = {
   route_path: string[];
 };
 
+export type RoutePolicyDecision = {
+  route_type: string;
+  status: 'recommended' | 'blocked' | 'allowed_not_available';
+  reason: string;
+  route_score: number | null;
+  requires_human_review: boolean;
+};
+
+export type PlaybookVariantAnalysis = {
+  variant_id: string;
+  label: string;
+  description: string;
+  playbook: {
+    name: string;
+    allowed_routes: string[];
+    blocked_channels: string[];
+    available_assets: string[];
+    required_review_for: string[];
+  };
+  route_preview: {
+    account_id: string;
+    account_name: string;
+    unresolved_gaps: string[];
+    routes: Route[];
+  };
+  route_decisions: RoutePolicyDecision[];
+  review_policy: {
+    required_review_for: string[];
+    mode: 'review_first' | 'selective_review';
+  };
+  assets: string[];
+  blocked_channels: string[];
+};
+
+export type PlaybookAnalysis = {
+  contract_version: '0.6';
+  current: PlaybookVariantAnalysis;
+  variants: PlaybookVariantAnalysis[];
+};
+
 export type AccessPlanArtifact = {
   artifact_type: 'access_plan';
   artifact_version: string;
@@ -97,6 +137,7 @@ export type AccessPlanArtifact = {
     routes: Route[];
   };
   power_web_board: PowerWebBoard;
+  playbook_analysis: PlaybookAnalysis;
   workflow_metadata: {
     workflow_name: string;
     runtime: string;

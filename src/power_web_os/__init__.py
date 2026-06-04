@@ -10,6 +10,12 @@ from power_web_os.domain import (
     Signal,
 )
 from power_web_os.board import PowerWebBoard, PowerWebBoardBuilder, PowerWebEdge, PowerWebNode, PowerWebSummary
+from power_web_os.playbook_analysis import (
+    PlaybookAnalysis,
+    PlaybookAnalysisBuilder,
+    PlaybookVariantAnalysis,
+    RoutePolicyDecision,
+)
 from power_web_os.planner import DeterministicAccessPlanner
 from power_web_os.radar import AccountRadar, AccountRadarItem
 from power_web_os.workflow import AccessPlanningState, AccessPlanningWorkflow
@@ -25,11 +31,15 @@ __all__ = [
     "DeterministicAccessPlanner",
     "Evidence",
     "Playbook",
+    "PlaybookAnalysis",
+    "PlaybookAnalysisBuilder",
+    "PlaybookVariantAnalysis",
     "PowerWebBoard",
     "PowerWebBoardBuilder",
     "PowerWebEdge",
     "PowerWebNode",
     "PowerWebRole",
     "PowerWebSummary",
+    "RoutePolicyDecision",
     "Signal",
 ]
