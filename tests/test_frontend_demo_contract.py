@@ -38,6 +38,9 @@ def test_frontend_localizes_visible_demo_artifact_data_for_ru() -> None:
         "Account Executive",
         "Partner Manager",
         "economic_buyer",
+        "procurement_role",
+        "selected",
+        "missing",
     ]:
         assert english_value in localizer
 
@@ -94,6 +97,31 @@ def test_frontend_demo_contains_required_sections() -> None:
     assert "planned.workspaceEyebrow" in planned_screen
     assert "planned.queueEyebrow" in planned_screen
     assert "Accounts portfolio" not in planned_screen
+
+
+def test_account_map_screen_replaces_planned_placeholder() -> None:
+    app = Path("frontend/src/App.tsx").read_text(encoding="utf-8")
+    planned_screen = Path("frontend/src/screens/PlannedScreen.tsx").read_text(encoding="utf-8")
+    account_map_screen = Path("frontend/src/screens/AccountMapScreen.tsx").read_text(encoding="utf-8")
+    types = Path("frontend/src/types.ts").read_text(encoding="utf-8")
+    css = Path("frontend/src/styles.css").read_text(encoding="utf-8")
+
+    assert "AccountMapScreen" in app
+    assert "activeScreen === 'map'" in app
+    assert "planned.map" not in planned_screen
+    assert "PowerWebBoard" in types
+
+    for contract_value in ["power_web_board", "board.nodes", "board.edges", "board.route_path"]:
+        assert contract_value in account_map_screen
+
+    for css_rule in [
+        ".account-map-screen",
+        ".board-scene",
+        ".board-edge-highlighted",
+        ".board-node-route",
+        ".map-inspector",
+    ]:
+        assert css_rule in css
 
 
 def test_frontend_shell_uses_design_system_prototype_structure() -> None:

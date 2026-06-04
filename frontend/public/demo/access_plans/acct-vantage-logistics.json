@@ -89,6 +89,84 @@
       }
     ]
   },
+  "power_web_board": {
+    "account_id": "acct-vantage-logistics",
+    "account_name": "Vantage Logistics",
+    "summary": {
+      "visible_count": 2,
+      "missing_count": 0,
+      "total_count": 2,
+      "route_coverage": 1,
+      "primary_route_type": "technical_benchmark",
+      "primary_route_score": 81
+    },
+    "nodes": [
+      {
+        "node_id": "account:acct-vantage-logistics",
+        "label": "Vantage Logistics",
+        "node_type": "account",
+        "role": "account",
+        "state": "selected",
+        "stance": "neutral",
+        "influence": 0.82,
+        "surfaced": true,
+        "route_member": true,
+        "x": 0.5,
+        "y": 0.5,
+        "relation": null
+      },
+      {
+        "node_id": "role:maya-cohen",
+        "label": "Maya Cohen",
+        "node_type": "person",
+        "role": "Head of Data",
+        "state": "identified",
+        "stance": "ally",
+        "influence": 0.8,
+        "surfaced": true,
+        "route_member": true,
+        "x": 0.84,
+        "y": 0.5,
+        "relation": null
+      },
+      {
+        "node_id": "role:routeworks",
+        "label": "RouteWorks",
+        "node_type": "partner",
+        "role": "Integrator",
+        "state": "identified",
+        "stance": "ally",
+        "influence": 0.68,
+        "surfaced": true,
+        "route_member": false,
+        "x": 0.16,
+        "y": 0.5,
+        "relation": "partner"
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "role:maya-cohen->account:acct-vantage-logistics",
+        "source": "role:maya-cohen",
+        "target": "account:acct-vantage-logistics",
+        "edge_type": "account_to_role",
+        "highlighted": true,
+        "label": "account_to_role"
+      },
+      {
+        "edge_id": "role:routeworks->account:acct-vantage-logistics",
+        "source": "role:routeworks",
+        "target": "account:acct-vantage-logistics",
+        "edge_type": "partner_to_account",
+        "highlighted": false,
+        "label": "partner_to_account"
+      }
+    ],
+    "route_path": [
+      "role:maya-cohen",
+      "account:acct-vantage-logistics"
+    ]
+  },
   "workflow_metadata": {
     "workflow_name": "AccessPlanningWorkflow",
     "runtime": "langgraph_dai",

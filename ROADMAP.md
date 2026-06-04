@@ -363,29 +363,36 @@ Status:
 
 ### Slice 0.5: Power Web Lite board loop
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Turn role lists into a visual Power Web Lite board with people, roles, external actors, stance, and missing stakeholders.
-- User value: A user can visually inspect who influences the account and why the recommended route goes through a specific person or partner.
+- User value: A user can visually inspect who influences the selected account and why the recommended route goes through a specific person, partner, or missing role.
 - Scope:
-  - Extend the domain model with node/edge view models derived from current account fixtures.
-  - Add stance and state fields needed by the UI: ally, blocker, unsurfaced, neutral, champion candidate, incumbent, partner.
-  - Add board coverage summary: mapped roles, missing roles, route coverage, confidence notes.
-  - Add a frontend board view or board section in the current demo.
+  - Add deterministic `PowerWebBoardBuilder` read model derived from current `Account`, `AccessPlan`, and top route.
+  - Extend Access Plan artifacts with non-breaking `power_web_board` data: summary, nodes, edges, and route path.
+  - Regenerate single-account and portfolio demo artifacts with board data.
+  - Replace the `Account Map` planned placeholder with a working selected-account board screen.
+  - Show visible figures, missing roles, board coverage, recommended route, route path, selected node inspector, and stance/status badges.
   - Highlight the recommended route path using cobalt per the design system.
 - Out of scope:
   - Graph database.
   - Drag/drop editing.
+  - Board editing or persistence.
   - Automatic relationship extraction from live sources.
 - Implementation notes:
   - Keep this as a read model generated from fixture/workflow output.
   - Reuse the design-system prototype `AccountMap.jsx` as reference, but implement the smallest necessary board.
+  - Keep Accounts row click opening `Access Plans`; navigation `Account Map` opens the board for the currently selected account.
+  - Localize board UI and deterministic role/state labels in the presentation layer.
 - Tests:
   - Unit tests for board read-model generation.
-  - Smoke test that generated Access Plan artifact contains board data.
-  - Frontend smoke check for board/missing-role sections.
+  - Smoke tests that generated single-account and portfolio Access Plan artifacts contain board data.
+  - Frontend contract checks for `PowerWebBoard` types, `AccountMapScreen`, selected route path, and placeholder replacement.
+  - Frontend build.
 - Docs:
   - Update user guide with Power Web Lite explanation.
+  - Update developer guide with board read model and artifact contract.
   - Update architecture overview with read-model boundary.
+  - Update demo walkthrough with `Account Map`.
 - Demo impact:
   - Demo shows the account as a board, not just cards and lists.
 - Acceptance criteria:
@@ -763,6 +770,11 @@ Status:
   - Localized visible stages, owners, route titles, rationale, risks, state changes, signals, evidence, and role/gap labels in RU mode.
   - Preserved raw IDs, source refs, company names, person names, workflow names, and runtime names.
   - Updated frontend contract tests and docs.
+- `Slice 0.5: Power Web Lite board loop`
+  - Added deterministic `PowerWebBoardBuilder` and non-breaking `power_web_board` artifact payloads.
+  - Regenerated portfolio and single-account Access Plan artifacts with board summary, nodes, edges, and route path.
+  - Replaced the `Account Map` placeholder with a working board screen for the selected account.
+  - Added board localization, frontend contracts, backend board tests, and synchronized docs.
 
 ## Blocked Items
 

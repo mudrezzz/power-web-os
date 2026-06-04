@@ -32,6 +32,46 @@ export type Route = {
   requires_human_review: boolean;
 };
 
+export type PowerWebNode = {
+  node_id: string;
+  label: string;
+  node_type: 'account' | 'person' | 'partner' | 'missing';
+  role: string;
+  state: string;
+  stance: 'ally' | 'blocker' | 'unsurfaced' | 'neutral';
+  influence: number;
+  surfaced: boolean;
+  route_member: boolean;
+  x: number;
+  y: number;
+  relation: string | null;
+};
+
+export type PowerWebEdge = {
+  edge_id: string;
+  source: string;
+  target: string;
+  edge_type: 'account_to_role' | 'partner_to_account' | 'missing_gap';
+  highlighted: boolean;
+  label: string;
+};
+
+export type PowerWebBoard = {
+  account_id: string;
+  account_name: string;
+  summary: {
+    visible_count: number;
+    missing_count: number;
+    total_count: number;
+    route_coverage: number;
+    primary_route_type: string | null;
+    primary_route_score: number | null;
+  };
+  nodes: PowerWebNode[];
+  edges: PowerWebEdge[];
+  route_path: string[];
+};
+
 export type AccessPlanArtifact = {
   artifact_type: 'access_plan';
   artifact_version: string;
@@ -56,6 +96,7 @@ export type AccessPlanArtifact = {
     unresolved_gaps: string[];
     routes: Route[];
   };
+  power_web_board: PowerWebBoard;
   workflow_metadata: {
     workflow_name: string;
     runtime: string;

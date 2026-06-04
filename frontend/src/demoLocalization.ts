@@ -40,8 +40,16 @@ const ruRoles: TextMap = {
   'Procurement Lead': 'Руководитель закупок',
   'VP Engineering': 'VP Engineering',
   economic_buyer: 'экономический покупатель',
+  procurement_role: 'роль закупок',
   security_gatekeeper: 'гейткипер безопасности',
   technical_champion: 'технический чемпион',
+};
+
+const ruStates: TextMap = {
+  selected: 'выбран',
+  identified: 'выявлен',
+  hypothesis: 'гипотеза',
+  missing: 'не выявлен',
 };
 
 const ruTexts: TextMap = {
@@ -127,6 +135,7 @@ export function useDemoLocalization() {
     routeType: (value: string) => (ru ? ruRouteTypes[value] ?? humanize(value) : humanize(value)),
     signalKind: (value: string) => localize(value, ruSignalKinds, ru),
     stage: (value: string) => localize(value, ruStages, ru),
+    state: (value: string) => localize(value, ruStates, ru),
     text: (value: string) => localize(value, ruTexts, ru),
   };
 }

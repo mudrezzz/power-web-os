@@ -32,6 +32,10 @@ Open the Vite URL printed by the frontend command. The demo opens in a bounded P
 - account context, route count, workflow runtime, and ICP fit for the selected account in the top bar;
 - planned placeholder states for product areas that are not implemented yet;
 - click-through from an account row to that account's `Access Plans` screen;
+- a working `Account Map` screen for the currently selected account;
+- Power Web Lite board coverage with visible figures, missing roles, and total known/missing perimeter;
+- highlighted recommended access route path through a surfaced person, partner, or missing role;
+- selected board-node inspector with stance, state, route membership, and influence score;
 - board coverage with visible and missing power figures;
 - signal evidence with confidence and source refs;
 - top Access Plan routes;
@@ -39,6 +43,8 @@ Open the Vite URL printed by the frontend command. The demo opens in a bounded P
 - human review status from the playbook.
 
 The language switcher localizes UI chrome plus visible deterministic demo data such as stages, owners, route titles, route rationale, risks, expected state changes, signal kinds, signal summaries, evidence summaries, and missing-role labels. Company names, person names, technical runtime names, and source refs remain artifact data.
+
+`Account Map` uses the same selected account as `Accounts` and `Access Plans`. Clicking an account row still opens `Access Plans`; using the sidebar `Account Map` item opens the Power Web Lite board for that selected account. Missing figures are shown as unsurfaced nodes, and the cobalt highlight marks only the active recommended route.
 
 The generated JSON artifact is also available at:
 

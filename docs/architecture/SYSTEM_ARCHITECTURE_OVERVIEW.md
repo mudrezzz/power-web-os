@@ -21,6 +21,7 @@ The current baseline has:
 - domain entities for account access planning;
 - deterministic Access Planner;
 - deterministic Account Radar portfolio read model;
+- deterministic Power Web Board selected-account read model;
 - `AccessPlanningWorkflow` with optional `langgraph-dai` integration and local fallback;
 - generated Account Radar and Access Plan artifacts;
 - React TypeScript Vite demo inside the Power Web OS workspace shell using `ui-design-system`;
@@ -31,8 +32,9 @@ The current baseline has:
 | Component | Responsibility | Owned data / behavior | Depends on |
 |---|---|---|---|
 | Web UI / BFF | Product screens and user workflow | Account workspace, review queue, demo UX | Product API |
-| Frontend demo | Local product shell with active Accounts and Access Plans screens | Reads generated Account Radar and Access Plan artifacts and renders planned workspace placeholders | Vite, design system |
+| Frontend demo | Local product shell with active Accounts, Access Plans, and Account Map screens | Reads generated Account Radar and Access Plan artifacts and renders planned workspace placeholders | Vite, design system |
 | Account Radar | Deterministic portfolio read model | Portfolio score, top reason, best route, owner, review status | Domain services, Access Plan artifacts |
+| Power Web Board | Deterministic selected-account read model | Board summary, people/partner/missing nodes, account edges, highlighted route path | Account, Access Plan artifact |
 | Product API | External HTTP boundary | Auth, request validation, task start/status | Application services |
 | Power Web Domain | Sales domain model and policies | Account, Signal, Evidence, PowerWebRole, Playbook, AccessPlan | None |
 | Agent Workflows | AI orchestration and audit | LangGraph state, node events, HITL checkpoints | `langgraph-dai`, domain services |
@@ -61,9 +63,10 @@ Target accounts
   -> account radar
   -> access planning workflow per account
   -> account radar artifact + access plan artifacts
+  -> power web board data inside each access plan artifact
   -> local frontend workspace shell
   -> Accounts screen
-  -> selected Access Plans screen
+  -> selected Access Plans screen / Account Map screen
 ```
 
 Target production-oriented flow:
@@ -110,7 +113,8 @@ The demo should evolve through these stages:
 2. LangGraph workflow output with node audit.
 3. React frontend workspace shell over generated artifact.
 4. Account Radar batch over multiple fixtures.
-5. Review queue and approved CRM task export.
+5. Power Web Lite board for the selected account.
+6. Review queue and approved CRM task export.
 
 ## Trade-Offs
 

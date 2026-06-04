@@ -80,6 +80,62 @@
       }
     ]
   },
+  "power_web_board": {
+    "account_id": "acct-orbit-manufacturing",
+    "account_name": "Orbit Manufacturing",
+    "summary": {
+      "visible_count": 1,
+      "missing_count": 0,
+      "total_count": 1,
+      "route_coverage": 1,
+      "primary_route_type": "partner_intro",
+      "primary_route_score": 80
+    },
+    "nodes": [
+      {
+        "node_id": "account:acct-orbit-manufacturing",
+        "label": "Orbit Manufacturing",
+        "node_type": "account",
+        "role": "account",
+        "state": "selected",
+        "stance": "neutral",
+        "influence": 0.79,
+        "surfaced": true,
+        "route_member": true,
+        "x": 0.5,
+        "y": 0.5,
+        "relation": null
+      },
+      {
+        "node_id": "role:factorycore",
+        "label": "FactoryCore",
+        "node_type": "partner",
+        "role": "Integrator",
+        "state": "identified",
+        "stance": "ally",
+        "influence": 0.76,
+        "surfaced": true,
+        "route_member": true,
+        "x": 0.84,
+        "y": 0.5,
+        "relation": "partner"
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "role:factorycore->account:acct-orbit-manufacturing",
+        "source": "role:factorycore",
+        "target": "account:acct-orbit-manufacturing",
+        "edge_type": "partner_to_account",
+        "highlighted": true,
+        "label": "partner_to_account"
+      }
+    ],
+    "route_path": [
+      "role:factorycore",
+      "account:acct-orbit-manufacturing"
+    ]
+  },
   "workflow_metadata": {
     "workflow_name": "AccessPlanningWorkflow",
     "runtime": "langgraph_dai",

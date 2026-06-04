@@ -9,11 +9,12 @@ The demo shows the current Power Web OS loop: a six-account portfolio fixture is
 - Account Radar ranking across six synthetic accounts.
 - Account signals with evidence refs.
 - Power Web Lite roles and missing roles.
+- Power Web Lite board for the selected account, with visible figures, unsurfaced missing roles, and highlighted recommended route path.
 - Sales playbook routes and human review policy.
 - Ranked Access Plan routes per selected account with score, reason, risk, owner, and expected state change.
 - Workflow metadata showing whether `langgraph-dai` was available.
 - A React TypeScript frontend using the committed design system.
-- A durable app shell with sidebar navigation, top bar account context, active `Accounts`, clickable `Access Plans`, and planned placeholders for future workspaces.
+- A durable app shell with sidebar navigation, top bar account context, active `Accounts`, clickable `Access Plans`, working `Account Map`, and planned placeholders for future workspaces.
 - A bounded SPA frame with internal workspace scrolling and EN/RU switching for UI chrome plus visible deterministic demo data.
 
 ## How To Run
@@ -42,7 +43,7 @@ python demo/run_demo.py generate-access-plan
 
 The Python command prints and writes JSON for the ranked portfolio. The output should include six ranked accounts and a matching generated Access Plan artifact for every account.
 
-The frontend command prints a local Vite URL. Open it to inspect Account Radar, switch the UI between EN/RU from the top bar if needed, then click an account row to inspect that account's Access Plan visually inside the Power Web OS shell.
+The frontend command prints a local Vite URL. Open it to inspect Account Radar, switch the UI between EN/RU from the top bar if needed, then click an account row to inspect that account's Access Plan visually inside the Power Web OS shell. Use the sidebar `Account Map` item to inspect the selected account's Power Web Lite board and highlighted recommended access route.
 
 ## Demo Data
 

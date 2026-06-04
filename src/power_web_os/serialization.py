@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from power_web_os.board import PowerWebBoard, PowerWebBoardBuilder, board_to_payload
 from power_web_os.domain import AccessPlan, AccessRoute, Account, Evidence, Playbook, PowerWebRole, Signal
 
 
@@ -156,12 +157,15 @@ def build_access_plan_artifact(
     playbook: Playbook,
     plan: AccessPlan,
     workflow_metadata: dict[str, Any],
+    power_web_board: PowerWebBoard | None = None,
 ) -> dict[str, Any]:
+    board = power_web_board or PowerWebBoardBuilder().build(account=account, access_plan=plan)
     return {
         "artifact_type": "access_plan",
         "artifact_version": "0.2",
         "account": account_to_payload(account),
         "playbook": playbook_to_payload(playbook),
         "access_plan": access_plan_to_payload(plan),
+        "power_web_board": board_to_payload(board),
         "workflow_metadata": workflow_metadata,
     }

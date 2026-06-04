@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppShell, type ScreenId } from './layout/AppShell';
 import { AccessPlansScreen } from './screens/AccessPlansScreen';
 import { AccountsScreen } from './screens/AccountsScreen';
+import { AccountMapScreen } from './screens/AccountMapScreen';
 import { PlannedScreen } from './screens/PlannedScreen';
 import type { AccountRadarArtifact, AccountRadarItem, AccessPlanArtifact } from './types';
 
@@ -64,6 +65,8 @@ export function App() {
         />
       ) : activeScreen === 'plans' ? (
         <AccessPlansScreen artifact={artifact} error={error} />
+      ) : activeScreen === 'map' ? (
+        <AccountMapScreen artifact={artifact} error={error} />
       ) : (
         <PlannedScreen screenId={activeScreen} />
       )}

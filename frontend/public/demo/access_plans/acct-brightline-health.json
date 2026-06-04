@@ -98,6 +98,84 @@
       }
     ]
   },
+  "power_web_board": {
+    "account_id": "acct-brightline-health",
+    "account_name": "Brightline Health",
+    "summary": {
+      "visible_count": 1,
+      "missing_count": 1,
+      "total_count": 2,
+      "route_coverage": 1,
+      "primary_route_type": "partner_intro",
+      "primary_route_score": 76
+    },
+    "nodes": [
+      {
+        "node_id": "account:acct-brightline-health",
+        "label": "Brightline Health",
+        "node_type": "account",
+        "role": "account",
+        "state": "selected",
+        "stance": "neutral",
+        "influence": 0.73,
+        "surfaced": true,
+        "route_member": true,
+        "x": 0.5,
+        "y": 0.5,
+        "relation": null
+      },
+      {
+        "node_id": "role:medsys-advisory",
+        "label": "MedSys Advisory",
+        "node_type": "partner",
+        "role": "Integrator",
+        "state": "hypothesis",
+        "stance": "ally",
+        "influence": 0.71,
+        "surfaced": true,
+        "route_member": true,
+        "x": 0.84,
+        "y": 0.5,
+        "relation": "partner"
+      },
+      {
+        "node_id": "missing:security_gatekeeper",
+        "label": "security_gatekeeper",
+        "node_type": "missing",
+        "role": "security_gatekeeper",
+        "state": "missing",
+        "stance": "unsurfaced",
+        "influence": 0.0,
+        "surfaced": false,
+        "route_member": false,
+        "x": 0.869,
+        "y": 0.701,
+        "relation": null
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "role:medsys-advisory->account:acct-brightline-health",
+        "source": "role:medsys-advisory",
+        "target": "account:acct-brightline-health",
+        "edge_type": "partner_to_account",
+        "highlighted": true,
+        "label": "partner_to_account"
+      },
+      {
+        "edge_id": "missing:security_gatekeeper->account:acct-brightline-health",
+        "source": "missing:security_gatekeeper",
+        "target": "account:acct-brightline-health",
+        "edge_type": "missing_gap",
+        "highlighted": false,
+        "label": "missing_gap"
+      }
+    ],
+    "route_path": [
+      "role:medsys-advisory",
+      "account:acct-brightline-health"
+    ]
+  },
   "workflow_metadata": {
     "workflow_name": "AccessPlanningWorkflow",
     "runtime": "langgraph_dai",

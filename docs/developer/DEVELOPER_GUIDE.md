@@ -47,10 +47,11 @@ The current Python package contains:
 - `AccessPlan`
 - `DeterministicAccessPlanner`
 - `AccountRadar`
+- `PowerWebBoardBuilder`
 - `AccessPlanningState`
 - `AccessPlanningWorkflow`
 
-The deterministic planner owns route scoring. `AccessPlanningWorkflow` orchestrates typed state, planner invocation, artifact shaping, and workflow metadata. `AccountRadar` builds the portfolio read model from generated Access Plans and owns deterministic account ranking. It uses `langgraph-dai` when the optional `agent` extra is installed and falls back to a local runner for base tests.
+The deterministic planner owns route scoring. `AccessPlanningWorkflow` orchestrates typed state, planner invocation, artifact shaping, and workflow metadata. `AccountRadar` builds the portfolio read model from generated Access Plans and owns deterministic account ranking. `PowerWebBoardBuilder` builds the selected-account board read model from the generated Access Plan and current account roles/missing roles. It uses `langgraph-dai` when the optional `agent` extra is installed and falls back to a local runner for base tests.
 
 ## Access Planning Workflow
 
@@ -73,6 +74,17 @@ python -m power_web_os.demo generate-access-plan
 ```
 
 Portfolio fixture entries use the existing `{ account, playbook }` shape with a small `stage` field for Account Radar display.
+
+Access Plan artifacts include a non-breaking `power_web_board` field:
+
+```text
+power_web_board.summary
+power_web_board.nodes[]
+power_web_board.edges[]
+power_web_board.route_path[]
+```
+
+The board read model is deterministic and belongs to `src/power_web_os/board.py`. It should stay presentation-friendly but source-of-truth-neutral: do not put graph database behavior, editing state, CRM state, or live source extraction in this builder.
 
 Do not put CRM/source connector logic directly inside domain classes. Add ports/tools and keep connector calls auditable.
 
@@ -105,6 +117,7 @@ Rules:
 - Use `min-width: 0`, wrapping, ellipsis, or owned horizontal scroll so text never overlaps neighboring columns.
 - Load the portfolio artifact from `/demo/account_radar.json`.
 - Load selected-account plans from `/demo/access_plans/{account_id}.json`.
+- Render the selected account's Power Web Lite board from `artifact.power_web_board` on `Account Map`.
 - Keep unfinished navigation entries visible only as planned placeholders; do not fake unavailable functionality.
 
 The frontend default locale is `en`. The supported locales are `en` and `ru`, and the selected locale is stored in browser `localStorage`. UI chrome is localized through `i18n.ts`; visible deterministic artifact values such as stages, owners, route titles, rationale, risks, state changes, signal summaries, and missing-role labels are localized in `demoLocalization.ts`. Keep raw source refs, IDs, company names, and person names as artifact data unless a slice explicitly changes that policy.

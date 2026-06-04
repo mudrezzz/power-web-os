@@ -1,10 +1,10 @@
-import { Activity, CheckCircle2, LayoutGrid, Route, Settings2, Share2 } from 'lucide-react';
+import { Activity, CheckCircle2, LayoutGrid, Route, Settings2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Card, Eyebrow } from '../components/primitives';
 import type { ScreenId } from '../layout/AppShell';
 
 const plannedScreens: Record<
-  Exclude<ScreenId, 'accounts' | 'plans'>,
+  Exclude<ScreenId, 'accounts' | 'plans' | 'map'>,
   {
     descriptionKey: string;
     eyebrowKey: string;
@@ -13,13 +13,6 @@ const plannedScreens: Record<
     titleKey: string;
   }
 > = {
-  map: {
-    descriptionKey: 'planned.map.description',
-    eyebrowKey: 'planned.workspaceEyebrow',
-    icon: Share2,
-    nextSliceKey: 'planned.map.nextSlice',
-    titleKey: 'planned.map.title',
-  },
   signals: {
     descriptionKey: 'planned.signals.description',
     eyebrowKey: 'planned.workspaceEyebrow',
@@ -50,7 +43,7 @@ const plannedScreens: Record<
   },
 };
 
-export function PlannedScreen({ screenId }: { screenId: Exclude<ScreenId, 'accounts' | 'plans'> }) {
+export function PlannedScreen({ screenId }: { screenId: Exclude<ScreenId, 'accounts' | 'plans' | 'map'> }) {
   const { t } = useTranslation();
   const screen = plannedScreens[screenId];
   const Icon = screen.icon;

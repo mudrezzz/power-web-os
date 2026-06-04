@@ -123,6 +123,128 @@
       }
     ]
   },
+  "power_web_board": {
+    "account_id": "acct-vitamin-bank",
+    "account_name": "Vitamin Bank",
+    "summary": {
+      "visible_count": 2,
+      "missing_count": 2,
+      "total_count": 4,
+      "route_coverage": 1,
+      "primary_route_type": "technical_benchmark",
+      "primary_route_score": 85
+    },
+    "nodes": [
+      {
+        "node_id": "account:acct-vitamin-bank",
+        "label": "Vitamin Bank",
+        "node_type": "account",
+        "role": "account",
+        "state": "selected",
+        "stance": "neutral",
+        "influence": 0.88,
+        "surfaced": true,
+        "route_member": true,
+        "x": 0.5,
+        "y": 0.5,
+        "relation": null
+      },
+      {
+        "node_id": "role:ivan-petrov",
+        "label": "Ivan Petrov",
+        "node_type": "person",
+        "role": "Head of Data",
+        "state": "identified",
+        "stance": "ally",
+        "influence": 0.82,
+        "surfaced": true,
+        "route_member": true,
+        "x": 0.84,
+        "y": 0.5,
+        "relation": null
+      },
+      {
+        "node_id": "role:x-soft",
+        "label": "X-Soft",
+        "node_type": "partner",
+        "role": "Integrator",
+        "state": "hypothesis",
+        "stance": "ally",
+        "influence": 0.74,
+        "surfaced": true,
+        "route_member": false,
+        "x": 0.16,
+        "y": 0.5,
+        "relation": "partner"
+      },
+      {
+        "node_id": "missing:economic_buyer",
+        "label": "economic_buyer",
+        "node_type": "missing",
+        "role": "economic_buyer",
+        "state": "missing",
+        "stance": "unsurfaced",
+        "influence": 0.0,
+        "surfaced": false,
+        "route_member": false,
+        "x": 0.869,
+        "y": 0.701,
+        "relation": null
+      },
+      {
+        "node_id": "missing:security_gatekeeper",
+        "label": "security_gatekeeper",
+        "node_type": "missing",
+        "role": "security_gatekeeper",
+        "state": "missing",
+        "stance": "unsurfaced",
+        "influence": 0.0,
+        "surfaced": false,
+        "route_member": false,
+        "x": 0.131,
+        "y": 0.299,
+        "relation": null
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "role:ivan-petrov->account:acct-vitamin-bank",
+        "source": "role:ivan-petrov",
+        "target": "account:acct-vitamin-bank",
+        "edge_type": "account_to_role",
+        "highlighted": true,
+        "label": "account_to_role"
+      },
+      {
+        "edge_id": "role:x-soft->account:acct-vitamin-bank",
+        "source": "role:x-soft",
+        "target": "account:acct-vitamin-bank",
+        "edge_type": "partner_to_account",
+        "highlighted": false,
+        "label": "partner_to_account"
+      },
+      {
+        "edge_id": "missing:economic_buyer->account:acct-vitamin-bank",
+        "source": "missing:economic_buyer",
+        "target": "account:acct-vitamin-bank",
+        "edge_type": "missing_gap",
+        "highlighted": false,
+        "label": "missing_gap"
+      },
+      {
+        "edge_id": "missing:security_gatekeeper->account:acct-vitamin-bank",
+        "source": "missing:security_gatekeeper",
+        "target": "account:acct-vitamin-bank",
+        "edge_type": "missing_gap",
+        "highlighted": false,
+        "label": "missing_gap"
+      }
+    ],
+    "route_path": [
+      "role:ivan-petrov",
+      "account:acct-vitamin-bank"
+    ]
+  },
   "workflow_metadata": {
     "workflow_name": "AccessPlanningWorkflow",
     "runtime": "langgraph_dai",
