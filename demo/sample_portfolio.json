@@ -102,6 +102,36 @@
             "influence": 0.86
           },
           {
+            "role": "CIO",
+            "person_name": "Alicia Grant",
+            "state": "identified",
+            "influence": 0.9
+          },
+          {
+            "role": "Head of Data Platform",
+            "person_name": "Sofia Chen",
+            "state": "identified",
+            "influence": 0.84
+          },
+          {
+            "role": "Security Architect",
+            "person_name": "Owen Park",
+            "state": "blocker",
+            "influence": 0.62
+          },
+          {
+            "role": "Procurement Lead",
+            "person_name": "Priya Shah",
+            "state": "identified",
+            "influence": 0.76
+          },
+          {
+            "role": "Operations Sponsor",
+            "person_name": "Elena Ruiz",
+            "state": "hypothesis",
+            "influence": 0.58
+          },
+          {
             "role": "Integrator",
             "person_name": "Helix Systems",
             "state": "identified",

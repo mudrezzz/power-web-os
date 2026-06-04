@@ -15,6 +15,8 @@ The current demo uses a six-account fictional portfolio. It includes `Vitamin Ba
 
 The portfolio is ranked by Account Radar using deterministic ICP fit, signal strength, best Access Plan route score, and missing-role penalty.
 
+The default top-ranked account, `Northwind Robotics`, has the richest current Power Web example: eight board figures across technical, procurement, security, operations, partner, and missing economic-buyer roles. Use it to inspect how a more enterprise-like influence map fits inside the `Account Map` screen.
+
 Run:
 
 ```bash

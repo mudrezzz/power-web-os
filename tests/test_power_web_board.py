@@ -97,3 +97,22 @@ def test_generated_account_radar_writes_matching_plan_boards(tmp_path: Path) -> 
         assert board["account_id"] == item["account_id"]
         assert board["summary"]["primary_route_type"] == item["best_route_type"]
         assert board["summary"]["primary_route_score"] == item["best_route_score"]
+
+
+def test_sample_portfolio_contains_enterprise_sized_power_web_board(tmp_path: Path) -> None:
+    frontend_access_plans_dir = tmp_path / "frontend" / "public" / "demo" / "access_plans"
+    artifact = generate_account_radar_artifact(
+        input_path=Path("demo/sample_portfolio.json"),
+        output_path=tmp_path / "demo" / "account_radar.json",
+        frontend_output_path=tmp_path / "frontend" / "public" / "demo" / "account_radar.json",
+        frontend_access_plans_dir=frontend_access_plans_dir,
+    )
+
+    top_account = artifact["accounts"][0]
+    plan_artifact = json.loads((frontend_access_plans_dir / f"{top_account['account_id']}.json").read_text(encoding="utf-8"))
+    board = plan_artifact["power_web_board"]
+
+    assert top_account["account_id"] == "acct-northwind-robotics"
+    assert board["summary"]["total_count"] >= 8
+    assert len([node for node in board["nodes"] if node["node_type"] != "account"]) >= 8
+    assert any(node["stance"] == "blocker" for node in board["nodes"])

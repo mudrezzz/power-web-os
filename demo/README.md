@@ -10,6 +10,7 @@ The demo shows the current Power Web OS loop: a six-account portfolio fixture is
 - Account signals with evidence refs.
 - Power Web Lite roles and missing roles.
 - Power Web Lite board for the selected account, with visible figures, unsurfaced missing roles, and highlighted recommended route path.
+- A richer enterprise-like Power Web for the default top account, `Northwind Robotics`, with eight board figures including technical, procurement, security, operations, partner, and missing economic-buyer roles.
 - Sales playbook routes and human review policy.
 - Ranked Access Plan routes per selected account with score, reason, risk, owner, and expected state change.
 - Workflow metadata showing whether `langgraph-dai` was available.

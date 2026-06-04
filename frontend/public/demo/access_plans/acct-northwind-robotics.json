@@ -42,6 +42,41 @@
         "relation": null
       },
       {
+        "role": "CIO",
+        "person_name": "Alicia Grant",
+        "state": "identified",
+        "influence": 0.9,
+        "relation": null
+      },
+      {
+        "role": "Head of Data Platform",
+        "person_name": "Sofia Chen",
+        "state": "identified",
+        "influence": 0.84,
+        "relation": null
+      },
+      {
+        "role": "Security Architect",
+        "person_name": "Owen Park",
+        "state": "blocker",
+        "influence": 0.62,
+        "relation": null
+      },
+      {
+        "role": "Procurement Lead",
+        "person_name": "Priya Shah",
+        "state": "identified",
+        "influence": 0.76,
+        "relation": null
+      },
+      {
+        "role": "Operations Sponsor",
+        "person_name": "Elena Ruiz",
+        "state": "hypothesis",
+        "influence": 0.58,
+        "relation": null
+      },
+      {
         "role": "Integrator",
         "person_name": "Helix Systems",
         "state": "identified",
@@ -80,6 +115,19 @@
     ],
     "routes": [
       {
+        "route_type": "technical_benchmark",
+        "title": "Invite technical stakeholder to a benchmark",
+        "score": 88,
+        "reason": "Automation platform team added six engineering roles after a public efficiency initiative.; Sofia Chen can become a technical champion.",
+        "risk": "Economic buyer is not confirmed yet.",
+        "owner": "Account Executive",
+        "evidence_refs": [
+          "careers:northwind-robotics:automation-platform"
+        ],
+        "expected_state_change": "Head of Data Platform: identified -> engaged / champion_candidate",
+        "requires_human_review": true
+      },
+      {
         "route_type": "partner_intro",
         "title": "Request partner intro",
         "score": 85,
@@ -105,20 +153,6 @@
         ],
         "expected_state_change": "procurement_role: unknown -> identified",
         "requires_human_review": true
-      },
-      {
-        "route_type": "dark_stakeholder_discovery",
-        "title": "Research missing stakeholders before a direct move",
-        "score": 62,
-        "reason": "Missing roles must be surfaced before outreach: economic_buyer.",
-        "risk": "Premature outreach can look irrelevant.",
-        "owner": "RevOps",
-        "evidence_refs": [
-          "careers:northwind-robotics:automation-platform",
-          "procurement:northwind-robotics:platform-si"
-        ],
-        "expected_state_change": "missing_roles: unknown -> research_queue",
-        "requires_human_review": true
       }
     ]
   },
@@ -126,12 +160,12 @@
     "account_id": "acct-northwind-robotics",
     "account_name": "Northwind Robotics",
     "summary": {
-      "visible_count": 2,
+      "visible_count": 7,
       "missing_count": 1,
-      "total_count": 3,
+      "total_count": 8,
       "route_coverage": 1,
-      "primary_route_type": "partner_intro",
-      "primary_route_score": 85
+      "primary_route_type": "technical_benchmark",
+      "primary_route_score": 88
     },
     "nodes": [
       {
@@ -163,6 +197,76 @@
         "relation": null
       },
       {
+        "node_id": "role:alicia-grant",
+        "label": "Alicia Grant",
+        "node_type": "person",
+        "role": "CIO",
+        "state": "identified",
+        "stance": "ally",
+        "influence": 0.9,
+        "surfaced": true,
+        "route_member": false,
+        "x": 0.712,
+        "y": 0.766,
+        "relation": null
+      },
+      {
+        "node_id": "role:sofia-chen",
+        "label": "Sofia Chen",
+        "node_type": "person",
+        "role": "Head of Data Platform",
+        "state": "identified",
+        "stance": "ally",
+        "influence": 0.84,
+        "surfaced": true,
+        "route_member": true,
+        "x": 0.424,
+        "y": 0.831,
+        "relation": null
+      },
+      {
+        "node_id": "role:owen-park",
+        "label": "Owen Park",
+        "node_type": "person",
+        "role": "Security Architect",
+        "state": "blocker",
+        "stance": "blocker",
+        "influence": 0.62,
+        "surfaced": true,
+        "route_member": false,
+        "x": 0.194,
+        "y": 0.648,
+        "relation": null
+      },
+      {
+        "node_id": "role:priya-shah",
+        "label": "Priya Shah",
+        "node_type": "person",
+        "role": "Procurement Lead",
+        "state": "identified",
+        "stance": "ally",
+        "influence": 0.76,
+        "surfaced": true,
+        "route_member": false,
+        "x": 0.194,
+        "y": 0.352,
+        "relation": null
+      },
+      {
+        "node_id": "role:elena-ruiz",
+        "label": "Elena Ruiz",
+        "node_type": "person",
+        "role": "Operations Sponsor",
+        "state": "hypothesis",
+        "stance": "neutral",
+        "influence": 0.58,
+        "surfaced": true,
+        "route_member": false,
+        "x": 0.424,
+        "y": 0.169,
+        "relation": null
+      },
+      {
         "node_id": "role:helix-systems",
         "label": "Helix Systems",
         "node_type": "partner",
@@ -171,9 +275,9 @@
         "stance": "ally",
         "influence": 0.79,
         "surfaced": true,
-        "route_member": true,
-        "x": 0.16,
-        "y": 0.5,
+        "route_member": false,
+        "x": 0.712,
+        "y": 0.234,
         "relation": "partner"
       },
       {
@@ -201,11 +305,51 @@
         "label": "account_to_role"
       },
       {
+        "edge_id": "role:alicia-grant->account:acct-northwind-robotics",
+        "source": "role:alicia-grant",
+        "target": "account:acct-northwind-robotics",
+        "edge_type": "account_to_role",
+        "highlighted": false,
+        "label": "account_to_role"
+      },
+      {
+        "edge_id": "role:sofia-chen->account:acct-northwind-robotics",
+        "source": "role:sofia-chen",
+        "target": "account:acct-northwind-robotics",
+        "edge_type": "account_to_role",
+        "highlighted": true,
+        "label": "account_to_role"
+      },
+      {
+        "edge_id": "role:owen-park->account:acct-northwind-robotics",
+        "source": "role:owen-park",
+        "target": "account:acct-northwind-robotics",
+        "edge_type": "account_to_role",
+        "highlighted": false,
+        "label": "account_to_role"
+      },
+      {
+        "edge_id": "role:priya-shah->account:acct-northwind-robotics",
+        "source": "role:priya-shah",
+        "target": "account:acct-northwind-robotics",
+        "edge_type": "account_to_role",
+        "highlighted": false,
+        "label": "account_to_role"
+      },
+      {
+        "edge_id": "role:elena-ruiz->account:acct-northwind-robotics",
+        "source": "role:elena-ruiz",
+        "target": "account:acct-northwind-robotics",
+        "edge_type": "account_to_role",
+        "highlighted": false,
+        "label": "account_to_role"
+      },
+      {
         "edge_id": "role:helix-systems->account:acct-northwind-robotics",
         "source": "role:helix-systems",
         "target": "account:acct-northwind-robotics",
         "edge_type": "partner_to_account",
-        "highlighted": true,
+        "highlighted": false,
         "label": "partner_to_account"
       },
       {
@@ -218,7 +362,7 @@
       }
     ],
     "route_path": [
-      "role:helix-systems",
+      "role:sofia-chen",
       "account:acct-northwind-robotics"
     ]
   },

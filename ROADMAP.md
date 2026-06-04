@@ -402,6 +402,26 @@ Status:
 - Risks:
   - UI can grow too large; mitigate by keeping one board and one inspector/summary section.
 
+### Slice 0.5.1: Enterprise-sized Power Web demo account
+
+- Status: `Done`
+- Goal: Make the current demo show at least one more realistic enterprise-sized Power Web.
+- User value: A user can inspect how the `Account Map` behaves with a denser buying-committee map instead of only 3-4 figures.
+- Scope:
+  - Expand the default top-ranked `Northwind Robotics` fixture to eight board figures.
+  - Include surfaced technical, procurement, security, operations, partner, and missing economic-buyer roles.
+  - Preserve deterministic Account Radar, Access Plan, and board generation.
+  - Add test coverage so the richer board does not regress below eight figures.
+- Out of scope:
+  - Graph database, editing, drag/drop, live source extraction, or UI redesign.
+- Demo impact:
+  - Opening the demo and navigating to `Account Map` now shows an enterprise-like Power Web by default.
+- Acceptance criteria:
+  - `Northwind Robotics` remains the top-ranked account.
+  - Its generated board has at least eight non-account figures.
+  - The board includes at least one blocker stance.
+  - Tests and frontend build pass.
+
 ### Slice 0.6: Playbook rules loop
 
 - Status: `Backlog`
@@ -775,6 +795,10 @@ Status:
   - Regenerated portfolio and single-account Access Plan artifacts with board summary, nodes, edges, and route path.
   - Replaced the `Account Map` placeholder with a working board screen for the selected account.
   - Added board localization, frontend contracts, backend board tests, and synchronized docs.
+- `Slice 0.5.1: Enterprise-sized Power Web demo account`
+  - Expanded `Northwind Robotics` to a richer eight-figure Power Web.
+  - Added technical, procurement, security, operations, partner, and missing economic-buyer roles.
+  - Added blocker stance support for board nodes and test coverage for the richer demo board.
 
 ## Blocked Items
 

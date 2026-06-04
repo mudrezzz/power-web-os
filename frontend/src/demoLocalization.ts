@@ -36,8 +36,12 @@ const ruSignalKinds: TextMap = {
 
 const ruRoles: TextMap = {
   'Head of Data': 'Руководитель данных',
+  'Head of Data Platform': 'Руководитель платформы данных',
   Integrator: 'Интегратор',
   'Procurement Lead': 'Руководитель закупок',
+  CIO: 'CIO',
+  'Operations Sponsor': 'Операционный спонсор',
+  'Security Architect': 'Архитектор безопасности',
   'VP Engineering': 'VP Engineering',
   economic_buyer: 'экономический покупатель',
   procurement_role: 'роль закупок',
@@ -49,12 +53,15 @@ const ruStates: TextMap = {
   selected: 'выбран',
   identified: 'выявлен',
   hypothesis: 'гипотеза',
+  blocker: 'блокер',
   missing: 'не выявлен',
 };
 
 const ruTexts: TextMap = {
   'Automation platform team added six engineering roles after a public efficiency initiative.':
     'Команда автоматизационной платформы открыла шесть инженерных ролей после публичной инициативы по эффективности.',
+  'Automation platform team added six engineering roles after a public efficiency initiative.; Sofia Chen can become a technical champion.':
+    'Команда автоматизационной платформы открыла шесть инженерных ролей после публичной инициативы по эффективности; Sofia Chen может стать техническим чемпионом.',
   'BI consulting purchase was recorded eight months ago, creating a procurement trail.':
     'Закупка BI-консалтинга зафиксирована восемь месяцев назад и создает закупочный след.',
   'Data operations team opened analytics engineering roles tied to route optimization.':
@@ -107,6 +114,8 @@ const ruTexts: TextMap = {
   'Premature outreach can look irrelevant.': 'Преждевременный аутрич может выглядеть нерелевантным.',
   'Head of Data: identified -> engaged / champion_candidate':
     'Руководитель данных: выявлен -> вовлечен / кандидат в чемпионы',
+  'Head of Data Platform: identified -> engaged / champion_candidate':
+    'Руководитель платформы данных: выявлен -> вовлечен / кандидат в чемпионы',
   'missing_roles: unknown -> research_queue':
     'недостающие роли: неизвестно -> очередь на исследование',
   'partner_route: hypothesis -> verified': 'партнерский маршрут: гипотеза -> подтвержден',

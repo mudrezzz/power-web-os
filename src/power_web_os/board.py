@@ -205,6 +205,8 @@ class PowerWebBoardBuilder:
     def _stance(role: PowerWebRole) -> str:
         if role.relation == "partner":
             return "ally"
+        if role.state == "blocker":
+            return "blocker"
         if role.state == "hypothesis":
             return "neutral"
         return "ally"
