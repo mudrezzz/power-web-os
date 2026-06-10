@@ -337,6 +337,44 @@ Status:
 - Risks:
   - GitHub Wiki creation has a one-time web UI initialization step; mitigate by documenting it explicitly.
 
+### Slice 0.3.3: Curated GitHub Wiki and screenshot walkthrough
+
+- Status: `Done`
+- Goal: Turn the generated GitHub Wiki from a raw documentation/screenshot dump into a curated product walkthrough.
+- User value: A reader can understand the current Power Web OS PoC flow directly in Wiki, with screenshots embedded next to the explanation of each screen.
+- Scope:
+  - Add a curated screenshot walkthrough manifest to the Wiki publisher.
+  - Replace filename-based screenshot headings with human product titles.
+  - Embed key screenshots into `User Guide`.
+  - Keep `QA Visual Smoke` as technical evidence with viewport coverage and regeneration commands.
+  - Split Wiki sidebar navigation into product and engineering sections.
+- Out of scope:
+  - UI changes.
+  - New screenshot capture coverage.
+  - GitHub Pages or separate documentation site.
+- Implementation notes:
+  - Keep repository docs as the source of truth.
+  - Publish Wiki through `scripts/publish_github_wiki.py`; do not manually edit Wiki content.
+  - Screenshot filenames remain stable technical asset names, but they must not drive user-facing headings.
+- Tests:
+  - Contract tests for curated manifest, screenshot links, sidebar groups, and dry-run output.
+  - `python scripts/publish_github_wiki.py --dry-run`.
+  - `python -m pytest`.
+- Docs:
+  - Update `docs/user/USER_GUIDE.md` with screenshot walkthrough sections.
+  - Update `docs/qa/README.md` with screenshot asset and manifest rules.
+  - Update `docs/developer/DEVELOPER_GUIDE.md` with Wiki publisher maintenance rules.
+- Demo impact:
+  - Demo behavior does not change.
+  - Published Wiki explains the existing demo with screenshots.
+- Acceptance criteria:
+  - `User Guide` in Wiki contains screenshots in the user walkthrough.
+  - `QA Visual Smoke` no longer uses raw filename headings such as `icp-radar-1366x768`.
+  - `Home` points readers to the walkthrough.
+  - `_Sidebar` separates product and engineering pages.
+- Risks:
+  - Documentation screenshots may drift if UI changes without rerunning visual smoke; mitigate by keeping visual smoke and manifest updates in future UI slices.
+
 ### Slice 0.4: Account Radar portfolio loop
 
 - Status: `Done`
@@ -1076,6 +1114,11 @@ Status:
   - Enabled GitHub Wiki and published generated documentation pages.
   - Added wiki publisher script with dry-run support.
   - Published visual smoke screenshots into wiki assets.
+- `Slice 0.3.3: Curated GitHub Wiki and screenshot walkthrough`
+  - Replaced filename-driven Wiki screenshot sections with a curated screenshot walkthrough manifest.
+  - Embedded product screenshots into the user guide narrative.
+  - Split Wiki navigation into product and engineering sections.
+  - Kept QA screenshots as technical source assets with dry-run publication coverage.
 - `Slice 0.4: Account Radar portfolio loop`
   - Added a six-account synthetic portfolio fixture.
   - Added deterministic `AccountRadar` scoring and ranking over generated Access Plans.

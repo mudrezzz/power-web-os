@@ -35,6 +35,16 @@ Covered desktop viewports:
 
 These screenshots are not pixel-perfect regression baselines yet. They are visual smoke evidence for documentation, layout review, and small-monitor checks.
 
+The screenshot files are source assets, not the user-facing documentation structure. GitHub Wiki publication uses a curated walkthrough manifest in `scripts/publish_github_wiki.py`, so Wiki pages show meaningful section titles and explanations instead of raw screenshot filenames.
+
+When adding a new documented screen:
+
+1. Add the screen to the Playwright visual smoke script.
+2. Regenerate screenshots.
+3. Add a manifest item with title, explanation, and both viewport image paths in `scripts/publish_github_wiki.py`.
+4. Add the user-facing explanation to `docs/user/USER_GUIDE.md`.
+5. Run the Wiki dry-run before publishing.
+
 ## GitHub Wiki Publishing
 
 The repository includes a wiki publisher script:

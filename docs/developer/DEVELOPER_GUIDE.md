@@ -285,6 +285,13 @@ The script builds:
 - `QA-Visual-Smoke.md`
 - `assets/screenshots/visual-smoke/*.png`
 
+Wiki screenshot pages are curated through the screenshot walkthrough manifest in `scripts/publish_github_wiki.py`. Do not generate user-facing headings directly from screenshot filenames. When adding or replacing a documented screen:
+
+- add or update the manifest item with a human title, short explanation, and both viewport image paths;
+- add the same user-facing walkthrough context to `docs/user/USER_GUIDE.md`;
+- keep `docs/qa/README.md` focused on reproducible QA assets and regeneration commands;
+- run `python scripts/publish_github_wiki.py --dry-run` and inspect `.wiki-build/User-Guide.md`, `.wiki-build/Home.md`, and `.wiki-build/QA-Visual-Smoke.md` before publishing.
+
 If GitHub has Wiki enabled but the wiki git repository does not exist yet, create one page in the GitHub Wiki web UI once, then rerun the publisher.
 
 ## Documentation Rules
