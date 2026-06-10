@@ -2,7 +2,7 @@
 
 ## Product Vision
 
-Power Web OS helps B2B sales and ABM teams stop working target accounts blindly. It gathers account signals, builds a dynamic Power Web around the deal, applies the customer's sales playbook, and produces explainable Access Plans with human review before execution.
+Power Web OS helps B2B sales and ABM teams stop working target accounts blindly. It runs ICP Radars to find and qualify accounts, gathers account signals, builds a dynamic Power Web around accepted accounts, applies the customer's sales playbook, and produces explainable Access Plans with human review before execution.
 
 ## Source Requirements
 
@@ -460,6 +460,155 @@ Status:
 - Risks:
   - What-if behavior can be mistaken for live interactive recalculation; mitigate by documenting it as pre-generated.
 
+### Slice 0.6.1: ICP Radar terminology and ТОиР fixture contract
+
+- Status: `Done`
+- Goal: Rename the upstream radar concept to `ICP Radar` and define the first ТОиР automation fixture contract from the SIBUR-style XLSX analysis.
+- User value: The product language becomes ABM-native: radars are profiles of ideal customers, not generic account lists.
+- Scope:
+  - Add an `ICP Radar` concept above the existing Account / Power Web / Access Plan loop.
+  - Define `ICPProfile`, `RadarDefinition`, `SignalCriterion`, `SignalObservation`, `ICPScoringFormula`, `RadarCandidate`, and `SignalValidation` as planned contracts.
+  - Treat the attached SIBUR-style workbook as the first fixture source.
+  - Map workbook sheets:
+    - `Criteria` -> signal criteria C1-C20;
+    - `ICP Matrix` -> legal entities, stable account attributes, criterion scores, evidence refs, score components, tier;
+    - `Summary` -> ranked candidate shortlist;
+    - `Sources` -> evidence source registry.
+  - Record that future demo account/company/person names should be Russian-language examples.
+- Out of scope:
+  - Implementing XLSX parsing.
+  - Changing runtime artifacts.
+  - Live source search.
+  - UI implementation.
+- Implementation notes:
+  - Keep the current `AccountRadar` code name as a compatibility read model until the ICP Radar implementation replaces it.
+  - Use `ICP Radar` in product/docs/UI language for the upstream ABM funnel.
+- Tests:
+  - Documentation-only slice; no runtime tests required.
+- Docs:
+  - Update README, architecture overview, developer guide, user guide, demo docs, concept document, and roadmap.
+- Demo impact:
+  - Establishes that the next demo expansion is ТОиР/SIBUR-style ICP Radar, not another generic synthetic portfolio.
+- Acceptance criteria:
+  - Docs consistently describe the upstream module as `ICP Radar`.
+  - The ТОиР fixture contract is documented.
+  - The distinction between account discovery and signal monitoring is explicit.
+- Risks:
+  - Code names and product names may diverge temporarily; mitigate with a compatibility note.
+
+### Slice 0.6.2: ICP Radar XLSX fixture import loop
+
+- Status: `Backlog`
+- Goal: Turn the SIBUR-style XLSX analysis into a deterministic ICP Radar artifact and a first read-only `ICP Radar` screen.
+- User value: A user can inspect how a ТОиР ICP profile ranks legal entities before any account is accepted into Power Web work.
+- Scope:
+  - Add a fixture copy or normalized fixture derived from `sibur_icp_pass1.xlsx`.
+  - Add a parser/normalizer for the workbook structure or an intermediate JSON fixture generated from it.
+  - Build an `ICPRadarArtifact` with:
+    - radar definition;
+    - criteria C1-C20;
+    - legal entities;
+    - evidence sources;
+    - fit/intent/trigger/total score;
+    - tier;
+    - score explanation.
+  - Add a frontend `ICP Radar` screen showing candidates, score breakdown, main signal, evidence refs, and recommended triage action.
+  - Rename or adapt visible demo labels from Account Radar to ICP Radar where this screen is used.
+  - Replace generic demo company names and person names with Russian-language examples in the new ICP Radar fixture path.
+- Out of scope:
+  - Live search/scraping.
+  - Manual validation actions.
+  - Power Web generation for every candidate.
+  - Persistent storage.
+- Implementation notes:
+  - Prefer a normalized JSON fixture committed under `demo/` if direct XLSX parsing adds too much implementation risk.
+  - Preserve the original workbook as a source reference if licensing/privacy allows; otherwise document the local source path and commit only derived synthetic/normalized fixture data.
+  - Keep scoring deterministic and close to the workbook formula first.
+- Tests:
+  - Unit tests for criterion parsing/normalization.
+  - Unit tests for fit/intent/trigger/total score calculation.
+  - Smoke test that `generate-icp-radar` writes the artifact.
+  - Frontend contract test that the `ICP Radar` screen renders score breakdown and evidence links.
+  - `python -m pytest` and `npm --prefix ./frontend run build`.
+- Docs:
+  - Update user/developer/demo docs with the new command and fixture shape.
+- Demo impact:
+  - Demo starts to show the upstream ABM funnel before Power Web.
+- Acceptance criteria:
+  - The ТОиР fixture produces a ranked candidate list.
+  - Score explanations are traceable to criteria and evidence.
+  - Current Power Web / Access Plan demo remains runnable.
+- Risks:
+  - The real workbook may contain non-synthetic company data; mitigate by using a sanitized derived fixture if needed.
+
+### Slice 0.6.3: ICP Radar signal validation loop
+
+- Status: `Backlog`
+- Goal: Add human validation for found ICP Radar signals and make validation affect the candidate score.
+- User value: A user can prevent wrong, distorted, or stale information from driving account prioritization.
+- Scope:
+  - Add `SignalValidation` states: `unreviewed`, `confirmed`, `corrected`, `rejected`, `stale`.
+  - Add correction fields for criterion, strength, confidence, summary, and evidence mapping.
+  - Add a deterministic rescore service that uses validated signal state.
+  - Add UI controls to confirm, correct, reject, or mark a signal stale.
+  - Show before/after score impact and audit history.
+  - Keep validation local/demo-state only until persistence slice.
+- Out of scope:
+  - Multi-user review.
+  - Permanent database persistence.
+  - Live source re-checking.
+  - Automatic truth adjudication by LLM.
+- Implementation notes:
+  - Rejected and stale signals should remain visible in the evidence/audit trail but should not strengthen the score.
+  - Corrected signals should show both original observation and user override.
+- Tests:
+  - Unit tests for validation state transitions.
+  - Unit tests for score recalculation from validation decisions.
+  - Frontend contract tests for validation controls and score delta display.
+  - `python -m pytest` and `npm --prefix ./frontend run build`.
+- Docs:
+  - Update user/developer/architecture/demo docs with validation semantics.
+- Demo impact:
+  - User can manually validate radar evidence before accepting an account into work.
+- Acceptance criteria:
+  - Confirm/correct/reject/stale actions visibly change candidate score or contribution.
+  - Score explanation shows validation decisions.
+  - The action history is preserved in the artifact or local state.
+- Risks:
+  - Browser-only validation can be mistaken for persisted workflow; label it as local demo state until persistence exists.
+
+### Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web
+
+- Status: `Backlog`
+- Goal: Add the first handoff from an ICP Radar candidate into the existing Power Web / Access Plan loop.
+- User value: A user can decide which scored candidates deserve real account work instead of generating Power Webs for every found company.
+- Scope:
+  - Add candidate states: `monitoring`, `ready`, `accepted`, `rejected`, `snoozed`.
+  - Add a `Take into work` action for accepted candidates.
+  - Generate or map an accepted candidate into the existing account fixture shape.
+  - Show accepted accounts in the existing `Accounts` workspace.
+  - Keep unaccepted candidates in the ICP Radar queue.
+- Out of scope:
+  - Full CRM sync.
+  - Persistent assignment workflow.
+  - Bulk accept/reject.
+- Implementation notes:
+  - The handoff boundary should be explicit: ICP Radar decides account priority; Power Web starts only after acceptance.
+- Tests:
+  - Unit tests for candidate state transitions.
+  - Smoke test from ICP Radar candidate -> accepted account -> Access Plan artifact.
+  - Frontend contract test for `Take into work` and candidate state.
+- Docs:
+  - Update user/developer/demo docs with the handoff flow.
+- Demo impact:
+  - Demo becomes a fuller ABM loop: ICP profile -> candidates -> accepted account -> Power Web -> Access Plan.
+- Acceptance criteria:
+  - Accepted candidates appear in the Accounts workspace.
+  - Rejected/snoozed candidates do not generate Power Web work.
+  - The handoff remains explainable and reversible in demo state.
+- Risks:
+  - Handoff can pull in persistence too early; keep first implementation artifact/local-state based.
+
 ### Slice 0.7: Human review queue loop
 
 - Status: `Backlog`
@@ -810,6 +959,12 @@ Status:
   - Replaced the `Playbook` placeholder with a working read-only screen inside the Power Web OS shell.
   - Connected Access Plans review-rule explanation to `playbook_analysis.current`.
   - Added backend, frontend contract, build, and documentation coverage for the loop.
+- `Slice 0.6.1: ICP Radar terminology and ТОиР fixture contract`
+  - Renamed the upstream ABM radar concept to `ICP Radar` in docs and product architecture.
+  - Documented account discovery vs signal monitoring as separate processes.
+  - Recorded the SIBUR-style ТОиР workbook as the first ICP Radar fixture source.
+  - Added planned contracts for criteria, observations, validation, scoring, candidates, and take-into-work handoff.
+  - Added follow-up slices for XLSX import, signal validation, and ICP Radar to Power Web handoff.
 
 ## Blocked Items
 
@@ -817,6 +972,9 @@ None.
 
 ## Open Questions
 
+- Can the SIBUR-style workbook be committed as-is, or should the repository contain only a sanitized derived fixture?
+- Should the first ICP Radar demo use real-looking Russian company names from the workbook or fully synthetic Russian-language substitutes?
+- What is the first persistence mechanism for signal validation decisions before Slice 0.9: browser local state, generated JSON artifact, or lightweight local state file?
 - Which CRM should be the first integration target: file export, HubSpot, Salesforce, Bitrix24, amoCRM, or another system?
 - Which Russian/CIS data source should be first: procurement, HH, company websites, news, CRM history, or a partner ecosystem file?
 - Should the first durable UI be static demo, lightweight local web app, or API-backed app after Slice 0.2?
@@ -825,4 +983,4 @@ None.
 
 ## Next Recommended Task
 
-Complete `Slice 0.3: Frontend design-system validator`.
+Implement `Slice 0.6.2: ICP Radar XLSX fixture import loop`. Keep `Slice 0.3: Frontend design-system validator` as the next engineering hardening task.

@@ -2,13 +2,14 @@
 
 ## Product Context
 
-Power Web OS is a strategy layer for complex B2B sales. It finds account signals, builds a dynamic influence map around a target account, applies customer-specific sales playbook rules, and recommends explainable access routes.
+Power Web OS is a strategy layer for complex B2B sales. It runs ABM-oriented ICP Radars to discover and qualify target accounts, builds a dynamic influence map around accepted accounts, applies customer-specific sales playbook rules, and recommends explainable access routes.
 
 The product must use `mudrezzz/langgraph-document-ai-platform` for the AI-agent workflow layer.
 
 ## Architectural Goals
 
 - Keep recommendations white-box and evidence-backed.
+- Keep ICP/account selection explicit, configurable, and aligned with ABM profile strategy.
 - Keep CRM as system of record and Power Web OS as system of strategy.
 - Keep humans in control of sensitive commercial actions.
 - Support async batch analysis for 50-100 account MVP pilots.
@@ -20,7 +21,7 @@ The current baseline has:
 
 - domain entities for account access planning;
 - deterministic Access Planner;
-- deterministic Account Radar portfolio read model;
+- deterministic Account Radar portfolio read model for the current demo, to be evolved into the ICP Radar funnel;
 - deterministic Power Web Board selected-account read model;
 - deterministic Playbook Analysis selected-account read model;
 - `AccessPlanningWorkflow` with optional `langgraph-dai` integration and local fallback;
@@ -34,6 +35,7 @@ The current baseline has:
 |---|---|---|---|
 | Web UI / BFF | Product screens and user workflow | Account workspace, review queue, demo UX | Product API |
 | Frontend demo | Local product shell with active Accounts, Access Plans, Account Map, and Playbook screens | Reads generated Account Radar and Access Plan artifacts and renders planned workspace placeholders | Vite, design system |
+| ICP Radar | Configurable ABM account-search and signal-monitoring layer | ICP profile, discovery rules, signal criteria, scoring formula, candidate queue, signal validation state | Source connectors, evidence layer, domain scoring |
 | Account Radar | Deterministic portfolio read model | Portfolio score, top reason, best route, owner, review status | Domain services, Access Plan artifacts |
 | Power Web Board | Deterministic selected-account read model | Board summary, people/partner/missing nodes, account edges, highlighted route path | Account, Access Plan artifact |
 | Playbook Analysis | Deterministic selected-account read model | Current and what-if playbook snapshots, route policy decisions, review policy, route previews | Account, Playbook, Access Plan artifact |
@@ -59,6 +61,21 @@ Domain logic must not depend on transport, database, UI, or vendor APIs.
 
 ## Main Data Flow
 
+Target ICP Radar flow:
+
+```text
+ICP profile
+  -> account discovery rules
+  -> account universe / legal entities
+  -> signal monitoring runs
+  -> evidence-backed signal observations
+  -> human signal validation
+  -> transparent ICP score and tier
+  -> radar candidate queue
+  -> take into work
+  -> Power Web discovery
+```
+
 ```text
 Target accounts
   -> synthetic portfolio fixture
@@ -75,10 +92,12 @@ Target accounts
 Target production-oriented flow:
 
 ```text
-Target accounts
-  -> source collection
+ICP profile / radar definition
+  -> account discovery
+  -> source collection and monitoring
   -> canonical ingestion / indexing
-  -> signal extraction
+  -> signal extraction and validation
+  -> ICP score / candidate decision
   -> Power Web draft
   -> playbook rule evaluation
   -> access route generation
@@ -87,6 +106,24 @@ Target accounts
   -> outcome feedback
   -> Power Web state update
 ```
+
+## ICP Radar Boundary
+
+An ICP Radar is not the Power Web itself. It is the ABM funnel layer that decides which accounts are worth taking into work for a specific product and ICP profile.
+
+An ICP Radar owns:
+
+- `ICPProfile`: product, target industries, company-size thresholds, geography, exclusions, and qualification assumptions.
+- `RadarDefinition`: search scope, sources, run cadence, full/incremental mode, and radar-specific overrides.
+- `AccountDiscoveryRule`: stable legal-entity discovery and filtering rules, such as revenue, holding membership, asset type, and whether buying decisions are likely made independently.
+- `SignalCriterion`: configurable signal definitions, such as ТОиР/EAM, predictive diagnostics, tenders, hiring, modernization, incidents, import substitution, or ESG/safety.
+- `SignalObservation`: a concrete found signal with source, date, confidence, strength, evidence refs, novelty fingerprint, and validation status.
+- `ICPScoringFormula`: transparent fit/intent/trigger aggregation and tier thresholds.
+- `RadarCandidate`: a scored account candidate before it is accepted into Power Web work.
+
+The first realistic demo ICP profile should use the attached SIBUR-style ТОиР automation analysis as a fixture. It should discover Russian legal entities inside a holding, score them against ТОиР criteria, and only send accepted candidates into the existing Power Web / Access Plan loop.
+
+Signal validation is part of the ICP Radar boundary. A human must be able to confirm, correct, reject, or mark a signal as stale. Validation changes must affect the score and preserve an audit trail explaining why the candidate score changed.
 
 ## LangGraph Platform Usage
 
@@ -118,13 +155,17 @@ The demo should evolve through these stages:
 4. Account Radar batch over multiple fixtures.
 5. Power Web Lite board for the selected account.
 6. Playbook Analysis for current and no-partner-motion route previews.
-7. Review queue and approved CRM task export.
+7. ICP Radar fixture using the ТОиР/SIBUR-style analysis and Russian-language demo companies.
+8. ICP Radar signal validation with score recalculation.
+9. Review queue and approved CRM task export.
 
 ## Trade-Offs
 
 - Start with Postgres-friendly edge tables instead of a graph database. This keeps MVP infrastructure small.
 - Start with deterministic planner rules before LLM orchestration. This keeps explanations testable.
 - Keep external source connectors behind tools. This prevents scraping/vendor concerns from leaking into the domain.
+- Split account discovery from signal monitoring. Legal-entity discovery changes slowly and can be imported or run manually; signal monitoring is recurring and should support incremental dedupe.
+- Treat ICP Radar scoring as configurable but constrained. Formulas should be transparent and auditable, not arbitrary executable code.
 
 ## Open Questions
 

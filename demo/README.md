@@ -58,9 +58,25 @@ The frontend command prints a local Vite URL. Open it to inspect Account Radar, 
 - `frontend/public/demo/account_radar.json`
 - `frontend/public/demo/access_plans/{account_id}.json`
 
+## Planned ICP Radar Demo Fixture
+
+The next demo fixture should move the upstream account-selection story from generic synthetic accounts to a Russian-language ICP Radar example for ТОиР automation products.
+
+The fixture source is the SIBUR-style spreadsheet analysis:
+
+- `Criteria`: signal criteria for the ТОиР ICP profile;
+- `ICP Matrix`: legal entities, stable qualification attributes, criterion scores, evidence refs, fit/intent/trigger scores, total score, and tier;
+- `Summary`: ranked shortlist and recommended triage action;
+- `Sources`: evidence source registry.
+
+The demo should use Russian company names and Russian person names for generated account, Power Web, and Access Plan data. The current English fictional account names are acceptable only until the ICP Radar fixture slice replaces the demo perimeter.
+
+Signal validation must be visible in the demo once implemented: users should be able to confirm, correct, reject, or mark found signals stale, and the visible ICP score should update from those validation decisions.
+
 ## Known Limitations
 
 - The planner is deterministic.
+- ICP Radar discovery and signal validation are not implemented yet.
 - No live source connectors yet.
 - No CRM export yet.
 - No persisted review or feedback loop yet.

@@ -54,6 +54,51 @@ The current Python package contains:
 
 The deterministic planner owns route scoring. `AccessPlanningWorkflow` orchestrates typed state, planner invocation, artifact shaping, and workflow metadata. `AccountRadar` builds the portfolio read model from generated Access Plans and owns deterministic account ranking. `PowerWebBoardBuilder` builds the selected-account board read model from the generated Access Plan and current account roles/missing roles. `PlaybookAnalysisBuilder` builds a read-only explanation of playbook effects over the generated routes, including the current playbook and the deterministic `no_partner_motion` what-if variant. The workflow uses `langgraph-dai` when the optional `agent` extra is installed and falls back to a local runner for base tests.
 
+## ICP Radar Funnel
+
+The next ABM layer is `ICP Radar`. It sits before the current Account / Power Web / Access Plan loop.
+
+Terminology:
+
+- `ICP Radar`: product/ICP-specific radar that discovers and monitors candidate accounts.
+- `AccountRadar`: current deterministic portfolio read model in code. It may remain as an internal compatibility name until the ICP Radar layer is implemented.
+- `Account discovery`: stable or manually imported legal-entity discovery, for example companies inside a holding.
+- `Signal monitoring`: recurring search for current evidence and buying signals against discovered accounts.
+- `Radar candidate`: an account that has been scored but has not yet been accepted into Power Web work.
+
+Expected first fixture:
+
+- Use the SIBUR-style ТОиР automation spreadsheet as the source fixture.
+- Model the `Criteria` sheet as `SignalCriterion` records.
+- Model the `ICP Matrix` sheet as legal entities, evidence refs, criterion scores, fit/intent/trigger totals, and tier.
+- Model `Sources` as evidence-source metadata.
+- Convert demo company names and people to Russian-language examples when the UI moves to this fixture.
+
+Expected future domain objects:
+
+```text
+ICPProfile
+RadarDefinition
+AccountDiscoveryRule
+SignalCriterion
+SignalObservation
+SignalValidation
+ICPScoringFormula
+RadarCandidate
+RadarRun
+```
+
+Discovery and monitoring must stay separate. Discovery can be run once or imported manually because legal-entity structure changes slowly. Monitoring should run repeatedly and support incremental mode through evidence fingerprints so previously seen facts are not scored as new signals.
+
+Signal validation is a first-class domain concern. A user must be able to:
+
+- confirm a found signal;
+- correct its criterion, strength, confidence, summary, or evidence mapping;
+- reject it as wrong or distorted;
+- mark it stale when it is no longer actionable.
+
+Validated signals feed the final score. Rejected and stale signals must reduce or remove their scoring contribution while preserving evidence and audit history. The score explanation must show raw observations, validation decisions, and the resulting fit/intent/trigger contribution.
+
 ## Access Planning Workflow
 
 The first product loop is:

@@ -2,12 +2,15 @@
 
 ## What Power Web OS Does
 
-Power Web OS helps a sales or ABM team answer four questions for a target account:
+Power Web OS helps a sales or ABM team answer five questions:
 
-1. Why is this account relevant now?
-2. Who influences the buying decision?
-3. Which access routes are allowed by our playbook?
-4. What next move should a human review and execute?
+1. Which accounts match a specific ICP profile now?
+2. Why is this account relevant now?
+3. Who influences the buying decision?
+4. Which access routes are allowed by our playbook?
+5. What next move should a human review and execute?
+
+The planned upstream module is called `ICP Radar`. An ICP Radar is configured for a product and market profile, such as ТОиР automation for large Russian petrochemical and industrial companies. It discovers candidate accounts, monitors evidence-backed signals, scores them transparently, and sends only accepted accounts into Power Web work.
 
 ## Current Demo
 
@@ -63,7 +66,17 @@ The generated JSON artifact is also available at:
 
 ## Current Limitations
 
+- ICP Radar discovery and signal validation are not implemented in the current UI yet.
 - No live CRM integration yet.
 - No live source connectors yet.
 - No production API server yet.
 - No persisted review or feedback loop yet.
+
+## Planned ICP Radar Flow
+
+The first ICP Radar demo should use a ТОиР automation profile based on the SIBUR-style spreadsheet analysis. It will separate two jobs:
+
+- account discovery: find and qualify legal entities inside a holding, using stable attributes such as revenue, asset type, site, INN, and whether decisions are made independently;
+- signal monitoring: repeatedly collect current signals such as tenders, ТОиР/EAM mentions, predictive diagnostics, modernization, incidents, hiring, and import-substitution activity.
+
+Each found signal should have evidence and a validation state. A user should be able to confirm, correct, reject, or mark a signal as stale. The final ICP score should update from validated signals and show the breakdown by fit, intent, trigger, evidence, and manual validation decisions.

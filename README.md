@@ -2,7 +2,7 @@
 
 Power Web OS is a white-box account access planning platform for complex B2B sales.
 
-It turns public and first-party account signals into explainable account plays: which account matters now, who influences the deal, which access route is allowed by the sales playbook, and what next move should be reviewed and executed by a human.
+It turns public and first-party account signals into explainable account plays: which ICP-matching account matters now, who influences the deal, which access route is allowed by the sales playbook, and what next move should be reviewed and executed by a human.
 
 The proposed repository name is `power-web-os`.
 
@@ -11,7 +11,7 @@ The proposed repository name is `power-web-os`.
 Power Web OS is not a CRM, contact database, or outreach automation tool. It is a strategy layer above CRM:
 
 ```text
-Signals + Dynamic Power Web + Sales Playbook + Access Plan + CRM Feedback = managed account access.
+ICP Radar + Dynamic Power Web + Sales Playbook + Access Plan + CRM Feedback = managed account access.
 ```
 
 The source requirements are:
@@ -34,6 +34,8 @@ Slice 0.6 is implemented. The repository contains:
 - React + TypeScript + Vite frontend demo inside a bounded Power Web OS workspace shell with Accounts, Access Plans, Account Map, and Playbook screens;
 - EN/RU UI and visible demo data switching;
 - pytest baseline.
+
+The next product direction is an ABM-oriented `ICP Radar` layer before Power Web work: configurable ICP profiles, account discovery, recurring signal monitoring, human validation of found signals, transparent scoring, and a `take into work` handoff into Power Web discovery. The first realistic fixture should use the ТОиР/SIBUR-style analysis workbook.
 
 The next implementation slice is the frontend design-system validator.
 
