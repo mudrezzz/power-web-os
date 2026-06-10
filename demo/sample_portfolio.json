@@ -4,7 +4,7 @@
       "stage": "Mapping",
       "account": {
         "account_id": "acct-vitamin-bank",
-        "name": "Vitamin Bank",
+        "name": "Банк Витамин",
         "icp_fit": 0.88,
         "missing_roles": ["economic_buyer", "security_gatekeeper"],
         "signals": [
@@ -38,13 +38,13 @@
         "roles": [
           {
             "role": "Head of Data",
-            "person_name": "Ivan Petrov",
+            "person_name": "Иван Петров",
             "state": "identified",
             "influence": 0.82
           },
           {
             "role": "Integrator",
-            "person_name": "X-Soft",
+            "person_name": "Икс-Софт",
             "state": "hypothesis",
             "influence": 0.74,
             "relation": "partner"
@@ -63,7 +63,7 @@
       "stage": "Access",
       "account": {
         "account_id": "acct-northwind-robotics",
-        "name": "Northwind Robotics",
+        "name": "Северные Роботы",
         "icp_fit": 0.91,
         "missing_roles": ["economic_buyer"],
         "signals": [
@@ -97,43 +97,43 @@
         "roles": [
           {
             "role": "VP Engineering",
-            "person_name": "Marcus Bell",
+            "person_name": "Максим Беляев",
             "state": "identified",
             "influence": 0.86
           },
           {
             "role": "CIO",
-            "person_name": "Alicia Grant",
+            "person_name": "Алиса Грантова",
             "state": "identified",
             "influence": 0.9
           },
           {
             "role": "Head of Data Platform",
-            "person_name": "Sofia Chen",
+            "person_name": "София Чернова",
             "state": "identified",
             "influence": 0.84
           },
           {
             "role": "Security Architect",
-            "person_name": "Owen Park",
+            "person_name": "Олег Парков",
             "state": "blocker",
             "influence": 0.62
           },
           {
             "role": "Procurement Lead",
-            "person_name": "Priya Shah",
+            "person_name": "Полина Шахова",
             "state": "identified",
             "influence": 0.76
           },
           {
             "role": "Operations Sponsor",
-            "person_name": "Elena Ruiz",
+            "person_name": "Елена Руднева",
             "state": "hypothesis",
             "influence": 0.58
           },
           {
             "role": "Integrator",
-            "person_name": "Helix Systems",
+            "person_name": "Геликс Системы",
             "state": "identified",
             "influence": 0.79,
             "relation": "partner"
@@ -152,7 +152,7 @@
       "stage": "Mapping",
       "account": {
         "account_id": "acct-vantage-logistics",
-        "name": "Vantage Logistics",
+        "name": "Вектор Логистика",
         "icp_fit": 0.82,
         "missing_roles": [],
         "signals": [
@@ -173,13 +173,13 @@
         "roles": [
           {
             "role": "Head of Data",
-            "person_name": "Maya Cohen",
+            "person_name": "Майя Коган",
             "state": "identified",
             "influence": 0.8
           },
           {
             "role": "Integrator",
-            "person_name": "RouteWorks",
+            "person_name": "Маршрутные Системы",
             "state": "identified",
             "influence": 0.68,
             "relation": "partner"
@@ -198,7 +198,7 @@
       "stage": "Qualifying",
       "account": {
         "account_id": "acct-brightline-health",
-        "name": "Brightline Health",
+        "name": "Светлая Линия Мед",
         "icp_fit": 0.73,
         "missing_roles": ["security_gatekeeper"],
         "signals": [
@@ -219,7 +219,7 @@
         "roles": [
           {
             "role": "Integrator",
-            "person_name": "MedSys Advisory",
+            "person_name": "МедСис Консалтинг",
             "state": "hypothesis",
             "influence": 0.71,
             "relation": "partner"
@@ -238,7 +238,7 @@
       "stage": "Access",
       "account": {
         "account_id": "acct-orbit-manufacturing",
-        "name": "Orbit Manufacturing",
+        "name": "Орбита Производство",
         "icp_fit": 0.79,
         "missing_roles": [],
         "signals": [
@@ -259,7 +259,7 @@
         "roles": [
           {
             "role": "Integrator",
-            "person_name": "FactoryCore",
+            "person_name": "ФабрикаСофт",
             "state": "identified",
             "influence": 0.76,
             "relation": "partner"
@@ -278,7 +278,7 @@
       "stage": "Mapping",
       "account": {
         "account_id": "acct-caldera-energy",
-        "name": "Caldera Energy",
+        "name": "Кальдера Энерго",
         "icp_fit": 0.62,
         "missing_roles": ["economic_buyer", "technical_champion", "security_gatekeeper"],
         "signals": [
@@ -299,7 +299,7 @@
         "roles": [
           {
             "role": "Procurement Lead",
-            "person_name": "Nora Mills",
+            "person_name": "Нина Мельникова",
             "state": "hypothesis",
             "influence": 0.5
           }

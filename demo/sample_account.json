@@ -1,7 +1,7 @@
 {
   "account": {
     "account_id": "acct-vitamin-bank",
-    "name": "Vitamin Bank",
+    "name": "Банк Витамин",
     "icp_fit": 0.88,
     "missing_roles": ["economic_buyer", "security_gatekeeper"],
     "signals": [
@@ -35,13 +35,13 @@
     "roles": [
       {
         "role": "Head of Data",
-        "person_name": "Ivan Petrov",
+        "person_name": "Иван Петров",
         "state": "identified",
         "influence": 0.82
       },
       {
         "role": "Integrator",
-        "person_name": "X-Soft",
+        "person_name": "Икс-Софт",
         "state": "hypothesis",
         "influence": 0.74,
         "relation": "partner"

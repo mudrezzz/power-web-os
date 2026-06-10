@@ -3,7 +3,7 @@
   "artifact_version": "0.2",
   "account": {
     "account_id": "acct-vitamin-bank",
-    "name": "Vitamin Bank",
+    "name": "Банк Витамин",
     "icp_fit": 0.88,
     "signals": [
       {
@@ -36,14 +36,14 @@
     "roles": [
       {
         "role": "Head of Data",
-        "person_name": "Ivan Petrov",
+        "person_name": "Иван Петров",
         "state": "identified",
         "influence": 0.82,
         "relation": null
       },
       {
         "role": "Integrator",
-        "person_name": "X-Soft",
+        "person_name": "Икс-Софт",
         "state": "hypothesis",
         "influence": 0.74,
         "relation": "partner"
@@ -75,7 +75,7 @@
   },
   "access_plan": {
     "account_id": "acct-vitamin-bank",
-    "account_name": "Vitamin Bank",
+    "account_name": "Банк Витамин",
     "unresolved_gaps": [
       "economic_buyer",
       "security_gatekeeper"
@@ -85,7 +85,7 @@
         "route_type": "technical_benchmark",
         "title": "Invite technical stakeholder to a benchmark",
         "score": 85,
-        "reason": "Seven open Data Engineer and DWH Architect roles suggest an active data platform initiative.; Ivan Petrov can become a technical champion.",
+        "reason": "Seven open Data Engineer and DWH Architect roles suggest an active data platform initiative.; Иван Петров can become a technical champion.",
         "risk": "Economic buyer is not confirmed yet.",
         "owner": "Account Executive",
         "evidence_refs": [
@@ -98,7 +98,7 @@
         "route_type": "partner_intro",
         "title": "Request partner intro",
         "score": 82,
-        "reason": "X-Soft is connected to the account as partner.",
+        "reason": "Икс-Софт is connected to the account as partner.",
         "risk": "Partner may be aligned with an incumbent competitor.",
         "owner": "Partner Manager",
         "evidence_refs": [
@@ -125,7 +125,7 @@
   },
   "power_web_board": {
     "account_id": "acct-vitamin-bank",
-    "account_name": "Vitamin Bank",
+    "account_name": "Банк Витамин",
     "summary": {
       "visible_count": 2,
       "missing_count": 2,
@@ -137,7 +137,7 @@
     "nodes": [
       {
         "node_id": "account:acct-vitamin-bank",
-        "label": "Vitamin Bank",
+        "label": "Банк Витамин",
         "node_type": "account",
         "role": "account",
         "state": "selected",
@@ -150,8 +150,8 @@
         "relation": null
       },
       {
-        "node_id": "role:ivan-petrov",
-        "label": "Ivan Petrov",
+        "node_id": "role:иван-петров",
+        "label": "Иван Петров",
         "node_type": "person",
         "role": "Head of Data",
         "state": "identified",
@@ -164,8 +164,8 @@
         "relation": null
       },
       {
-        "node_id": "role:x-soft",
-        "label": "X-Soft",
+        "node_id": "role:икс-софт",
+        "label": "Икс-Софт",
         "node_type": "partner",
         "role": "Integrator",
         "state": "hypothesis",
@@ -208,16 +208,16 @@
     ],
     "edges": [
       {
-        "edge_id": "role:ivan-petrov->account:acct-vitamin-bank",
-        "source": "role:ivan-petrov",
+        "edge_id": "role:иван-петров->account:acct-vitamin-bank",
+        "source": "role:иван-петров",
         "target": "account:acct-vitamin-bank",
         "edge_type": "account_to_role",
         "highlighted": true,
         "label": "account_to_role"
       },
       {
-        "edge_id": "role:x-soft->account:acct-vitamin-bank",
-        "source": "role:x-soft",
+        "edge_id": "role:икс-софт->account:acct-vitamin-bank",
+        "source": "role:икс-софт",
         "target": "account:acct-vitamin-bank",
         "edge_type": "partner_to_account",
         "highlighted": false,
@@ -241,7 +241,7 @@
       }
     ],
     "route_path": [
-      "role:ivan-petrov",
+      "role:иван-петров",
       "account:acct-vitamin-bank"
     ]
   },
@@ -272,7 +272,7 @@
       },
       "route_preview": {
         "account_id": "acct-vitamin-bank",
-        "account_name": "Vitamin Bank",
+        "account_name": "Банк Витамин",
         "unresolved_gaps": [
           "economic_buyer",
           "security_gatekeeper"
@@ -282,7 +282,7 @@
             "route_type": "technical_benchmark",
             "title": "Invite technical stakeholder to a benchmark",
             "score": 85,
-            "reason": "Seven open Data Engineer and DWH Architect roles suggest an active data platform initiative.; Ivan Petrov can become a technical champion.",
+            "reason": "Seven open Data Engineer and DWH Architect roles suggest an active data platform initiative.; Иван Петров can become a technical champion.",
             "risk": "Economic buyer is not confirmed yet.",
             "owner": "Account Executive",
             "evidence_refs": [
@@ -295,7 +295,7 @@
             "route_type": "partner_intro",
             "title": "Request partner intro",
             "score": 82,
-            "reason": "X-Soft is connected to the account as partner.",
+            "reason": "Икс-Софт is connected to the account as partner.",
             "risk": "Partner may be aligned with an incumbent competitor.",
             "owner": "Partner Manager",
             "evidence_refs": [
@@ -388,7 +388,7 @@
         },
         "route_preview": {
           "account_id": "acct-vitamin-bank",
-          "account_name": "Vitamin Bank",
+          "account_name": "Банк Витамин",
           "unresolved_gaps": [
             "economic_buyer",
             "security_gatekeeper"
@@ -398,7 +398,7 @@
               "route_type": "technical_benchmark",
               "title": "Invite technical stakeholder to a benchmark",
               "score": 85,
-              "reason": "Seven open Data Engineer and DWH Architect roles suggest an active data platform initiative.; Ivan Petrov can become a technical champion.",
+              "reason": "Seven open Data Engineer and DWH Architect roles suggest an active data platform initiative.; Иван Петров can become a technical champion.",
               "risk": "Economic buyer is not confirmed yet.",
               "owner": "Account Executive",
               "evidence_refs": [

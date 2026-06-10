@@ -3,19 +3,35 @@ import { AppShell, type ScreenId } from './layout/AppShell';
 import { AccessPlansScreen } from './screens/AccessPlansScreen';
 import { AccountsScreen } from './screens/AccountsScreen';
 import { AccountMapScreen } from './screens/AccountMapScreen';
+import { ICPRadarScreen } from './screens/ICPRadarScreen';
 import { PlannedScreen } from './screens/PlannedScreen';
 import { PlaybookScreen } from './screens/PlaybookScreen';
-import type { AccountRadarArtifact, AccountRadarItem, AccessPlanArtifact } from './types';
+import type { AccountRadarArtifact, AccountRadarItem, AccessPlanArtifact, ICPRadarArtifact } from './types';
 
+const icpRadarArtifactUrl = '/demo/icp_radar.json';
 const radarArtifactUrl = '/demo/account_radar.json';
 
 export function App() {
-  const [activeScreen, setActiveScreen] = useState<ScreenId>('accounts');
+  const [activeScreen, setActiveScreen] = useState<ScreenId>('icp_radar');
+  const [icpRadarArtifact, setIcpRadarArtifact] = useState<ICPRadarArtifact | null>(null);
+  const [icpRadarError, setIcpRadarError] = useState<string | null>(null);
   const [radarArtifact, setRadarArtifact] = useState<AccountRadarArtifact | null>(null);
   const [radarError, setRadarError] = useState<string | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [artifact, setArtifact] = useState<AccessPlanArtifact | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(icpRadarArtifactUrl)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`ICP Radar artifact request failed with ${response.status}`);
+        }
+        return response.json() as Promise<ICPRadarArtifact>;
+      })
+      .then(setIcpRadarArtifact)
+      .catch((requestError: Error) => setIcpRadarError(requestError.message));
+  }, []);
 
   useEffect(() => {
     fetch(radarArtifactUrl)
@@ -57,7 +73,9 @@ export function App() {
 
   return (
     <AppShell activeScreen={activeScreen} artifact={artifact} onNavigate={setActiveScreen}>
-      {activeScreen === 'accounts' ? (
+      {activeScreen === 'icp_radar' ? (
+        <ICPRadarScreen artifact={icpRadarArtifact} error={icpRadarError} />
+      ) : activeScreen === 'accounts' ? (
         <AccountsScreen
           artifact={radarArtifact}
           error={radarError}

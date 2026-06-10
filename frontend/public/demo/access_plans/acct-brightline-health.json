@@ -3,7 +3,7 @@
   "artifact_version": "0.2",
   "account": {
     "account_id": "acct-brightline-health",
-    "name": "Brightline Health",
+    "name": "Светлая Линия Мед",
     "icp_fit": 0.73,
     "signals": [
       {
@@ -23,7 +23,7 @@
     "roles": [
       {
         "role": "Integrator",
-        "person_name": "MedSys Advisory",
+        "person_name": "МедСис Консалтинг",
         "state": "hypothesis",
         "influence": 0.71,
         "relation": "partner"
@@ -52,7 +52,7 @@
   },
   "access_plan": {
     "account_id": "acct-brightline-health",
-    "account_name": "Brightline Health",
+    "account_name": "Светлая Линия Мед",
     "unresolved_gaps": [
       "security_gatekeeper"
     ],
@@ -61,7 +61,7 @@
         "route_type": "partner_intro",
         "title": "Request partner intro",
         "score": 76,
-        "reason": "MedSys Advisory is connected to the account as partner.",
+        "reason": "МедСис Консалтинг is connected to the account as partner.",
         "risk": "Partner may be aligned with an incumbent competitor.",
         "owner": "Partner Manager",
         "evidence_refs": [
@@ -100,7 +100,7 @@
   },
   "power_web_board": {
     "account_id": "acct-brightline-health",
-    "account_name": "Brightline Health",
+    "account_name": "Светлая Линия Мед",
     "summary": {
       "visible_count": 1,
       "missing_count": 1,
@@ -112,7 +112,7 @@
     "nodes": [
       {
         "node_id": "account:acct-brightline-health",
-        "label": "Brightline Health",
+        "label": "Светлая Линия Мед",
         "node_type": "account",
         "role": "account",
         "state": "selected",
@@ -125,8 +125,8 @@
         "relation": null
       },
       {
-        "node_id": "role:medsys-advisory",
-        "label": "MedSys Advisory",
+        "node_id": "role:медсис-консалтинг",
+        "label": "МедСис Консалтинг",
         "node_type": "partner",
         "role": "Integrator",
         "state": "hypothesis",
@@ -155,8 +155,8 @@
     ],
     "edges": [
       {
-        "edge_id": "role:medsys-advisory->account:acct-brightline-health",
-        "source": "role:medsys-advisory",
+        "edge_id": "role:медсис-консалтинг->account:acct-brightline-health",
+        "source": "role:медсис-консалтинг",
         "target": "account:acct-brightline-health",
         "edge_type": "partner_to_account",
         "highlighted": true,
@@ -172,7 +172,7 @@
       }
     ],
     "route_path": [
-      "role:medsys-advisory",
+      "role:медсис-консалтинг",
       "account:acct-brightline-health"
     ]
   },
@@ -201,7 +201,7 @@
       },
       "route_preview": {
         "account_id": "acct-brightline-health",
-        "account_name": "Brightline Health",
+        "account_name": "Светлая Линия Мед",
         "unresolved_gaps": [
           "security_gatekeeper"
         ],
@@ -210,7 +210,7 @@
             "route_type": "partner_intro",
             "title": "Request partner intro",
             "score": 76,
-            "reason": "MedSys Advisory is connected to the account as partner.",
+            "reason": "МедСис Консалтинг is connected to the account as partner.",
             "risk": "Partner may be aligned with an incumbent competitor.",
             "owner": "Partner Manager",
             "evidence_refs": [
@@ -311,7 +311,7 @@
         },
         "route_preview": {
           "account_id": "acct-brightline-health",
-          "account_name": "Brightline Health",
+          "account_name": "Светлая Линия Мед",
           "unresolved_gaps": [
             "security_gatekeeper"
           ],

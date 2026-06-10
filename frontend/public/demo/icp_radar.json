@@ -1,0 +1,2002 @@
+{
+  "artifact_type": "icp_radar",
+  "artifact_version": "0.6.2",
+  "radar": {
+    "profile": {
+      "profile_id": "toir-sibur",
+      "name": "ТОиР automation ICP Radar",
+      "product": "Автоматизация ТОиР",
+      "holding": "СИБУР",
+      "run_mode": "fixture_import",
+      "source_workbook": "sibur_icp_pass1.xlsx",
+      "scoring_formula": {
+        "fit_score": "C13 + C14 + C15 + C16 + C17",
+        "intent_score": "C1..C9 + C18 + C19",
+        "trigger_score": "C10 + C11 + C12 + C20",
+        "total_score": "sum(C1..C20)",
+        "tiers": {
+          "Tier 1": ">=38",
+          "Tier 2": ">=25",
+          "Tier 3": ">=15",
+          "Monitor": "<15"
+        }
+      }
+    },
+    "criteria": [
+      {
+        "code": "C1",
+        "name": "ТОиР / EAM",
+        "description": "Упоминание ТОиР, EAM, планирования ремонтов, управления надежностью",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C2",
+        "name": "Предиктив / диагностика",
+        "description": "Упоминание предиктивной диагностики, прогнозирования отказов, мониторинга состояния",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C3",
+        "name": "ПРАНА",
+        "description": "Наличие прямого следа ПРАНА / РОТЕК / прогнозная аналитика по объекту",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C4",
+        "name": "Текущий стек ТОиР/APM",
+        "description": "След 1С:ТОИР, Галактика EAM/ERP, GE SmartSignal/Meridium, SAP PM/Maximo или близких систем",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C5",
+        "name": "Цифровизация производства",
+        "description": "Новости/кейсы цифровой трансформации производства, цифровые платформы, умный завод",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C6",
+        "name": "АСУТП / IIoT / датчики",
+        "description": "АСУТП, SCADA, КИПиА, IIoT, сенсоры, телеметрия, APC/RTO",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C7",
+        "name": "Мобильные обходы / цифровые ремонты",
+        "description": "Мобильный ТОиР, электронные наряд-допуски, цифровые ремонты, Горизонт, обходы",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C8",
+        "name": "Вакансии ТОиР/надежность",
+        "description": "Открытые вакансии или карьерные материалы по ТОиР, надежности, диагностике, КИПиА",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C9",
+        "name": "Вакансии data/ML/аналитика",
+        "description": "Вакансии/публичная активность по data science, промышленной аналитике, ML/AI",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C10",
+        "name": "Смена руководства / ИТ",
+        "description": "Назначения директора, главного инженера, CIO/CTO, руководителей производственного/ИТ-блока",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C11",
+        "name": "Инциденты / остановы / риски",
+        "description": "Аварии, остановы, предписания, крупные остановочные ремонты, риск внеплановых остановок",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C12",
+        "name": "Модернизация / капвложения",
+        "description": "Модернизация, техперевооружение, реконструкция, новые мощности, капстроительство",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C13",
+        "name": "Критичное вращающееся оборудование",
+        "description": "Насосы, компрессоры, турбины, вентиляторы, экструдеры, грануляторы и т.п.",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C14",
+        "name": "Непрерывное / крупнотоннажное производство",
+        "description": "Непрерывные технологические процессы, крупнотоннажная нефтехимия/энергетика/логистика",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C15",
+        "name": "Большой парк оборудования",
+        "description": "Много однотипных единиц оборудования, линий, установок, трубопроводов, цистерн",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C16",
+        "name": "Распределенная география",
+        "description": "Несколько площадок, филиалы, удаленные объекты, распределенная сеть",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C17",
+        "name": "Расходы на ремонты / ЗИП / подрядчиков",
+        "description": "Сигналы закупок/ремонтов/подрядчиков/ремонтных программ",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C18",
+        "name": "Тендеры по диагностике/ремонтам/ПО",
+        "description": "Закупки на ТОиР, диагностику, КИПиА, АСУТП, обслуживание, ремонтное ПО",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C19",
+        "name": "Импортозамещение ПО/технологий",
+        "description": "Замещение GE/SAP/зарубежного ПО, импортозамещение оборудования/технологий",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      },
+      {
+        "code": "C20",
+        "name": "ESG / ПБ / энергоэффективность",
+        "description": "Промбезопасность, снижение рисков/выбросов, энергоэффективность, устойчивость",
+        "scoring_guidance": "0 = не найдено; 1 = косвенный сигнал; 2 = прямой/умеренный сигнал; 3 = сильный свежий или явный сигнал"
+      }
+    ],
+    "sources": [
+      {
+        "source_id": "sibur_digital",
+        "url": "https://www.sibur.ru/digital/",
+        "usage": "Групповые цифровые сигналы: ERP, MES/SCADA, Data Science, IoT, AI/ML"
+      },
+      {
+        "source_id": "career_engineer",
+        "url": "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/",
+        "usage": "Карьерный сигнал по инженерам: ТОиР, предиктивная аналитика, SAP, аварийный ремонт"
+      },
+      {
+        "source_id": "career_rzia",
+        "url": "https://career.sibur.ru/vacancies/ekspert-rzia/",
+        "usage": "Вакансия/карьерный сигнал по надежности РЗиА, отказам, ТОиР и риск-ориентированному подходу"
+      },
+      {
+        "source_id": "vsk_digital",
+        "url": "https://www.sibur.ru/ru/press-center/news-and-press/SIBUR-provel-vorkshop-na-festivale-internet-tekhnologiy-v-Voronezhe/",
+        "usage": "Воронежсинтезкаучук: мобильный ТОиР, техническое зрение, 3D-сканер/принтер"
+      },
+      {
+        "source_id": "vsk_reliability",
+        "url": "https://www.sibur.ru/voronejkauchuk/press-center/voronezhsintezkauchuk-napravil-bolee-3-mlrd-rubley-na-povyshenie-nadezhnosti-i-ekologichnosti-predpr/",
+        "usage": "Воронежсинтезкаучук: вложения в надежность и экологичность"
+      },
+      {
+        "source_id": "nknh_ep600",
+        "url": "https://www.sibur.ru/ru/press-center/news-and-press/sibur-zavershil-stroitelstvo-ep-600/",
+        "usage": "НКНХ/ЭП-600: предиктивная аналитика, 70 000 датчиков, автоматизация"
+      },
+      {
+        "source_id": "nknh_horizon",
+        "url": "https://www.sibur.ru/nknh/ru/press-center/sibur-uvelichil-mezhremontnyy-interval-i-povysil-nadezhnost-klyuchevykh-proizvodstv-nizhnekamsknefte/",
+        "usage": "НКНХ: цифровая платформа ремонтов Горизонт от диагностики до анализа итогов"
+      },
+      {
+        "source_id": "kos_repair",
+        "url": "https://www.sibur.ru/kazanorgsintez/ru/press-center/kazanorgsintez-pristupil-k-planovomu-ostanovochnomu-remontu-proizvodstvennykh-moshchnostey/",
+        "usage": "Казаньоргсинтез: 3453 единицы оборудования, цифровой остановочный ремонт, Горизонт, наряды"
+      },
+      {
+        "source_id": "zsn_repair",
+        "url": "https://www.sibur.ru/zapsibneftekhim/press-center/zapsibneftekhim-sokrashchaet-sroki-obsluzhivaniya-tekhnologicheskogo-oborudovaniya-blagodarya-modern/",
+        "usage": "ЗапСибНефтехим: модернизация ремонтного комплекса, ЧПУ, цифровые модели деталей"
+      },
+      {
+        "source_id": "zstg_repair",
+        "url": "https://www.sibur.ru/zapsibtransgaz/press-center/zapsibtransgaz-provodit-planovye-remontnye-raboty-c-tselyu-povysheniya-nadezhnosti-gazotransportnoy-/",
+        "usage": "Запсибтрансгаз: диагностика и ремонты трубопроводов, система обнаружения утечек"
+      },
+      {
+        "source_id": "biax_asutp",
+        "url": "https://simit.su/projects/sibur-biaksplen-g-zheleznodorozhnyj-modernizacija-asu-tp-linii-proizvodstva/",
+        "usage": "БИАКСПЛЕН: модернизация АСУТП, замена >103 преобразователей"
+      },
+      {
+        "source_id": "biax_robots",
+        "url": "https://www.sibur.ru/biaxplen/ru/press-center/rabotayushchiy-v-sostave-sibura-biaksplen-avtomatiziruet-rutinnye-protsessy-s-ispolzovaniem-robotov/",
+        "usage": "БИАКСПЛЕН: роботы на площадках Балахна/Томск"
+      },
+      {
+        "source_id": "kzsk_invest",
+        "url": "https://www.sibur.ru/kzsk/press-center/kauchuki-krasnoyarskogo-zavoda-sinteticheskogo-kauchuka-v-reestre-rossiyskoy-promyshlennoy-produktsi/",
+        "usage": "КЗСК: инвестиционный проект и увеличение мощности"
+      },
+      {
+        "source_id": "databriz",
+        "url": "https://www.cnews.ru/news/line/2019-09-19_permskaya_itkompaniya_databriz",
+        "usage": "СИБУР-Химпром: цифровое приложение остановочных ремонтов DataBriz"
+      },
+      {
+        "source_id": "tgc16",
+        "url": "https://www.tgc16.ru/",
+        "usage": "ТГК-16: энергетический профиль"
+      },
+      {
+        "source_id": "tgc16_tender",
+        "url": "https://zakupki.kontur.ru/OC566284",
+        "usage": "ТГК-16: тендер на ТО средств АСУТП/КИПиА"
+      },
+      {
+        "source_id": "tgc16_asutp",
+        "url": "https://ker-eng.com/proekty/po-napravleniyu/montazh-remont-servisnoe-i-tekhnicheskoe-obsluzhivanie-asu-tp-kipia/",
+        "usage": "ТГК-16: проекты по ремонту/обслуживанию АСУТП/КИПиА"
+      },
+      {
+        "source_id": "agkh_digital",
+        "url": "https://amur-gcc.ru/press/amurskiy-gkhk-sozdaet-samyy-tekhnologichnyy-umnyy-logisticheskiy-kompleks-na-dalnem-vostoke-/",
+        "usage": "Амурский ГХК: умный логистический комплекс, датчики/лидары"
+      },
+      {
+        "source_id": "portenergo",
+        "url": "https://www.sibur.ru/ru/press-center/news-and-press/sibur_pristupaet_k_stroitelstvu_morskogo_terminala_v_leningradskoy_oblasti/",
+        "usage": "Портэнерго: терминал СУГ/нефтепродуктов"
+      },
+      {
+        "source_id": "portenergo_tender",
+        "url": "https://t.me/s/siburholdingprocurement?before=316",
+        "usage": "Публичные закупочные сигналы СИБУР/Портэнерго и ТОиР оборудования"
+      },
+      {
+        "source_id": "nhtk",
+        "url": "https://www.sibur.ru/ru/press-center/news-and-press/SIBUR-i-SG-trans-sozdali-sovmestnoe-predpriyatie-dlya-transportirovki-neftekhimicheskoy-produktsii/",
+        "usage": "НХТК: парк цистерн для перевозок СУГ"
+      },
+      {
+        "source_id": "ge_replace",
+        "url": "https://www.tadviser.ru/index.php/Статья:Цифровизация_Сибура",
+        "usage": "Групповой сигнал импортозамещения GE SmartSignal/Meridium и систем надежности"
+      },
+      {
+        "source_id": "comnews_ge",
+        "url": "https://www.comnews.ru/content/236580/2024-11-29/2024-w48/1008/2026-g-sibur-zapustit-marketpleys-tekhnologicheskogo-modelirovaniya",
+        "usage": "Групповой сигнал СИБУР по замещению GE/Aspen и предиктивной диагностике"
+      },
+      {
+        "source_id": "rds",
+        "url": "https://www.sibur.ru/ru/press-center/news-and-press/sibur-i-ao-rds-zaklyuchili-memorandum-o-sotrudnichestve-v-sfere-tsifrovizatsii-promyshlennykh-predpr/",
+        "usage": "СИБУР + РДС: предиктивная диагностика, производственный учет, цифровые двойники"
+      },
+      {
+        "source_id": "asu_capex",
+        "url": "https://www.sibur.ru/ru/press-center/news-and-press/sibur-i-asu-dogovorilis-o-sotrudnichestve-v-oblasti-tsifrovykh-resheniy-dlya-kapitalnogo-stroitelstv/",
+        "usage": "СИБУР + АСУ: цифровизация капитального строительства"
+      },
+      {
+        "source_id": "polylab_ai",
+        "url": "https://www.sibur.ru/ru/press-center/news-and-press/v-sibure-predstavili-podkhod-k-primeneniyu-iskusstvennogo-intellekta-v-prikladnykh-issledovaniyakh-i/",
+        "usage": "ПолиЛаб: AI в прикладных исследованиях и разработках"
+      },
+      {
+        "source_id": "spliteks",
+        "url": "https://www.sibur.ru/ru/press-center/news-and-press/na-predpriyatiyakh-sibura-budut-vnedreny-tekhnologicheskie-i-tsifrovye-resheniya-spliteks-dlya-povysh/",
+        "usage": "Технологические и цифровые решения для эффективности промышленного оборудования"
+      }
+    ]
+  },
+  "candidates": [
+    {
+      "rank": 1,
+      "account_id": "icp-sibur-51787",
+      "ppo": "ППО «Нижнекамскнефтехим»",
+      "legal_name": "ПАО «Нижнекамскнефтехим»",
+      "account_type": "Крупнотоннажное производство",
+      "description": "Синтетические каучуки и пластики",
+      "inn": "1651000010",
+      "revenue": "244,3 млрд ₽",
+      "site": "sibur.ru/nknh",
+      "confidence": "Высокая",
+      "signal_summary": "Сильнейший fit/intent: ЭП-600 с ~70 000 датчиков, предиктивной аналитикой и высоким уровнем автоматизации; Горизонт в ремонтах от диагностики до анализа итогов.",
+      "main_signal": "Сильнейший fit/intent: ЭП-600 с ~70 000 датчиков, предиктивной аналитикой и высоким уровнем автоматизации; Горизонт в ремонтах от диагностики до анализа итогов.",
+      "comment": "Брать в приоритетный ресёрч",
+      "source_urls": [
+        "https://www.sibur.ru/ru/press-center/news-and-press/sibur-zavershil-stroitelstvo-ep-600/",
+        "https://www.sibur.ru/nknh/ru/press-center/sibur-uvelichil-mezhremontnyy-interval-i-povysil-nadezhnost-klyuchevykh-proizvodstv-nizhnekamsknefte/",
+        "https://www.sibur.ru/kazanorgsintez/ru/press-center/kazanorgsintez-pristupil-k-planovomu-ostanovochnomu-remontu-proizvodstvennykh-moshchnostey/",
+        "https://www.tadviser.ru/index.php/Статья:Цифровизация_Сибура"
+      ],
+      "evidence_refs": [
+        "nknh_ep600",
+        "nknh_horizon",
+        "kos_repair",
+        "ge_replace"
+      ],
+      "criteria_scores": {
+        "C1": 3,
+        "C2": 3,
+        "C3": 0,
+        "C4": 2,
+        "C5": 3,
+        "C6": 3,
+        "C7": 3,
+        "C8": 1,
+        "C9": 1,
+        "C10": 0,
+        "C11": 2,
+        "C12": 3,
+        "C13": 3,
+        "C14": 3,
+        "C15": 3,
+        "C16": 1,
+        "C17": 3,
+        "C18": 3,
+        "C19": 3,
+        "C20": 3
+      },
+      "score": {
+        "fit_score": 13,
+        "intent_score": 25,
+        "trigger_score": 8,
+        "total_score": 46,
+        "tier": "Tier 1"
+      }
+    },
+    {
+      "rank": 2,
+      "account_id": "icp-sibur-33583",
+      "ppo": "ООО «СИБУР»",
+      "legal_name": "ООО «СИБУР»",
+      "account_type": "Управляющая организация",
+      "description": "Управляющая организация ПАО «СИБУР Холдинг»",
+      "inn": "7727576505",
+      "revenue": "36,8 млрд ₽ за 2024",
+      "site": "sibur.ru",
+      "confidence": "Высокая",
+      "signal_summary": "Центральный аккаунт: цифровизация, ТОиР/надежность, AI/ML, IoT, замещение GE SmartSignal/Meridium, сотрудничество с РДС и Галактикой/импортозамещение.",
+      "main_signal": "Центральный аккаунт: цифровизация, ТОиР/надежность, AI/ML, IoT, замещение GE SmartSignal/Meridium, сотрудничество с РДС и Галактикой/импортозамещение.",
+      "comment": "Брать в приоритетный ресёрч",
+      "source_urls": [
+        "https://www.sibur.ru/digital/",
+        "https://www.tadviser.ru/index.php/Статья:Цифровизация_Сибура",
+        "https://www.sibur.ru/ru/press-center/news-and-press/sibur-i-ao-rds-zaklyuchili-memorandum-o-sotrudnichestve-v-sfere-tsifrovizatsii-promyshlennykh-predpr/",
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/"
+      ],
+      "evidence_refs": [
+        "sibur_digital",
+        "ge_replace",
+        "rds",
+        "career_engineer"
+      ],
+      "criteria_scores": {
+        "C1": 3,
+        "C2": 3,
+        "C3": 0,
+        "C4": 3,
+        "C5": 3,
+        "C6": 3,
+        "C7": 3,
+        "C8": 2,
+        "C9": 3,
+        "C10": 0,
+        "C11": 1,
+        "C12": 3,
+        "C13": 1,
+        "C14": 1,
+        "C15": 1,
+        "C16": 3,
+        "C17": 2,
+        "C18": 2,
+        "C19": 3,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 8,
+        "intent_score": 28,
+        "trigger_score": 6,
+        "total_score": 42,
+        "tier": "Tier 1"
+      }
+    },
+    {
+      "rank": 3,
+      "account_id": "icp-sibur-46776",
+      "ppo": "ППО «ЗапСибНефтехим»",
+      "legal_name": "ООО «ЗапСибНефтехим»",
+      "account_type": "Крупнотоннажное производство",
+      "description": "Полиэтилен, полипропилен, базовые полимеры",
+      "inn": "1658087524",
+      "revenue": "313,1 млрд ₽",
+      "site": "sibur.ru/zapsibneftekhim",
+      "confidence": "Высокая",
+      "signal_summary": "Крупнейшая площадка; модернизация ремонтно-механического завода, цифровые модели деталей; в закупках встречается ремонт динамического оборудования и остановочные ремонты.",
+      "main_signal": "Крупнейшая площадка; модернизация ремонтно-механического завода, цифровые модели деталей; в закупках встречается ремонт динамического оборудования и остановочные ремонты.",
+      "comment": "Брать в приоритетный ресёрч",
+      "source_urls": [
+        "https://www.sibur.ru/zapsibneftekhim/press-center/zapsibneftekhim-sokrashchaet-sroki-obsluzhivaniya-tekhnologicheskogo-oborudovaniya-blagodarya-modern/",
+        "https://t.me/s/siburholdingprocurement?before=316",
+        "https://www.sibur.ru/digital/",
+        "https://www.tadviser.ru/index.php/Статья:Цифровизация_Сибура"
+      ],
+      "evidence_refs": [
+        "zsn_repair",
+        "portenergo_tender",
+        "sibur_digital",
+        "ge_replace"
+      ],
+      "criteria_scores": {
+        "C1": 3,
+        "C2": 2,
+        "C3": 0,
+        "C4": 2,
+        "C5": 3,
+        "C6": 3,
+        "C7": 2,
+        "C8": 1,
+        "C9": 1,
+        "C10": 0,
+        "C11": 2,
+        "C12": 3,
+        "C13": 3,
+        "C14": 3,
+        "C15": 3,
+        "C16": 0,
+        "C17": 3,
+        "C18": 3,
+        "C19": 2,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 12,
+        "intent_score": 22,
+        "trigger_score": 7,
+        "total_score": 41,
+        "tier": "Tier 1"
+      }
+    },
+    {
+      "rank": 4,
+      "account_id": "icp-sibur-65464",
+      "ppo": "ППО «Казаньоргсинтез»",
+      "legal_name": "ПАО «Казаньоргсинтез»",
+      "account_type": "Крупнотоннажное производство",
+      "description": "Полиэтилены, поликарбонаты, химическая продукция",
+      "inn": "1658008723",
+      "revenue": "99,8 млрд ₽",
+      "site": "sibur.ru/kazanorgsintez",
+      "confidence": "Высокая",
+      "signal_summary": "Очень сильный сигнал: остановочный ремонт 2025, 3453 единицы оборудования, цифровой остановочный ремонт, платформа Горизонт, видеомониторинг, цифровые наряды.",
+      "main_signal": "Очень сильный сигнал: остановочный ремонт 2025, 3453 единицы оборудования, цифровой остановочный ремонт, платформа Горизонт, видеомониторинг, цифровые наряды.",
+      "comment": "Брать в приоритетный ресёрч",
+      "source_urls": [
+        "https://www.sibur.ru/kazanorgsintez/ru/press-center/kazanorgsintez-pristupil-k-planovomu-ostanovochnomu-remontu-proizvodstvennykh-moshchnostey/",
+        "https://www.tadviser.ru/index.php/Статья:Цифровизация_Сибура",
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/"
+      ],
+      "evidence_refs": [
+        "kos_repair",
+        "ge_replace",
+        "career_engineer"
+      ],
+      "criteria_scores": {
+        "C1": 3,
+        "C2": 1,
+        "C3": 0,
+        "C4": 2,
+        "C5": 3,
+        "C6": 3,
+        "C7": 3,
+        "C8": 1,
+        "C9": 1,
+        "C10": 0,
+        "C11": 2,
+        "C12": 3,
+        "C13": 3,
+        "C14": 3,
+        "C15": 3,
+        "C16": 0,
+        "C17": 3,
+        "C18": 3,
+        "C19": 1,
+        "C20": 3
+      },
+      "score": {
+        "fit_score": 12,
+        "intent_score": 21,
+        "trigger_score": 8,
+        "total_score": 41,
+        "tier": "Tier 1"
+      }
+    },
+    {
+      "rank": 5,
+      "account_id": "icp-sibur-82504",
+      "ppo": "ППО «Воронежсинтезкаучук»",
+      "legal_name": "АО «Воронежсинтезкаучук»",
+      "account_type": "Производство",
+      "description": "Синтетические каучуки, термоэластопласты",
+      "inn": "3663002167",
+      "revenue": "15,4 млрд ₽",
+      "site": "sibur.ru/voronejkauchuk",
+      "confidence": "Высокая",
+      "signal_summary": "Прямой цифровой сигнал: мобильный ТОиР, техническое зрение, 3D-сканер/принтер; отдельная новость о вложениях в надежность и энергоэффективность.",
+      "main_signal": "Прямой цифровой сигнал: мобильный ТОиР, техническое зрение, 3D-сканер/принтер; отдельная новость о вложениях в надежность и энергоэффективность.",
+      "comment": "Проверить углубленно после Tier 1",
+      "source_urls": [
+        "https://www.sibur.ru/ru/press-center/news-and-press/SIBUR-provel-vorkshop-na-festivale-internet-tekhnologiy-v-Voronezhe/",
+        "https://www.sibur.ru/voronejkauchuk/press-center/voronezhsintezkauchuk-napravil-bolee-3-mlrd-rubley-na-povyshenie-nadezhnosti-i-ekologichnosti-predpr/"
+      ],
+      "evidence_refs": [
+        "vsk_digital",
+        "vsk_reliability"
+      ],
+      "criteria_scores": {
+        "C1": 3,
+        "C2": 2,
+        "C3": 0,
+        "C4": 1,
+        "C5": 3,
+        "C6": 2,
+        "C7": 3,
+        "C8": 1,
+        "C9": 1,
+        "C10": 0,
+        "C11": 1,
+        "C12": 3,
+        "C13": 3,
+        "C14": 3,
+        "C15": 2,
+        "C16": 1,
+        "C17": 2,
+        "C18": 1,
+        "C19": 2,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 11,
+        "intent_score": 19,
+        "trigger_score": 6,
+        "total_score": 36,
+        "tier": "Tier 2"
+      }
+    },
+    {
+      "rank": 6,
+      "account_id": "icp-sibur-42177",
+      "ppo": "ППО «Амурский ГХК»",
+      "legal_name": "ООО «Амурский газохимический комплекс»",
+      "account_type": "Новый газохимический комплекс",
+      "description": "Строящийся/развиваемый газохимический комплекс, ПЭ/ПП",
+      "inn": "2807043990",
+      "revenue": "383,3 млн ₽",
+      "site": "amur-gcc.ru",
+      "confidence": "Средняя-высокая",
+      "signal_summary": "Новый комплекс: цель “цифровой Амурский ГХК”, умный логистический комплекс, лидары/датчики, цифровизация логистики; хороший вход на этапе становления эксплуатации.",
+      "main_signal": "Новый комплекс: цель “цифровой Амурский ГХК”, умный логистический комплекс, лидары/датчики, цифровизация логистики; хороший вход на этапе становления эксплуатации.",
+      "comment": "Проверить углубленно после Tier 1",
+      "source_urls": [
+        "https://amur-gcc.ru/press/amurskiy-gkhk-sozdaet-samyy-tekhnologichnyy-umnyy-logisticheskiy-kompleks-na-dalnem-vostoke-/",
+        "https://www.sibur.ru/digital/"
+      ],
+      "evidence_refs": [
+        "agkh_digital",
+        "sibur_digital"
+      ],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 2,
+        "C3": 0,
+        "C4": 1,
+        "C5": 3,
+        "C6": 3,
+        "C7": 1,
+        "C8": 1,
+        "C9": 1,
+        "C10": 0,
+        "C11": 0,
+        "C12": 3,
+        "C13": 3,
+        "C14": 3,
+        "C15": 3,
+        "C16": 0,
+        "C17": 2,
+        "C18": 1,
+        "C19": 2,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 11,
+        "intent_score": 16,
+        "trigger_score": 5,
+        "total_score": 32,
+        "tier": "Tier 2"
+      }
+    },
+    {
+      "rank": 7,
+      "account_id": "icp-sibur-25273",
+      "ppo": "АО «СИБУР Энерго» / SiburEnergoManagement",
+      "legal_name": "АО «СИБУР Энерго» / SiburEnergoManagement",
+      "account_type": "Энергетика",
+      "description": "Энергоснабжение / энергоменеджмент",
+      "inn": "7727276526",
+      "revenue": "33,2 млрд ₽",
+      "site": "sibur.ru",
+      "confidence": "Средняя",
+      "signal_summary": "Энергетический актив: высокая релевантность для вращающегося оборудования, КИПиА/АСУТП, надежности и энергоэффективности; прямой company-specific intent ограничен.",
+      "main_signal": "Энергетический актив: высокая релевантность для вращающегося оборудования, КИПиА/АСУТП, надежности и энергоэффективности; прямой company-specific intent ограничен.",
+      "comment": "Проверить углубленно после Tier 1",
+      "source_urls": [
+        "https://ker-eng.com/proekty/po-napravleniyu/montazh-remont-servisnoe-i-tekhnicheskoe-obsluzhivanie-asu-tp-kipia/",
+        "https://career.sibur.ru/vacancies/ekspert-rzia/",
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/"
+      ],
+      "evidence_refs": [
+        "tgc16_asutp",
+        "career_rzia",
+        "career_engineer"
+      ],
+      "criteria_scores": {
+        "C1": 2,
+        "C2": 1,
+        "C3": 0,
+        "C4": 1,
+        "C5": 2,
+        "C6": 3,
+        "C7": 1,
+        "C8": 1,
+        "C9": 1,
+        "C10": 0,
+        "C11": 1,
+        "C12": 2,
+        "C13": 3,
+        "C14": 3,
+        "C15": 2,
+        "C16": 1,
+        "C17": 2,
+        "C18": 1,
+        "C19": 1,
+        "C20": 3
+      },
+      "score": {
+        "fit_score": 11,
+        "intent_score": 14,
+        "trigger_score": 6,
+        "total_score": 31,
+        "tier": "Tier 2"
+      }
+    },
+    {
+      "rank": 8,
+      "account_id": "icp-sibur-77251",
+      "ppo": "ППО «Сибур-Химпром»",
+      "legal_name": "АО «СИБУР-ХИМПРОМ»",
+      "account_type": "Производство",
+      "description": "Жидкие углеводороды, спирты, нефтехимическая продукция",
+      "inn": "5905018998",
+      "revenue": "13,2 млрд ₽",
+      "site": "sibur.ru/SiburKhimprom",
+      "confidence": "Высокая",
+      "signal_summary": "Прямой кейс цифрового остановочного ремонта DataBriz: мобильное приложение, планирование и контроль работ в реальном времени, 150 ИТР.",
+      "main_signal": "Прямой кейс цифрового остановочного ремонта DataBriz: мобильное приложение, планирование и контроль работ в реальном времени, 150 ИТР.",
+      "comment": "Проверить углубленно после Tier 1",
+      "source_urls": [
+        "https://www.cnews.ru/news/line/2019-09-19_permskaya_itkompaniya_databriz",
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/"
+      ],
+      "evidence_refs": [
+        "databriz",
+        "career_engineer"
+      ],
+      "criteria_scores": {
+        "C1": 3,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 2,
+        "C6": 2,
+        "C7": 3,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 2,
+        "C12": 2,
+        "C13": 3,
+        "C14": 3,
+        "C15": 2,
+        "C16": 0,
+        "C17": 3,
+        "C18": 1,
+        "C19": 1,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 11,
+        "intent_score": 14,
+        "trigger_score": 5,
+        "total_score": 30,
+        "tier": "Tier 2"
+      }
+    },
+    {
+      "rank": 9,
+      "account_id": "icp-sibur-35099",
+      "ppo": "АО «ТГК-16»",
+      "legal_name": "АО «ТГК-16»",
+      "account_type": "Энергетика",
+      "description": "Производство, передача и распределение электроэнергии",
+      "inn": "1655189422",
+      "revenue": "45,6 млрд ₽",
+      "site": "tgc16.ru",
+      "confidence": "Средняя-высокая",
+      "signal_summary": "Энергогенерация + открытые тендеры/проекты по ТО средств АСУТП и КИПиА на Нижнекамской ТЭЦ; высокий fit для диагностики турбин/насосов/электрооборудования.",
+      "main_signal": "Энергогенерация + открытые тендеры/проекты по ТО средств АСУТП и КИПиА на Нижнекамской ТЭЦ; высокий fit для диагностики турбин/насосов/электрооборудования.",
+      "comment": "Проверить углубленно после Tier 1",
+      "source_urls": [
+        "https://www.tgc16.ru/",
+        "https://zakupki.kontur.ru/OC566284",
+        "https://ker-eng.com/proekty/po-napravleniyu/montazh-remont-servisnoe-i-tekhnicheskoe-obsluzhivanie-asu-tp-kipia/"
+      ],
+      "evidence_refs": [
+        "tgc16",
+        "tgc16_tender",
+        "tgc16_asutp"
+      ],
+      "criteria_scores": {
+        "C1": 2,
+        "C2": 1,
+        "C3": 0,
+        "C4": 1,
+        "C5": 1,
+        "C6": 3,
+        "C7": 0,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 1,
+        "C12": 2,
+        "C13": 3,
+        "C14": 3,
+        "C15": 2,
+        "C16": 2,
+        "C17": 3,
+        "C18": 3,
+        "C19": 0,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 13,
+        "intent_score": 12,
+        "trigger_score": 5,
+        "total_score": 30,
+        "tier": "Tier 2"
+      }
+    },
+    {
+      "rank": 10,
+      "account_id": "icp-sibur-20921",
+      "ppo": "ППО «БИАКСПЛЕН»",
+      "legal_name": "ООО «БИАКСПЛЕН»",
+      "account_type": "Производство / несколько площадок",
+      "description": "БОПП-плёнки",
+      "inn": "5244013331",
+      "revenue": "22,1 млрд ₽",
+      "site": "sibur.ru/biaxplen",
+      "confidence": "Высокая",
+      "signal_summary": "Модернизация АСУТП линии БОПП: замена >103 преобразователей; роботы на площадках Балахна/Томск. Сильный сигнал цифровизации и распределенности.",
+      "main_signal": "Модернизация АСУТП линии БОПП: замена >103 преобразователей; роботы на площадках Балахна/Томск. Сильный сигнал цифровизации и распределенности.",
+      "comment": "Проверить углубленно после Tier 1",
+      "source_urls": [
+        "https://simit.su/projects/sibur-biaksplen-g-zheleznodorozhnyj-modernizacija-asu-tp-linii-proizvodstva/",
+        "https://www.sibur.ru/biaxplen/ru/press-center/rabotayushchiy-v-sostave-sibura-biaksplen-avtomatiziruet-rutinnye-protsessy-s-ispolzovaniem-robotov/"
+      ],
+      "evidence_refs": [
+        "biax_asutp",
+        "biax_robots"
+      ],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 3,
+        "C6": 3,
+        "C7": 0,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 0,
+        "C12": 3,
+        "C13": 2,
+        "C14": 3,
+        "C15": 3,
+        "C16": 3,
+        "C17": 2,
+        "C18": 2,
+        "C19": 1,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 13,
+        "intent_score": 12,
+        "trigger_score": 4,
+        "total_score": 29,
+        "tier": "Tier 2"
+      }
+    },
+    {
+      "rank": 11,
+      "account_id": "icp-sibur-45132",
+      "ppo": "ООО «Запсибтрансгаз»",
+      "legal_name": "ООО «Запсибтрансгаз»",
+      "account_type": "Трубопроводная инфраструктура",
+      "description": "Трубопроводная инфраструктура / транспортировка продуктов переработки",
+      "inn": "8603166755",
+      "revenue": "9,0 млрд ₽",
+      "site": "sibur.ru / old.sibur.ru",
+      "confidence": "Высокая",
+      "signal_summary": "Прямой сигнал: ремонты магистральных трубопроводов, диагностика, очистка 1114 км трубопроводов, дублирующая система обнаружения утечек.",
+      "main_signal": "Прямой сигнал: ремонты магистральных трубопроводов, диагностика, очистка 1114 км трубопроводов, дублирующая система обнаружения утечек.",
+      "comment": "Проверить углубленно после Tier 1",
+      "source_urls": [
+        "https://www.sibur.ru/zapsibtransgaz/press-center/zapsibtransgaz-provodit-planovye-remontnye-raboty-c-tselyu-povysheniya-nadezhnosti-gazotransportnoy-/"
+      ],
+      "evidence_refs": [
+        "zstg_repair"
+      ],
+      "criteria_scores": {
+        "C1": 2,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 1,
+        "C6": 2,
+        "C7": 0,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 2,
+        "C12": 2,
+        "C13": 2,
+        "C14": 3,
+        "C15": 2,
+        "C16": 3,
+        "C17": 3,
+        "C18": 2,
+        "C19": 0,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 13,
+        "intent_score": 9,
+        "trigger_score": 6,
+        "total_score": 28,
+        "tier": "Tier 2"
+      }
+    },
+    {
+      "rank": 12,
+      "account_id": "icp-sibur-54517",
+      "ppo": "ППО «Томскнефтехим»",
+      "legal_name": "ООО «Томскнефтехим»",
+      "account_type": "Производство",
+      "description": "Полипропилен и полиэтилен низкой плотности",
+      "inn": "7017075536",
+      "revenue": "13 млрд ₽ за 2021",
+      "site": "sibur.ru/TomskNeftehim",
+      "confidence": "Средняя",
+      "signal_summary": "Томск упоминался в контексте цифровых наряд-допусков; БИАКСПЛЕН-Томск — роботы. Для ТНХ fit высокий, но прямой intent требует углубления.",
+      "main_signal": "Томск упоминался в контексте цифровых наряд-допусков; БИАКСПЛЕН-Томск — роботы. Для ТНХ fit высокий, но прямой intent требует углубления.",
+      "comment": "Проверить углубленно после Tier 1",
+      "source_urls": [
+        "https://www.sibur.ru/ru/press-center/news-and-press/SIBUR-provel-vorkshop-na-festivale-internet-tekhnologiy-v-Voronezhe/",
+        "https://www.sibur.ru/biaxplen/ru/press-center/rabotayushchiy-v-sostave-sibura-biaksplen-avtomatiziruet-rutinnye-protsessy-s-ispolzovaniem-robotov/",
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/"
+      ],
+      "evidence_refs": [
+        "vsk_digital",
+        "biax_robots",
+        "career_engineer"
+      ],
+      "criteria_scores": {
+        "C1": 2,
+        "C2": 1,
+        "C3": 0,
+        "C4": 1,
+        "C5": 2,
+        "C6": 2,
+        "C7": 2,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 1,
+        "C12": 2,
+        "C13": 3,
+        "C14": 3,
+        "C15": 2,
+        "C16": 0,
+        "C17": 2,
+        "C18": 1,
+        "C19": 0,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 10,
+        "intent_score": 12,
+        "trigger_score": 5,
+        "total_score": 27,
+        "tier": "Tier 2"
+      }
+    },
+    {
+      "rank": 13,
+      "account_id": "icp-sibur-25173",
+      "ppo": "ППО «СИБУР-Кстово»",
+      "legal_name": "ООО «СИБУР-Кстово»",
+      "account_type": "Производство",
+      "description": "Нефтехимическая площадка / производство химпродукции",
+      "inn": "5250051800",
+      "revenue": "10,2 млрд ₽",
+      "site": "—",
+      "confidence": "Средняя",
+      "signal_summary": "СИБУР сообщал о цифровых наряд-допусках в т.ч. в Кстово; производственный fit высокий, но company-specific источников пока мало.",
+      "main_signal": "СИБУР сообщал о цифровых наряд-допусках в т.ч. в Кстово; производственный fit высокий, но company-specific источников пока мало.",
+      "comment": "Проверить углубленно после Tier 1",
+      "source_urls": [
+        "https://www.sibur.ru/ru/press-center/news-and-press/SIBUR-provel-vorkshop-na-festivale-internet-tekhnologiy-v-Voronezhe/",
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/"
+      ],
+      "evidence_refs": [
+        "vsk_digital",
+        "career_engineer"
+      ],
+      "criteria_scores": {
+        "C1": 2,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 2,
+        "C6": 2,
+        "C7": 2,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 1,
+        "C12": 2,
+        "C13": 3,
+        "C14": 3,
+        "C15": 2,
+        "C16": 0,
+        "C17": 2,
+        "C18": 1,
+        "C19": 0,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 10,
+        "intent_score": 11,
+        "trigger_score": 5,
+        "total_score": 26,
+        "tier": "Tier 2"
+      }
+    },
+    {
+      "rank": 14,
+      "account_id": "icp-sibur-77785",
+      "ppo": "ППО «Портэнерго»",
+      "legal_name": "ООО «Портэнерго»",
+      "account_type": "Логистика / терминал",
+      "description": "Логистический центр в Усть-Луге, перевалка СУГ и светлых нефтепродуктов",
+      "inn": "4707020432",
+      "revenue": "7,8 млрд ₽",
+      "site": "portenergo.com",
+      "confidence": "Средняя-высокая",
+      "signal_summary": "Терминал СУГ/нефтепродуктов: насосно-компрессорное оборудование; в открытых закупочных каналах встречается обслуживание и ремонт компрессорного/насосного оборудования.",
+      "main_signal": "Терминал СУГ/нефтепродуктов: насосно-компрессорное оборудование; в открытых закупочных каналах встречается обслуживание и ремонт компрессорного/насосного оборудования.",
+      "comment": "Проверить углубленно после Tier 1",
+      "source_urls": [
+        "https://www.sibur.ru/ru/press-center/news-and-press/sibur_pristupaet_k_stroitelstvu_morskogo_terminala_v_leningradskoy_oblasti/",
+        "https://t.me/s/siburholdingprocurement?before=316"
+      ],
+      "evidence_refs": [
+        "portenergo",
+        "portenergo_tender"
+      ],
+      "criteria_scores": {
+        "C1": 2,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 1,
+        "C6": 2,
+        "C7": 0,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 1,
+        "C12": 2,
+        "C13": 3,
+        "C14": 3,
+        "C15": 2,
+        "C16": 0,
+        "C17": 3,
+        "C18": 2,
+        "C19": 0,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 11,
+        "intent_score": 9,
+        "trigger_score": 5,
+        "total_score": 25,
+        "tier": "Tier 2"
+      }
+    },
+    {
+      "rank": 15,
+      "account_id": "icp-sibur-1141",
+      "ppo": "ППО «УЭТП-НКНХ»",
+      "legal_name": "ООО «Управление этиленопроводов-Нижнекамскнефтехим»",
+      "account_type": "Трубопроводная инфраструктура",
+      "description": "Эксплуатация/транспортировка по этиленопроводам",
+      "inn": "1651070377",
+      "revenue": "2,6 млрд ₽",
+      "site": "—",
+      "confidence": "Средняя",
+      "signal_summary": "Pipeline-fit: эксплуатация этиленопроводов, близко к диагностике/мониторингу трубопроводов; company-specific источники требуют углубления.",
+      "main_signal": "Pipeline-fit: эксплуатация этиленопроводов, близко к диагностике/мониторингу трубопроводов; company-specific источники требуют углубления.",
+      "comment": "Нужна доп. валидация",
+      "source_urls": [
+        "https://www.sibur.ru/zapsibtransgaz/press-center/zapsibtransgaz-provodit-planovye-remontnye-raboty-c-tselyu-povysheniya-nadezhnosti-gazotransportnoy-/",
+        "https://www.sibur.ru/ru/press-center/news-and-press/sibur-zavershil-stroitelstvo-ep-600/"
+      ],
+      "evidence_refs": [
+        "zstg_repair",
+        "nknh_ep600"
+      ],
+      "criteria_scores": {
+        "C1": 2,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 1,
+        "C6": 2,
+        "C7": 0,
+        "C8": 0,
+        "C9": 0,
+        "C10": 0,
+        "C11": 2,
+        "C12": 2,
+        "C13": 2,
+        "C14": 3,
+        "C15": 2,
+        "C16": 2,
+        "C17": 2,
+        "C18": 1,
+        "C19": 0,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 11,
+        "intent_score": 7,
+        "trigger_score": 6,
+        "total_score": 24,
+        "tier": "Tier 3"
+      }
+    },
+    {
+      "rank": 16,
+      "account_id": "icp-sibur-34090",
+      "ppo": "ППО «КЗСК»",
+      "legal_name": "АО «Красноярский завод синтетического каучука»",
+      "account_type": "Производство",
+      "description": "Синтетический каучук",
+      "inn": "2462004363",
+      "revenue": "7,8 млрд ₽",
+      "site": "sibur.ru/kzsk",
+      "confidence": "Средняя",
+      "signal_summary": "Единственный в РФ производитель БНК, 85 марок; в 2025 мощность увеличена инвестиционным проектом до 51 тыс. тонн.",
+      "main_signal": "Единственный в РФ производитель БНК, 85 марок; в 2025 мощность увеличена инвестиционным проектом до 51 тыс. тонн.",
+      "comment": "Нужна доп. валидация",
+      "source_urls": [
+        "https://www.sibur.ru/kzsk/press-center/kauchuki-krasnoyarskogo-zavoda-sinteticheskogo-kauchuka-v-reestre-rossiyskoy-promyshlennoy-produktsi/",
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/"
+      ],
+      "evidence_refs": [
+        "kzsk_invest",
+        "career_engineer"
+      ],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 1,
+        "C6": 1,
+        "C7": 0,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 1,
+        "C12": 3,
+        "C13": 3,
+        "C14": 3,
+        "C15": 2,
+        "C16": 0,
+        "C17": 2,
+        "C18": 1,
+        "C19": 2,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 10,
+        "intent_score": 8,
+        "trigger_score": 5,
+        "total_score": 23,
+        "tier": "Tier 3"
+      }
+    },
+    {
+      "rank": 17,
+      "account_id": "icp-sibur-99521",
+      "ppo": "ППО «ПОЛИЭФ»",
+      "legal_name": "АО «ПОЛИЭФ»",
+      "account_type": "Производство",
+      "description": "Терефталевая кислота, ПЭТФ/ПЭТ",
+      "inn": "0258005638",
+      "revenue": "9,1 млрд ₽",
+      "site": "sibur.ru/polief",
+      "confidence": "Средняя-низкая",
+      "signal_summary": "Активоёмкая непрерывная химическая площадка; прямых свежих сигналов ТОиР/предиктива в проходе №1 мало, но fit высокий по оборудованию.",
+      "main_signal": "Активоёмкая непрерывная химическая площадка; прямых свежих сигналов ТОиР/предиктива в проходе №1 мало, но fit высокий по оборудованию.",
+      "comment": "Нужна доп. валидация",
+      "source_urls": [
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/",
+        "https://www.sibur.ru/digital/"
+      ],
+      "evidence_refs": [
+        "career_engineer",
+        "sibur_digital"
+      ],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 1,
+        "C6": 2,
+        "C7": 0,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 1,
+        "C12": 2,
+        "C13": 3,
+        "C14": 3,
+        "C15": 2,
+        "C16": 0,
+        "C17": 2,
+        "C18": 1,
+        "C19": 0,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 10,
+        "intent_score": 7,
+        "trigger_score": 5,
+        "total_score": 22,
+        "tier": "Tier 3"
+      }
+    },
+    {
+      "rank": 18,
+      "account_id": "icp-sibur-92877",
+      "ppo": "ППО «РусВинил»",
+      "legal_name": "ООО «РусВинил»",
+      "account_type": "Производство",
+      "description": "ПВХ, каустическая сода, гипохлорит натрия",
+      "inn": "5262218620",
+      "revenue": "28,7 млрд ₽",
+      "site": "sibur.ru/rusvinyl/ru",
+      "confidence": "Средняя-низкая",
+      "signal_summary": "Непрерывная химическая площадка с критичным оборудованием; прямые intent-сигналы в проходе №1 не детализированы.",
+      "main_signal": "Непрерывная химическая площадка с критичным оборудованием; прямые intent-сигналы в проходе №1 не детализированы.",
+      "comment": "Нужна доп. валидация",
+      "source_urls": [
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/",
+        "https://www.sibur.ru/digital/"
+      ],
+      "evidence_refs": [
+        "career_engineer",
+        "sibur_digital"
+      ],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 1,
+        "C6": 2,
+        "C7": 0,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 1,
+        "C12": 2,
+        "C13": 3,
+        "C14": 3,
+        "C15": 2,
+        "C16": 0,
+        "C17": 2,
+        "C18": 1,
+        "C19": 0,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 10,
+        "intent_score": 7,
+        "trigger_score": 5,
+        "total_score": 22,
+        "tier": "Tier 3"
+      }
+    },
+    {
+      "rank": 19,
+      "account_id": "icp-sibur-81207",
+      "ppo": "ООО «ПОЛИОМ»",
+      "legal_name": "ООО «ПОЛИОМ»",
+      "account_type": "Производство",
+      "description": "Омский завод полипропилена, СП с Газпром нефтью",
+      "inn": "5501085734",
+      "revenue": "20,1 млрд ₽ за 2024",
+      "site": "poliom-omsk.ru",
+      "confidence": "Средняя-низкая",
+      "signal_summary": "Крупная химическая площадка с хорошим fit, но в проходе №1 не найдено прямых свежих сигналов ТОиР/предиктива.",
+      "main_signal": "Крупная химическая площадка с хорошим fit, но в проходе №1 не найдено прямых свежих сигналов ТОиР/предиктива.",
+      "comment": "Нужна доп. валидация",
+      "source_urls": [
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/",
+        "https://www.sibur.ru/digital/"
+      ],
+      "evidence_refs": [
+        "career_engineer",
+        "sibur_digital"
+      ],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 1,
+        "C6": 2,
+        "C7": 0,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 1,
+        "C12": 2,
+        "C13": 3,
+        "C14": 3,
+        "C15": 2,
+        "C16": 0,
+        "C17": 2,
+        "C18": 1,
+        "C19": 0,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 10,
+        "intent_score": 7,
+        "trigger_score": 4,
+        "total_score": 21,
+        "tier": "Tier 3"
+      }
+    },
+    {
+      "rank": 20,
+      "account_id": "icp-sibur-35015",
+      "ppo": "ППО КАО «Азот»",
+      "legal_name": "КАО «Азот»",
+      "account_type": "Исторический / вне текущего ядра",
+      "description": "Удобрения, аммиак, капролактам",
+      "inn": "4205000908",
+      "revenue": "65,4 млрд ₽ за 2021",
+      "site": "kao-azot.com",
+      "confidence": "Низкая-средняя",
+      "signal_summary": "Крупнотоннажная химия с высоким fit, но актив выведенный/исторический; прямые сигналы по СИБУР-контексту не собраны.",
+      "main_signal": "Крупнотоннажная химия с высоким fit, но актив выведенный/исторический; прямые сигналы по СИБУР-контексту не собраны.",
+      "comment": "Нужна доп. валидация",
+      "source_urls": [],
+      "evidence_refs": [],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 0,
+        "C5": 1,
+        "C6": 2,
+        "C7": 0,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 1,
+        "C12": 2,
+        "C13": 3,
+        "C14": 3,
+        "C15": 2,
+        "C16": 0,
+        "C17": 2,
+        "C18": 0,
+        "C19": 0,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 10,
+        "intent_score": 5,
+        "trigger_score": 5,
+        "total_score": 20,
+        "tier": "Tier 3"
+      }
+    },
+    {
+      "rank": 21,
+      "account_id": "icp-sibur-27261",
+      "ppo": "ППО ООО «НХТК»",
+      "legal_name": "ООО «НХТК»",
+      "account_type": "Логистика / парк активов",
+      "description": "Нефтехимическая транспортная компания, логистика/цистерны",
+      "inn": "7727344230",
+      "revenue": "45,9 млрд ₽",
+      "site": "—",
+      "confidence": "Средняя",
+      "signal_summary": "СИБУР передал в НХТК парк цистерн для перевозок СУГ; сильный fleet-сигнал, но меньше релевантности к предиктиву технологического оборудования.",
+      "main_signal": "СИБУР передал в НХТК парк цистерн для перевозок СУГ; сильный fleet-сигнал, но меньше релевантности к предиктиву технологического оборудования.",
+      "comment": "Нужна доп. валидация",
+      "source_urls": [
+        "https://www.sibur.ru/ru/press-center/news-and-press/SIBUR-i-SG-trans-sozdali-sovmestnoe-predpriyatie-dlya-transportirovki-neftekhimicheskoy-produktsii/"
+      ],
+      "evidence_refs": [
+        "nhtk"
+      ],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 1,
+        "C6": 1,
+        "C7": 0,
+        "C8": 0,
+        "C9": 0,
+        "C10": 0,
+        "C11": 1,
+        "C12": 1,
+        "C13": 1,
+        "C14": 1,
+        "C15": 3,
+        "C16": 3,
+        "C17": 2,
+        "C18": 1,
+        "C19": 0,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 10,
+        "intent_score": 5,
+        "trigger_score": 3,
+        "total_score": 18,
+        "tier": "Tier 3"
+      }
+    },
+    {
+      "rank": 22,
+      "account_id": "icp-sibur-75786",
+      "ppo": "ППО «СОВ Нижнекамскнефтехим»",
+      "legal_name": "АО «СОВ-НКНХ»",
+      "account_type": "Сервис / инфраструктура",
+      "description": "Сервисное общество / водоочистка и коммунальная инфраструктура",
+      "inn": "1651052730",
+      "revenue": "431,0 млн ₽",
+      "site": "—",
+      "confidence": "Средняя-низкая",
+      "signal_summary": "Инфраструктурный сервис с оборудованием и ПБ/экологией; прямых сигналов ТОиР/предиктива в проходе №1 мало.",
+      "main_signal": "Инфраструктурный сервис с оборудованием и ПБ/экологией; прямых сигналов ТОиР/предиктива в проходе №1 мало.",
+      "comment": "Нужна доп. валидация",
+      "source_urls": [
+        "https://www.sibur.ru/ru/press-center/news-and-press/sibur-zavershil-stroitelstvo-ep-600/",
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/"
+      ],
+      "evidence_refs": [
+        "nknh_ep600",
+        "career_engineer"
+      ],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 0,
+        "C5": 1,
+        "C6": 2,
+        "C7": 0,
+        "C8": 0,
+        "C9": 0,
+        "C10": 0,
+        "C11": 1,
+        "C12": 1,
+        "C13": 2,
+        "C14": 2,
+        "C15": 2,
+        "C16": 0,
+        "C17": 1,
+        "C18": 0,
+        "C19": 0,
+        "C20": 2
+      },
+      "score": {
+        "fit_score": 7,
+        "intent_score": 4,
+        "trigger_score": 4,
+        "total_score": 15,
+        "tier": "Tier 3"
+      }
+    },
+    {
+      "rank": 23,
+      "account_id": "icp-sibur-20030",
+      "ppo": "ППО «Сибур-ПЭТФ»",
+      "legal_name": "АО «СИБУР-ПЭТФ»",
+      "account_type": "Производство",
+      "description": "ПЭТФ-гранулят / полиэфирные материалы",
+      "inn": "6903038398",
+      "revenue": "1,3 млрд ₽",
+      "site": "sibur.ru/SiburPETF",
+      "confidence": "Низкая-средняя",
+      "signal_summary": "Активоёмкая химическая площадка, но в проходе №1 прямых сигналов цифрового ТОиР/предиктива не найдено.",
+      "main_signal": "Активоёмкая химическая площадка, но в проходе №1 прямых сигналов цифрового ТОиР/предиктива не найдено.",
+      "comment": "Пока мониторинг",
+      "source_urls": [
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/",
+        "https://www.sibur.ru/digital/"
+      ],
+      "evidence_refs": [
+        "career_engineer",
+        "sibur_digital"
+      ],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 1,
+        "C6": 1,
+        "C7": 0,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 1,
+        "C12": 1,
+        "C13": 2,
+        "C14": 2,
+        "C15": 1,
+        "C16": 0,
+        "C17": 1,
+        "C18": 0,
+        "C19": 0,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 6,
+        "intent_score": 5,
+        "trigger_score": 3,
+        "total_score": 14,
+        "tier": "Monitor"
+      }
+    },
+    {
+      "rank": 24,
+      "account_id": "icp-sibur-71274",
+      "ppo": "ППО «Ярославский Шинный Завод»",
+      "legal_name": "АО «Кордиант» / Ярославский шинный завод",
+      "account_type": "Исторический / вне текущего ядра",
+      "description": "Производство шин; исторический актив",
+      "inn": "7601001509",
+      "revenue": "54,3 млрд ₽",
+      "site": "cordiant-tyre.ru/production/yaroslavl",
+      "confidence": "Низкая",
+      "signal_summary": "Активоёмкое производство, но как текущая дочка СИБУРа спорно; прямых сигналов ТОиР/предиктива в рамках прохода №1 не найдено.",
+      "main_signal": "Активоёмкое производство, но как текущая дочка СИБУРа спорно; прямых сигналов ТОиР/предиктива в рамках прохода №1 не найдено.",
+      "comment": "Пока мониторинг",
+      "source_urls": [],
+      "evidence_refs": [],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 0,
+        "C5": 1,
+        "C6": 1,
+        "C7": 0,
+        "C8": 0,
+        "C9": 0,
+        "C10": 0,
+        "C11": 0,
+        "C12": 1,
+        "C13": 2,
+        "C14": 3,
+        "C15": 2,
+        "C16": 1,
+        "C17": 1,
+        "C18": 0,
+        "C19": 0,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 9,
+        "intent_score": 3,
+        "trigger_score": 2,
+        "total_score": 14,
+        "tier": "Monitor"
+      }
+    },
+    {
+      "rank": 25,
+      "account_id": "icp-sibur-68929",
+      "ppo": "ППО «СИБУР Полилаб»",
+      "legal_name": "ООО «СИБУР ПОЛИЛАБ»",
+      "account_type": "R&D / лаборатории",
+      "description": "R&D, испытания и разработка решений для полимеров",
+      "inn": "7731367261",
+      "revenue": "1,8 млрд ₽",
+      "site": "polylab.sibur.ru",
+      "confidence": "Средняя",
+      "signal_summary": "Сильный AI/R&D сигнал, но слабее эксплуатационный fit для ТОиР/диагностики оборудования; может быть источником внутренней экспертизы/инфлюенсером.",
+      "main_signal": "Сильный AI/R&D сигнал, но слабее эксплуатационный fit для ТОиР/диагностики оборудования; может быть источником внутренней экспертизы/инфлюенсером.",
+      "comment": "Пока мониторинг",
+      "source_urls": [
+        "https://www.sibur.ru/ru/press-center/news-and-press/v-sibure-predstavili-podkhod-k-primeneniyu-iskusstvennogo-intellekta-v-prikladnykh-issledovaniyakh-i/",
+        "https://www.sibur.ru/digital/"
+      ],
+      "evidence_refs": [
+        "polylab_ai",
+        "sibur_digital"
+      ],
+      "criteria_scores": {
+        "C1": 0,
+        "C2": 1,
+        "C3": 0,
+        "C4": 0,
+        "C5": 3,
+        "C6": 1,
+        "C7": 0,
+        "C8": 0,
+        "C9": 2,
+        "C10": 0,
+        "C11": 0,
+        "C12": 2,
+        "C13": 1,
+        "C14": 0,
+        "C15": 0,
+        "C16": 1,
+        "C17": 0,
+        "C18": 0,
+        "C19": 1,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 2,
+        "intent_score": 8,
+        "trigger_score": 3,
+        "total_score": 13,
+        "tier": "Monitor"
+      }
+    },
+    {
+      "rank": 26,
+      "account_id": "icp-sibur-89901",
+      "ppo": "ППО «НПП «Нефтехимия»",
+      "legal_name": "ООО «НПП «Нефтехимия»",
+      "account_type": "Производство",
+      "description": "Полипропилен, пластики, нефтехимическая продукция",
+      "inn": "7723332561",
+      "revenue": "10,3 млрд ₽",
+      "site": "neftekhimia.ru",
+      "confidence": "Низкая-средняя",
+      "signal_summary": "Производственный fit есть, но в проходе №1 прямых intent-сигналов ТОиР/предиктива мало.",
+      "main_signal": "Производственный fit есть, но в проходе №1 прямых intent-сигналов ТОиР/предиктива мало.",
+      "comment": "Пока мониторинг",
+      "source_urls": [
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/"
+      ],
+      "evidence_refs": [
+        "career_engineer"
+      ],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 1,
+        "C6": 1,
+        "C7": 0,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 0,
+        "C12": 1,
+        "C13": 2,
+        "C14": 2,
+        "C15": 1,
+        "C16": 0,
+        "C17": 1,
+        "C18": 0,
+        "C19": 0,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 6,
+        "intent_score": 5,
+        "trigger_score": 2,
+        "total_score": 13,
+        "tier": "Monitor"
+      }
+    },
+    {
+      "rank": 27,
+      "account_id": "icp-sibur-13613",
+      "ppo": "ППО «Уралоргсинтез»",
+      "legal_name": "АО «Уралоргсинтез»",
+      "account_type": "Производство",
+      "description": "Органический синтез, нефтехимическая продукция",
+      "inn": "5920014645",
+      "revenue": "3,9 млрд ₽",
+      "site": "ektosintez.ru",
+      "confidence": "Низкая",
+      "signal_summary": "Химическое производство с базовым fit по оборудованию, но прямых свежих сигналов ТОиР/цифровизации в проходе №1 не найдено.",
+      "main_signal": "Химическое производство с базовым fit по оборудованию, но прямых свежих сигналов ТОиР/цифровизации в проходе №1 не найдено.",
+      "comment": "Пока мониторинг",
+      "source_urls": [],
+      "evidence_refs": [],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 0,
+        "C5": 1,
+        "C6": 1,
+        "C7": 0,
+        "C8": 1,
+        "C9": 0,
+        "C10": 0,
+        "C11": 0,
+        "C12": 1,
+        "C13": 2,
+        "C14": 3,
+        "C15": 1,
+        "C16": 0,
+        "C17": 1,
+        "C18": 0,
+        "C19": 0,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 7,
+        "intent_score": 4,
+        "trigger_score": 2,
+        "total_score": 13,
+        "tier": "Monitor"
+      }
+    },
+    {
+      "rank": 28,
+      "account_id": "icp-sibur-81087",
+      "ppo": "ООО «УК “Портэнерго”»",
+      "legal_name": "ООО «УК “Портэнерго”»",
+      "account_type": "Управление / сервис",
+      "description": "Управляющая компания терминала Портэнерго",
+      "inn": "4707037370",
+      "revenue": "61,2 млн ₽",
+      "site": "portenergo.com",
+      "confidence": "Низкая-средняя",
+      "signal_summary": "Связана с терминалом, но как УК имеет меньший прямой fit; может быть полезной как административный вход к Портэнерго.",
+      "main_signal": "Связана с терминалом, но как УК имеет меньший прямой fit; может быть полезной как административный вход к Портэнерго.",
+      "comment": "Пока мониторинг",
+      "source_urls": [
+        "https://www.sibur.ru/ru/press-center/news-and-press/sibur_pristupaet_k_stroitelstvu_morskogo_terminala_v_leningradskoy_oblasti/"
+      ],
+      "evidence_refs": [
+        "portenergo"
+      ],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 1,
+        "C6": 1,
+        "C7": 0,
+        "C8": 0,
+        "C9": 0,
+        "C10": 0,
+        "C11": 0,
+        "C12": 1,
+        "C13": 1,
+        "C14": 1,
+        "C15": 1,
+        "C16": 0,
+        "C17": 2,
+        "C18": 1,
+        "C19": 0,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 5,
+        "intent_score": 5,
+        "trigger_score": 2,
+        "total_score": 12,
+        "tier": "Monitor"
+      }
+    },
+    {
+      "rank": 29,
+      "account_id": "icp-sibur-77395",
+      "ppo": "ППО «Эктос-Волга»",
+      "legal_name": "ОАО «ЭКТОС-Волга»",
+      "account_type": "Производство / партнерский актив",
+      "description": "МТБЭ / продукция органического синтеза",
+      "inn": "3435801192",
+      "revenue": "0,9 млрд ₽ за 2021",
+      "site": "mtbe-vlz.ru / ektosintez.ru",
+      "confidence": "Низкая",
+      "signal_summary": "Химический fit умеренный, но прямых сигналов по текущим цифровым/ремонтным инициативам не найдено.",
+      "main_signal": "Химический fit умеренный, но прямых сигналов по текущим цифровым/ремонтным инициативам не найдено.",
+      "comment": "Пока мониторинг",
+      "source_urls": [],
+      "evidence_refs": [],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 0,
+        "C5": 1,
+        "C6": 1,
+        "C7": 0,
+        "C8": 0,
+        "C9": 0,
+        "C10": 0,
+        "C11": 0,
+        "C12": 1,
+        "C13": 2,
+        "C14": 2,
+        "C15": 1,
+        "C16": 0,
+        "C17": 1,
+        "C18": 0,
+        "C19": 0,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 6,
+        "intent_score": 3,
+        "trigger_score": 2,
+        "total_score": 11,
+        "tier": "Monitor"
+      }
+    },
+    {
+      "rank": 30,
+      "account_id": "icp-sibur-20015",
+      "ppo": "ППО трест «ТСНХРС»",
+      "legal_name": "ООО Трест «Татспецнефтехимремстрой» / «ТСНХРС»",
+      "account_type": "Ремонт / строительство",
+      "description": "Строительно-монтажные и ремонтные работы",
+      "inn": "1651000034",
+      "revenue": "3,5 млрд ₽",
+      "site": "tsnhrs.ru",
+      "confidence": "Низкая-средняя",
+      "signal_summary": "Сильный сервисно-ремонтный контур, но как подрядчик/трест не является основной целью предиктива; может быть каналом влияния на ремонтные процессы НКНХ.",
+      "main_signal": "Сильный сервисно-ремонтный контур, но как подрядчик/трест не является основной целью предиктива; может быть каналом влияния на ремонтные процессы НКНХ.",
+      "comment": "Пока мониторинг",
+      "source_urls": [
+        "https://www.sibur.ru/nknh/ru/press-center/sibur-uvelichil-mezhremontnyy-interval-i-povysil-nadezhnost-klyuchevykh-proizvodstv-nizhnekamsknefte/",
+        "https://www.sibur.ru/kazanorgsintez/ru/press-center/kazanorgsintez-pristupil-k-planovomu-ostanovochnomu-remontu-proizvodstvennykh-moshchnostey/"
+      ],
+      "evidence_refs": [
+        "nknh_horizon",
+        "kos_repair"
+      ],
+      "criteria_scores": {
+        "C1": 2,
+        "C2": 0,
+        "C3": 0,
+        "C4": 0,
+        "C5": 1,
+        "C6": 0,
+        "C7": 0,
+        "C8": 0,
+        "C9": 0,
+        "C10": 0,
+        "C11": 0,
+        "C12": 2,
+        "C13": 0,
+        "C14": 0,
+        "C15": 0,
+        "C16": 0,
+        "C17": 3,
+        "C18": 1,
+        "C19": 0,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 3,
+        "intent_score": 4,
+        "trigger_score": 3,
+        "total_score": 10,
+        "tier": "Monitor"
+      }
+    },
+    {
+      "rank": 31,
+      "account_id": "icp-sibur-32252",
+      "ppo": "ППО «Новые ресурсы»",
+      "legal_name": "ООО «Новые ресурсы»",
+      "account_type": "Капстроительство / проекты",
+      "description": "Заказчик-застройщик / генподрядчик / проектные функции",
+      "inn": "9727077820",
+      "revenue": "12,2 млрд ₽",
+      "site": "—",
+      "confidence": "Низкая-средняя",
+      "signal_summary": "Сильный триггер по капстроительству, но слабый fit для Smart ТОиР/диагностики как эксплуатанта оборудования; интереснее как вход в новые проекты.",
+      "main_signal": "Сильный триггер по капстроительству, но слабый fit для Smart ТОиР/диагностики как эксплуатанта оборудования; интереснее как вход в новые проекты.",
+      "comment": "Пока мониторинг",
+      "source_urls": [
+        "https://www.sibur.ru/ru/press-center/news-and-press/sibur-i-asu-dogovorilis-o-sotrudnichestve-v-oblasti-tsifrovykh-resheniy-dlya-kapitalnogo-stroitelstv/"
+      ],
+      "evidence_refs": [
+        "asu_capex"
+      ],
+      "criteria_scores": {
+        "C1": 0,
+        "C2": 0,
+        "C3": 0,
+        "C4": 0,
+        "C5": 2,
+        "C6": 0,
+        "C7": 0,
+        "C8": 0,
+        "C9": 0,
+        "C10": 0,
+        "C11": 0,
+        "C12": 3,
+        "C13": 0,
+        "C14": 0,
+        "C15": 0,
+        "C16": 2,
+        "C17": 1,
+        "C18": 0,
+        "C19": 1,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 3,
+        "intent_score": 3,
+        "trigger_score": 4,
+        "total_score": 10,
+        "tier": "Monitor"
+      }
+    },
+    {
+      "rank": 32,
+      "account_id": "icp-sibur-60820",
+      "ppo": "ООО «Эластокам»",
+      "legal_name": "ООО «Эластокам»",
+      "account_type": "Производство",
+      "description": "Полиуретановые системы / полимерные материалы",
+      "inn": "1651027131",
+      "revenue": "5,7 млрд ₽ за 2025",
+      "site": "—",
+      "confidence": "Низкая",
+      "signal_summary": "Производственный fit есть, но прямых цифровых или ремонтных intent-сигналов в проходе №1 не найдено.",
+      "main_signal": "Производственный fit есть, но прямых цифровых или ремонтных intent-сигналов в проходе №1 не найдено.",
+      "comment": "Пока мониторинг",
+      "source_urls": [
+        "https://career.sibur.ru/blog/kto-takoy-inzhener-opredelenie-i-rol-v-obshchestve/"
+      ],
+      "evidence_refs": [
+        "career_engineer"
+      ],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 0,
+        "C5": 1,
+        "C6": 1,
+        "C7": 0,
+        "C8": 0,
+        "C9": 0,
+        "C10": 0,
+        "C11": 0,
+        "C12": 1,
+        "C13": 1,
+        "C14": 2,
+        "C15": 1,
+        "C16": 0,
+        "C17": 1,
+        "C18": 0,
+        "C19": 0,
+        "C20": 1
+      },
+      "score": {
+        "fit_score": 5,
+        "intent_score": 3,
+        "trigger_score": 2,
+        "total_score": 10,
+        "tier": "Monitor"
+      }
+    },
+    {
+      "rank": 33,
+      "account_id": "icp-sibur-23730",
+      "ppo": "ППО «СИБУР-РТ»",
+      "legal_name": "АО «СИБУР-РТ»",
+      "account_type": "Управляющее / сервисное",
+      "description": "Управляющее/сервисное юрлицо в татарстанском контуре",
+      "inn": "1655020761",
+      "revenue": "3,3 млрд ₽",
+      "site": "—",
+      "confidence": "Низкая",
+      "signal_summary": "Скорее административно-сервисный контур, чем эксплуатант критичного оборудования; может быть полезен как организационный вход в Татарстан.",
+      "main_signal": "Скорее административно-сервисный контур, чем эксплуатант критичного оборудования; может быть полезен как организационный вход в Татарстан.",
+      "comment": "Пока мониторинг",
+      "source_urls": [
+        "https://www.sibur.ru/ru/press-center/news-and-press/sibur-zavershil-stroitelstvo-ep-600/",
+        "https://www.sibur.ru/kazanorgsintez/ru/press-center/kazanorgsintez-pristupil-k-planovomu-ostanovochnomu-remontu-proizvodstvennykh-moshchnostey/"
+      ],
+      "evidence_refs": [
+        "nknh_ep600",
+        "kos_repair"
+      ],
+      "criteria_scores": {
+        "C1": 1,
+        "C2": 0,
+        "C3": 0,
+        "C4": 1,
+        "C5": 1,
+        "C6": 0,
+        "C7": 0,
+        "C8": 0,
+        "C9": 0,
+        "C10": 0,
+        "C11": 0,
+        "C12": 1,
+        "C13": 0,
+        "C14": 0,
+        "C15": 0,
+        "C16": 1,
+        "C17": 1,
+        "C18": 0,
+        "C19": 1,
+        "C20": 0
+      },
+      "score": {
+        "fit_score": 2,
+        "intent_score": 4,
+        "trigger_score": 1,
+        "total_score": 7,
+        "tier": "Monitor"
+      }
+    }
+  ],
+  "workflow_metadata": {
+    "workflow_name": "ICPRadarXlsxImport",
+    "artifact_version": "0.6.2",
+    "source_workbook": "sibur_icp_pass1.xlsx",
+    "sheet_names": [
+      "Summary",
+      "ICP Matrix",
+      "Criteria",
+      "Sources"
+    ],
+    "candidate_count": 33,
+    "criteria_count": 20,
+    "source_count": 27,
+    "scoring": "workbook-compatible deterministic formula"
+  }
+}

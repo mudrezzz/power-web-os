@@ -3,7 +3,7 @@
   "artifact_version": "0.2",
   "account": {
     "account_id": "acct-northwind-robotics",
-    "name": "Northwind Robotics",
+    "name": "Северные Роботы",
     "icp_fit": 0.91,
     "signals": [
       {
@@ -36,49 +36,49 @@
     "roles": [
       {
         "role": "VP Engineering",
-        "person_name": "Marcus Bell",
+        "person_name": "Максим Беляев",
         "state": "identified",
         "influence": 0.86,
         "relation": null
       },
       {
         "role": "CIO",
-        "person_name": "Alicia Grant",
+        "person_name": "Алиса Грантова",
         "state": "identified",
         "influence": 0.9,
         "relation": null
       },
       {
         "role": "Head of Data Platform",
-        "person_name": "Sofia Chen",
+        "person_name": "София Чернова",
         "state": "identified",
         "influence": 0.84,
         "relation": null
       },
       {
         "role": "Security Architect",
-        "person_name": "Owen Park",
+        "person_name": "Олег Парков",
         "state": "blocker",
         "influence": 0.62,
         "relation": null
       },
       {
         "role": "Procurement Lead",
-        "person_name": "Priya Shah",
+        "person_name": "Полина Шахова",
         "state": "identified",
         "influence": 0.76,
         "relation": null
       },
       {
         "role": "Operations Sponsor",
-        "person_name": "Elena Ruiz",
+        "person_name": "Елена Руднева",
         "state": "hypothesis",
         "influence": 0.58,
         "relation": null
       },
       {
         "role": "Integrator",
-        "person_name": "Helix Systems",
+        "person_name": "Геликс Системы",
         "state": "identified",
         "influence": 0.79,
         "relation": "partner"
@@ -109,7 +109,7 @@
   },
   "access_plan": {
     "account_id": "acct-northwind-robotics",
-    "account_name": "Northwind Robotics",
+    "account_name": "Северные Роботы",
     "unresolved_gaps": [
       "economic_buyer"
     ],
@@ -118,7 +118,7 @@
         "route_type": "technical_benchmark",
         "title": "Invite technical stakeholder to a benchmark",
         "score": 88,
-        "reason": "Automation platform team added six engineering roles after a public efficiency initiative.; Sofia Chen can become a technical champion.",
+        "reason": "Automation platform team added six engineering roles after a public efficiency initiative.; София Чернова can become a technical champion.",
         "risk": "Economic buyer is not confirmed yet.",
         "owner": "Account Executive",
         "evidence_refs": [
@@ -131,7 +131,7 @@
         "route_type": "partner_intro",
         "title": "Request partner intro",
         "score": 85,
-        "reason": "Helix Systems is connected to the account as partner.",
+        "reason": "Геликс Системы is connected to the account as partner.",
         "risk": "Partner may be aligned with an incumbent competitor.",
         "owner": "Partner Manager",
         "evidence_refs": [
@@ -158,7 +158,7 @@
   },
   "power_web_board": {
     "account_id": "acct-northwind-robotics",
-    "account_name": "Northwind Robotics",
+    "account_name": "Северные Роботы",
     "summary": {
       "visible_count": 7,
       "missing_count": 1,
@@ -170,7 +170,7 @@
     "nodes": [
       {
         "node_id": "account:acct-northwind-robotics",
-        "label": "Northwind Robotics",
+        "label": "Северные Роботы",
         "node_type": "account",
         "role": "account",
         "state": "selected",
@@ -183,8 +183,8 @@
         "relation": null
       },
       {
-        "node_id": "role:marcus-bell",
-        "label": "Marcus Bell",
+        "node_id": "role:максим-беляев",
+        "label": "Максим Беляев",
         "node_type": "person",
         "role": "VP Engineering",
         "state": "identified",
@@ -197,8 +197,8 @@
         "relation": null
       },
       {
-        "node_id": "role:alicia-grant",
-        "label": "Alicia Grant",
+        "node_id": "role:алиса-грантова",
+        "label": "Алиса Грантова",
         "node_type": "person",
         "role": "CIO",
         "state": "identified",
@@ -211,8 +211,8 @@
         "relation": null
       },
       {
-        "node_id": "role:sofia-chen",
-        "label": "Sofia Chen",
+        "node_id": "role:софия-чернова",
+        "label": "София Чернова",
         "node_type": "person",
         "role": "Head of Data Platform",
         "state": "identified",
@@ -225,8 +225,8 @@
         "relation": null
       },
       {
-        "node_id": "role:owen-park",
-        "label": "Owen Park",
+        "node_id": "role:олег-парков",
+        "label": "Олег Парков",
         "node_type": "person",
         "role": "Security Architect",
         "state": "blocker",
@@ -239,8 +239,8 @@
         "relation": null
       },
       {
-        "node_id": "role:priya-shah",
-        "label": "Priya Shah",
+        "node_id": "role:полина-шахова",
+        "label": "Полина Шахова",
         "node_type": "person",
         "role": "Procurement Lead",
         "state": "identified",
@@ -253,8 +253,8 @@
         "relation": null
       },
       {
-        "node_id": "role:elena-ruiz",
-        "label": "Elena Ruiz",
+        "node_id": "role:елена-руднева",
+        "label": "Елена Руднева",
         "node_type": "person",
         "role": "Operations Sponsor",
         "state": "hypothesis",
@@ -267,8 +267,8 @@
         "relation": null
       },
       {
-        "node_id": "role:helix-systems",
-        "label": "Helix Systems",
+        "node_id": "role:геликс-системы",
+        "label": "Геликс Системы",
         "node_type": "partner",
         "role": "Integrator",
         "state": "identified",
@@ -297,56 +297,56 @@
     ],
     "edges": [
       {
-        "edge_id": "role:marcus-bell->account:acct-northwind-robotics",
-        "source": "role:marcus-bell",
+        "edge_id": "role:максим-беляев->account:acct-northwind-robotics",
+        "source": "role:максим-беляев",
         "target": "account:acct-northwind-robotics",
         "edge_type": "account_to_role",
         "highlighted": false,
         "label": "account_to_role"
       },
       {
-        "edge_id": "role:alicia-grant->account:acct-northwind-robotics",
-        "source": "role:alicia-grant",
+        "edge_id": "role:алиса-грантова->account:acct-northwind-robotics",
+        "source": "role:алиса-грантова",
         "target": "account:acct-northwind-robotics",
         "edge_type": "account_to_role",
         "highlighted": false,
         "label": "account_to_role"
       },
       {
-        "edge_id": "role:sofia-chen->account:acct-northwind-robotics",
-        "source": "role:sofia-chen",
+        "edge_id": "role:софия-чернова->account:acct-northwind-robotics",
+        "source": "role:софия-чернова",
         "target": "account:acct-northwind-robotics",
         "edge_type": "account_to_role",
         "highlighted": true,
         "label": "account_to_role"
       },
       {
-        "edge_id": "role:owen-park->account:acct-northwind-robotics",
-        "source": "role:owen-park",
+        "edge_id": "role:олег-парков->account:acct-northwind-robotics",
+        "source": "role:олег-парков",
         "target": "account:acct-northwind-robotics",
         "edge_type": "account_to_role",
         "highlighted": false,
         "label": "account_to_role"
       },
       {
-        "edge_id": "role:priya-shah->account:acct-northwind-robotics",
-        "source": "role:priya-shah",
+        "edge_id": "role:полина-шахова->account:acct-northwind-robotics",
+        "source": "role:полина-шахова",
         "target": "account:acct-northwind-robotics",
         "edge_type": "account_to_role",
         "highlighted": false,
         "label": "account_to_role"
       },
       {
-        "edge_id": "role:elena-ruiz->account:acct-northwind-robotics",
-        "source": "role:elena-ruiz",
+        "edge_id": "role:елена-руднева->account:acct-northwind-robotics",
+        "source": "role:елена-руднева",
         "target": "account:acct-northwind-robotics",
         "edge_type": "account_to_role",
         "highlighted": false,
         "label": "account_to_role"
       },
       {
-        "edge_id": "role:helix-systems->account:acct-northwind-robotics",
-        "source": "role:helix-systems",
+        "edge_id": "role:геликс-системы->account:acct-northwind-robotics",
+        "source": "role:геликс-системы",
         "target": "account:acct-northwind-robotics",
         "edge_type": "partner_to_account",
         "highlighted": false,
@@ -362,7 +362,7 @@
       }
     ],
     "route_path": [
-      "role:sofia-chen",
+      "role:софия-чернова",
       "account:acct-northwind-robotics"
     ]
   },
@@ -393,7 +393,7 @@
       },
       "route_preview": {
         "account_id": "acct-northwind-robotics",
-        "account_name": "Northwind Robotics",
+        "account_name": "Северные Роботы",
         "unresolved_gaps": [
           "economic_buyer"
         ],
@@ -402,7 +402,7 @@
             "route_type": "technical_benchmark",
             "title": "Invite technical stakeholder to a benchmark",
             "score": 88,
-            "reason": "Automation platform team added six engineering roles after a public efficiency initiative.; Sofia Chen can become a technical champion.",
+            "reason": "Automation platform team added six engineering roles after a public efficiency initiative.; София Чернова can become a technical champion.",
             "risk": "Economic buyer is not confirmed yet.",
             "owner": "Account Executive",
             "evidence_refs": [
@@ -415,7 +415,7 @@
             "route_type": "partner_intro",
             "title": "Request partner intro",
             "score": 85,
-            "reason": "Helix Systems is connected to the account as partner.",
+            "reason": "Геликс Системы is connected to the account as partner.",
             "risk": "Partner may be aligned with an incumbent competitor.",
             "owner": "Partner Manager",
             "evidence_refs": [
@@ -508,7 +508,7 @@
         },
         "route_preview": {
           "account_id": "acct-northwind-robotics",
-          "account_name": "Northwind Robotics",
+          "account_name": "Северные Роботы",
           "unresolved_gaps": [
             "economic_buyer"
           ],
@@ -517,7 +517,7 @@
               "route_type": "technical_benchmark",
               "title": "Invite technical stakeholder to a benchmark",
               "score": 88,
-              "reason": "Automation platform team added six engineering roles after a public efficiency initiative.; Sofia Chen can become a technical champion.",
+              "reason": "Automation platform team added six engineering roles after a public efficiency initiative.; София Чернова can become a technical champion.",
               "risk": "Economic buyer is not confirmed yet.",
               "owner": "Account Executive",
               "evidence_refs": [

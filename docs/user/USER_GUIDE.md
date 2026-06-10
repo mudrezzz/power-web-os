@@ -10,28 +10,32 @@ Power Web OS helps a sales or ABM team answer five questions:
 4. Which access routes are allowed by our playbook?
 5. What next move should a human review and execute?
 
-The planned upstream module is called `ICP Radar`. An ICP Radar is configured for a product and market profile, such as ТОиР automation for large Russian petrochemical and industrial companies. It discovers candidate accounts, monitors evidence-backed signals, scores them transparently, and sends only accepted accounts into Power Web work.
+The upstream module is called `ICP Radar`. An ICP Radar is configured for a product and market profile, such as ТОиР automation for large Russian petrochemical and industrial companies. It discovers candidate accounts, monitors evidence-backed signals, scores them transparently, and sends only accepted accounts into Power Web work.
 
 ## Current Demo
 
-The current demo uses a six-account fictional portfolio. It includes `Vitamin Bank` plus five additional accounts with varied signal strength, missing roles, and access routes.
+The current demo starts with a ТОиР/SIBUR-style `ICP Radar` shortlist imported from an XLSX fixture. It also keeps a six-account accepted portfolio with Russian-language company and person names for the downstream Power Web and Access Plan loop.
 
-The portfolio is ranked by Account Radar using deterministic ICP fit, signal strength, best Access Plan route score, and missing-role penalty.
+`ICP Radar` ranks legal entities by fit, intent, trigger, and total score. The accepted portfolio is ranked by Account Radar using deterministic ICP fit, signal strength, best Access Plan route score, and missing-role penalty.
 
-The default top-ranked account, `Northwind Robotics`, has the richest current Power Web example: eight board figures across technical, procurement, security, operations, partner, and missing economic-buyer roles. Use it to inspect how a more enterprise-like influence map fits inside the `Account Map` screen.
+The default top-ranked accepted account, `Северные Роботы`, has the richest current Power Web example: eight board figures across technical, procurement, security, operations, partner, and missing economic-buyer roles. Use it to inspect how a more enterprise-like influence map fits inside the `Account Map` screen.
 
 Run:
 
 ```bash
+python demo/run_demo.py generate-icp-radar
 python demo/run_demo.py generate-account-radar
 npm --prefix ./frontend run dev
 ```
 
-Open the Vite URL printed by the frontend command. The demo opens in a bounded Power Web OS workspace shell with `Accounts` active. It shows:
+Open the Vite URL printed by the frontend command. The demo opens in a bounded Power Web OS workspace shell with `ICP Radar` active. It shows:
 
-- sidebar navigation for `Accounts`, `Account Map`, `Access Plans`, `Signals`, and `Playbook`;
+- sidebar navigation for `ICP Radar`, `Accounts`, `Account Map`, `Access Plans`, `Signals`, and `Playbook`;
 - profile and navigation frame that stays visible while workspace content scrolls inside the app;
 - `EN` / `RU` language switcher in the top bar, with the choice saved locally in the browser;
+- ICP Radar ranking from the ТОиР workbook fixture;
+- fit, intent, trigger, total score, tier, evidence refs, and selected-candidate C1-C20 criteria breakdown;
+- a disabled `Take into work` affordance reserved for the planned handoff slice;
 - Account Radar ranking across six target accounts;
 - radar score, stage, signal count, missing roles, best route, owner, and review status;
 - account context, route count, workflow runtime, and ICP fit for the selected account in the top bar;
@@ -56,25 +60,39 @@ The language switcher localizes UI chrome plus visible deterministic demo data s
 
 `Playbook` also uses the same selected account. Open it from the sidebar to see why the planner allowed, blocked, or could not rank each route under the current playbook. The segmented control switches between the generated current playbook analysis and the deterministic `No partner motion` variant. The frontend does not recalculate planner logic; both route previews are pre-generated in the Access Plan artifact.
 
+## Planned ICP Radar UX Correction
+
+The next ICP Radar UI correction will make the shortlist table the main working surface:
+
+- `ICP Radar` opens as a broad ranked account table.
+- The first account/company column stays fixed while the user scrolls horizontally across score, evidence, and criteria columns.
+- Clicking a candidate expands a compact preview directly under that row.
+- The inline preview is bounded in height and scrolls internally when the summary is long.
+- Full candidate work opens in a separate candidate detail screen with breadcrumbs back to `ICP Radar`.
+- The detail screen remains read-only first; signal confirm/correct/reject/stale actions are planned for the following signal validation slice.
+
 The generated JSON artifact is also available at:
 
 - `demo/output/access_plan.json`
+- `demo/output/icp_radar.json`
 - `demo/output/account_radar.json`
 - `frontend/public/demo/access_plan.json`
+- `frontend/public/demo/icp_radar.json`
 - `frontend/public/demo/account_radar.json`
 - `frontend/public/demo/access_plans/{account_id}.json`
 
 ## Current Limitations
 
-- ICP Radar discovery and signal validation are not implemented in the current UI yet.
+- ICP Radar signal validation is not implemented in the current UI yet.
+- `Take into work` does not create accepted accounts yet.
 - No live CRM integration yet.
 - No live source connectors yet.
 - No production API server yet.
 - No persisted review or feedback loop yet.
 
-## Planned ICP Radar Flow
+## ICP Radar Flow
 
-The first ICP Radar demo should use a ТОиР automation profile based on the SIBUR-style spreadsheet analysis. It will separate two jobs:
+The first ICP Radar demo uses a ТОиР automation profile based on the SIBUR-style spreadsheet analysis. It separates two jobs:
 
 - account discovery: find and qualify legal entities inside a holding, using stable attributes such as revenue, asset type, site, INN, and whether decisions are made independently;
 - signal monitoring: repeatedly collect current signals such as tenders, ТОиР/EAM mentions, predictive diagnostics, modernization, incidents, hiring, and import-substitution activity.

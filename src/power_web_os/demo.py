@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
 from power_web_os.domain import Account, Playbook
+from power_web_os.icp_radar import icp_radar_artifact_to_payload
+from power_web_os.icp_radar_xlsx import load_icp_radar_workbook
 from power_web_os.planner import DeterministicAccessPlanner
 from power_web_os.radar import AccountRadar
 from power_web_os.serialization import (
@@ -132,19 +135,36 @@ def generate_account_radar_artifact(
     return artifact
 
 
+def generate_icp_radar_artifact(
+    *,
+    input_path: Path,
+    output_path: Path,
+    frontend_output_path: Path,
+    normalized_output_path: Path,
+) -> dict[str, Any]:
+    artifact = icp_radar_artifact_to_payload(load_icp_radar_workbook(input_path))
+    _write_json(output_path, artifact)
+    _write_json(frontend_output_path, artifact)
+    _write_json(normalized_output_path, artifact)
+    return artifact
+
+
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def main() -> None:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+
     root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(prog="power-web-os-demo")
     parser.add_argument(
         "command",
         nargs="?",
         default="print-plan",
-        choices=("print-plan", "generate-access-plan", "generate-account-radar"),
+        choices=("print-plan", "generate-access-plan", "generate-account-radar", "generate-icp-radar"),
     )
     parser.add_argument("--input", type=Path, default=root / "demo" / "sample_account.json")
     parser.add_argument("--output", type=Path, default=root / "demo" / "output" / "access_plan.json")
@@ -165,6 +185,26 @@ def main() -> None:
         type=Path,
         default=root / "frontend" / "public" / "demo" / "access_plans",
     )
+    parser.add_argument(
+        "--icp-radar-input",
+        type=Path,
+        default=root / "demo" / "fixtures" / "icp_radar" / "sibur_icp_pass1.xlsx",
+    )
+    parser.add_argument(
+        "--icp-radar-output",
+        type=Path,
+        default=root / "demo" / "output" / "icp_radar.json",
+    )
+    parser.add_argument(
+        "--frontend-icp-radar-output",
+        type=Path,
+        default=root / "frontend" / "public" / "demo" / "icp_radar.json",
+    )
+    parser.add_argument(
+        "--normalized-icp-radar-output",
+        type=Path,
+        default=root / "demo" / "fixtures" / "icp_radar" / "toir_sibur_icp_radar.json",
+    )
     args = parser.parse_args()
 
     if args.command == "generate-access-plan":
@@ -179,6 +219,13 @@ def main() -> None:
             output_path=args.radar_output,
             frontend_output_path=args.frontend_radar_output,
             frontend_access_plans_dir=args.frontend_access_plans_dir,
+        )
+    elif args.command == "generate-icp-radar":
+        artifact = generate_icp_radar_artifact(
+            input_path=args.icp_radar_input,
+            output_path=args.icp_radar_output,
+            frontend_output_path=args.frontend_icp_radar_output,
+            normalized_output_path=args.normalized_icp_radar_output,
         )
     else:
         artifact = build_demo_plan(args.input)

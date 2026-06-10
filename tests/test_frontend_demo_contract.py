@@ -49,6 +49,11 @@ def test_frontend_localizes_visible_demo_artifact_data_for_ru() -> None:
         "Partner motion disabled in this what-if playbook.",
         "Missing roles exist, but stronger allowed routes outrank this discovery move.",
         "Route conditions are not met.",
+        "София Чернова can become a technical champion.",
+        "Майя Коган can become a technical champion.",
+        "Иван Петров can become a technical champion.",
+        "Геликс Системы is connected to the account as partner.",
+        "Икс-Софт is connected to the account as partner.",
     ]:
         assert english_value in localizer
 
@@ -76,6 +81,7 @@ def test_frontend_demo_contains_required_sections() -> None:
     planned_screen = Path("frontend/src/screens/PlannedScreen.tsx").read_text(encoding="utf-8")
 
     for label_key in [
+        "nav.icpRadar",
         "nav.accounts",
         "nav.map",
         "nav.plans",
@@ -209,8 +215,47 @@ def test_app_loads_account_radar_and_selected_access_plan_artifacts() -> None:
     assert "access_plan_path" in app
 
 
+def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
+    app = Path("frontend/src/App.tsx").read_text(encoding="utf-8")
+    shell = Path("frontend/src/layout/AppShell.tsx").read_text(encoding="utf-8")
+    screen = Path("frontend/src/screens/ICPRadarScreen.tsx").read_text(encoding="utf-8")
+    types = Path("frontend/src/types.ts").read_text(encoding="utf-8")
+    i18n = Path("frontend/src/i18n.ts").read_text(encoding="utf-8")
+
+    assert "useState<ScreenId>('icp_radar')" in app
+    assert "/demo/icp_radar.json" in app
+    assert "activeScreen === 'icp_radar'" in app
+    assert "nav.icpRadar" in shell
+    assert "topbar.icpRadar" in shell
+    assert "ICPRadarArtifact" in types
+
+    for contract_value in [
+        "criteria_scores",
+        "evidence_refs",
+        "artifact.radar.criteria",
+        "candidate.score.fit_score",
+        "candidate.score.intent_score",
+        "candidate.score.trigger_score",
+        "candidate.score.total_score",
+    ]:
+        assert contract_value in screen
+
+    for label_key in [
+        "icpRadar.fit",
+        "icpRadar.intent",
+        "icpRadar.trigger",
+        "icpRadar.total",
+        "icpRadar.columns.tier",
+        "icpRadar.evidence",
+        "icpRadar.criteria",
+    ]:
+        assert label_key in screen or label_key in i18n
+
+
 def test_frontend_public_artifact_is_available_for_vite() -> None:
     radar_path = Path("frontend/public/demo/account_radar.json")
+    icp_radar_path = Path("frontend/public/demo/icp_radar.json")
 
     assert radar_path.exists()
+    assert icp_radar_path.exists()
     assert Path("frontend/public/demo/access_plans").exists()

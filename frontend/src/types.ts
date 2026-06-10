@@ -180,3 +180,73 @@ export type AccountRadarArtifact = {
     correlation_id: string;
   };
 };
+
+export type SignalCriterion = {
+  code: string;
+  name: string;
+  description: string;
+  scoring_guidance: string;
+};
+
+export type EvidenceSource = {
+  source_id: string;
+  url: string;
+  usage: string;
+};
+
+export type ICPRadarScore = {
+  fit_score: number;
+  intent_score: number;
+  trigger_score: number;
+  total_score: number;
+  tier: string;
+};
+
+export type ICPRadarCandidate = {
+  rank: number;
+  account_id: string;
+  ppo: string;
+  legal_name: string;
+  account_type: string;
+  description: string;
+  inn: string;
+  revenue: string;
+  site: string;
+  confidence: string;
+  signal_summary: string;
+  main_signal: string;
+  comment: string;
+  source_urls: string[];
+  evidence_refs: string[];
+  criteria_scores: Record<string, number>;
+  score: ICPRadarScore;
+};
+
+export type ICPRadarArtifact = {
+  artifact_type: 'icp_radar';
+  artifact_version: '0.6.2';
+  radar: {
+    profile: {
+      profile_id: string;
+      name: string;
+      product: string;
+      holding: string;
+      run_mode: string;
+      source_workbook: string;
+      scoring_formula: Record<string, unknown>;
+    };
+    criteria: SignalCriterion[];
+    sources: EvidenceSource[];
+  };
+  candidates: ICPRadarCandidate[];
+  workflow_metadata: {
+    workflow_name: string;
+    artifact_version: string;
+    source_workbook: string;
+    sheet_names: string[];
+    candidate_count: number;
+    criteria_count: number;
+    source_count: number;
+    scoring: string;
+  };
+};

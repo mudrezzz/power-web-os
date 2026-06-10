@@ -6,6 +6,7 @@ import {
   Filter,
   LayoutGrid,
   Plus,
+  Radar,
   Route,
   Search,
   Settings2,
@@ -19,9 +20,10 @@ import { Avatar, Badge, Button, HealthBar, IconButton, Mono } from '../component
 import { localeStorageKey, supportedLocales, type SupportedLocale } from '../i18n';
 import type { AccessPlanArtifact } from '../types';
 
-export type ScreenId = 'accounts' | 'map' | 'plans' | 'signals' | 'playbook' | 'tasks' | 'inbox';
+export type ScreenId = 'icp_radar' | 'accounts' | 'map' | 'plans' | 'signals' | 'playbook' | 'tasks' | 'inbox';
 
 const workspaceNav = [
+  { id: 'icp_radar', labelKey: 'nav.icpRadar', icon: Radar },
   { id: 'accounts', labelKey: 'nav.accounts', icon: LayoutGrid },
   { id: 'map', labelKey: 'nav.map', icon: Share2 },
   { id: 'plans', labelKey: 'nav.plans', icon: Route },
@@ -166,7 +168,7 @@ function TopBar({
                 <span>{t('topbar.routeCount', { count: routeCount })}</span>
               </>
             ) : (
-              t('topbar.fallbackMeta')
+              activeScreen === 'icp_radar' ? t('topbar.icpRadarMeta') : t('topbar.fallbackMeta')
             )}
           </span>
         </div>
@@ -222,6 +224,10 @@ function LanguageSwitch({
 }
 
 function topBarTitle(activeScreen: ScreenId, artifact: AccessPlanArtifact | null, t: TFunction) {
+  if (activeScreen === 'icp_radar') {
+    return t('topbar.icpRadar');
+  }
+
   if (artifact && activeScreen === 'plans') {
     return t('topbar.accessPlansFor', { accountName: artifact.account.name });
   }

@@ -71,8 +71,8 @@ const ruPlaybookTokens: TextMap = {
 const ruTexts: TextMap = {
   'Automation platform team added six engineering roles after a public efficiency initiative.':
     'Команда автоматизационной платформы открыла шесть инженерных ролей после публичной инициативы по эффективности.',
-  'Automation platform team added six engineering roles after a public efficiency initiative.; Sofia Chen can become a technical champion.':
-    'Команда автоматизационной платформы открыла шесть инженерных ролей после публичной инициативы по эффективности; Sofia Chen может стать техническим чемпионом.',
+  'Automation platform team added six engineering roles after a public efficiency initiative.; София Чернова can become a technical champion.':
+    'Команда автоматизационной платформы открыла шесть инженерных ролей после публичной инициативы по эффективности; София Чернова может стать техническим чемпионом.',
   'BI consulting purchase was recorded eight months ago, creating a procurement trail.':
     'Закупка BI-консалтинга зафиксирована восемь месяцев назад и создает закупочный след.',
   'Data operations team opened analytics engineering roles tied to route optimization.':
@@ -87,15 +87,15 @@ const ruTexts: TextMap = {
     'Свежий тендер SI-партнера упоминает модернизацию платформы.',
   'Seven open Data Engineer and DWH Architect roles suggest an active data platform initiative.':
     'Семь открытых ролей Data Engineer и DWH Architect указывают на активную инициативу по платформе данных.',
-  'Data operations team opened analytics engineering roles tied to route optimization.; Maya Cohen can become a technical champion.':
-    'Команда data operations открыла роли analytics engineering, связанные с оптимизацией маршрутов; Maya Cohen может стать техническим чемпионом.',
-  'Seven open Data Engineer and DWH Architect roles suggest an active data platform initiative.; Ivan Petrov can become a technical champion.':
-    'Семь открытых ролей Data Engineer и DWH Architect указывают на активную инициативу по платформе данных; Ivan Petrov может стать техническим чемпионом.',
-  'FactoryCore is connected to the account as partner.': 'FactoryCore связан с аккаунтом как партнер.',
-  'Helix Systems is connected to the account as partner.': 'Helix Systems связан с аккаунтом как партнер.',
-  'MedSys Advisory is connected to the account as partner.': 'MedSys Advisory связан с аккаунтом как партнер.',
-  'RouteWorks is connected to the account as partner.': 'RouteWorks связан с аккаунтом как партнер.',
-  'X-Soft is connected to the account as partner.': 'X-Soft связан с аккаунтом как партнер.',
+  'Data operations team opened analytics engineering roles tied to route optimization.; Майя Коган can become a technical champion.':
+    'Команда data operations открыла роли analytics engineering, связанные с оптимизацией маршрутов; Майя Коган может стать техническим чемпионом.',
+  'Seven open Data Engineer and DWH Architect roles suggest an active data platform initiative.; Иван Петров can become a technical champion.':
+    'Семь открытых ролей Data Engineer и DWH Architect указывают на активную инициативу по платформе данных; Иван Петров может стать техническим чемпионом.',
+  'Геликс Системы is connected to the account as partner.': 'Геликс Системы связан с аккаунтом как партнер.',
+  'Икс-Софт is connected to the account as partner.': 'Икс-Софт связан с аккаунтом как партнер.',
+  'Маршрутные Системы is connected to the account as partner.': 'Маршрутные Системы связаны с аккаунтом как партнер.',
+  'МедСис Консалтинг is connected to the account as partner.': 'МедСис Консалтинг связан с аккаунтом как партнер.',
+  'ФабрикаСофт is connected to the account as partner.': 'ФабрикаСофт связан с аккаунтом как партнер.',
   'Missing roles must be surfaced before outreach: economic_buyer, technical_champion, security_gatekeeper.':
     'Перед аутричем нужно выявить недостающие роли: экономический покупатель, технический чемпион, гейткипер безопасности.',
   'Missing roles must be surfaced before outreach: economic_buyer.':

@@ -14,6 +14,7 @@ frontend/dist/
 *.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
+.wiki-build/
 
 # Local research/vendor checkout, not product source.
 .external/

@@ -3,7 +3,7 @@
   "artifact_version": "0.2",
   "account": {
     "account_id": "acct-vantage-logistics",
-    "name": "Vantage Logistics",
+    "name": "Вектор Логистика",
     "icp_fit": 0.82,
     "signals": [
       {
@@ -23,14 +23,14 @@
     "roles": [
       {
         "role": "Head of Data",
-        "person_name": "Maya Cohen",
+        "person_name": "Майя Коган",
         "state": "identified",
         "influence": 0.8,
         "relation": null
       },
       {
         "role": "Integrator",
-        "person_name": "RouteWorks",
+        "person_name": "Маршрутные Системы",
         "state": "identified",
         "influence": 0.68,
         "relation": "partner"
@@ -58,14 +58,14 @@
   },
   "access_plan": {
     "account_id": "acct-vantage-logistics",
-    "account_name": "Vantage Logistics",
+    "account_name": "Вектор Логистика",
     "unresolved_gaps": [],
     "routes": [
       {
         "route_type": "technical_benchmark",
         "title": "Invite technical stakeholder to a benchmark",
         "score": 81,
-        "reason": "Data operations team opened analytics engineering roles tied to route optimization.; Maya Cohen can become a technical champion.",
+        "reason": "Data operations team opened analytics engineering roles tied to route optimization.; Майя Коган can become a technical champion.",
         "risk": "Economic buyer is not confirmed yet.",
         "owner": "Account Executive",
         "evidence_refs": [
@@ -78,7 +78,7 @@
         "route_type": "partner_intro",
         "title": "Request partner intro",
         "score": 78,
-        "reason": "RouteWorks is connected to the account as partner.",
+        "reason": "Маршрутные Системы is connected to the account as partner.",
         "risk": "Partner may be aligned with an incumbent competitor.",
         "owner": "Partner Manager",
         "evidence_refs": [
@@ -91,7 +91,7 @@
   },
   "power_web_board": {
     "account_id": "acct-vantage-logistics",
-    "account_name": "Vantage Logistics",
+    "account_name": "Вектор Логистика",
     "summary": {
       "visible_count": 2,
       "missing_count": 0,
@@ -103,7 +103,7 @@
     "nodes": [
       {
         "node_id": "account:acct-vantage-logistics",
-        "label": "Vantage Logistics",
+        "label": "Вектор Логистика",
         "node_type": "account",
         "role": "account",
         "state": "selected",
@@ -116,8 +116,8 @@
         "relation": null
       },
       {
-        "node_id": "role:maya-cohen",
-        "label": "Maya Cohen",
+        "node_id": "role:майя-коган",
+        "label": "Майя Коган",
         "node_type": "person",
         "role": "Head of Data",
         "state": "identified",
@@ -130,8 +130,8 @@
         "relation": null
       },
       {
-        "node_id": "role:routeworks",
-        "label": "RouteWorks",
+        "node_id": "role:маршрутные-системы",
+        "label": "Маршрутные Системы",
         "node_type": "partner",
         "role": "Integrator",
         "state": "identified",
@@ -146,16 +146,16 @@
     ],
     "edges": [
       {
-        "edge_id": "role:maya-cohen->account:acct-vantage-logistics",
-        "source": "role:maya-cohen",
+        "edge_id": "role:майя-коган->account:acct-vantage-logistics",
+        "source": "role:майя-коган",
         "target": "account:acct-vantage-logistics",
         "edge_type": "account_to_role",
         "highlighted": true,
         "label": "account_to_role"
       },
       {
-        "edge_id": "role:routeworks->account:acct-vantage-logistics",
-        "source": "role:routeworks",
+        "edge_id": "role:маршрутные-системы->account:acct-vantage-logistics",
+        "source": "role:маршрутные-системы",
         "target": "account:acct-vantage-logistics",
         "edge_type": "partner_to_account",
         "highlighted": false,
@@ -163,7 +163,7 @@
       }
     ],
     "route_path": [
-      "role:maya-cohen",
+      "role:майя-коган",
       "account:acct-vantage-logistics"
     ]
   },
@@ -193,14 +193,14 @@
       },
       "route_preview": {
         "account_id": "acct-vantage-logistics",
-        "account_name": "Vantage Logistics",
+        "account_name": "Вектор Логистика",
         "unresolved_gaps": [],
         "routes": [
           {
             "route_type": "technical_benchmark",
             "title": "Invite technical stakeholder to a benchmark",
             "score": 81,
-            "reason": "Data operations team opened analytics engineering roles tied to route optimization.; Maya Cohen can become a technical champion.",
+            "reason": "Data operations team opened analytics engineering roles tied to route optimization.; Майя Коган can become a technical champion.",
             "risk": "Economic buyer is not confirmed yet.",
             "owner": "Account Executive",
             "evidence_refs": [
@@ -213,7 +213,7 @@
             "route_type": "partner_intro",
             "title": "Request partner intro",
             "score": 78,
-            "reason": "RouteWorks is connected to the account as partner.",
+            "reason": "Маршрутные Системы is connected to the account as partner.",
             "risk": "Partner may be aligned with an incumbent competitor.",
             "owner": "Partner Manager",
             "evidence_refs": [
@@ -291,14 +291,14 @@
         },
         "route_preview": {
           "account_id": "acct-vantage-logistics",
-          "account_name": "Vantage Logistics",
+          "account_name": "Вектор Логистика",
           "unresolved_gaps": [],
           "routes": [
             {
               "route_type": "technical_benchmark",
               "title": "Invite technical stakeholder to a benchmark",
               "score": 81,
-              "reason": "Data operations team opened analytics engineering roles tied to route optimization.; Maya Cohen can become a technical champion.",
+              "reason": "Data operations team opened analytics engineering roles tied to route optimization.; Майя Коган can become a technical champion.",
               "risk": "Economic buyer is not confirmed yet.",
               "owner": "Account Executive",
               "evidence_refs": [

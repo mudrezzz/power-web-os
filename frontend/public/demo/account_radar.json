@@ -4,7 +4,7 @@
   "accounts": [
     {
       "account_id": "acct-northwind-robotics",
-      "account_name": "Northwind Robotics",
+      "account_name": "Северные Роботы",
       "stage": "Access",
       "radar_score": 84,
       "signal_count": 2,
@@ -19,7 +19,7 @@
     },
     {
       "account_id": "acct-vantage-logistics",
-      "account_name": "Vantage Logistics",
+      "account_name": "Вектор Логистика",
       "stage": "Mapping",
       "radar_score": 82,
       "signal_count": 1,
@@ -34,7 +34,7 @@
     },
     {
       "account_id": "acct-orbit-manufacturing",
-      "account_name": "Orbit Manufacturing",
+      "account_name": "Орбита Производство",
       "stage": "Access",
       "radar_score": 79,
       "signal_count": 1,
@@ -49,7 +49,7 @@
     },
     {
       "account_id": "acct-vitamin-bank",
-      "account_name": "Vitamin Bank",
+      "account_name": "Банк Витамин",
       "stage": "Mapping",
       "radar_score": 73,
       "signal_count": 2,
@@ -64,7 +64,7 @@
     },
     {
       "account_id": "acct-brightline-health",
-      "account_name": "Brightline Health",
+      "account_name": "Светлая Линия Мед",
       "stage": "Qualifying",
       "radar_score": 68,
       "signal_count": 1,
@@ -79,7 +79,7 @@
     },
     {
       "account_id": "acct-caldera-energy",
-      "account_name": "Caldera Energy",
+      "account_name": "Кальдера Энерго",
       "stage": "Mapping",
       "radar_score": 39,
       "signal_count": 1,

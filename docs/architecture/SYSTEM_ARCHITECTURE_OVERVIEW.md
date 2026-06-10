@@ -21,11 +21,12 @@ The current baseline has:
 
 - domain entities for account access planning;
 - deterministic Access Planner;
-- deterministic Account Radar portfolio read model for the current demo, to be evolved into the ICP Radar funnel;
+- deterministic ICP Radar XLSX fixture import read model;
+- deterministic Account Radar accepted-portfolio read model for the current demo;
 - deterministic Power Web Board selected-account read model;
 - deterministic Playbook Analysis selected-account read model;
 - `AccessPlanningWorkflow` with optional `langgraph-dai` integration and local fallback;
-- generated Account Radar and Access Plan artifacts;
+- generated ICP Radar, Account Radar, and Access Plan artifacts;
 - React TypeScript Vite demo inside the Power Web OS workspace shell using `ui-design-system`;
 - pytest baseline and frontend build check.
 
@@ -34,8 +35,8 @@ The current baseline has:
 | Component | Responsibility | Owned data / behavior | Depends on |
 |---|---|---|---|
 | Web UI / BFF | Product screens and user workflow | Account workspace, review queue, demo UX | Product API |
-| Frontend demo | Local product shell with active Accounts, Access Plans, Account Map, and Playbook screens | Reads generated Account Radar and Access Plan artifacts and renders planned workspace placeholders | Vite, design system |
-| ICP Radar | Configurable ABM account-search and signal-monitoring layer | ICP profile, discovery rules, signal criteria, scoring formula, candidate queue, signal validation state | Source connectors, evidence layer, domain scoring |
+| Frontend demo | Local product shell with active ICP Radar, Accounts, Access Plans, Account Map, and Playbook screens | Reads generated ICP Radar, Account Radar, and Access Plan artifacts and renders planned workspace placeholders | Vite, design system |
+| ICP Radar | Configurable ABM account-search and signal-monitoring layer | ICP profile, discovery rules, signal criteria, scoring formula, candidate queue, signal validation state; current demo imports XLSX fixture into a deterministic read model | Source connectors, evidence layer, domain scoring |
 | Account Radar | Deterministic portfolio read model | Portfolio score, top reason, best route, owner, review status | Domain services, Access Plan artifacts |
 | Power Web Board | Deterministic selected-account read model | Board summary, people/partner/missing nodes, account edges, highlighted route path | Account, Access Plan artifact |
 | Playbook Analysis | Deterministic selected-account read model | Current and what-if playbook snapshots, route policy decisions, review policy, route previews | Account, Playbook, Access Plan artifact |
@@ -76,6 +77,17 @@ ICP profile
   -> Power Web discovery
 ```
 
+Current demo ICP Radar flow:
+
+```text
+demo/fixtures/icp_radar/sibur_icp_pass1.xlsx
+  -> ICPRadarXlsxImport
+  -> deterministic fit / intent / trigger / total score
+  -> demo/output/icp_radar.json
+  -> frontend/public/demo/icp_radar.json
+  -> ICP Radar screen
+```
+
 ```text
 Target accounts
   -> synthetic portfolio fixture
@@ -85,6 +97,7 @@ Target accounts
   -> power web board data inside each access plan artifact
   -> playbook analysis data inside each access plan artifact
   -> local frontend workspace shell
+  -> ICP Radar screen
   -> Accounts screen
   -> selected Access Plans screen / Account Map screen / Playbook screen
 ```
@@ -121,9 +134,11 @@ An ICP Radar owns:
 - `ICPScoringFormula`: transparent fit/intent/trigger aggregation and tier thresholds.
 - `RadarCandidate`: a scored account candidate before it is accepted into Power Web work.
 
-The first realistic demo ICP profile should use the attached SIBUR-style ТОиР automation analysis as a fixture. It should discover Russian legal entities inside a holding, score them against ТОиР criteria, and only send accepted candidates into the existing Power Web / Access Plan loop.
+The first realistic demo ICP profile uses `demo/fixtures/icp_radar/sibur_icp_pass1.xlsx` as a fixture. It discovers Russian legal entities inside a holding, scores them against ТОиР criteria, and shows a ranked candidate shortlist. Signal validation and the take-into-work handoff are still planned follow-up slices.
 
 Signal validation is part of the ICP Radar boundary. A human must be able to confirm, correct, reject, or mark a signal as stale. Validation changes must affect the score and preserve an audit trail explaining why the candidate score changed.
+
+The frontend ICP Radar workspace should be table-first. The main screen is a broad shortlist table with a sticky account column, bounded inline candidate preview, and a separate candidate detail screen. The detail screen is the intended surface for future evidence validation actions; the shortlist should stay optimized for scanning and comparison.
 
 ## LangGraph Platform Usage
 

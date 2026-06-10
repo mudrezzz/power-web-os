@@ -3,7 +3,7 @@
   "artifact_version": "0.2",
   "account": {
     "account_id": "acct-caldera-energy",
-    "name": "Caldera Energy",
+    "name": "Кальдера Энерго",
     "icp_fit": 0.62,
     "signals": [
       {
@@ -23,7 +23,7 @@
     "roles": [
       {
         "role": "Procurement Lead",
-        "person_name": "Nora Mills",
+        "person_name": "Нина Мельникова",
         "state": "hypothesis",
         "influence": 0.5,
         "relation": null
@@ -51,7 +51,7 @@
   },
   "access_plan": {
     "account_id": "acct-caldera-energy",
-    "account_name": "Caldera Energy",
+    "account_name": "Кальдера Энерго",
     "unresolved_gaps": [
       "economic_buyer",
       "technical_champion",
@@ -88,7 +88,7 @@
   },
   "power_web_board": {
     "account_id": "acct-caldera-energy",
-    "account_name": "Caldera Energy",
+    "account_name": "Кальдера Энерго",
     "summary": {
       "visible_count": 1,
       "missing_count": 3,
@@ -100,7 +100,7 @@
     "nodes": [
       {
         "node_id": "account:acct-caldera-energy",
-        "label": "Caldera Energy",
+        "label": "Кальдера Энерго",
         "node_type": "account",
         "role": "account",
         "state": "selected",
@@ -113,8 +113,8 @@
         "relation": null
       },
       {
-        "node_id": "role:nora-mills",
-        "label": "Nora Mills",
+        "node_id": "role:нина-мельникова",
+        "label": "Нина Мельникова",
         "node_type": "person",
         "role": "Procurement Lead",
         "state": "hypothesis",
@@ -171,8 +171,8 @@
     ],
     "edges": [
       {
-        "edge_id": "role:nora-mills->account:acct-caldera-energy",
-        "source": "role:nora-mills",
+        "edge_id": "role:нина-мельникова->account:acct-caldera-energy",
+        "source": "role:нина-мельникова",
         "target": "account:acct-caldera-energy",
         "edge_type": "account_to_role",
         "highlighted": true,
@@ -204,7 +204,7 @@
       }
     ],
     "route_path": [
-      "role:nora-mills",
+      "role:нина-мельникова",
       "account:acct-caldera-energy"
     ]
   },
@@ -230,7 +230,7 @@
       },
       "route_preview": {
         "account_id": "acct-caldera-energy",
-        "account_name": "Caldera Energy",
+        "account_name": "Кальдера Энерго",
         "unresolved_gaps": [
           "economic_buyer",
           "technical_champion",
@@ -327,7 +327,7 @@
         },
         "route_preview": {
           "account_id": "acct-caldera-energy",
-          "account_name": "Caldera Energy",
+          "account_name": "Кальдера Энерго",
           "unresolved_gaps": [
             "economic_buyer",
             "technical_champion",

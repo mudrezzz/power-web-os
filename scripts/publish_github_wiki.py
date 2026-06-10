@@ -1,0 +1,201 @@
+from __future__ import annotations
+
+import argparse
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+
+
+REPO_FULL_NAME = "mudrezzz/power-web-os"
+WIKI_REMOTE = f"https://github.com/{REPO_FULL_NAME}.wiki.git"
+SCREENSHOT_DIR = Path("docs/qa/screenshots/visual-smoke")
+
+PAGES = {
+    "User-Guide.md": Path("docs/user/USER_GUIDE.md"),
+    "Developer-Guide.md": Path("docs/developer/DEVELOPER_GUIDE.md"),
+    "Architecture.md": Path("docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md"),
+    "Demo.md": Path("demo/README.md"),
+    "Roadmap.md": Path("ROADMAP.md"),
+}
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Publish repository documentation to the GitHub Wiki.")
+    parser.add_argument("--dry-run", action="store_true", help="Build wiki content without pushing it.")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional output directory for dry-run content. Defaults to a temporary directory.",
+    )
+    args = parser.parse_args()
+
+    root = Path(__file__).resolve().parents[1]
+    if args.dry_run:
+        output = args.output or root / ".wiki-build"
+        if output.exists():
+            shutil.rmtree(output)
+        output.mkdir(parents=True)
+        build_wiki(root, output)
+        print(f"Wiki content built at {output}")
+        return
+
+    ensure_wiki_enabled(root)
+    with tempfile.TemporaryDirectory(prefix="power-web-os-wiki-") as tmp:
+        wiki_dir = Path(tmp) / "wiki"
+        clone_or_init_wiki(wiki_dir)
+        clear_wiki(wiki_dir)
+        build_wiki(root, wiki_dir)
+        try:
+            commit_and_push(wiki_dir)
+        except subprocess.CalledProcessError as error:
+            if "push" in error.cmd:
+                raise SystemExit(
+                    "GitHub Wiki remote is not available yet. "
+                    "Create one initial page at "
+                    f"https://github.com/{REPO_FULL_NAME}/wiki, then rerun this script."
+                ) from error
+            raise
+
+
+def ensure_wiki_enabled(root: Path) -> None:
+    run(["gh", "repo", "edit", REPO_FULL_NAME, "--enable-wiki=true"], cwd=root)
+
+
+def clone_or_init_wiki(wiki_dir: Path) -> None:
+    result = subprocess.run(
+        ["git", "clone", WIKI_REMOTE, str(wiki_dir)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return
+
+    wiki_dir.mkdir(parents=True)
+    run(["git", "init"], cwd=wiki_dir)
+    run(["git", "remote", "add", "origin", WIKI_REMOTE], cwd=wiki_dir)
+
+
+def clear_wiki(wiki_dir: Path) -> None:
+    for item in wiki_dir.iterdir():
+        if item.name == ".git":
+            continue
+        if item.is_dir():
+            shutil.rmtree(item)
+        else:
+            item.unlink()
+
+
+def build_wiki(root: Path, wiki_dir: Path) -> None:
+    wiki_dir.mkdir(parents=True, exist_ok=True)
+    (wiki_dir / "Home.md").write_text(home_page(), encoding="utf-8")
+    (wiki_dir / "_Sidebar.md").write_text(sidebar(), encoding="utf-8")
+    (wiki_dir / "QA-Visual-Smoke.md").write_text(qa_visual_smoke_page(root), encoding="utf-8")
+
+    for wiki_name, source in PAGES.items():
+        content = (root / source).read_text(encoding="utf-8")
+        (wiki_dir / wiki_name).write_text(normalize_links(content), encoding="utf-8")
+
+    copy_screenshots(root, wiki_dir)
+
+
+def home_page() -> str:
+    return """# Power Web OS
+
+Power Web OS is a white-box account access planning platform for complex B2B sales.
+
+## Start Here
+
+- [[User Guide]]
+- [[Demo]]
+- [[QA Visual Smoke]]
+- [[Architecture]]
+- [[Developer Guide]]
+- [[Roadmap]]
+
+## Current Demo Screenshots
+
+![ICP Radar](assets/screenshots/visual-smoke/icp-radar-1366x768.png)
+![Account Map](assets/screenshots/visual-smoke/account-map-1366x768.png)
+"""
+
+
+def sidebar() -> str:
+    return """# Power Web OS
+
+- [[Home]]
+- [[User Guide]]
+- [[Demo]]
+- [[QA Visual Smoke]]
+- [[Architecture]]
+- [[Developer Guide]]
+- [[Roadmap]]
+"""
+
+
+def qa_visual_smoke_page(root: Path) -> str:
+    screenshots = sorted((root / SCREENSHOT_DIR).glob("*.png"))
+    image_lines = "\n".join(
+        f"## {path.stem}\n\n![{path.stem}](assets/screenshots/visual-smoke/{path.name})\n"
+        for path in screenshots
+    )
+    return f"""# QA Visual Smoke
+
+These screenshots are generated from the local Vite app with Playwright.
+
+Run from the repository root:
+
+```bash
+python -m power_web_os.demo generate-icp-radar
+python -m power_web_os.demo generate-account-radar
+npm --prefix ./frontend run visual:smoke
+```
+
+Screenshots are smoke evidence, not pixel-perfect regression baselines.
+
+{image_lines}
+"""
+
+
+def copy_screenshots(root: Path, wiki_dir: Path) -> None:
+    source_dir = root / SCREENSHOT_DIR
+    target_dir = wiki_dir / "assets" / "screenshots" / "visual-smoke"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    for source in source_dir.glob("*.png"):
+        shutil.copy2(source, target_dir / source.name)
+
+
+def normalize_links(content: str) -> str:
+    replacements = {
+        "(docs/user/USER_GUIDE.md)": "(User-Guide)",
+        "(docs/developer/DEVELOPER_GUIDE.md)": "(Developer-Guide)",
+        "(docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md)": "(Architecture)",
+        "(demo/README.md)": "(Demo)",
+        "(ROADMAP.md)": "(Roadmap)",
+        "(docs/qa/README.md)": "(QA-Visual-Smoke)",
+    }
+    for old, new in replacements.items():
+        content = content.replace(old, new)
+    return content
+
+
+def commit_and_push(wiki_dir: Path) -> None:
+    run(["git", "add", "-A"], cwd=wiki_dir)
+    status = subprocess.run(["git", "status", "--porcelain"], cwd=wiki_dir, check=True, capture_output=True, text=True)
+    if not status.stdout.strip():
+        print("Wiki is already up to date.")
+        return
+    run(["git", "config", "user.name", "Codex"], cwd=wiki_dir)
+    run(["git", "config", "user.email", "codex@local"], cwd=wiki_dir)
+    run(["git", "commit", "-m", "Publish documentation wiki"], cwd=wiki_dir)
+    run(["git", "push", "origin", "HEAD:master"], cwd=wiki_dir)
+
+
+def run(command: list[str], *, cwd: Path) -> None:
+    subprocess.run(command, cwd=cwd, check=True)
+
+
+if __name__ == "__main__":
+    main()

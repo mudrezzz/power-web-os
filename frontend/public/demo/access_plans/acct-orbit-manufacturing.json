@@ -3,7 +3,7 @@
   "artifact_version": "0.2",
   "account": {
     "account_id": "acct-orbit-manufacturing",
-    "name": "Orbit Manufacturing",
+    "name": "Орбита Производство",
     "icp_fit": 0.79,
     "signals": [
       {
@@ -23,7 +23,7 @@
     "roles": [
       {
         "role": "Integrator",
-        "person_name": "FactoryCore",
+        "person_name": "ФабрикаСофт",
         "state": "identified",
         "influence": 0.76,
         "relation": "partner"
@@ -49,14 +49,14 @@
   },
   "access_plan": {
     "account_id": "acct-orbit-manufacturing",
-    "account_name": "Orbit Manufacturing",
+    "account_name": "Орбита Производство",
     "unresolved_gaps": [],
     "routes": [
       {
         "route_type": "partner_intro",
         "title": "Request partner intro",
         "score": 80,
-        "reason": "FactoryCore is connected to the account as partner.",
+        "reason": "ФабрикаСофт is connected to the account as partner.",
         "risk": "Partner may be aligned with an incumbent competitor.",
         "owner": "Partner Manager",
         "evidence_refs": [
@@ -82,7 +82,7 @@
   },
   "power_web_board": {
     "account_id": "acct-orbit-manufacturing",
-    "account_name": "Orbit Manufacturing",
+    "account_name": "Орбита Производство",
     "summary": {
       "visible_count": 1,
       "missing_count": 0,
@@ -94,7 +94,7 @@
     "nodes": [
       {
         "node_id": "account:acct-orbit-manufacturing",
-        "label": "Orbit Manufacturing",
+        "label": "Орбита Производство",
         "node_type": "account",
         "role": "account",
         "state": "selected",
@@ -107,8 +107,8 @@
         "relation": null
       },
       {
-        "node_id": "role:factorycore",
-        "label": "FactoryCore",
+        "node_id": "role:фабрикасофт",
+        "label": "ФабрикаСофт",
         "node_type": "partner",
         "role": "Integrator",
         "state": "identified",
@@ -123,8 +123,8 @@
     ],
     "edges": [
       {
-        "edge_id": "role:factorycore->account:acct-orbit-manufacturing",
-        "source": "role:factorycore",
+        "edge_id": "role:фабрикасофт->account:acct-orbit-manufacturing",
+        "source": "role:фабрикасофт",
         "target": "account:acct-orbit-manufacturing",
         "edge_type": "partner_to_account",
         "highlighted": true,
@@ -132,7 +132,7 @@
       }
     ],
     "route_path": [
-      "role:factorycore",
+      "role:фабрикасофт",
       "account:acct-orbit-manufacturing"
     ]
   },
@@ -160,14 +160,14 @@
       },
       "route_preview": {
         "account_id": "acct-orbit-manufacturing",
-        "account_name": "Orbit Manufacturing",
+        "account_name": "Орбита Производство",
         "unresolved_gaps": [],
         "routes": [
           {
             "route_type": "partner_intro",
             "title": "Request partner intro",
             "score": 80,
-            "reason": "FactoryCore is connected to the account as partner.",
+            "reason": "ФабрикаСофт is connected to the account as partner.",
             "risk": "Partner may be aligned with an incumbent competitor.",
             "owner": "Partner Manager",
             "evidence_refs": [
@@ -254,7 +254,7 @@
         },
         "route_preview": {
           "account_id": "acct-orbit-manufacturing",
-          "account_name": "Orbit Manufacturing",
+          "account_name": "Орбита Производство",
           "unresolved_gaps": [],
           "routes": [
             {

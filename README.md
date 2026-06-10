@@ -30,20 +30,22 @@ Slice 0.6 is implemented. The repository contains:
 - deterministic Access Planner baseline wrapped by `AccessPlanningWorkflow`;
 - deterministic Power Web Lite board read model added to Access Plan artifacts;
 - deterministic Playbook Analysis read model with current and no-partner-motion route previews;
+- deterministic ICP Radar XLSX import for the ТОиР/SIBUR-style fixture;
 - realistic portfolio demo input, Account Radar artifact, and generated Access Plan artifacts;
-- React + TypeScript + Vite frontend demo inside a bounded Power Web OS workspace shell with Accounts, Access Plans, Account Map, and Playbook screens;
+- React + TypeScript + Vite frontend demo inside a bounded Power Web OS workspace shell with ICP Radar, Accounts, Access Plans, Account Map, and Playbook screens;
 - EN/RU UI and visible demo data switching;
 - pytest baseline.
 
-The next product direction is an ABM-oriented `ICP Radar` layer before Power Web work: configurable ICP profiles, account discovery, recurring signal monitoring, human validation of found signals, transparent scoring, and a `take into work` handoff into Power Web discovery. The first realistic fixture should use the ТОиР/SIBUR-style analysis workbook.
+The current product direction is an ABM-oriented `ICP Radar` layer before Power Web work: configurable ICP profiles, account discovery, recurring signal monitoring, human validation of found signals, transparent scoring, and a `take into work` handoff into Power Web discovery. The first realistic fixture uses the ТОиР/SIBUR-style analysis workbook.
 
-The next implementation slice is the frontend design-system validator.
+The next recommended product slice is `Slice 0.6.2.1: ICP Radar table-first UX correction`; after that, `Slice 0.6.3` adds signal validation on the candidate detail surface. The frontend design-system validator remains the next engineering hardening slice.
 
 ## Quick Start
 
 ```bash
 python -m pip install -e ".[dev]"
 python -m pytest
+python -m power_web_os.demo generate-icp-radar
 python -m power_web_os.demo generate-account-radar
 npm install --prefix ./frontend
 npm --prefix ./frontend run dev
@@ -52,6 +54,7 @@ npm --prefix ./frontend run dev
 Without installing the package, run the checkout demo directly:
 
 ```bash
+python demo/run_demo.py generate-icp-radar
 python demo/run_demo.py generate-account-radar
 npm --prefix ./frontend run dev
 ```
@@ -73,6 +76,7 @@ Build checks:
 ```bash
 python -m pytest
 npm --prefix ./frontend run build
+npm --prefix ./frontend run visual:smoke
 ```
 
 ## Documentation
@@ -84,6 +88,27 @@ npm --prefix ./frontend run build
 - [Developer Guide](docs/developer/DEVELOPER_GUIDE.md)
 - [User Guide](docs/user/USER_GUIDE.md)
 - [Demo](demo/README.md)
+- [QA screenshots and wiki publishing](docs/qa/README.md)
+
+## GitHub Wiki
+
+Local documentation and screenshots are the source of truth. To build the GitHub Wiki package locally:
+
+```bash
+python scripts/publish_github_wiki.py --dry-run
+```
+
+To publish it to the repository Wiki:
+
+```bash
+python scripts/publish_github_wiki.py
+```
+
+The current Wiki target is:
+
+```text
+https://github.com/mudrezzz/power-web-os/wiki
+```
 
 ## Development Model
 

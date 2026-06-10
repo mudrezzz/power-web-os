@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { Badge, Card, Eyebrow } from '../components/primitives';
 import type { ScreenId } from '../layout/AppShell';
 
+type PlannedScreenId = Exclude<ScreenId, 'icp_radar' | 'accounts' | 'plans' | 'map' | 'playbook'>;
+
 const plannedScreens: Record<
-  Exclude<ScreenId, 'accounts' | 'plans' | 'map' | 'playbook'>,
+  PlannedScreenId,
   {
     descriptionKey: string;
     eyebrowKey: string;
@@ -36,7 +38,7 @@ const plannedScreens: Record<
   },
 };
 
-export function PlannedScreen({ screenId }: { screenId: Exclude<ScreenId, 'accounts' | 'plans' | 'map' | 'playbook'> }) {
+export function PlannedScreen({ screenId }: { screenId: PlannedScreenId }) {
   const { t } = useTranslation();
   const screen = plannedScreens[screenId];
   const Icon = screen.icon;
