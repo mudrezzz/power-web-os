@@ -222,8 +222,12 @@ Rules:
   - account/company identity belongs in the first sticky column;
   - horizontal scroll is owned by the table wrapper;
   - the sticky column must keep its own background and z-index so scrolled columns do not bleed through;
-  - candidate row preview expands inline under the selected row and uses max-height plus local overflow;
-  - full candidate evidence/criteria work belongs on a separate candidate detail screen with breadcrumbs back to `ICP Radar`.
+  - candidate row preview expands inline under the selected row and has one bounded scroll area for the whole preview;
+  - do not put nested scroll containers inside the preview lists;
+  - preview is intentionally short: top-5 evidence refs, top-5 criteria, main signal, and short recommendation;
+  - score/tier values stay in the table row and should not be repeated inside the preview;
+  - full candidate evidence/criteria work belongs on a separate candidate detail screen with breadcrumbs back to `ICP Radar`;
+  - the candidate detail view keeps a compact sticky header so account identity remains visible while criteria scroll.
 - Keep `ICP Radar` navigation local to `ICPRadarScreen` until a broader routing need appears:
   - `expandedCandidateId` owns inline preview state;
   - `detailCandidateId` owns the read-only candidate detail view;

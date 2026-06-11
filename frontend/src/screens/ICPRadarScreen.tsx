@@ -36,29 +36,31 @@ export function ICPRadarScreen({
   if (detailCandidate) {
     return (
       <section className="screen icp-radar-screen" aria-label={t('icpRadar.aria')}>
-        <div className="icp-detail-breadcrumbs" aria-label={t('icpRadar.breadcrumbs')}>
-          <Button icon={<ArrowLeft aria-hidden="true" />} variant="quiet" onClick={() => setDetailCandidateId(null)}>
-            {t('icpRadar.backToTable')}
-          </Button>
-          <span>{t('icpRadar.aria')}</span>
-          <ChevronRight aria-hidden="true" />
-          <strong>{detailCandidate.legal_name}</strong>
-        </div>
+        <div className="icp-detail-sticky-header">
+          <div className="icp-detail-breadcrumbs" aria-label={t('icpRadar.breadcrumbs')}>
+            <Button icon={<ArrowLeft aria-hidden="true" />} variant="quiet" onClick={() => setDetailCandidateId(null)}>
+              {t('icpRadar.backToTable')}
+            </Button>
+            <span>{t('icpRadar.aria')}</span>
+            <ChevronRight aria-hidden="true" />
+            <strong>{detailCandidate.legal_name}</strong>
+          </div>
 
-        <header className="icp-radar-header">
-          <span className="section-icon">
-            <Target aria-hidden="true" />
-          </span>
-          <div>
-            <Eyebrow>{t('icpRadar.detailEyebrow')}</Eyebrow>
-            <h1>{detailCandidate.legal_name}</h1>
-            <p>{detailCandidate.main_signal}</p>
-          </div>
-          <div className="icp-profile-meta">
-            <Badge tone={detailCandidate.score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{detailCandidate.score.tier}</Badge>
-            <Mono>#{detailCandidate.rank}</Mono>
-          </div>
-        </header>
+          <header className="icp-radar-header icp-detail-header">
+            <span className="section-icon">
+              <Target aria-hidden="true" />
+            </span>
+            <div>
+              <Eyebrow>{t('icpRadar.detailEyebrow')}</Eyebrow>
+              <h1>{detailCandidate.legal_name}</h1>
+              <p>{detailCandidate.main_signal}</p>
+            </div>
+            <div className="icp-profile-meta">
+              <Badge tone={detailCandidate.score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{detailCandidate.score.tier}</Badge>
+              <Mono>#{detailCandidate.rank}</Mono>
+            </div>
+          </header>
+        </div>
 
         <div className="icp-candidate-detail-grid">
           <Card>
@@ -215,19 +217,21 @@ function CandidatePreview({
       </div>
       <div className="icp-preview-body">
         <div className="icp-preview-main">
-          <section>
+          <section className="icp-preview-section">
             <Eyebrow>{t('icpRadar.mainSignal')}</Eyebrow>
             <p>{candidate.main_signal}</p>
-            <small>{candidate.comment || candidate.signal_summary}</small>
           </section>
-          <CandidateScoreGrid candidate={candidate} />
+          <section className="icp-preview-section">
+            <Eyebrow>{t('icpRadar.signalSummary')}</Eyebrow>
+            <p>{candidate.comment || candidate.signal_summary}</p>
+          </section>
         </div>
         <div className="icp-preview-lists">
-          <section className="icp-detail-section">
+          <section className="icp-preview-section">
             <Eyebrow>{t('icpRadar.evidence')}</Eyebrow>
             <EvidenceList candidate={candidate} sourcesById={sourcesById} compact />
           </section>
-          <section className="icp-detail-section">
+          <section className="icp-preview-section">
             <Eyebrow>{t('icpRadar.topCriteria')}</Eyebrow>
             <div className="criteria-list criteria-list-compact">
               {criteria.map(({ criterion, value }) => (
@@ -295,9 +299,10 @@ function EvidenceList({
   sourcesById: Map<string, EvidenceSource>;
   compact?: boolean;
 }) {
+  const refs = compact ? candidate.evidence_refs.slice(0, 5) : candidate.evidence_refs;
   return (
     <div className={`icp-evidence-list${compact ? ' icp-evidence-list-compact' : ''}`}>
-      {candidate.evidence_refs.map((ref) => {
+      {refs.map((ref) => {
         const source = sourcesById.get(ref);
         return (
           <a href={source?.url ?? ref} key={ref} target="_blank" rel="noreferrer">

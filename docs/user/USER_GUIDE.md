@@ -64,7 +64,7 @@ The language switcher localizes UI chrome plus visible deterministic demo data s
 
 ### ICP Radar shortlist
 
-Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. The main surface is a wide table: the company column stays fixed while score, tier, evidence, and criteria-related columns can scroll horizontally. Click a candidate row to open a bounded inline preview with the main signal, score breakdown, evidence refs, and top criteria. Open the read-only candidate detail view when you need the full C1-C20 breakdown and source refs. Signal validation and take-into-work actions are still planned follow-up slices.
+Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. The main surface is a wide table: the company column stays fixed while score, tier, evidence, and criteria-related columns can scroll horizontally inside the table. Click a candidate row to open a bounded inline preview with the main signal, short recommendation, top evidence refs, and top criteria. Open the read-only candidate detail view when you need the full C1-C20 breakdown and source refs. Signal validation and take-into-work actions are still planned follow-up slices.
 
 ![ICP Radar shortlist](../qa/screenshots/visual-smoke/icp-radar-1366x768.png)
 
@@ -99,9 +99,11 @@ The current ICP Radar UI is table-first:
 - `ICP Radar` opens as a broad ranked account table.
 - The first account/company column stays fixed while the user scrolls horizontally across score, evidence, and criteria columns.
 - Clicking a candidate expands a compact preview directly under that row.
-- The inline preview is bounded in height and scrolls internally when the summary is long.
+- The inline preview has one bounded scroll area for the whole preview and shows only the top evidence refs and top criteria.
+- Score and tier values stay in the table row; the expanded row strengthens those existing values instead of repeating them in the preview.
 - Full candidate work opens in a separate read-only candidate detail view with breadcrumbs back to `ICP Radar`.
-- The detail view shows candidate profile, source refs, evidence list, score explanation, and the full C1-C20 criteria breakdown.
+- The detail view keeps a compact candidate header sticky while the user scrolls through profile, source refs, evidence list, score explanation, and the full C1-C20 criteria breakdown.
+- Criterion-level evidence explanations are planned for the next contract slice; the current C1-C20 table shows workbook-derived scores and descriptions.
 - Signal confirm/correct/reject/stale actions are planned for the following signal validation slice.
 
 The generated JSON artifact is also available at:

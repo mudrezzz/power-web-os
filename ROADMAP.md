@@ -755,7 +755,7 @@ Status:
 
 ### Slice 0.6.2.2: ICP Radar UX repair
 
-- Status: `Ready`
+- Status: `Done`
 - Goal: Fix the current ICP Radar table, preview, and detail UX before adding signal validation.
 - User value: A user can scan candidates, expand a row, and open candidate details without nested scrolls, duplicated score noise, unreadable sections, or broken horizontal table behavior.
 - Scope:
@@ -1280,6 +1280,12 @@ Status:
   - Added bounded inline candidate previews under selected rows.
   - Added an in-shell read-only candidate detail view with breadcrumbs back to the shortlist.
   - Kept signal validation and take-into-work handoff clearly planned for later slices.
+- `Slice 0.6.2.2: ICP Radar UX repair`
+  - Removed nested scrolls from the ICP Radar inline candidate preview.
+  - Kept score and tier values in the table row instead of duplicating them inside the preview.
+  - Limited preview content to main signal, short recommendation, top evidence refs, and top criteria.
+  - Fixed ICP Radar scroll ownership and added a sticky candidate detail header.
+  - Localized remaining Russian ICP Radar UI labels for fit, intent, trigger, tier, evidence, source URLs, and confidence.
 
 ## Blocked Items
 
@@ -1296,4 +1302,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.6.2.2: ICP Radar UX repair`.
+Implement `Slice 0.6.2.3: ICP Radar evidence-backed criteria contract`.

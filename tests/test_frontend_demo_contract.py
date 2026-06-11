@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -258,6 +259,22 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".icp-candidate-preview" in css
     assert "max-height" in css
     assert ".icp-candidate-detail-grid" in css
+    assert ".icp-radar-screen > .card" in css
+    assert "overflow-x: hidden" in css
+    assert ".icp-detail-sticky-header" in css
+    assert "height: calc(var(--s-10) + var(--s-5))" in css
+    assert ".account-meta span" in css
+    assert ".icp-detail-section > .eyebrow" in css
+    assert ".icp-definition-list div" in css
+    assert "candidate.evidence_refs.slice(0, 5)" in screen
+    assert "icp-preview-section" in screen
+
+    preview_segment = screen.split("function CandidatePreview", 1)[1].split("function CandidateScoreGrid", 1)[0]
+    assert "CandidateScoreGrid" not in preview_segment
+
+    compact_criteria_block = re.search(r"\.criteria-list-compact\s*\{(?P<body>[^}]*)\}", css)
+    assert compact_criteria_block is not None
+    assert "overflow-y: auto" not in compact_criteria_block.group("body")
 
     for label_key in [
         "icpRadar.fit",
@@ -275,6 +292,17 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         assert label_key in screen or label_key in i18n
 
     assert "takeIntoWorkPlanned" in i18n
+
+    for ru_label in [
+        "Соответствие",
+        "Интент",
+        "Триггеры",
+        "Уровень",
+        "Доказательства",
+        "Ссылки на источники",
+        "Уверенность",
+    ]:
+        assert ru_label in i18n
 
 
 def test_frontend_public_artifact_is_available_for_vite() -> None:

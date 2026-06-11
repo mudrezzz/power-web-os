@@ -219,12 +219,14 @@ button {
   z-index: 20;
   display: flex;
   flex-shrink: 0;
+  height: calc(var(--s-10) + var(--s-5));
   min-height: calc(var(--s-10) + var(--s-5));
   align-items: center;
   gap: var(--s-4);
   padding: 0 var(--s-6);
   border-bottom: 1px solid var(--border);
   background: var(--paper);
+  overflow: hidden;
 }
 
 .account-context,
@@ -243,8 +245,9 @@ button {
 
 .account-context {
   min-width: 0;
-  flex: 1;
+  flex: 1 1 0;
   gap: var(--s-3);
+  overflow: hidden;
 }
 
 .account-mark,
@@ -268,6 +271,8 @@ button {
 
 .account-copy {
   min-width: 0;
+  max-width: calc(var(--s-20) * 4);
+  flex: 1 1 calc(var(--s-20) * 3);
   overflow: hidden;
 }
 
@@ -279,8 +284,20 @@ button {
 
 .account-meta {
   display: flex;
-  flex-wrap: wrap;
+  min-width: 0;
+  overflow: hidden;
+  flex-wrap: nowrap;
   gap: var(--s-1);
+  color: var(--fg3);
+  font: var(--meta);
+  white-space: nowrap;
+}
+
+.account-meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar-actions {
@@ -788,7 +805,14 @@ button {
 
 .icp-radar-screen {
   display: grid;
+  max-width: none;
   gap: var(--s-5);
+  overflow-x: hidden;
+}
+
+.icp-radar-screen > .card {
+  min-width: 0;
+  overflow: hidden;
 }
 
 .icp-radar-header {
@@ -827,8 +851,10 @@ button {
 }
 
 .icp-radar-table-wrap {
-  overflow-x: auto;
+  width: 100%;
   min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .icp-radar-table {
@@ -905,6 +931,16 @@ button {
   background: var(--surface-2);
 }
 
+.icp-candidate-row-selected > .mono,
+.icp-candidate-row-selected .score-cell .mono {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.icp-candidate-row-selected .score-cell .mono {
+  color: var(--cobalt-700);
+}
+
 .icp-company-cell,
 .score-cell,
 .row-action,
@@ -979,6 +1015,7 @@ button {
 .icp-candidate-preview {
   max-height: calc(var(--s-20) * 4);
   overflow-y: auto;
+  overflow-x: hidden;
   border-bottom: 1px solid var(--border);
   background: var(--surface-2);
 }
@@ -1011,16 +1048,25 @@ button {
 .icp-preview-main,
 .icp-preview-lists {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--s-20) * 3), calc(var(--s-20) * 4));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s-4);
   min-width: 0;
 }
 
-.icp-preview-main section,
+.icp-preview-section,
 .icp-detail-card {
   display: grid;
   gap: var(--s-4);
   min-width: 0;
+}
+
+.icp-preview-section {
+  align-content: start;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface);
 }
 
 .icp-preview-main small {
@@ -1047,6 +1093,22 @@ button {
 .icp-detail-breadcrumbs strong {
   overflow: hidden;
   color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icp-detail-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  display: grid;
+  gap: var(--s-3);
+  padding-bottom: var(--s-3);
+  background: var(--paper);
+}
+
+.icp-detail-header h1 {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1085,6 +1147,15 @@ button {
   gap: var(--s-3);
 }
 
+.icp-detail-section > .eyebrow,
+.icp-preview-section > .eyebrow {
+  justify-self: start;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--fg2);
+}
+
 .icp-definition-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1094,10 +1165,13 @@ button {
 
 .icp-definition-list div {
   min-width: 0;
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
 }
 
 .icp-definition-list dt {
-  color: var(--fg3);
+  color: var(--fg2);
   font: var(--mono-sm);
 }
 
@@ -1132,8 +1206,8 @@ button {
 }
 
 .criteria-list-compact {
-  max-height: calc(var(--s-20) * 2);
-  overflow-y: auto;
+  max-height: none;
+  overflow: visible;
 }
 
 .criterion-row:last-child {
@@ -1891,5 +1965,36 @@ button {
   *::after {
     transition-duration: 0ms;
     animation-duration: 0ms;
+  }
+}
+
+@media (max-width: 72rem) {
+  .topbar {
+    gap: var(--s-2);
+    padding: 0 var(--s-3);
+  }
+
+  .account-copy {
+    max-width: none;
+    flex-basis: auto;
+  }
+
+  .account-context > .badge,
+  .account-context > .health,
+  .account-context > .mono,
+  .search-field {
+    display: none;
+  }
+
+  .topbar-actions .button-primary span {
+    display: none;
+  }
+
+  .icp-candidate-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .icp-score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
