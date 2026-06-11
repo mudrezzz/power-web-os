@@ -54,7 +54,7 @@ export function ICPRadarScreen({
 
   if (detailCandidate) {
     return (
-      <section className="screen icp-radar-screen" aria-label={t('icpRadar.aria')}>
+      <section className="screen icp-radar-screen icp-detail-screen" aria-label={t('icpRadar.aria')}>
         <div className="icp-detail-sticky-header">
           <div className="icp-detail-breadcrumbs" aria-label={t('icpRadar.breadcrumbs')}>
             <Button icon={<ArrowLeft aria-hidden="true" />} variant="quiet" onClick={() => setDetailCandidateId(null)}>
@@ -475,7 +475,7 @@ function CriteriaBreakdown({
           <span>{t('icpRadar.criteriaColumns.confidence')}</span>
           <span>{t('icpRadar.criteriaColumns.facts')}</span>
           <span>{t('icpRadar.criteriaColumns.review')}</span>
-          <span>{t('icpRadar.criteriaColumns.action')}</span>
+          <span className="criteria-action-head" aria-label={t('icpRadar.criteriaColumns.action')} />
         </div>
 
         {rows.map(({ criterion, evidence, review, score }) => {

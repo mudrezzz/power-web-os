@@ -323,7 +323,10 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".criterion-evidence-detail" in css
     assert ".criterion-review-panel" in css
     assert ".icp-detail-sticky-header" in css
-    assert "top: calc(var(--s-6) * -1)" in css
+    assert "icp-detail-screen" in screen
+    assert ".icp-detail-screen" in css
+    assert "top: 0" in css
+    assert "criteria-action-head" in screen
 
     for ru_label in [
         "Соответствие",
