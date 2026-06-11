@@ -1,4 +1,16 @@
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, ExternalLink, Radar, ShieldCheck, Target } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Radar,
+  ShieldCheck,
+  SlidersHorizontal,
+  Target,
+  X,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../components/primitives';
@@ -20,6 +32,7 @@ export function ICPRadarScreen({
   const { t } = useTranslation();
   const [expandedCandidateId, setExpandedCandidateId] = useState<string | null>(null);
   const [detailCandidateId, setDetailCandidateId] = useState<string | null>(null);
+  const [criterionReviews, setCriterionReviews] = useState<Record<string, CriterionReviewState>>({});
   const detailCandidate = artifact?.candidates.find((item) => item.account_id === detailCandidateId) ?? null;
   const sourcesById = useMemo(() => {
     const entries = artifact?.radar.sources.map((source) => [source.source_id, source]) ?? [];
@@ -101,7 +114,12 @@ export function ICPRadarScreen({
             <div className="icp-detail-card">
               <section className="icp-detail-section">
                 <Eyebrow>{t('icpRadar.criteria')}</Eyebrow>
-                <CriteriaBreakdown artifact={artifact} candidate={detailCandidate} />
+                <CriteriaBreakdown
+                  artifact={artifact}
+                  candidate={detailCandidate}
+                  reviews={criterionReviews}
+                  onReviewChange={setCriterionReviews}
+                />
               </section>
             </div>
           </Card>
@@ -365,86 +383,371 @@ function topCriteria(artifact: ICPRadarArtifact, candidate: ICPRadarCandidate, c
     .slice(0, count);
 }
 
+type CriterionFilter = 'all' | 'supported' | 'inferred' | 'not_observed' | 'needs_review';
+type CriterionSort = 'score_desc' | 'status' | 'confidence';
+
+type CriterionReviewState = {
+  status: 'accepted' | 'rejected' | 'edited';
+  adjustedScore: number;
+  comment: string;
+};
+
 function CriteriaBreakdown({
   artifact,
   candidate,
+  reviews,
+  onReviewChange,
 }: {
   artifact: ICPRadarArtifact;
   candidate: ICPRadarCandidate;
+  reviews: Record<string, CriterionReviewState>;
+  onReviewChange: (reviews: Record<string, CriterionReviewState>) => void;
 }) {
   const { t } = useTranslation();
+  const [expandedCriterionCode, setExpandedCriterionCode] = useState<string | null>(null);
+  const [filter, setFilter] = useState<CriterionFilter>('all');
+  const [sort, setSort] = useState<CriterionSort>('score_desc');
+  const rows = useMemo(() => (
+    artifact.radar.criteria
+      .map((criterion) => {
+        const evidence = candidate.criteria_evidence[criterion.code];
+        const review = reviews[criterion.code];
+        return {
+          criterion,
+          evidence,
+          review,
+          score: evidence?.score ?? candidate.criteria_scores[criterion.code] ?? 0,
+        };
+      })
+      .filter((row) => matchesCriterionFilter(row.evidence, row.review, filter))
+      .sort((left, right) => compareCriterionRows(left, right, sort))
+  ), [artifact.radar.criteria, candidate.criteria_evidence, candidate.criteria_scores, filter, reviews, sort]);
+
+  function updateReview(code: string, review: CriterionReviewState) {
+    onReviewChange({
+      ...reviews,
+      [code]: review,
+    });
+  }
+
+  const filterOptions: CriterionFilter[] = ['all', 'supported', 'inferred', 'not_observed', 'needs_review'];
+  const sortOptions: CriterionSort[] = ['score_desc', 'status', 'confidence'];
+
   return (
     <div className="criteria-evidence-list" aria-label={t('icpRadar.criterionEvidence')}>
-      {artifact.radar.criteria.map((criterion) => {
-        const value = candidate.criteria_scores[criterion.code] ?? 0;
-        const evidence = candidate.criteria_evidence[criterion.code];
-        return (
-          <article className="criterion-evidence-card" key={criterion.code}>
-            <header className="criterion-evidence-header">
-              <Mono>{criterion.code}</Mono>
-              <div>
-                <strong>{criterion.name}</strong>
-                <small>{criterion.description}</small>
-              </div>
-              <div className="criterion-evidence-score">
-                <Mono>{value}</Mono>
-                {evidence && (
-                  <Badge tone={evidenceBadgeTone(evidence.evidence_status)}>
-                    {t(evidenceStatusKey(evidence.evidence_status))}
-                  </Badge>
-                )}
-              </div>
-            </header>
+      <div className="criteria-review-toolbar" aria-label={t('icpRadar.criteriaReviewToolbar')}>
+        <div className="criteria-review-control">
+          <Mono>{t('icpRadar.filter')}</Mono>
+          <div className="criteria-review-segmented">
+            {filterOptions.map((option) => (
+              <button
+                aria-pressed={filter === option}
+                className={`criteria-chip${filter === option ? ' criteria-chip-active' : ''}`}
+                key={option}
+                type="button"
+                onClick={() => setFilter(option)}
+              >
+                {t(criterionFilterKey(option))}
+              </button>
+            ))}
+          </div>
+        </div>
 
-            {evidence ? (
-              <div className="criterion-evidence-body">
-                <div className="criterion-evidence-meta">
-                  <span>
-                    <Mono>{t('icpRadar.confidenceLevel')}</Mono>
-                    <strong>{t(confidenceKey(evidence.confidence))}</strong>
-                  </span>
-                  <span>
-                    <Mono>{t('icpRadar.evidenceOrigin')}</Mono>
-                    <strong>{t(evidenceOriginKey(evidence.evidence_origin))}</strong>
-                  </span>
-                </div>
+        <label className="criteria-sort-field">
+          <SlidersHorizontal aria-hidden="true" />
+          <span>{t('icpRadar.sort')}</span>
+          <select value={sort} onChange={(event) => setSort(event.target.value as CriterionSort)}>
+            {sortOptions.map((option) => (
+              <option key={option} value={option}>
+                {t(criterionSortKey(option))}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
-                <section>
-                  <Eyebrow>{t('icpRadar.rationale')}</Eyebrow>
-                  <p>{evidence.rationale}</p>
-                </section>
+      <div className="criteria-review-table">
+        <div className="criteria-review-head">
+          <span>{t('icpRadar.criteriaColumns.code')}</span>
+          <span>{t('icpRadar.criteriaColumns.criterion')}</span>
+          <span>{t('icpRadar.criteriaColumns.score')}</span>
+          <span>{t('icpRadar.criteriaColumns.status')}</span>
+          <span>{t('icpRadar.criteriaColumns.confidence')}</span>
+          <span>{t('icpRadar.criteriaColumns.facts')}</span>
+          <span>{t('icpRadar.criteriaColumns.review')}</span>
+          <span>{t('icpRadar.criteriaColumns.action')}</span>
+        </div>
 
-                {evidence.facts.length ? (
-                  <section>
-                    <Eyebrow>{t('icpRadar.facts')}</Eyebrow>
-                    <div className="criterion-fact-list">
-                      {evidence.facts.map((fact) => (
-                        <div className="criterion-fact" key={`${criterion.code}-${fact.evidence_ref}-${fact.fact}`}>
-                          <ShieldCheck aria-hidden="true" />
-                          <div>
-                            <strong>{fact.fact}</strong>
-                            <small>{fact.why_it_matters}</small>
-                            <a href={fact.source_url || undefined} target="_blank" rel="noreferrer">
-                              <Mono>{fact.evidence_ref || t('icpRadar.source')}</Mono>
-                              {fact.source_url && <ExternalLink aria-hidden="true" />}
-                            </a>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                ) : (
-                  <p className="criterion-empty-note">{t('icpRadar.noCriterionFacts')}</p>
-                )}
-              </div>
-            ) : (
-              <p className="criterion-empty-note">{t('icpRadar.noCriterionFacts')}</p>
-            )}
-          </article>
-        );
-      })}
+        {rows.map(({ criterion, evidence, review, score }) => {
+          const expanded = expandedCriterionCode === criterion.code;
+          const adjusted = review?.status === 'edited' && review.adjustedScore !== score;
+          const statusLabel = evidence ? t(evidenceStatusKey(evidence.evidence_status)) : t('icpRadar.notObserved');
+          const confidenceLabel = evidence ? t(confidenceKey(evidence.confidence)) : t('icpRadar.confidenceValues.none');
+
+          return (
+            <div className={`criteria-review-record${expanded ? ' criteria-review-record-expanded' : ''}`} key={criterion.code}>
+              <button
+                aria-expanded={expanded}
+                className="criteria-review-row"
+                type="button"
+                onClick={() => setExpandedCriterionCode(expanded ? null : criterion.code)}
+              >
+                <Mono>{criterion.code}</Mono>
+                <span className="criteria-review-name">
+                  <strong>{criterion.name}</strong>
+                  <small>{criterion.description}</small>
+                </span>
+                <span className="criteria-score-inline">
+                  <Mono>{score}</Mono>
+                  {adjusted && (
+                    <>
+                      <span aria-hidden="true">-&gt;</span>
+                      <Mono>{review.adjustedScore}</Mono>
+                    </>
+                  )}
+                </span>
+                <span>
+                  <Badge tone={evidenceBadgeTone(evidence?.evidence_status ?? 'not_observed')}>{statusLabel}</Badge>
+                </span>
+                <span>
+                  <Badge tone={confidenceTone(evidence?.confidence)}>{confidenceLabel}</Badge>
+                </span>
+                <Mono>{evidence?.facts.length ?? 0}</Mono>
+                <span>
+                  <Badge tone={reviewTone(review)}>{review ? t(reviewStatusKey(review.status)) : t('icpRadar.unreviewed')}</Badge>
+                </span>
+                <span className="row-action">
+                  {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+                </span>
+              </button>
+
+              {expanded && evidence && (
+                <CriterionEvidenceDetail
+                  criterion={criterion}
+                  evidence={evidence}
+                  review={review}
+                  onReview={(nextReview) => updateReview(criterion.code, nextReview)}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
+}
+
+function CriterionEvidenceDetail({
+  criterion,
+  evidence,
+  review,
+  onReview,
+}: {
+  criterion: SignalCriterion;
+  evidence: CriterionEvidenceExplanation;
+  review: CriterionReviewState | undefined;
+  onReview: (review: CriterionReviewState) => void;
+}) {
+  const { t } = useTranslation();
+  const [draftScore, setDraftScore] = useState(review?.adjustedScore ?? evidence.score);
+  const [comment, setComment] = useState(review?.comment ?? '');
+  const commentRequired = !comment.trim();
+
+  return (
+    <div className="criterion-evidence-detail">
+      <div className="criterion-detail-topline">
+        <Badge tone={evidenceBadgeTone(evidence.evidence_status)}>{t(evidenceStatusKey(evidence.evidence_status))}</Badge>
+        <Badge tone={confidenceTone(evidence.confidence)}>{t(confidenceKey(evidence.confidence))}</Badge>
+        <span className="criterion-origin-note">{t(evidenceOriginKey(evidence.evidence_origin))}</span>
+      </div>
+
+      <section>
+        <Eyebrow>{t('icpRadar.rationale')}</Eyebrow>
+        <p>{evidence.rationale}</p>
+      </section>
+
+      {evidence.facts.length ? (
+        <section>
+          <Eyebrow>{t('icpRadar.facts')}</Eyebrow>
+          <div className="criterion-fact-list">
+            {evidence.facts.map((fact) => (
+              <div className="criterion-fact" key={`${criterion.code}-${fact.evidence_ref}-${fact.fact}`}>
+                <ShieldCheck aria-hidden="true" />
+                <div>
+                  <strong>{fact.fact}</strong>
+                  <small>{fact.why_it_matters}</small>
+                  <a href={fact.source_url || undefined} target="_blank" rel="noreferrer">
+                    <Mono>{fact.evidence_ref || t('icpRadar.source')}</Mono>
+                    {fact.source_url && <ExternalLink aria-hidden="true" />}
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <p className="criterion-empty-note">{t('icpRadar.noCriterionFacts')}</p>
+      )}
+
+      <section className="criterion-review-panel">
+        <div>
+          <Eyebrow>{t('icpRadar.localReview')}</Eyebrow>
+          <p>{t('icpRadar.localReviewCopy')}</p>
+        </div>
+        <div className="criterion-review-form">
+          <label>
+            <span>{t('icpRadar.adjustedScore')}</span>
+            <select value={draftScore} onChange={(event) => setDraftScore(Number(event.target.value))}>
+              {[0, 1, 2, 3].map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="criterion-comment-field">
+            <span>{t('icpRadar.comment')}</span>
+            <textarea
+              placeholder={t('icpRadar.commentPlaceholder')}
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+            />
+          </label>
+          <div className="criterion-review-actions">
+            <Button
+              icon={<Check aria-hidden="true" />}
+              variant="default"
+              onClick={() => onReview({ status: 'accepted', adjustedScore: evidence.score, comment })}
+            >
+              {t('icpRadar.acceptCriterion')}
+            </Button>
+            <Button
+              disabled={commentRequired}
+              icon={<X aria-hidden="true" />}
+              variant="default"
+              onClick={() => onReview({ status: 'rejected', adjustedScore: 0, comment })}
+            >
+              {t('icpRadar.rejectCriterion')}
+            </Button>
+            <Button
+              disabled={commentRequired}
+              icon={<SlidersHorizontal aria-hidden="true" />}
+              variant="default"
+              onClick={() => onReview({ status: 'edited', adjustedScore: draftScore, comment })}
+            >
+              {t('icpRadar.editCriterionScore')}
+            </Button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function matchesCriterionFilter(
+  evidence: CriterionEvidenceExplanation | undefined,
+  review: CriterionReviewState | undefined,
+  filter: CriterionFilter,
+) {
+  if (filter === 'all') {
+    return true;
+  }
+  if (filter === 'needs_review') {
+    return !review && (
+      evidence?.evidence_status !== 'supported'
+      || evidence.confidence === 'low'
+      || evidence.confidence === 'none'
+    );
+  }
+  return evidence?.evidence_status === filter;
+}
+
+function compareCriterionRows(
+  left: {
+    evidence: CriterionEvidenceExplanation | undefined;
+    review: CriterionReviewState | undefined;
+    score: number;
+    criterion: SignalCriterion;
+  },
+  right: {
+    evidence: CriterionEvidenceExplanation | undefined;
+    review: CriterionReviewState | undefined;
+    score: number;
+    criterion: SignalCriterion;
+  },
+  sort: CriterionSort,
+) {
+  if (sort === 'status') {
+    return statusRank(left.evidence?.evidence_status) - statusRank(right.evidence?.evidence_status)
+      || right.score - left.score
+      || left.criterion.code.localeCompare(right.criterion.code);
+  }
+  if (sort === 'confidence') {
+    return confidenceRank(right.evidence?.confidence) - confidenceRank(left.evidence?.confidence)
+      || right.score - left.score
+      || left.criterion.code.localeCompare(right.criterion.code);
+  }
+  return right.score - left.score
+    || statusRank(left.evidence?.evidence_status) - statusRank(right.evidence?.evidence_status)
+    || left.criterion.code.localeCompare(right.criterion.code);
+}
+
+function statusRank(status: CriterionEvidenceExplanation['evidence_status'] | undefined) {
+  if (status === 'supported') {
+    return 0;
+  }
+  if (status === 'inferred') {
+    return 1;
+  }
+  return 2;
+}
+
+function confidenceRank(confidence: CriterionEvidenceExplanation['confidence'] | undefined) {
+  if (confidence === 'high') {
+    return 3;
+  }
+  if (confidence === 'medium') {
+    return 2;
+  }
+  if (confidence === 'low') {
+    return 1;
+  }
+  return 0;
+}
+
+function criterionFilterKey(filter: CriterionFilter) {
+  return `icpRadar.criteriaFilters.${filter}`;
+}
+
+function criterionSortKey(sort: CriterionSort) {
+  return `icpRadar.criteriaSort.${sort}`;
+}
+
+function reviewStatusKey(status: CriterionReviewState['status']) {
+  return `icpRadar.reviewStatus.${status}`;
+}
+
+function reviewTone(review: CriterionReviewState | undefined) {
+  if (review?.status === 'accepted') {
+    return 'ally';
+  }
+  if (review?.status === 'rejected') {
+    return 'blocker';
+  }
+  if (review?.status === 'edited') {
+    return 'cobalt';
+  }
+  return 'neutral';
+}
+
+function confidenceTone(confidence: CriterionEvidenceExplanation['confidence'] | undefined) {
+  if (confidence === 'high' || confidence === 'medium') {
+    return 'ally';
+  }
+  if (confidence === 'low') {
+    return 'unsurfaced';
+  }
+  return 'neutral';
 }
 
 function evidenceBadgeTone(status: CriterionEvidenceExplanation['evidence_status']) {

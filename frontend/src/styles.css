@@ -124,6 +124,10 @@ button {
 .icon-button:focus-visible,
 .board-node:focus-visible,
 .card-action:focus-visible,
+.criteria-chip:focus-visible,
+.criteria-sort-field:focus-within,
+.criterion-review-form textarea:focus,
+.criterion-review-form select:focus,
 .search-field:focus-within {
   box-shadow: var(--shadow-focus);
   outline: none;
@@ -1099,18 +1103,34 @@ button {
 
 .icp-detail-sticky-header {
   position: sticky;
-  top: 0;
+  top: calc(var(--s-6) * -1);
   z-index: 12;
   display: grid;
   gap: var(--s-3);
-  padding-bottom: var(--s-3);
+  margin: calc(var(--s-6) * -1) calc(var(--s-6) * -1) 0;
+  padding: var(--s-4) var(--s-6) var(--s-3);
+  border-bottom: 1px solid var(--border);
   background: var(--paper);
+}
+
+.icp-detail-header {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: var(--s-3) var(--s-4);
 }
 
 .icp-detail-header h1 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.icp-detail-header p {
+  display: none;
+}
+
+.icp-detail-header .section-icon {
+  width: calc(var(--s-8) + var(--s-1));
+  height: calc(var(--s-8) + var(--s-1));
 }
 
 .icp-candidate-detail-grid {
@@ -1354,6 +1374,250 @@ button {
   padding: var(--s-2);
   border-radius: var(--r-sm);
   background: var(--surface);
+}
+
+.criteria-review-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: var(--s-3);
+}
+
+.criteria-review-control,
+.criteria-sort-field {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--s-2);
+}
+
+.criteria-review-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+}
+
+.criteria-chip {
+  min-height: calc(var(--s-6) + var(--s-1));
+  padding: 0 var(--s-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--fg2);
+  cursor: pointer;
+  font: var(--meta);
+}
+
+.criteria-chip:hover {
+  background: var(--surface-2);
+}
+
+.criteria-chip-active {
+  border-color: var(--cobalt-200);
+  background: var(--cobalt-50);
+  color: var(--cobalt-700);
+}
+
+.criteria-sort-field {
+  flex-shrink: 0;
+  min-height: calc(var(--s-8) + var(--s-1));
+  padding: 0 var(--s-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--fg2);
+  font: var(--meta);
+}
+
+.criteria-sort-field svg {
+  width: var(--s-4);
+  height: var(--s-4);
+}
+
+.criteria-sort-field select,
+.criterion-review-form select,
+.criterion-review-form textarea {
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  outline: none;
+}
+
+.criteria-review-table {
+  display: grid;
+  min-width: 0;
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.criteria-review-head,
+.criteria-review-row {
+  display: grid;
+  grid-template-columns:
+    var(--s-10)
+    minmax(calc(var(--s-20) * 3), 1fr)
+    minmax(var(--s-12), 0.45fr)
+    minmax(calc(var(--s-20) + var(--s-8)), 0.9fr)
+    minmax(var(--s-20), 0.7fr)
+    minmax(var(--s-12), 0.4fr)
+    minmax(var(--s-20), 0.7fr)
+    var(--s-8);
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.criteria-review-head {
+  padding: var(--s-2) var(--s-3);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--fg3);
+  font: var(--mono-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.criteria-review-record {
+  display: grid;
+  min-width: 0;
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.criteria-review-record:last-child {
+  border-bottom: none;
+}
+
+.criteria-review-row {
+  width: 100%;
+  min-width: 0;
+  padding: var(--s-3);
+  border: none;
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+}
+
+.criteria-review-row:hover,
+.criteria-review-record-expanded .criteria-review-row {
+  background: var(--surface-2);
+}
+
+.criteria-review-row > span,
+.criteria-review-head > span,
+.criteria-review-name {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.criteria-review-name strong,
+.criteria-review-name small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.criteria-review-name strong {
+  color: var(--ink);
+  font: var(--label);
+}
+
+.criteria-review-name small {
+  color: var(--fg2);
+  font: var(--meta);
+}
+
+.criteria-score-inline,
+.criterion-detail-topline,
+.criterion-review-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.criterion-evidence-detail {
+  display: grid;
+  gap: var(--s-4);
+  min-width: 0;
+  padding: var(--s-4) var(--s-5);
+  background: var(--surface-2);
+}
+
+.criterion-evidence-detail section {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.criterion-evidence-detail .eyebrow,
+.criterion-review-panel .eyebrow {
+  justify-self: start;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--fg2);
+}
+
+.criterion-detail-topline {
+  flex-wrap: wrap;
+}
+
+.criterion-origin-note {
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.criterion-review-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+  gap: var(--s-4);
+  min-width: 0;
+  padding: var(--s-4);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.criterion-review-panel p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.criterion-review-form {
+  display: grid;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.criterion-review-form label {
+  display: grid;
+  gap: var(--s-1);
+  color: var(--fg2);
+  font: var(--meta);
+}
+
+.criterion-review-form select {
+  width: var(--s-16);
+  min-height: calc(var(--s-8) + var(--s-1));
+  padding: 0 var(--s-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.criterion-review-form textarea {
+  width: 100%;
+  min-height: calc(var(--s-20) + var(--s-5));
+  resize: vertical;
+  padding: var(--s-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.criterion-review-actions {
+  flex-wrap: wrap;
 }
 
 .account-map-screen {

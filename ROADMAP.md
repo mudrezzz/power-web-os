@@ -830,6 +830,49 @@ Status:
 - Risks:
   - Workbook may not contain enough granular evidence; mitigate with a curated fixture annotation layer and clear source labels.
 
+### Slice 0.6.2.4: ICP Criteria review UX correction
+
+- Status: `Done`
+- Goal: Turn the ICP Radar candidate criteria detail from an always-expanded evidence dump into a compact review/navigation surface.
+- User value: A user can scan C1-C20 quickly, filter by status, sort by score, drill into only the criteria that need attention, and record local review intent before the full validation loop exists.
+- Scope:
+  - Replace the full expanded criteria card list with a compact table-first view.
+  - Add filters for all/supported/inferred/not observed/needs review.
+  - Add sorting by score, status, and confidence.
+  - Expand one criterion row at a time to show rationale, facts, source refs, and links.
+  - Remove the oversized `Происхождение` block from the expanded criterion view.
+  - Render confidence as a compact tag instead of a large block.
+  - Add local UI controls to accept, reject, or edit a criterion score with a comment.
+  - Keep local review state frontend-only and non-persistent in this corrective slice.
+  - Keep breadcrumbs and a compact account header sticky while scrolling candidate detail.
+- Out of scope:
+  - Persistent signal validation.
+  - Backend review state or score recalculation.
+  - Global ICP Radar shortlist score changes.
+  - Audit history beyond local UI state.
+- Implementation notes:
+  - Do not change the ICP Radar artifact contract introduced in Slice 0.6.2.3.
+  - Keep original XLSX score visible when an adjusted local score is entered.
+  - Treat this as the UI bridge to Slice 0.6.3, where validation becomes a real domain state.
+- Tests:
+  - Frontend contract tests for table-first criteria review, filters, sorting, expandable row, sticky header, and local review controls.
+  - EN/RU i18n coverage for all new visible labels.
+  - `npm --prefix ./frontend run build`.
+  - `python -m pytest`.
+- Docs:
+  - Update user and developer docs with the local criteria review behavior and persistence limitation.
+- Demo impact:
+  - Candidate detail becomes faster to scan and closer to the intended signal validation workflow.
+- Acceptance criteria:
+  - Criteria initially render as compact rows, not fully expanded cards.
+  - User can filter and sort criteria.
+  - User can expand a criterion to inspect evidence details.
+  - Confidence is compact and origin is not shown as a separate large block.
+  - User can accept, reject, or edit score locally with a comment.
+  - Breadcrumbs and compact account context remain visible during criteria scrolling.
+- Risks:
+  - Local review controls may look like durable validation; mitigate with explicit local/demo-state copy until Slice 0.6.3.
+
 ### Slice 0.6.3: ICP Radar signal validation loop
 
 - Status: `Backlog`
@@ -1293,6 +1336,12 @@ Status:
   - Added fallback explanations for all C1-C20 criteria: `supported`, `inferred`, or `not_observed`.
   - Updated the candidate detail view to show criterion status, confidence, rationale, facts, source refs, and origin labels.
   - Fixed ICP Radar `account_id` generation to use stable workbook legal-entity numbers instead of Python `hash()`.
+- `Slice 0.6.2.4: ICP Criteria review UX correction`
+  - Reworked candidate criteria detail into a compact table-first review surface.
+  - Added filters, sorting, expandable criterion rows, and local accept/reject/edit controls with comments.
+  - Removed oversized origin/confidence blocks from expanded criteria; origin is now a small note and confidence is a tag.
+  - Made candidate detail breadcrumbs and compact account header sticky during criteria scrolling.
+  - Kept review decisions as frontend-only demo state until the durable Slice 0.6.3 validation loop.
 
 ## Blocked Items
 

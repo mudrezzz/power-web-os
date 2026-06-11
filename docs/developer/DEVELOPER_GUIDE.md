@@ -245,6 +245,12 @@ Rules:
   - score/tier values stay in the table row and should not be repeated inside the preview;
   - full candidate evidence/criteria work belongs on a separate candidate detail screen with breadcrumbs back to `ICP Radar`;
   - the candidate detail view keeps a compact sticky header so account identity remains visible while criteria scroll.
+- Treat candidate criterion review as table-first inside the detail view:
+  - C1-C20 initially render as compact rows, not fully expanded evidence cards;
+  - filter by evidence/review status before drilling into detail;
+  - sort by score, status, or confidence;
+  - expand one criterion row at a time for rationale, facts, and source refs;
+  - local accept/reject/edit controls may exist in frontend state, but they must be clearly labelled as non-persistent until Slice 0.6.3.
 - Keep `ICP Radar` navigation local to `ICPRadarScreen` until a broader routing need appears:
   - `expandedCandidateId` owns inline preview state;
   - `detailCandidateId` owns the read-only candidate detail view;

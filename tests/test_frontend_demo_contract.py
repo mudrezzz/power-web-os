@@ -297,10 +297,33 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "icpRadar.supported",
         "icpRadar.inferred",
         "icpRadar.notObserved",
+        "icpRadar.criteriaReviewToolbar",
+        "icpRadar.criteriaFilters",
+        "icpRadar.criteriaSort",
+        "icpRadar.localReview",
+        "icpRadar.acceptCriterion",
+        "icpRadar.rejectCriterion",
+        "icpRadar.editCriterionScore",
     ]:
         assert label_key in screen or label_key in i18n
 
     assert "takeIntoWorkPlanned" in i18n
+    assert "CriterionReviewState" in screen
+    assert "expandedCriterionCode" in screen
+    assert "matchesCriterionFilter" in screen
+    assert "compareCriterionRows" in screen
+    assert "CriterionEvidenceDetail" in screen
+    assert "criterionReviews" in screen
+    assert "onReview({ status: 'accepted'" in screen
+    assert "onReview({ status: 'rejected'" in screen
+    assert "onReview({ status: 'edited'" in screen
+    assert ".criteria-review-table" in css
+    assert ".criteria-review-head" in css
+    assert ".criteria-review-row" in css
+    assert ".criterion-evidence-detail" in css
+    assert ".criterion-review-panel" in css
+    assert ".icp-detail-sticky-header" in css
+    assert "top: calc(var(--s-6) * -1)" in css
 
     for ru_label in [
         "Соответствие",
