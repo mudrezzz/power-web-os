@@ -230,9 +230,12 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert "nav.icpRadar" in shell
     assert "topbar.icpRadar" in shell
     assert "ICPRadarArtifact" in types
+    assert "CriterionEvidenceExplanation" in types
+    assert "criteria_evidence" in types
 
     for contract_value in [
         "criteria_scores",
+        "criteria_evidence",
         "evidence_refs",
         "artifact.radar.criteria",
         "candidate.score.fit_score",
@@ -288,6 +291,12 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "icpRadar.openDetails",
         "icpRadar.backToTable",
         "icpRadar.takeIntoWorkPlanned",
+        "icpRadar.criterionEvidence",
+        "icpRadar.syntheticAnnotation",
+        "icpRadar.workbookFallback",
+        "icpRadar.supported",
+        "icpRadar.inferred",
+        "icpRadar.notObserved",
     ]:
         assert label_key in screen or label_key in i18n
 

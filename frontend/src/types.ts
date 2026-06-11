@@ -202,6 +202,25 @@ export type ICPRadarScore = {
   tier: string;
 };
 
+export type CriterionEvidenceFact = {
+  evidence_ref: string;
+  source_url: string;
+  fact: string;
+  why_it_matters: string;
+};
+
+export type CriterionEvidenceExplanation = {
+  criterion_code: string;
+  score: number;
+  evidence_origin: 'synthetic_demo_annotation' | 'workbook_score_fallback' | string;
+  evidence_status: 'supported' | 'inferred' | 'not_observed' | string;
+  confidence: 'high' | 'medium' | 'low' | 'none' | string;
+  rationale: string;
+  evidence_refs: string[];
+  source_urls: string[];
+  facts: CriterionEvidenceFact[];
+};
+
 export type ICPRadarCandidate = {
   rank: number;
   account_id: string;
@@ -219,12 +238,14 @@ export type ICPRadarCandidate = {
   source_urls: string[];
   evidence_refs: string[];
   criteria_scores: Record<string, number>;
+  criteria_evidence: Record<string, CriterionEvidenceExplanation>;
   score: ICPRadarScore;
 };
 
 export type ICPRadarArtifact = {
   artifact_type: 'icp_radar';
-  artifact_version: '0.6.2';
+  artifact_version: '0.6.2.3';
+  criteria_evidence_contract_version: '0.6.2.3';
   radar: {
     profile: {
       profile_id: string;

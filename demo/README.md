@@ -83,6 +83,12 @@ The ICP Radar fixture source is the SIBUR-style spreadsheet analysis:
 - `Summary`: ranked shortlist and recommended triage action;
 - `Sources`: evidence source registry.
 
+The XLSX does not contain criterion-level facts. The demo therefore adds a curated synthetic annotation fixture:
+
+- `demo/fixtures/icp_radar/toir_sibur_criterion_evidence.json`
+
+The generated `icp_radar.json` keeps numeric C1-C20 scores from the XLSX and adds `criteria_evidence` for every candidate and every criterion. Top candidates include `supported` synthetic demo facts. Other nonzero criteria are marked `inferred` from workbook score, and zero-score criteria are marked `not_observed`.
+
 The generated accepted-account demo data uses Russian-language company and person names. Existing account IDs remain stable for artifact paths.
 
 Signal validation must be visible in the demo once implemented: users should be able to confirm, correct, reject, or mark found signals stale, and the visible ICP score should update from those validation decisions.

@@ -103,7 +103,9 @@ The current ICP Radar UI is table-first:
 - Score and tier values stay in the table row; the expanded row strengthens those existing values instead of repeating them in the preview.
 - Full candidate work opens in a separate read-only candidate detail view with breadcrumbs back to `ICP Radar`.
 - The detail view keeps a compact candidate header sticky while the user scrolls through profile, source refs, evidence list, score explanation, and the full C1-C20 criteria breakdown.
-- Criterion-level evidence explanations are planned for the next contract slice; the current C1-C20 table shows workbook-derived scores and descriptions.
+- The C1-C20 breakdown now shows score, evidence status, confidence, rationale, source refs, and facts for each criterion.
+- Numeric C1-C20 scores come from the XLSX fixture. Criterion-level facts are a curated synthetic demo annotation layer, clearly labelled as `synthetic_demo_annotation`; they demonstrate the product mechanic that future production extraction should replace.
+- Criteria without curated facts are still explicit: nonzero scores are marked as inferred from the XLSX score, and zero scores are marked as not observed.
 - Signal confirm/correct/reject/stale actions are planned for the following signal validation slice.
 
 The generated JSON artifact is also available at:

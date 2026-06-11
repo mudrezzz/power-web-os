@@ -1,0 +1,472 @@
+{
+  "contract_version": "0.6.2.3",
+  "evidence_origin": "synthetic_demo_annotation",
+  "notes": "Curated demo-only criterion evidence. XLSX remains the source for numeric scores; this fixture adds synthetic/paraphrased criterion-level explanations for product validation.",
+  "annotations": [
+    {
+      "account_id": "icp-sibur-024",
+      "criteria": {
+        "C1": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: ТОиР/EAM relevance is supported by references to repair interval growth and repair process digitalization.",
+          "facts": [
+            {
+              "evidence_ref": "nknh_horizon",
+              "fact": "The account is associated with a digital repair platform used across maintenance planning and interval optimization.",
+              "why_it_matters": "Directly matches the ТОиР automation theme behind criterion C1."
+            }
+          ]
+        },
+        "C2": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: the account has a large production asset base where reliability and maintenance planning can materially affect operations.",
+          "facts": [
+            {
+              "evidence_ref": "nknh_ep600",
+              "fact": "The EP-600 production complex is described as a large-scale asset with substantial instrumentation and automation scope.",
+              "why_it_matters": "Large, instrumented production assets increase the relevance of reliability and maintenance automation."
+            }
+          ]
+        },
+        "C5": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: public digitalization materials indicate an active IT modernization context.",
+          "facts": [
+            {
+              "evidence_ref": "ge_replace",
+              "fact": "The broader holding digitalization program mentions modernization of enterprise systems and replacement of legacy software dependencies.",
+              "why_it_matters": "Digital modernization makes integration of maintenance analytics and EAM workflows more plausible."
+            }
+          ]
+        },
+        "C12": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: repair interval optimization is a strong trigger for ТОиР automation.",
+          "facts": [
+            {
+              "evidence_ref": "nknh_horizon",
+              "fact": "The account is tied to an initiative that increased inter-repair intervals and moved repair work toward a digital workflow.",
+              "why_it_matters": "This is a direct trigger for predictive maintenance, reliability management, and planning automation."
+            }
+          ]
+        },
+        "C13": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: complex petrochemical production indicates strong industrial fit.",
+          "facts": [
+            {
+              "evidence_ref": "nknh_ep600",
+              "fact": "The account operates complex petrochemical production facilities in the SIBUR perimeter.",
+              "why_it_matters": "High asset complexity supports ICP fit for enterprise ТОиР automation."
+            }
+          ]
+        },
+        "C14": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: the account scale and revenue class support enterprise-level purchasing capacity.",
+          "facts": [
+            {
+              "evidence_ref": "nknh_ep600",
+              "fact": "The referenced production program is positioned as a major investment and operating asset.",
+              "why_it_matters": "Large-scale production assets typically justify enterprise automation budgets."
+            }
+          ]
+        },
+        "C18": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: the holding-level digital program can accelerate local adoption at the account.",
+          "facts": [
+            {
+              "evidence_ref": "ge_replace",
+              "fact": "SIBUR is described as running a broad software and digital transformation agenda.",
+              "why_it_matters": "Holding-level digital priorities can create budget and sponsorship for account-level ТОиР automation."
+            }
+          ]
+        },
+        "C19": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: repair optimization evidence suggests measurable operations KPI pressure.",
+          "facts": [
+            {
+              "evidence_ref": "nknh_horizon",
+              "fact": "The repair platform evidence emphasizes operational gains from changed maintenance intervals.",
+              "why_it_matters": "Operational KPI pressure strengthens buying intent for maintenance automation."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "account_id": "icp-sibur-030",
+      "criteria": {
+        "C1": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: holding-level digital materials describe platforms relevant to industrial operations and maintenance governance.",
+          "facts": [
+            {
+              "evidence_ref": "sibur_digital",
+              "fact": "SIBUR publicly presents a digital agenda for industrial and operational processes.",
+              "why_it_matters": "A central digital agenda makes ТОиР automation a credible ICP topic."
+            }
+          ]
+        },
+        "C2": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: the holding manages multiple production assets where maintenance reliability is a common enterprise concern.",
+          "facts": [
+            {
+              "evidence_ref": "sibur_digital",
+              "fact": "The source describes digital practices across SIBUR's industrial perimeter rather than a single isolated facility.",
+              "why_it_matters": "Multi-asset governance increases the value of standardized ТОиР practices."
+            }
+          ]
+        },
+        "C4": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: cooperation with external technology partners indicates openness to partner-led change.",
+          "facts": [
+            {
+              "evidence_ref": "rds",
+              "fact": "The holding has a public cooperation memorandum with an external technology partner.",
+              "why_it_matters": "Partner openness is relevant when an access route or implementation motion depends on ecosystem relationships."
+            }
+          ]
+        },
+        "C5": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: software replacement and digital platform activity show an active modernization agenda.",
+          "facts": [
+            {
+              "evidence_ref": "ge_replace",
+              "fact": "The holding is associated with replacement of legacy software dependencies and enterprise digital modernization.",
+              "why_it_matters": "Modernization context increases receptivity to new enterprise software for maintenance."
+            }
+          ]
+        },
+        "C12": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: central digital governance can create cross-site modernization triggers.",
+          "facts": [
+            {
+              "evidence_ref": "sibur_digital",
+              "fact": "The public digital agenda includes operational technology and analytics themes.",
+              "why_it_matters": "Operational analytics themes are adjacent to predictive maintenance triggers."
+            }
+          ]
+        },
+        "C16": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: the central organization can sponsor standards that apply across production subsidiaries.",
+          "facts": [
+            {
+              "evidence_ref": "sibur_digital",
+              "fact": "The holding-level source frames digital work as a cross-company capability.",
+              "why_it_matters": "Central sponsorship improves the chance that account-level radar hits become portfolio-level opportunities."
+            }
+          ]
+        },
+        "C18": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: digital agenda and partner cooperation suggest strategic intent, though not a direct tender.",
+          "facts": [
+            {
+              "evidence_ref": "rds",
+              "fact": "The cooperation signal shows a willingness to formalize external digital initiatives.",
+              "why_it_matters": "Formal cooperation supports medium intent for new industrial software motions."
+            }
+          ]
+        },
+        "C19": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: hiring and digital program signals point to active organizational capacity for change.",
+          "facts": [
+            {
+              "evidence_ref": "career_engineer",
+              "fact": "The career content emphasizes engineering roles and their importance in industrial operations.",
+              "why_it_matters": "Engineering capability and digital sponsorship together support intent for maintenance improvement programs."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "account_id": "icp-sibur-012",
+      "criteria": {
+        "C1": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: source material explicitly points to repair service timing and maintenance operations.",
+          "facts": [
+            {
+              "evidence_ref": "zsn_repair",
+              "fact": "The account is connected to shortened service work and maintenance process improvement.",
+              "why_it_matters": "This directly supports a ТОиР/EAM-related criterion."
+            }
+          ]
+        },
+        "C5": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: holding-level digital initiatives provide a modernization context for the site.",
+          "facts": [
+            {
+              "evidence_ref": "sibur_digital",
+              "fact": "SIBUR digital materials indicate enterprise attention to industrial digitalization.",
+              "why_it_matters": "A digital context makes maintenance workflow automation easier to position."
+            }
+          ]
+        },
+        "C6": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: procurement-channel evidence indicates a monitored buying environment.",
+          "facts": [
+            {
+              "evidence_ref": "portenergo_tender",
+              "fact": "Procurement-channel monitoring is available in the same holding perimeter.",
+              "why_it_matters": "Procurement visibility helps detect buying windows and source route evidence."
+            }
+          ]
+        },
+        "C12": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: maintenance service timing is a strong operational trigger.",
+          "facts": [
+            {
+              "evidence_ref": "zsn_repair",
+              "fact": "The repair source focuses on reducing or optimizing the time needed for equipment service.",
+              "why_it_matters": "Shorter maintenance cycles are a direct trigger for planning and reliability tooling."
+            }
+          ]
+        },
+        "C13": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: the account is a large petrochemical production site with high asset complexity.",
+          "facts": [
+            {
+              "evidence_ref": "zsn_repair",
+              "fact": "The account is represented as a major production enterprise with complex maintenance operations.",
+              "why_it_matters": "Complex production assets are a strong ICP fit signal."
+            }
+          ]
+        },
+        "C14": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: the account scale supports enterprise-level maintenance automation economics.",
+          "facts": [
+            {
+              "evidence_ref": "zsn_repair",
+              "fact": "The maintenance signal is tied to production-scale equipment service rather than office operations.",
+              "why_it_matters": "Industrial-scale service work justifies automation investment."
+            }
+          ]
+        },
+        "C18": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: active digital and procurement signals suggest near-term intent, but not a confirmed software tender.",
+          "facts": [
+            {
+              "evidence_ref": "ge_replace",
+              "fact": "The broader holding has public digital modernization signals.",
+              "why_it_matters": "Modernization tailwinds can turn operational triggers into software demand."
+            }
+          ]
+        },
+        "C19": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: repeated repair and procurement signals indicate a meaningful monitoring target.",
+          "facts": [
+            {
+              "evidence_ref": "zsn_repair",
+              "fact": "Repair optimization appears as a concrete operational topic for the account.",
+              "why_it_matters": "Concrete operational topics strengthen intent relative to generic company fit."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "account_id": "icp-sibur-023",
+      "criteria": {
+        "C1": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: planned shutdown and repair evidence directly maps to ТОиР processes.",
+          "facts": [
+            {
+              "evidence_ref": "kos_repair",
+              "fact": "The account is associated with planned repair shutdown activity.",
+              "why_it_matters": "Shutdown planning is a core maintenance management scenario."
+            }
+          ]
+        },
+        "C5": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: broader digital modernization can support adoption of maintenance software.",
+          "facts": [
+            {
+              "evidence_ref": "ge_replace",
+              "fact": "Holding-level software modernization is present in public sources.",
+              "why_it_matters": "Software modernization lowers the barrier for new enterprise maintenance systems."
+            }
+          ]
+        },
+        "C6": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: repair shutdowns typically require coordination across contractors, procurement, and internal roles.",
+          "facts": [
+            {
+              "evidence_ref": "kos_repair",
+              "fact": "The planned repair source implies cross-functional coordination around industrial assets.",
+              "why_it_matters": "Cross-functional coordination is relevant for enterprise EAM workflow fit."
+            }
+          ]
+        },
+        "C12": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: planned shutdown is a strong maintenance modernization trigger.",
+          "facts": [
+            {
+              "evidence_ref": "kos_repair",
+              "fact": "The source describes preparation for planned repair work at the account.",
+              "why_it_matters": "Planned repair campaigns create urgency for scheduling, risk, and resource planning."
+            }
+          ]
+        },
+        "C13": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: large chemical production assets create strong ICP fit.",
+          "facts": [
+            {
+              "evidence_ref": "kos_repair",
+              "fact": "The account operates industrial production assets requiring periodic shutdown and repair.",
+              "why_it_matters": "Recurring industrial repair work is a strong fit for ТОиР automation."
+            }
+          ]
+        },
+        "C14": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: the account is large enough for enterprise maintenance tooling to be economically relevant.",
+          "facts": [
+            {
+              "evidence_ref": "kos_repair",
+              "fact": "The repair activity is associated with a major SIBUR production enterprise.",
+              "why_it_matters": "Large production scale supports budget and impact assumptions."
+            }
+          ]
+        },
+        "C18": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: software modernization and repair work together indicate potential buying intent.",
+          "facts": [
+            {
+              "evidence_ref": "ge_replace",
+              "fact": "The broader digital program creates a software modernization backdrop.",
+              "why_it_matters": "A modernization backdrop can convert maintenance needs into software evaluation."
+            }
+          ]
+        },
+        "C20": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: planned repair events create a time-bound reason to re-check the account.",
+          "facts": [
+            {
+              "evidence_ref": "kos_repair",
+              "fact": "The evidence points to a specific planned repair campaign.",
+              "why_it_matters": "Time-bound repair campaigns are useful radar triggers for outreach timing."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "account_id": "icp-sibur-001",
+      "criteria": {
+        "C1": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: reliability investment and digital workshop evidence support ТОиР relevance.",
+          "facts": [
+            {
+              "evidence_ref": "vsk_reliability",
+              "fact": "The account has public material around reliability-related investment.",
+              "why_it_matters": "Reliability investment is tightly connected to maintenance process improvement."
+            }
+          ]
+        },
+        "C2": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: industrial production context and reliability agenda imply meaningful asset base.",
+          "facts": [
+            {
+              "evidence_ref": "vsk_reliability",
+              "fact": "The source presents the account as an industrial enterprise investing in production reliability.",
+              "why_it_matters": "Asset-intensive operations strengthen ICP fit."
+            }
+          ]
+        },
+        "C5": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: workshop and digitalization context support a digital readiness signal.",
+          "facts": [
+            {
+              "evidence_ref": "vsk_digital",
+              "fact": "The account is linked to a digital workshop and public digitalization activity.",
+              "why_it_matters": "Digital readiness increases the probability that a ТОиР software discussion can land."
+            }
+          ]
+        },
+        "C7": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: reliability investment suggests measurable operational objectives.",
+          "facts": [
+            {
+              "evidence_ref": "vsk_reliability",
+              "fact": "The public material references a substantial investment connected to reliability and operations.",
+              "why_it_matters": "Measurable reliability objectives are useful for value-case based scoring."
+            }
+          ]
+        },
+        "C12": {
+          "confidence": "high",
+          "rationale": "Synthetic demo annotation: reliability improvement is a direct trigger for predictive maintenance and EAM analytics.",
+          "facts": [
+            {
+              "evidence_ref": "vsk_reliability",
+              "fact": "Reliability is named as a meaningful operational theme for the account.",
+              "why_it_matters": "Reliability themes often precede maintenance analytics or planning initiatives."
+            }
+          ]
+        },
+        "C13": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: synthetic rubber production is a strong industrial ICP match.",
+          "facts": [
+            {
+              "evidence_ref": "vsk_reliability",
+              "fact": "The account is a production enterprise in the synthetic rubber segment.",
+              "why_it_matters": "Industrial production context supports ТОиР automation fit."
+            }
+          ]
+        },
+        "C14": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: investment scale suggests budget relevance.",
+          "facts": [
+            {
+              "evidence_ref": "vsk_reliability",
+              "fact": "The reliability-related source mentions a significant investment scope.",
+              "why_it_matters": "Investment scale supports the assumption that maintenance improvement can receive budget."
+            }
+          ]
+        },
+        "C19": {
+          "confidence": "medium",
+          "rationale": "Synthetic demo annotation: reliability and digital workshop signals together support medium intent.",
+          "facts": [
+            {
+              "evidence_ref": "vsk_digital",
+              "fact": "Digital workshop activity appears alongside reliability-focused investment evidence.",
+              "why_it_matters": "Combining digital readiness with reliability pressure increases intent quality."
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

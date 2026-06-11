@@ -46,6 +46,27 @@ class ICPRadarScore:
 
 
 @dataclass(frozen=True, slots=True)
+class CriterionEvidenceFact:
+    evidence_ref: str
+    source_url: str
+    fact: str
+    why_it_matters: str
+
+
+@dataclass(frozen=True, slots=True)
+class CriterionEvidenceExplanation:
+    criterion_code: str
+    score: int
+    evidence_origin: str
+    evidence_status: str
+    confidence: str
+    rationale: str
+    evidence_refs: tuple[str, ...]
+    source_urls: tuple[str, ...]
+    facts: tuple[CriterionEvidenceFact, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class ICPRadarCandidate:
     rank: int
     account_id: str
@@ -63,6 +84,7 @@ class ICPRadarCandidate:
     source_urls: tuple[str, ...]
     evidence_refs: tuple[str, ...]
     criteria_scores: dict[str, int]
+    criteria_evidence: dict[str, CriterionEvidenceExplanation]
     score: ICPRadarScore
 
 
@@ -113,6 +135,7 @@ class ICPRadar:
                 source_urls=item.source_urls,
                 evidence_refs=item.evidence_refs,
                 criteria_scores=item.criteria_scores,
+                criteria_evidence=item.criteria_evidence,
                 score=item.score,
             )
             for index, item in enumerate(ranked, start=1)
@@ -132,7 +155,8 @@ class ICPRadar:
 def icp_radar_artifact_to_payload(artifact: ICPRadarArtifact) -> dict[str, Any]:
     return {
         "artifact_type": "icp_radar",
-        "artifact_version": "0.6.2",
+        "artifact_version": "0.6.2.3",
+        "criteria_evidence_contract_version": "0.6.2.3",
         "radar": {
             "profile": profile_to_payload(artifact.profile),
             "criteria": [criterion_to_payload(item) for item in artifact.criteria],
@@ -190,7 +214,34 @@ def candidate_to_payload(candidate: ICPRadarCandidate) -> dict[str, Any]:
         "source_urls": list(candidate.source_urls),
         "evidence_refs": list(candidate.evidence_refs),
         "criteria_scores": dict(candidate.criteria_scores),
+        "criteria_evidence": {
+            code: criterion_evidence_to_payload(item)
+            for code, item in sorted(candidate.criteria_evidence.items())
+        },
         "score": score_to_payload(candidate.score),
+    }
+
+
+def criterion_evidence_to_payload(explanation: CriterionEvidenceExplanation) -> dict[str, Any]:
+    return {
+        "criterion_code": explanation.criterion_code,
+        "score": explanation.score,
+        "evidence_origin": explanation.evidence_origin,
+        "evidence_status": explanation.evidence_status,
+        "confidence": explanation.confidence,
+        "rationale": explanation.rationale,
+        "evidence_refs": list(explanation.evidence_refs),
+        "source_urls": list(explanation.source_urls),
+        "facts": [criterion_evidence_fact_to_payload(item) for item in explanation.facts],
+    }
+
+
+def criterion_evidence_fact_to_payload(fact: CriterionEvidenceFact) -> dict[str, Any]:
+    return {
+        "evidence_ref": fact.evidence_ref,
+        "source_url": fact.source_url,
+        "fact": fact.fact,
+        "why_it_matters": fact.why_it_matters,
     }
 
 

@@ -15,6 +15,7 @@ from power_web_os.icp_radar import (
     SignalCriterion,
     EvidenceSource,
 )
+from power_web_os.icp_radar_evidence import CriterionEvidenceBuilder, load_criterion_evidence_fixture
 
 warnings.filterwarnings("ignore", category=UserWarning, message=".*extension is not supported.*")
 
@@ -41,6 +42,8 @@ def _artifact_from_workbook(workbook: Any, path: Path) -> ICPRadarArtifact:
     sources = _read_sources(workbook["Sources"])
     summary_overlay = _read_summary_overlay(workbook["Summary"])
     source_refs_by_url = {source.url: source.source_id for source in sources if source.url}
+    evidence_fixture_path = path.parent / "toir_sibur_criterion_evidence.json"
+    evidence_fixture = load_criterion_evidence_fixture(evidence_fixture_path)
     radar = ICPRadar()
     candidates = []
 
@@ -49,7 +52,7 @@ def _artifact_from_workbook(workbook: Any, path: Path) -> ICPRadarArtifact:
         if not legal_name:
             continue
 
-        number = _text(_get(row, 1)) or str(row_index)
+        number = _text(_get(row, 0)) or str(row_index)
         criteria_scores = {
             code: _to_int(_get(row, 16 + offset))
             for offset, code in enumerate(CRITERION_CODES)
@@ -77,11 +80,17 @@ def _artifact_from_workbook(workbook: Any, path: Path) -> ICPRadarArtifact:
                 source_urls=source_urls,
                 evidence_refs=evidence_refs,
                 criteria_scores=criteria_scores,
+                criteria_evidence={},
                 score=score,
             )
         )
 
     ranked_candidates = radar.rank(candidates)
+    ranked_candidates = CriterionEvidenceBuilder(
+        criteria=tuple(criteria),
+        sources=tuple(sources),
+        fixture=evidence_fixture,
+    ).attach(ranked_candidates)
     return ICPRadarArtifact(
         profile=_profile(path),
         criteria=tuple(criteria),
@@ -89,8 +98,10 @@ def _artifact_from_workbook(workbook: Any, path: Path) -> ICPRadarArtifact:
         candidates=ranked_candidates,
         workflow_metadata={
             "workflow_name": "ICPRadarXlsxImport",
-            "artifact_version": "0.6.2",
+            "artifact_version": "0.6.2.3",
             "source_workbook": path.name,
+            "criteria_evidence_contract_version": "0.6.2.3",
+            "criteria_evidence_fixture": evidence_fixture_path.name,
             "sheet_names": list(workbook.sheetnames),
             "candidate_count": len(ranked_candidates),
             "criteria_count": len(criteria),
@@ -201,4 +212,4 @@ def _stable_number(value: str) -> int:
     try:
         return int(float(value))
     except ValueError:
-        return abs(hash(value)) % 100000
+        return sum((index + 1) * ord(char) for index, char in enumerate(value)) % 100000

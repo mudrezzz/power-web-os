@@ -77,6 +77,13 @@ Implemented first fixture:
 - Model the `Criteria` sheet as `SignalCriterion` records.
 - Model the `ICP Matrix` sheet as legal entities, evidence refs, criterion scores, fit/intent/trigger totals, and tier.
 - Model `Sources` as evidence-source metadata.
+- Keep numeric C1-C20 scores sourced from the XLSX.
+- Add criterion-level explanation from `demo/fixtures/icp_radar/toir_sibur_criterion_evidence.json` where curated demo facts exist.
+- Mark curated criterion explanations as `evidence_origin: synthetic_demo_annotation`; they are demo annotations, not fields extracted from the XLSX.
+- Fill every candidate and every C1-C20 criterion with `criteria_evidence`:
+  - `supported` when curated demo facts exist;
+  - `inferred` when score is nonzero but no criterion-level facts exist;
+  - `not_observed` when score is zero.
 - Use Russian-language company names and people in generated accepted-account demo data.
 
 Scoring formula:
@@ -101,6 +108,16 @@ It writes:
 demo/output/icp_radar.json
 frontend/public/demo/icp_radar.json
 demo/fixtures/icp_radar/toir_sibur_icp_radar.json
+```
+
+The generated ICP Radar artifact version is `0.6.2.3`. Each candidate keeps the backward-compatible fields `criteria_scores`, `evidence_refs`, and `source_urls`, and adds:
+
+```text
+candidates[].criteria_evidence[criterion_code]
+candidates[].criteria_evidence[criterion_code].evidence_status
+candidates[].criteria_evidence[criterion_code].confidence
+candidates[].criteria_evidence[criterion_code].rationale
+candidates[].criteria_evidence[criterion_code].facts[]
 ```
 
 Expected future domain objects:

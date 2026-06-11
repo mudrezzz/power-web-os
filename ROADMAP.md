@@ -795,7 +795,7 @@ Status:
 
 ### Slice 0.6.2.3: ICP Radar evidence-backed criteria contract
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Make each ICP Radar criterion score explainable with criterion-level evidence.
 - User value: A user can answer why C1 received score 1, 2, or 3, inspect the supporting source, and decide whether the signal should be trusted.
 - Scope:
@@ -811,7 +811,8 @@ Status:
 - Implementation notes:
   - Current artifact data has candidate-level `criteria_scores`, `evidence_refs`, and `source_urls`; it cannot fully explain individual criterion scores.
   - Keep old fields backward compatible and add new fields non-breakingly.
-  - If the XLSX lacks criterion-level excerpts, use deterministic curated fixture annotations and mark them as fixture evidence.
+  - The XLSX lacks criterion-level excerpts, so this slice uses deterministic curated fixture annotations and marks them as `synthetic_demo_annotation`.
+  - Numeric scores still come from the XLSX; synthetic annotations explain selected high-impact criteria for demo validation.
 - Tests:
   - Python artifact contract tests for criterion explanation records.
   - Importer/normalizer tests for evidence mapping.
@@ -1286,6 +1287,12 @@ Status:
   - Limited preview content to main signal, short recommendation, top evidence refs, and top criteria.
   - Fixed ICP Radar scroll ownership and added a sticky candidate detail header.
   - Localized remaining Russian ICP Radar UI labels for fit, intent, trigger, tier, evidence, source URLs, and confidence.
+- `Slice 0.6.2.3: ICP Radar evidence-backed criteria contract`
+  - Added `criteria_evidence` to ICP Radar candidates without removing `criteria_scores`, `evidence_refs`, or `source_urls`.
+  - Added curated synthetic demo annotations for the top five ТОиР/SIBUR candidates and high-impact criteria.
+  - Added fallback explanations for all C1-C20 criteria: `supported`, `inferred`, or `not_observed`.
+  - Updated the candidate detail view to show criterion status, confidence, rationale, facts, source refs, and origin labels.
+  - Fixed ICP Radar `account_id` generation to use stable workbook legal-entity numbers instead of Python `hash()`.
 
 ## Blocked Items
 
@@ -1302,4 +1309,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.6.2.3: ICP Radar evidence-backed criteria contract`.
+Implement `Slice 0.6.3: ICP Radar signal validation loop`.

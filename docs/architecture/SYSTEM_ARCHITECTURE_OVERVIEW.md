@@ -134,7 +134,15 @@ An ICP Radar owns:
 - `ICPScoringFormula`: transparent fit/intent/trigger aggregation and tier thresholds.
 - `RadarCandidate`: a scored account candidate before it is accepted into Power Web work.
 
-The first realistic demo ICP profile uses `demo/fixtures/icp_radar/sibur_icp_pass1.xlsx` as a fixture. It discovers Russian legal entities inside a holding, scores them against ТОиР criteria, and shows a ranked candidate shortlist. Signal validation and the take-into-work handoff are still planned follow-up slices.
+The first realistic demo ICP profile uses `demo/fixtures/icp_radar/sibur_icp_pass1.xlsx` as a fixture. It discovers Russian legal entities inside a holding, scores them against ТОиР criteria, and shows a ranked candidate shortlist. Numeric C1-C20 scores come from the XLSX. Criterion-level evidence is added by a separate curated synthetic fixture, `demo/fixtures/icp_radar/toir_sibur_criterion_evidence.json`, so the demo can exercise evidence-backed score explanation before production source extraction exists.
+
+The current criterion evidence contract is deliberately explicit:
+
+- `supported`: curated synthetic demo facts exist for this candidate and criterion;
+- `inferred`: the XLSX score is nonzero, but the demo does not yet contain criterion-level facts;
+- `not_observed`: the XLSX score is zero.
+
+This read model is not a substitute for production extraction. It defines the UI and artifact surface that future source ingestion and validation should populate. Signal validation and the take-into-work handoff are still planned follow-up slices.
 
 Signal validation is part of the ICP Radar boundary. A human must be able to confirm, correct, reject, or mark a signal as stale. Validation changes must affect the score and preserve an audit trail explaining why the candidate score changed.
 

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from power_web_os.demo import generate_icp_radar_artifact
-from power_web_os.icp_radar import ICPRadar
+from power_web_os.icp_radar import CRITERION_CODES, ICPRadar
 from power_web_os.icp_radar_xlsx import REQUIRED_SHEETS, load_icp_radar_workbook
 
 
@@ -47,6 +47,7 @@ def test_icp_radar_score_formula_matches_workbook_values() -> None:
 def test_icp_radar_ranking_sort_order_is_stable() -> None:
     artifact = load_icp_radar_workbook(WORKBOOK)
     candidate_names = [item.legal_name for item in artifact.candidates]
+    candidate_ids = [item.account_id for item in artifact.candidates]
 
     assert candidate_names[:4] == [
         "ПАО «Нижнекамскнефтехим»",
@@ -56,8 +57,73 @@ def test_icp_radar_ranking_sort_order_is_stable() -> None:
     ]
     assert candidate_names[-1] == "АО «СИБУР-РТ»"
 
+    assert candidate_ids[:5] == [
+        "icp-sibur-024",
+        "icp-sibur-030",
+        "icp-sibur-012",
+        "icp-sibur-023",
+        "icp-sibur-001",
+    ]
+
     sorted_again = ICPRadar().rank(list(artifact.candidates))
     assert [item.legal_name for item in sorted_again] == candidate_names
+
+
+def test_icp_radar_attaches_criterion_evidence_for_all_criteria() -> None:
+    artifact = load_icp_radar_workbook(WORKBOOK)
+
+    for candidate in artifact.candidates:
+        assert tuple(candidate.criteria_evidence) == CRITERION_CODES
+        assert len(candidate.criteria_evidence) == 20
+        for code, explanation in candidate.criteria_evidence.items():
+            assert explanation.criterion_code == code
+            assert explanation.score == candidate.criteria_scores[code]
+
+
+def test_icp_radar_top_candidates_have_synthetic_supported_evidence() -> None:
+    artifact = load_icp_radar_workbook(WORKBOOK)
+
+    for candidate in artifact.candidates[:5]:
+        supported = [
+            item for item in candidate.criteria_evidence.values()
+            if item.evidence_status == "supported"
+        ]
+        assert len(supported) >= 8
+        assert all(item.evidence_origin == "synthetic_demo_annotation" for item in supported)
+        assert all(item.facts for item in supported)
+
+    first_candidate = artifact.candidates[0]
+    for code in ["C1", "C2", "C5", "C12", "C13", "C14", "C18", "C19"]:
+        assert first_candidate.criteria_evidence[code].evidence_status == "supported"
+
+
+def test_icp_radar_criterion_evidence_fallback_statuses() -> None:
+    artifact = load_icp_radar_workbook(WORKBOOK)
+    statuses = {
+        explanation.evidence_status
+        for candidate in artifact.candidates
+        for explanation in candidate.criteria_evidence.values()
+    }
+
+    assert {"supported", "inferred", "not_observed"}.issubset(statuses)
+
+    inferred = next(
+        explanation
+        for candidate in artifact.candidates
+        for explanation in candidate.criteria_evidence.values()
+        if explanation.evidence_status == "inferred"
+    )
+    assert inferred.score > 0
+    assert inferred.evidence_origin == "workbook_score_fallback"
+
+    not_observed = next(
+        explanation
+        for candidate in artifact.candidates
+        for explanation in candidate.criteria_evidence.values()
+        if explanation.evidence_status == "not_observed"
+    )
+    assert not_observed.score == 0
+    assert not_observed.confidence == "none"
 
 
 def test_generate_icp_radar_writes_backend_frontend_and_normalized_artifacts(tmp_path: Path) -> None:
@@ -76,8 +142,10 @@ def test_generate_icp_radar_writes_backend_frontend_and_normalized_artifacts(tmp
     assert frontend_output_path.exists()
     assert normalized_output_path.exists()
     assert artifact["artifact_type"] == "icp_radar"
-    assert artifact["artifact_version"] == "0.6.2"
+    assert artifact["artifact_version"] == "0.6.2.3"
+    assert artifact["criteria_evidence_contract_version"] == "0.6.2.3"
 
     payload = json.loads(frontend_output_path.read_text(encoding="utf-8"))
     assert len(payload["radar"]["criteria"]) == 20
     assert payload["candidates"][0]["evidence_refs"]
+    assert len(payload["candidates"][0]["criteria_evidence"]) == 20

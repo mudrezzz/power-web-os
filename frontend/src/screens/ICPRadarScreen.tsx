@@ -2,7 +2,13 @@ import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, ExternalLink, Radar, 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../components/primitives';
-import type { EvidenceSource, ICPRadarArtifact, ICPRadarCandidate, SignalCriterion } from '../types';
+import type {
+  CriterionEvidenceExplanation,
+  EvidenceSource,
+  ICPRadarArtifact,
+  ICPRadarCandidate,
+  SignalCriterion,
+} from '../types';
 
 export function ICPRadarScreen({
   artifact,
@@ -366,21 +372,117 @@ function CriteriaBreakdown({
   artifact: ICPRadarArtifact;
   candidate: ICPRadarCandidate;
 }) {
+  const { t } = useTranslation();
   return (
-    <div className="criteria-list">
+    <div className="criteria-evidence-list" aria-label={t('icpRadar.criterionEvidence')}>
       {artifact.radar.criteria.map((criterion) => {
         const value = candidate.criteria_scores[criterion.code] ?? 0;
+        const evidence = candidate.criteria_evidence[criterion.code];
         return (
-          <div className="criterion-row" key={criterion.code}>
-            <Mono>{criterion.code}</Mono>
-            <span>
-              <strong>{criterion.name}</strong>
-              <small>{criterion.description}</small>
-            </span>
-            <Mono>{value}</Mono>
-          </div>
+          <article className="criterion-evidence-card" key={criterion.code}>
+            <header className="criterion-evidence-header">
+              <Mono>{criterion.code}</Mono>
+              <div>
+                <strong>{criterion.name}</strong>
+                <small>{criterion.description}</small>
+              </div>
+              <div className="criterion-evidence-score">
+                <Mono>{value}</Mono>
+                {evidence && (
+                  <Badge tone={evidenceBadgeTone(evidence.evidence_status)}>
+                    {t(evidenceStatusKey(evidence.evidence_status))}
+                  </Badge>
+                )}
+              </div>
+            </header>
+
+            {evidence ? (
+              <div className="criterion-evidence-body">
+                <div className="criterion-evidence-meta">
+                  <span>
+                    <Mono>{t('icpRadar.confidenceLevel')}</Mono>
+                    <strong>{t(confidenceKey(evidence.confidence))}</strong>
+                  </span>
+                  <span>
+                    <Mono>{t('icpRadar.evidenceOrigin')}</Mono>
+                    <strong>{t(evidenceOriginKey(evidence.evidence_origin))}</strong>
+                  </span>
+                </div>
+
+                <section>
+                  <Eyebrow>{t('icpRadar.rationale')}</Eyebrow>
+                  <p>{evidence.rationale}</p>
+                </section>
+
+                {evidence.facts.length ? (
+                  <section>
+                    <Eyebrow>{t('icpRadar.facts')}</Eyebrow>
+                    <div className="criterion-fact-list">
+                      {evidence.facts.map((fact) => (
+                        <div className="criterion-fact" key={`${criterion.code}-${fact.evidence_ref}-${fact.fact}`}>
+                          <ShieldCheck aria-hidden="true" />
+                          <div>
+                            <strong>{fact.fact}</strong>
+                            <small>{fact.why_it_matters}</small>
+                            <a href={fact.source_url || undefined} target="_blank" rel="noreferrer">
+                              <Mono>{fact.evidence_ref || t('icpRadar.source')}</Mono>
+                              {fact.source_url && <ExternalLink aria-hidden="true" />}
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ) : (
+                  <p className="criterion-empty-note">{t('icpRadar.noCriterionFacts')}</p>
+                )}
+              </div>
+            ) : (
+              <p className="criterion-empty-note">{t('icpRadar.noCriterionFacts')}</p>
+            )}
+          </article>
         );
       })}
     </div>
   );
+}
+
+function evidenceBadgeTone(status: CriterionEvidenceExplanation['evidence_status']) {
+  if (status === 'supported') {
+    return 'ally';
+  }
+  if (status === 'inferred') {
+    return 'unsurfaced';
+  }
+  return 'neutral';
+}
+
+function evidenceStatusKey(status: CriterionEvidenceExplanation['evidence_status']) {
+  if (status === 'supported') {
+    return 'icpRadar.supported';
+  }
+  if (status === 'inferred') {
+    return 'icpRadar.inferred';
+  }
+  return 'icpRadar.notObserved';
+}
+
+function confidenceKey(confidence: CriterionEvidenceExplanation['confidence']) {
+  if (confidence === 'high') {
+    return 'icpRadar.confidenceValues.high';
+  }
+  if (confidence === 'medium') {
+    return 'icpRadar.confidenceValues.medium';
+  }
+  if (confidence === 'low') {
+    return 'icpRadar.confidenceValues.low';
+  }
+  return 'icpRadar.confidenceValues.none';
+}
+
+function evidenceOriginKey(origin: CriterionEvidenceExplanation['evidence_origin']) {
+  if (origin === 'synthetic_demo_annotation') {
+    return 'icpRadar.syntheticAnnotation';
+  }
+  return 'icpRadar.workbookFallback';
 }
