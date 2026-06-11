@@ -224,6 +224,10 @@ Rules:
   - the sticky column must keep its own background and z-index so scrolled columns do not bleed through;
   - candidate row preview expands inline under the selected row and uses max-height plus local overflow;
   - full candidate evidence/criteria work belongs on a separate candidate detail screen with breadcrumbs back to `ICP Radar`.
+- Keep `ICP Radar` navigation local to `ICPRadarScreen` until a broader routing need appears:
+  - `expandedCandidateId` owns inline preview state;
+  - `detailCandidateId` owns the read-only candidate detail view;
+  - do not introduce React Router only for ICP Radar candidate drilldown.
 - Treat `Take into work` as planned until Slice 0.6.4 implements the handoff.
 - Keep unfinished navigation entries visible only as planned placeholders; do not fake unavailable functionality.
 

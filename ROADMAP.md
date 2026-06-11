@@ -375,6 +375,42 @@ Status:
 - Risks:
   - Documentation screenshots may drift if UI changes without rerunning visual smoke; mitigate by keeping visual smoke and manifest updates in future UI slices.
 
+### Slice 0.3.4: Mobile workspace baseline
+
+- Status: `Backlog`
+- Goal: Add the first project-wide mobile layout baseline for the Power Web OS shell and core demo screens.
+- User value: Sales users can inspect the demo on smartphone-sized screens without broken tables, hidden navigation, or unusable page-level horizontal scroll.
+- Scope:
+  - Define mobile behavior for the shell, sidebar/navigation, topbar, workspace content, cards, dense tables, and detail views.
+  - Add mobile visual smoke coverage, for example `390x844`.
+  - Convert dense tables to mobile card or stacked-row layouts instead of relying on horizontal table scroll.
+  - Cover at least `ICP Radar`, `Accounts`, `Account Map`, `Access Plans`, and `Playbook`.
+  - Update frontend design-system / agent instructions so new UI slices must specify mobile behavior.
+- Out of scope:
+  - Native mobile app.
+  - Offline support.
+  - Full gesture/navigation framework.
+- Implementation notes:
+  - Keep desktop behavior intact.
+  - Treat mobile as a first-class shell mode, not as isolated per-screen hacks.
+  - Use existing design-system tokens and avoid viewport-scaled typography.
+- Tests:
+  - `npm --prefix ./frontend run build`.
+  - `npm --prefix ./frontend run visual:smoke` with a mobile viewport.
+  - Frontend contract tests for mobile rules and screenshot manifest coverage.
+  - `python -m pytest`.
+- Docs:
+  - Update user/developer/QA docs and Wiki screenshots.
+- Demo impact:
+  - Demo becomes inspectable from a phone-size viewport.
+- Acceptance criteria:
+  - No body-level horizontal scroll on phone viewport.
+  - Primary navigation remains usable.
+  - Core screens render readable mobile alternatives.
+  - Visual smoke captures mobile screenshots.
+- Risks:
+  - Mobile work can sprawl across all screens; mitigate by defining a baseline rather than perfecting every workflow.
+
 ### Slice 0.4: Account Radar portfolio loop
 
 - Status: `Done`
@@ -664,7 +700,7 @@ Status:
 
 ### Slice 0.6.2.1: ICP Radar table-first UX correction
 
-- Status: `Ready`
+- Status: `Done`
 - Goal: Rework the read-only ICP Radar screen into a practical table-first workspace before adding signal validation.
 - User value: A user can scan a wide shortlist comfortably, keep account identity visible while comparing many columns, and open details only when needed.
 - Scope:
@@ -717,6 +753,82 @@ Status:
   - Sticky columns in dense tables can cause overlap; mitigate with explicit widths, z-index, background, and small-monitor checks.
   - Detail routing can become a premature router migration; keep navigation minimal unless a router becomes necessary.
 
+### Slice 0.6.2.2: ICP Radar UX repair
+
+- Status: `Ready`
+- Goal: Fix the current ICP Radar table, preview, and detail UX before adding signal validation.
+- User value: A user can scan candidates, expand a row, and open candidate details without nested scrolls, duplicated score noise, unreadable sections, or broken horizontal table behavior.
+- Scope:
+  - Remove nested scrolls from ICP Radar preview; use one vertical scroll for the expanded block.
+  - Limit inline preview to top-5 evidence refs and top-5 criteria.
+  - Remove duplicated score/tier blocks from preview; strengthen score/tier values in the existing table row when expanded.
+  - Make preview section labels visually distinct from body text.
+  - Fix table scroll ownership so only table columns scroll horizontally and the company column stays sticky.
+  - Localize ICP Radar RU labels for fit, intent, trigger, tier, evidence, confidence, source refs, and related headings.
+  - Add a sticky compact header in candidate detail view so the selected account remains visible while reviewing long criteria.
+- Out of scope:
+  - Criterion-level evidence explanations.
+  - Signal validation actions.
+  - Take-into-work handoff.
+  - System-wide mobile baseline.
+- Implementation notes:
+  - Keep the artifact contract unchanged in this slice.
+  - Do not add a router.
+  - Preserve the current table-first desktop intent.
+  - Prefer clearer hierarchy, stronger row states, and fewer repeated numbers over adding more content.
+- Tests:
+  - Frontend contract tests for single-scroll preview, sticky table ownership, RU labels, and sticky detail header.
+  - `npm --prefix ./frontend run build`.
+  - `npm --prefix ./frontend run visual:smoke`.
+  - `python -m pytest`.
+- Docs:
+  - Update user/developer/demo docs and Wiki screenshots.
+- Demo impact:
+  - ICP Radar becomes the primary usable shortlist surface again.
+- Acceptance criteria:
+  - No nested vertical scrollbar in expanded preview.
+  - No page-level horizontal scroll for the ICP Radar table on desktop.
+  - Expanded rows remain readable and visually structured.
+  - RU mode has Russian ICP Radar column and section labels.
+- Risks:
+  - Sticky columns can regress at small desktop widths; mitigate with visual smoke and manual screenshot inspection.
+
+### Slice 0.6.2.3: ICP Radar evidence-backed criteria contract
+
+- Status: `Backlog`
+- Goal: Make each ICP Radar criterion score explainable with criterion-level evidence.
+- User value: A user can answer why C1 received score 1, 2, or 3, inspect the supporting source, and decide whether the signal should be trusted.
+- Scope:
+  - Extend the ICP Radar artifact with criterion-level explanation records.
+  - Link each nonzero C1-C20 score to evidence refs, source URL, short fact/excerpt, rationale, confidence, and score reason.
+  - Update XLSX fixture normalization or add a curated normalized fixture layer where workbook data is not granular enough.
+  - Update candidate detail view to show criteria as evidence-backed explanations, not just score rows.
+  - Prepare the data shape for Slice 0.6.3 validation states.
+- Out of scope:
+  - Live source scraping.
+  - Automatic LLM truth adjudication.
+  - User validation controls.
+- Implementation notes:
+  - Current artifact data has candidate-level `criteria_scores`, `evidence_refs`, and `source_urls`; it cannot fully explain individual criterion scores.
+  - Keep old fields backward compatible and add new fields non-breakingly.
+  - If the XLSX lacks criterion-level excerpts, use deterministic curated fixture annotations and mark them as fixture evidence.
+- Tests:
+  - Python artifact contract tests for criterion explanation records.
+  - Importer/normalizer tests for evidence mapping.
+  - Frontend contract tests for evidence-backed criteria detail.
+  - `python -m pytest`.
+  - `npm --prefix ./frontend run build`.
+- Docs:
+  - Update architecture/developer/user/demo docs with criterion evidence contract.
+- Demo impact:
+  - Candidate detail becomes a real score explanation surface.
+- Acceptance criteria:
+  - At least top candidates show why high-impact criteria received their scores.
+  - Every displayed criterion score has evidence or an explicit "no evidence available" reason.
+  - Detail view links criteria to source refs and facts/excerpts.
+- Risks:
+  - Workbook may not contain enough granular evidence; mitigate with a curated fixture annotation layer and clear source labels.
+
 ### Slice 0.6.3: ICP Radar signal validation loop
 
 - Status: `Backlog`
@@ -737,6 +849,7 @@ Status:
 - Implementation notes:
   - Rejected and stale signals should remain visible in the evidence/audit trail but should not strengthen the score.
   - Corrected signals should show both original observation and user override.
+  - Build on criterion-level evidence from Slice 0.6.2.3; validation actions should operate on evidence-backed observations, not only aggregate candidate-level refs.
 - Tests:
   - Unit tests for validation state transitions.
   - Unit tests for score recalculation from validation decisions.
@@ -1162,6 +1275,11 @@ Status:
   - Added the `ICP Radar` frontend screen as the default demo screen inside the existing shell.
   - Renamed visible accepted-account demo company/person names to Russian-language examples while preserving stable IDs.
   - Added Python importer/smoke tests, frontend contract tests, and docs updates.
+- `Slice 0.6.2.1: ICP Radar table-first UX correction`
+  - Reworked `ICP Radar` from split-view into a broad ranked table with a sticky account column.
+  - Added bounded inline candidate previews under selected rows.
+  - Added an in-shell read-only candidate detail view with breadcrumbs back to the shortlist.
+  - Kept signal validation and take-into-work handoff clearly planned for later slices.
 
 ## Blocked Items
 
@@ -1178,4 +1296,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.6.2.1: ICP Radar table-first UX correction`.
+Implement `Slice 0.6.2.2: ICP Radar UX repair`.

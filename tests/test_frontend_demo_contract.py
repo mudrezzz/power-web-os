@@ -221,6 +221,7 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     screen = Path("frontend/src/screens/ICPRadarScreen.tsx").read_text(encoding="utf-8")
     types = Path("frontend/src/types.ts").read_text(encoding="utf-8")
     i18n = Path("frontend/src/i18n.ts").read_text(encoding="utf-8")
+    css = Path("frontend/src/styles.css").read_text(encoding="utf-8")
 
     assert "useState<ScreenId>('icp_radar')" in app
     assert "/demo/icp_radar.json" in app
@@ -240,6 +241,24 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     ]:
         assert contract_value in screen
 
+    for table_first_value in [
+        "expandedCandidateId",
+        "detailCandidateId",
+        "icp-sticky-cell",
+        "icp-candidate-preview",
+        "icp-detail-breadcrumbs",
+        "backToTable",
+        "openDetails",
+    ]:
+        assert table_first_value in screen or table_first_value in i18n
+
+    assert "icp-radar-detail" not in screen
+    assert "position: sticky" in css
+    assert ".icp-sticky-cell" in css
+    assert ".icp-candidate-preview" in css
+    assert "max-height" in css
+    assert ".icp-candidate-detail-grid" in css
+
     for label_key in [
         "icpRadar.fit",
         "icpRadar.intent",
@@ -248,8 +267,14 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "icpRadar.columns.tier",
         "icpRadar.evidence",
         "icpRadar.criteria",
+        "icpRadar.previewEyebrow",
+        "icpRadar.openDetails",
+        "icpRadar.backToTable",
+        "icpRadar.takeIntoWorkPlanned",
     ]:
         assert label_key in screen or label_key in i18n
+
+    assert "takeIntoWorkPlanned" in i18n
 
 
 def test_frontend_public_artifact_is_available_for_vite() -> None:

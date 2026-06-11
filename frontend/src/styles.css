@@ -803,14 +803,15 @@ button {
   box-shadow: var(--shadow-sm);
 }
 
-.icp-radar-header h1,
-.icp-detail-heading h2 {
+.icp-radar-header h1 {
   margin: var(--s-1) 0;
   font: var(--h2);
 }
 
 .icp-radar-header p,
-.icp-detail-heading p,
+.icp-detail-card p,
+.icp-preview-main p,
+.icp-preview-main small,
 .criteria-list small,
 .icp-evidence-list small {
   margin: 0;
@@ -825,27 +826,23 @@ button {
   gap: var(--s-2);
 }
 
-.icp-radar-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--s-20) * 4), calc(var(--s-20) * 5));
-  gap: var(--s-5);
-}
-
 .icp-radar-table-wrap {
   overflow-x: auto;
+  min-width: 0;
 }
 
 .icp-radar-table {
   display: grid;
-  min-width: calc(var(--s-20) * 12);
+  min-width: calc(var(--s-20) * 15);
 }
 
 .icp-radar-table-head,
-.icp-candidate-row {
+.icp-candidate-row,
+.icp-candidate-preview {
   display: grid;
   grid-template-columns:
-    minmax(calc(var(--s-20) * 3), 2.1fr)
-    minmax(calc(var(--s-20) + var(--s-6)), 1fr)
+    minmax(calc(var(--s-20) * 3), calc(var(--s-20) * 4))
+    minmax(calc(var(--s-20) + var(--s-8)), 1fr)
     minmax(var(--s-12), 0.45fr)
     minmax(var(--s-12), 0.45fr)
     minmax(var(--s-12), 0.45fr)
@@ -862,6 +859,19 @@ button {
   overflow: hidden;
 }
 
+.icp-sticky-cell {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.icp-radar-table-head .icp-sticky-cell {
+  z-index: 4;
+  background: var(--surface);
+}
+
 .icp-radar-table-head {
   padding: 0 0 var(--s-3);
   border-bottom: 1px solid var(--border);
@@ -869,6 +879,10 @@ button {
   font: var(--mono-sm);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.icp-candidate-record {
+  display: grid;
 }
 
 .icp-candidate-row {
@@ -886,10 +900,14 @@ button {
   background: var(--surface-2);
 }
 
+.icp-candidate-row:hover .icp-sticky-cell,
+.icp-candidate-row-selected .icp-sticky-cell {
+  background: var(--surface-2);
+}
+
 .icp-company-cell,
 .score-cell,
 .row-action,
-.icp-detail-heading,
 .icp-evidence-list a,
 .criterion-row {
   display: flex;
@@ -899,7 +917,6 @@ button {
 }
 
 .icp-company-cell > span:last-child,
-.icp-detail-heading > div,
 .icp-evidence-list span,
 .criterion-row span {
   min-width: 0;
@@ -959,13 +976,89 @@ button {
   color: var(--fg3);
 }
 
-.icp-radar-detail {
+.icp-candidate-preview {
+  max-height: calc(var(--s-20) * 4);
+  overflow-y: auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.icp-preview-sticky-cell {
+  display: grid;
+  align-content: start;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-4);
+  background: var(--surface-2);
+}
+
+.icp-preview-sticky-cell strong {
+  overflow: hidden;
+  color: var(--ink);
+  font: var(--label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icp-preview-body {
+  display: grid;
+  grid-column: 2 / -1;
+  gap: var(--s-4);
+  min-width: 0;
+  padding: var(--s-4) var(--s-4) var(--s-4) 0;
+}
+
+.icp-preview-main,
+.icp-preview-lists {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--s-20) * 3), calc(var(--s-20) * 4));
+  gap: var(--s-4);
   min-width: 0;
 }
 
-.icp-radar-detail .card {
+.icp-preview-main section,
+.icp-detail-card {
   display: grid;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.icp-preview-main small {
+  display: block;
+  margin-top: var(--s-2);
+  font: var(--meta);
+}
+
+.icp-detail-breadcrumbs {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--s-2);
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.icp-detail-breadcrumbs svg {
+  width: var(--s-4);
+  height: var(--s-4);
+  flex-shrink: 0;
+}
+
+.icp-detail-breadcrumbs strong {
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icp-candidate-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
   gap: var(--s-5);
+}
+
+.icp-candidate-detail-grid .card:last-child {
+  grid-column: 1 / -1;
 }
 
 .icp-score-grid {
@@ -1036,6 +1129,11 @@ button {
   grid-template-columns: var(--s-10) minmax(0, 1fr) var(--s-8);
   padding: var(--s-2);
   border-bottom: 1px solid var(--border-faint);
+}
+
+.criteria-list-compact {
+  max-height: calc(var(--s-20) * 2);
+  overflow-y: auto;
 }
 
 .criterion-row:last-child {

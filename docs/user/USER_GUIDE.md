@@ -64,7 +64,7 @@ The language switcher localizes UI chrome plus visible deterministic demo data s
 
 ### ICP Radar shortlist
 
-Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. Read fit, intent, trigger, total score, tier, the main signal, and evidence references together. The current UI is read-only; signal validation and take-into-work actions are planned follow-up slices.
+Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. The main surface is a wide table: the company column stays fixed while score, tier, evidence, and criteria-related columns can scroll horizontally. Click a candidate row to open a bounded inline preview with the main signal, score breakdown, evidence refs, and top criteria. Open the read-only candidate detail view when you need the full C1-C20 breakdown and source refs. Signal validation and take-into-work actions are still planned follow-up slices.
 
 ![ICP Radar shortlist](../qa/screenshots/visual-smoke/icp-radar-1366x768.png)
 
@@ -92,16 +92,17 @@ Open `Playbook` to see how the customer's rules shape the plan. The screen shows
 
 ![Playbook analysis](../qa/screenshots/visual-smoke/playbook-1366x768.png)
 
-## Planned ICP Radar UX Correction
+## ICP Radar Table Workflow
 
-The next ICP Radar UI correction will make the shortlist table the main working surface:
+The current ICP Radar UI is table-first:
 
 - `ICP Radar` opens as a broad ranked account table.
 - The first account/company column stays fixed while the user scrolls horizontally across score, evidence, and criteria columns.
 - Clicking a candidate expands a compact preview directly under that row.
 - The inline preview is bounded in height and scrolls internally when the summary is long.
-- Full candidate work opens in a separate candidate detail screen with breadcrumbs back to `ICP Radar`.
-- The detail screen remains read-only first; signal confirm/correct/reject/stale actions are planned for the following signal validation slice.
+- Full candidate work opens in a separate read-only candidate detail view with breadcrumbs back to `ICP Radar`.
+- The detail view shows candidate profile, source refs, evidence list, score explanation, and the full C1-C20 criteria breakdown.
+- Signal confirm/correct/reject/stale actions are planned for the following signal validation slice.
 
 The generated JSON artifact is also available at:
 

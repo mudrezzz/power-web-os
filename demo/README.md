@@ -7,7 +7,7 @@ The demo shows the current Power Web OS loop: a ТОиР/SIBUR-style ICP Radar f
 ## What The Demo Shows
 
 - ICP Radar ranking from the `sibur_icp_pass1.xlsx` fixture.
-- Fit, intent, trigger, total score, tier, evidence refs, and C1-C20 criteria breakdown.
+- Table-first ICP Radar shortlist with sticky company column, inline candidate preview, fit/intent/trigger/total score, tier, evidence refs, and C1-C20 criteria breakdown in the read-only detail view.
 - Account Radar ranking across six accepted synthetic accounts.
 - Account signals with evidence refs.
 - Power Web Lite roles and missing roles.
@@ -58,9 +58,7 @@ python demo/run_demo.py generate-access-plan
 
 The Python commands print and write JSON for the ICP Radar shortlist and the ranked accepted-account portfolio. The portfolio output should include six ranked accounts and a matching generated Access Plan artifact for every account.
 
-The frontend command prints a local Vite URL. Open it to inspect `ICP Radar` first, switch the UI between EN/RU from the top bar if needed, then use `Accounts` for the accepted portfolio. Click an account row to inspect that account's Access Plan visually inside the Power Web OS shell. Use the sidebar `Account Map` item to inspect the selected account's Power Web Lite board and highlighted recommended access route. Use `Playbook` to compare the current playbook with the pre-generated `No partner motion` variant and see how route decisions and route preview change without a page reload.
-
-The next demo correction for `ICP Radar` is table-first: a broad shortlist table with sticky account column, bounded inline row preview, and a separate read-only candidate detail screen. Signal validation actions come after that correction.
+The frontend command prints a local Vite URL. Open it to inspect `ICP Radar` first, switch the UI between EN/RU from the top bar if needed, then use the broad shortlist table to scan candidates. Click a candidate row to open a bounded inline preview, or open the read-only candidate detail view for full evidence and criteria. Then use `Accounts` for the accepted portfolio. Click an account row to inspect that account's Access Plan visually inside the Power Web OS shell. Use the sidebar `Account Map` item to inspect the selected account's Power Web Lite board and highlighted recommended access route. Use `Playbook` to compare the current playbook with the pre-generated `No partner motion` variant and see how route decisions and route preview change without a page reload.
 
 ## Demo Data
 
@@ -93,7 +91,7 @@ Signal validation must be visible in the demo once implemented: users should be 
 
 - The planner is deterministic.
 - ICP Radar signal validation is not implemented yet.
-- ICP Radar candidate detail is still read-only and will be reworked into a separate table-first detail flow.
+- ICP Radar candidate detail is read-only.
 - `Take into work` is visible as a planned affordance and does not change state yet.
 - No live source connectors yet.
 - No CRM export yet.

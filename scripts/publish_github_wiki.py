@@ -28,8 +28,9 @@ SCREENSHOT_WALKTHROUGH = [
         screen_id="icp-radar",
         title="ICP Radar shortlist",
         description=(
-            "Start here to read the upstream ABM shortlist: fit, intent, trigger, "
-            "total score, tier, main signal, and evidence references for candidate legal entities."
+            "Start here to read the upstream ABM shortlist as a wide ranked table: the company "
+            "column stays sticky while fit, intent, trigger, total score, tier, evidence, "
+            "inline preview, and read-only details explain candidate legal entities."
         ),
         screenshot_1366="icp-radar-1366x768.png",
         screenshot_1280="icp-radar-1280x720.png",
