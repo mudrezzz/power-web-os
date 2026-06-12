@@ -8,6 +8,7 @@ from typing import Any
 
 from power_web_os.domain import Account, Playbook
 from power_web_os.icp_radar import icp_radar_artifact_to_payload
+from power_web_os.icp_radar_catalog import build_icp_radar_catalog
 from power_web_os.icp_radar_xlsx import load_icp_radar_workbook
 from power_web_os.planner import DeterministicAccessPlanner
 from power_web_os.radar import AccountRadar
@@ -149,6 +150,19 @@ def generate_icp_radar_artifact(
     return artifact
 
 
+def generate_icp_radar_catalog_artifact(
+    *,
+    input_path: Path,
+    output_path: Path,
+    frontend_output_path: Path,
+) -> dict[str, Any]:
+    active_radar_artifact = icp_radar_artifact_to_payload(load_icp_radar_workbook(input_path))
+    artifact = build_icp_radar_catalog(active_radar_artifact)
+    _write_json(output_path, artifact)
+    _write_json(frontend_output_path, artifact)
+    return artifact
+
+
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -164,7 +178,13 @@ def main() -> None:
         "command",
         nargs="?",
         default="print-plan",
-        choices=("print-plan", "generate-access-plan", "generate-account-radar", "generate-icp-radar"),
+        choices=(
+            "print-plan",
+            "generate-access-plan",
+            "generate-account-radar",
+            "generate-icp-radar",
+            "generate-icp-radar-catalog",
+        ),
     )
     parser.add_argument("--input", type=Path, default=root / "demo" / "sample_account.json")
     parser.add_argument("--output", type=Path, default=root / "demo" / "output" / "access_plan.json")
@@ -205,6 +225,16 @@ def main() -> None:
         type=Path,
         default=root / "demo" / "fixtures" / "icp_radar" / "toir_sibur_icp_radar.json",
     )
+    parser.add_argument(
+        "--icp-radar-catalog-output",
+        type=Path,
+        default=root / "demo" / "output" / "icp_radars.json",
+    )
+    parser.add_argument(
+        "--frontend-icp-radar-catalog-output",
+        type=Path,
+        default=root / "frontend" / "public" / "demo" / "icp_radars.json",
+    )
     args = parser.parse_args()
 
     if args.command == "generate-access-plan":
@@ -226,6 +256,12 @@ def main() -> None:
             output_path=args.icp_radar_output,
             frontend_output_path=args.frontend_icp_radar_output,
             normalized_output_path=args.normalized_icp_radar_output,
+        )
+    elif args.command == "generate-icp-radar-catalog":
+        artifact = generate_icp_radar_catalog_artifact(
+            input_path=args.icp_radar_input,
+            output_path=args.icp_radar_catalog_output,
+            frontend_output_path=args.frontend_icp_radar_catalog_output,
         )
     else:
         artifact = build_demo_plan(args.input)

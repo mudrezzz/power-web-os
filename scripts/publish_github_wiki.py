@@ -26,11 +26,10 @@ class ScreenshotWalkthroughItem:
 SCREENSHOT_WALKTHROUGH = [
     ScreenshotWalkthroughItem(
         screen_id="icp-radar",
-        title="ICP Radar shortlist",
+        title="ICP Radar catalog",
         description=(
-            "Start here to read the upstream ABM shortlist as a wide ranked table: the company "
-            "column stays sticky while fit, intent, trigger, total score, tier, evidence, "
-            "inline preview, and read-only details explain candidate legal entities."
+            "Start here to see the portfolio of configured ICP Radars, then open the active "
+            "ТОиР / SIBUR radar to inspect its shortlist and read-only settings."
         ),
         screenshot_1366="icp-radar-1366x768.png",
         screenshot_1280="icp-radar-1280x720.png",
@@ -185,13 +184,13 @@ The current PoC is documented as a walkthrough, not as a raw screenshot dump. St
 
 ## Current PoC Flow
 
-1. ICP Radar shortlist finds and scores candidate accounts.
+1. ICP Radar catalog shows configured radars, then the active shortlist finds and scores candidate accounts.
 2. Accounts portfolio shows accepted accounts ready for Power Web work.
 3. Power Web board explains the influence map and highlighted route.
 4. Access Plan ranks review-first next moves.
 5. Playbook analysis explains why routes are allowed, blocked, or require review.
 
-![ICP Radar shortlist](assets/screenshots/visual-smoke/icp-radar-1366x768.png)
+![ICP Radar catalog](assets/screenshots/visual-smoke/icp-radar-1366x768.png)
 ![Power Web board](assets/screenshots/visual-smoke/account-map-1366x768.png)
 """
 
@@ -224,6 +223,7 @@ Run from the repository root:
 
 ```bash
 python -m power_web_os.demo generate-icp-radar
+python -m power_web_os.demo generate-icp-radar-catalog
 python -m power_web_os.demo generate-account-radar
 npm --prefix ./frontend run visual:smoke
 ```

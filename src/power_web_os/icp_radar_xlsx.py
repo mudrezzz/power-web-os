@@ -12,6 +12,7 @@ from power_web_os.icp_radar import (
     ICPRadar,
     ICPRadarArtifact,
     ICPRadarCandidate,
+    RadarDefinition,
     SignalCriterion,
     EvidenceSource,
 )
@@ -95,10 +96,15 @@ def _artifact_from_workbook(workbook: Any, path: Path) -> ICPRadarArtifact:
         profile=_profile(path),
         criteria=tuple(criteria),
         sources=tuple(sources),
+        definition=_definition(
+            path=path,
+            criteria=tuple(criteria),
+            sources=tuple(sources),
+        ),
         candidates=ranked_candidates,
         workflow_metadata={
             "workflow_name": "ICPRadarXlsxImport",
-            "artifact_version": "0.6.2.3",
+            "artifact_version": "0.6.2.5",
             "source_workbook": path.name,
             "criteria_evidence_contract_version": "0.6.2.3",
             "criteria_evidence_fixture": evidence_fixture_path.name,
@@ -108,6 +114,59 @@ def _artifact_from_workbook(workbook: Any, path: Path) -> ICPRadarArtifact:
             "source_count": len(sources),
             "scoring": "workbook-compatible deterministic formula",
         },
+    )
+
+
+def _definition(
+    *,
+    path: Path,
+    criteria: tuple[SignalCriterion, ...],
+    sources: tuple[EvidenceSource, ...],
+) -> RadarDefinition:
+    return RadarDefinition(
+        definition_id="radar-def-toir-sibur",
+        product="Автоматизация ТОиР",
+        segment="Нефтехимия и производственные активы",
+        holding="СИБУР",
+        market_scope="Юридические лица внутри группы СИБУР с самостоятельной производственной или сервисной повесткой.",
+        exclusions=(
+            "Непрофильные сервисные юрлица без производственного контура",
+            "Дочерние структуры с отсутствующими открытыми источниками по ТОиР",
+        ),
+        assumptions=(
+            "Первичное обнаружение юрлиц считается импортированным из XLSX и не пересчитывается каждый запуск.",
+            "Регулярный мониторинг работает по сигналам интереса к ТОиР/EAM, модернизации и промышленной аналитике.",
+            "Числовые C1-C20 scores берутся из XLSX, а criterion-level evidence в демо добавлен отдельной synthetic annotation fixture.",
+        ),
+        legal_entity_source=f"Workbook sheet: {path.name} / ICP Matrix",
+        discovery_mode="one_time_import",
+        discovery_filters=(
+            "Группа компаний: СИБУР",
+            "Выручка и тип юрлица используются как первичный fit-фильтр",
+            "Производственная, ремонтная, энергетическая или сервисная релевантность",
+        ),
+        monitoring_sources=tuple(source.source_id for source in sources),
+        cadence="monthly",
+        lookback_window="90 days",
+        run_mode="incremental_signal_monitoring",
+        scoring_formula={
+            "fit_score": "C13 + C14 + C15 + C16 + C17",
+            "intent_score": "C1..C9 + C18 + C19",
+            "trigger_score": "C10 + C11 + C12 + C20",
+            "total_score": "sum(C1..C20)",
+        },
+        tier_thresholds={
+            "Tier 1": ">=38",
+            "Tier 2": ">=25",
+            "Tier 3": ">=15",
+            "Monitor": "<15",
+        },
+        criteria=criteria,
+        limitations=(
+            "Read-only fixture-backed radar definition in Slice 0.6.2.5",
+            "No live connectors, scheduler, editable weights, or persisted validation decisions yet",
+            "Approved candidate handoff into shared Accounts is planned for Slice 0.6.4",
+        ),
     )
 
 

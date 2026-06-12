@@ -134,7 +134,9 @@ An ICP Radar owns:
 - `ICPScoringFormula`: transparent fit/intent/trigger aggregation and tier thresholds.
 - `RadarCandidate`: a scored account candidate before it is accepted into Power Web work.
 
-The first realistic demo ICP profile uses `demo/fixtures/icp_radar/sibur_icp_pass1.xlsx` as a fixture. It discovers Russian legal entities inside a holding, scores them against ТОиР criteria, and shows a ranked candidate shortlist. Numeric C1-C20 scores come from the XLSX. Criterion-level evidence is added by a separate curated synthetic fixture, `demo/fixtures/icp_radar/toir_sibur_criterion_evidence.json`, so the demo can exercise evidence-backed score explanation before production source extraction exists.
+Radar configuration is a first-class product boundary. There can be many ICP Radars running in parallel for different products, markets, holdings, or source scopes. Each radar owns its definition and can produce its own candidate shortlist; only approved candidates should flow into the shared `Accounts` portfolio and then into Power Web work. The current implementation exposes this through an `icp_radar_catalog` artifact and a read-only selected-radar settings editor. Editable configuration, scheduling, and run history are planned as later concentric slices.
+
+The first realistic demo ICP profile uses `demo/fixtures/icp_radar/sibur_icp_pass1.xlsx` as a fixture. It discovers Russian legal entities inside a holding, scores them against ТОиР criteria, and shows a ranked candidate shortlist for the active `ТОиР / SIBUR` radar. The catalog also includes configured/planned radar examples without generated candidates yet. Numeric C1-C20 scores come from the XLSX. Criterion-level evidence is added by a separate curated synthetic fixture, `demo/fixtures/icp_radar/toir_sibur_criterion_evidence.json`, so the demo can exercise evidence-backed score explanation before production source extraction exists.
 
 The current criterion evidence contract is deliberately explicit:
 

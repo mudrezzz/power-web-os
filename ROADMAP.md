@@ -873,6 +873,52 @@ Status:
 - Risks:
   - Local review controls may look like durable validation; mitigate with explicit local/demo-state copy until Slice 0.6.3.
 
+### Slice 0.6.2.5: ICP Radar catalog and read-only configuration editor
+
+- Status: `Done`
+- Goal: Reframe `ICP Radar` as a portfolio of configured radars, not a single unexplained shortlist.
+- User value: A user can see which ICP Radars exist, what each radar monitors, when it ran, how many candidates it found, and which read-only configuration produced a selected shortlist.
+- Scope:
+  - Add `demo/output/icp_radars.json` and `frontend/public/demo/icp_radars.json` as the ICP Radar catalog artifact.
+  - Keep the existing `icp_radar.json` shortlist artifact for the active `ТОиР / SIBUR` radar.
+  - Add `radar.definition` to the active ICP Radar artifact with discovery scope, monitoring setup, criteria, scoring formula, tier thresholds, and limitations.
+  - Add three demo radar cards: active fixture-backed `ТОиР / SIBUR`, configured `ТОиР / Горнодобыча`, and planned `Энергоэффективность / Ритейл`.
+  - Make `ICP Radar` open as a catalog screen.
+  - Add selected-radar detail with breadcrumbs and `Shortlist` / `Settings` tabs.
+  - Keep the current table-first shortlist and candidate detail for the active fixture-backed radar.
+  - Show a read-only empty shortlist state for configured/planned radars without generated candidates.
+  - Add a read-only settings/editor surface with profile, discovery, monitoring, criteria, scoring, thresholds, and limitations.
+- Out of scope:
+  - Editing radar settings.
+  - Real scheduler/run history.
+  - Running live source searches.
+  - Persisting user-created radars.
+  - Taking candidates into shared `Accounts`.
+- Implementation notes:
+  - The screen should make it explicit that the current ТОиР/SIBUR radar is imported from fixture configuration.
+  - Treat the catalog as a read model over configured radar definitions.
+  - Real editing remains `Slice 0.6.5`.
+  - Take-into-work remains `Slice 0.6.4`.
+  - Formula display remains declarative and constrained; no executable formula scripting is introduced.
+- Tests:
+  - Python artifact contract tests for `radar.definition`.
+  - Python smoke test for `generate-icp-radar-catalog`.
+  - Frontend contract tests for catalog load, radar cards, selected-radar tabs, read-only settings, and no save action.
+  - `python -m pytest`.
+  - `npm --prefix ./frontend run build`.
+- Docs:
+  - User, developer, architecture, and demo docs updated for catalog and selected-radar settings.
+- Demo impact:
+  - Demo now starts with a portfolio of radars and lets a user drill into the active fixture-backed shortlist or inspect configured radars before they produce candidates.
+- Acceptance criteria:
+  - `ICP Radar` starts with radar cards.
+  - Selecting `ТОиР / SIBUR` opens the existing shortlist and read-only settings.
+  - Selecting configured/planned radars shows empty shortlist state plus configuration.
+  - Settings are visibly read-only and no save action exists.
+  - Existing candidate table/detail behavior remains available for the active radar.
+- Risks:
+  - Read-only examples can look like live jobs; mitigate with status, run-mode, and limitation labels.
+
 ### Slice 0.6.3: ICP Radar signal validation loop
 
 - Status: `Backlog`
@@ -941,6 +987,78 @@ Status:
   - The handoff remains explainable and reversible in demo state.
 - Risks:
   - Handoff can pull in persistence too early; keep first implementation artifact/local-state based.
+
+### Slice 0.6.5: Editable ICP Radar configuration loop
+
+- Status: `Backlog`
+- Goal: Add the first editable radar configuration workflow over a local/demo radar definition.
+- User value: A user can adjust ICP Radar criteria, score weights/thresholds, source scope, and run cadence, then preview how the shortlist would change.
+- Scope:
+  - Add edit mode for radar name/profile, source selection, run cadence, lookback window, and full/incremental mode.
+  - Add editable criteria weight/strength settings while preserving C1-C20 criterion identity.
+  - Add editable tier thresholds with validation.
+  - Add a read-only preview of scoring impact on the current fixture candidates.
+  - Store edited configuration in local demo state or a generated local JSON artifact.
+- Out of scope:
+  - Multi-user configuration governance.
+  - Production database persistence.
+  - Live connector configuration secrets.
+  - Arbitrary formula scripting.
+- Implementation notes:
+  - Use constrained form controls, not free-form executable formulas.
+  - Keep original fixture configuration recoverable.
+  - Clearly separate source workbook scores from user-adjusted scoring simulation.
+- Tests:
+  - Unit tests for configuration validation and scoring preview.
+  - Frontend contract tests for edit mode, validation errors, reset, and preview impact.
+  - `python -m pytest`.
+  - `npm --prefix ./frontend run build`.
+- Docs:
+  - Update user/developer docs with editable configuration and preview rules.
+- Demo impact:
+  - Demo shows radar setup as a controllable ABM object, not only a report.
+- Acceptance criteria:
+  - User can edit constrained radar settings locally.
+  - Invalid thresholds/cadence values are rejected.
+  - Preview shows candidate score/tier changes without mutating source artifact.
+  - User can reset to fixture configuration.
+- Risks:
+  - Users may expect production persistence; label local/demo persistence clearly.
+
+### Slice 0.6.6: ICP Radar run history and monitoring schedule loop
+
+- Status: `Backlog`
+- Goal: Show how configured radars run over time and distinguish full discovery from incremental signal monitoring.
+- User value: A user can understand when the radar last ran, what changed, which signals are new, and how candidate scores moved since the previous run.
+- Scope:
+  - Add run history read model with run id, mode, started/completed timestamps, source scope, candidate count, new signals, stale signals, and score deltas.
+  - Add a read-only run history view inside ICP Radar.
+  - Show current schedule/cadence and next planned run.
+  - Distinguish one-time account discovery from recurring signal monitoring.
+  - Add synthetic previous/current run fixtures for the ТОиР/SIBUR demo.
+- Out of scope:
+  - Real scheduler.
+  - Background workers.
+  - Live source deduplication.
+  - Notifications.
+- Implementation notes:
+  - Incremental mode should explain which evidence was already known and which evidence is new.
+  - Score deltas should be explainable from signal changes and validation state.
+- Tests:
+  - Unit tests for run history/delta read model.
+  - Frontend contract tests for run history and schedule display.
+  - `python -m pytest`.
+  - `npm --prefix ./frontend run build`.
+- Docs:
+  - Update user/developer/architecture/demo docs with radar run history semantics.
+- Demo impact:
+  - Demo shows ICP Radar as an ongoing monitoring process, not a one-time spreadsheet import.
+- Acceptance criteria:
+  - User can see last run, next run, run mode, and score deltas.
+  - New vs already-known evidence is visible.
+  - Discovery and monitoring are clearly separated in UI copy.
+- Risks:
+  - Run history can imply real scheduling; keep first version synthetic/read-only.
 
 ### Slice 0.7: Human review queue loop
 

@@ -225,13 +225,18 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     css = Path("frontend/src/styles.css").read_text(encoding="utf-8")
 
     assert "useState<ScreenId>('icp_radar')" in app
+    assert "/demo/icp_radars.json" in app
     assert "/demo/icp_radar.json" in app
     assert "activeScreen === 'icp_radar'" in app
     assert "nav.icpRadar" in shell
     assert "topbar.icpRadar" in shell
     assert "ICPRadarArtifact" in types
+    assert "ICPRadarCatalogArtifact" in types
+    assert "ICPRadarCatalogItem" in types
+    assert "RadarDefinition" in types
     assert "CriterionEvidenceExplanation" in types
     assert "criteria_evidence" in types
+    assert "definition: RadarDefinition" in types
 
     for contract_value in [
         "criteria_scores",
@@ -242,8 +247,20 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "candidate.score.intent_score",
         "candidate.score.trigger_score",
         "candidate.score.total_score",
+        "selectedRadarId",
+        "RadarCatalogScreen",
+        "RadarSettings",
+        "EmptyShortlist",
+        "shortlistTab",
+        "settingsTab",
+        "readOnly",
+        "definition.criteria",
+        "definition.scoring_formula",
     ]:
         assert contract_value in screen
+
+    assert "onSave" not in screen
+    assert "Save" not in screen
 
     for table_first_value in [
         "expandedCandidateId",
@@ -304,6 +321,12 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "icpRadar.acceptCriterion",
         "icpRadar.rejectCriterion",
         "icpRadar.editCriterionScore",
+        "icpRadar.catalogTitle",
+        "icpRadar.openRadar",
+        "icpRadar.backToCatalog",
+        "icpRadar.settingsTab",
+        "icpRadar.settings.criteria",
+        "icpRadar.editingPlanned",
     ]:
         assert label_key in screen or label_key in i18n
 
@@ -322,6 +345,10 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".criteria-review-row" in css
     assert ".criterion-evidence-detail" in css
     assert ".criterion-review-panel" in css
+    assert ".icp-radar-catalog-grid" in css
+    assert ".icp-radar-card" in css
+    assert ".icp-settings-grid" in css
+    assert ".icp-radar-tabs" in css
     assert ".icp-detail-sticky-header" in css
     assert "icp-detail-screen" in screen
     assert ".icp-detail-screen" in css
@@ -343,7 +370,9 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
 def test_frontend_public_artifact_is_available_for_vite() -> None:
     radar_path = Path("frontend/public/demo/account_radar.json")
     icp_radar_path = Path("frontend/public/demo/icp_radar.json")
+    icp_radars_path = Path("frontend/public/demo/icp_radars.json")
 
     assert radar_path.exists()
     assert icp_radar_path.exists()
+    assert icp_radars_path.exists()
     assert Path("frontend/public/demo/access_plans").exists()

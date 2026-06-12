@@ -37,6 +37,28 @@ class EvidenceSource:
 
 
 @dataclass(frozen=True, slots=True)
+class RadarDefinition:
+    definition_id: str
+    product: str
+    segment: str
+    holding: str
+    market_scope: str
+    exclusions: tuple[str, ...]
+    assumptions: tuple[str, ...]
+    legal_entity_source: str
+    discovery_mode: str
+    discovery_filters: tuple[str, ...]
+    monitoring_sources: tuple[str, ...]
+    cadence: str
+    lookback_window: str
+    run_mode: str
+    scoring_formula: dict[str, Any]
+    tier_thresholds: dict[str, str]
+    criteria: tuple[SignalCriterion, ...]
+    limitations: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class ICPRadarScore:
     fit_score: int
     intent_score: int
@@ -93,6 +115,7 @@ class ICPRadarArtifact:
     profile: ICPProfile
     criteria: tuple[SignalCriterion, ...]
     sources: tuple[EvidenceSource, ...]
+    definition: RadarDefinition
     candidates: tuple[ICPRadarCandidate, ...]
     workflow_metadata: dict[str, Any]
 
@@ -155,10 +178,11 @@ class ICPRadar:
 def icp_radar_artifact_to_payload(artifact: ICPRadarArtifact) -> dict[str, Any]:
     return {
         "artifact_type": "icp_radar",
-        "artifact_version": "0.6.2.3",
+        "artifact_version": "0.6.2.5",
         "criteria_evidence_contract_version": "0.6.2.3",
         "radar": {
             "profile": profile_to_payload(artifact.profile),
+            "definition": radar_definition_to_payload(artifact.definition),
             "criteria": [criterion_to_payload(item) for item in artifact.criteria],
             "sources": [source_to_payload(item) for item in artifact.sources],
         },
@@ -193,6 +217,29 @@ def source_to_payload(source: EvidenceSource) -> dict[str, Any]:
         "source_id": source.source_id,
         "url": source.url,
         "usage": source.usage,
+    }
+
+
+def radar_definition_to_payload(definition: RadarDefinition) -> dict[str, Any]:
+    return {
+        "definition_id": definition.definition_id,
+        "product": definition.product,
+        "segment": definition.segment,
+        "holding": definition.holding,
+        "market_scope": definition.market_scope,
+        "exclusions": list(definition.exclusions),
+        "assumptions": list(definition.assumptions),
+        "legal_entity_source": definition.legal_entity_source,
+        "discovery_mode": definition.discovery_mode,
+        "discovery_filters": list(definition.discovery_filters),
+        "monitoring_sources": list(definition.monitoring_sources),
+        "cadence": definition.cadence,
+        "lookback_window": definition.lookback_window,
+        "run_mode": definition.run_mode,
+        "scoring_formula": definition.scoring_formula,
+        "tier_thresholds": definition.tier_thresholds,
+        "criteria": [criterion_to_payload(item) for item in definition.criteria],
+        "limitations": list(definition.limitations),
     }
 
 

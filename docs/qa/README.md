@@ -8,6 +8,7 @@ Run:
 
 ```bash
 python -m power_web_os.demo generate-icp-radar
+python -m power_web_os.demo generate-icp-radar-catalog
 python -m power_web_os.demo generate-account-radar
 npm --prefix ./frontend run visual:smoke
 ```

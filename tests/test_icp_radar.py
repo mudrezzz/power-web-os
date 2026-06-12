@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from power_web_os.demo import generate_icp_radar_artifact
+from power_web_os.demo import generate_icp_radar_artifact, generate_icp_radar_catalog_artifact
 from power_web_os.icp_radar import CRITERION_CODES, ICPRadar
 from power_web_os.icp_radar_xlsx import REQUIRED_SHEETS, load_icp_radar_workbook
 
@@ -142,10 +142,39 @@ def test_generate_icp_radar_writes_backend_frontend_and_normalized_artifacts(tmp
     assert frontend_output_path.exists()
     assert normalized_output_path.exists()
     assert artifact["artifact_type"] == "icp_radar"
-    assert artifact["artifact_version"] == "0.6.2.3"
+    assert artifact["artifact_version"] == "0.6.2.5"
     assert artifact["criteria_evidence_contract_version"] == "0.6.2.3"
+    assert artifact["radar"]["definition"]["definition_id"] == "radar-def-toir-sibur"
+    assert len(artifact["radar"]["definition"]["criteria"]) == 20
 
     payload = json.loads(frontend_output_path.read_text(encoding="utf-8"))
     assert len(payload["radar"]["criteria"]) == 20
     assert payload["candidates"][0]["evidence_refs"]
     assert len(payload["candidates"][0]["criteria_evidence"]) == 20
+
+
+def test_generate_icp_radar_catalog_writes_portfolio_artifact(tmp_path: Path) -> None:
+    output_path = tmp_path / "output" / "icp_radars.json"
+    frontend_output_path = tmp_path / "frontend" / "public" / "demo" / "icp_radars.json"
+
+    artifact = generate_icp_radar_catalog_artifact(
+        input_path=WORKBOOK,
+        output_path=output_path,
+        frontend_output_path=frontend_output_path,
+    )
+
+    assert output_path.exists()
+    assert frontend_output_path.exists()
+    assert artifact["artifact_type"] == "icp_radar_catalog"
+    assert artifact["artifact_version"] == "0.6.2.5"
+    assert len(artifact["radars"]) >= 3
+
+    fixture_backed = [item for item in artifact["radars"] if item["artifact_path"] == "/demo/icp_radar.json"]
+    assert len(fixture_backed) == 1
+    assert fixture_backed[0]["radar_id"] == "toir-sibur"
+    assert fixture_backed[0]["summary"]["candidate_count"] > 0
+    assert fixture_backed[0]["definition"]["criteria"]
+
+    configured_only = [item for item in artifact["radars"] if item["artifact_path"] is None]
+    assert len(configured_only) == 2
+    assert all(item["definition"]["limitations"] for item in configured_only)

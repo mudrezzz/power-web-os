@@ -194,6 +194,27 @@ export type EvidenceSource = {
   usage: string;
 };
 
+export type RadarDefinition = {
+  definition_id: string;
+  product: string;
+  segment: string;
+  holding: string;
+  market_scope: string;
+  exclusions: string[];
+  assumptions: string[];
+  legal_entity_source: string;
+  discovery_mode: string;
+  discovery_filters: string[];
+  monitoring_sources: string[];
+  cadence: string;
+  lookback_window: string;
+  run_mode: string;
+  scoring_formula: Record<string, string | Record<string, string>>;
+  tier_thresholds: Record<string, string>;
+  criteria: SignalCriterion[];
+  limitations: string[];
+};
+
 export type ICPRadarScore = {
   fit_score: number;
   intent_score: number;
@@ -244,7 +265,7 @@ export type ICPRadarCandidate = {
 
 export type ICPRadarArtifact = {
   artifact_type: 'icp_radar';
-  artifact_version: '0.6.2.3';
+  artifact_version: '0.6.2.5';
   criteria_evidence_contract_version: '0.6.2.3';
   radar: {
     profile: {
@@ -256,6 +277,7 @@ export type ICPRadarArtifact = {
       source_workbook: string;
       scoring_formula: Record<string, unknown>;
     };
+    definition: RadarDefinition;
     criteria: SignalCriterion[];
     sources: EvidenceSource[];
   };
@@ -269,5 +291,40 @@ export type ICPRadarArtifact = {
     criteria_count: number;
     source_count: number;
     scoring: string;
+  };
+};
+
+export type ICPRadarCatalogItem = {
+  radar_id: string;
+  name: string;
+  status: 'active' | 'configured' | 'planned' | string;
+  owner: string;
+  profile: {
+    icp_profile: string;
+    product: string;
+    segment: string;
+    scope: string;
+  };
+  summary: {
+    cadence: string;
+    last_run: string;
+    candidate_count: number;
+    needs_review_count: number;
+    accepted_count: number;
+    run_mode: string;
+  };
+  definition: RadarDefinition;
+  artifact_path: string | null;
+};
+
+export type ICPRadarCatalogArtifact = {
+  artifact_type: 'icp_radar_catalog';
+  artifact_version: '0.6.2.5';
+  radars: ICPRadarCatalogItem[];
+  workflow_metadata: {
+    workflow_name: string;
+    artifact_version: string;
+    active_fixture_radar_id: string;
+    radar_count: number;
   };
 };

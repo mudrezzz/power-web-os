@@ -859,6 +859,90 @@ button {
   gap: var(--s-2);
 }
 
+.icp-radar-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+
+.icp-radar-card {
+  display: grid;
+  gap: var(--s-4);
+  width: 100%;
+  min-width: 0;
+}
+
+.icp-radar-card-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.icp-radar-card-head h2 {
+  margin: var(--s-1) 0;
+  overflow: hidden;
+  color: var(--ink);
+  font: var(--h3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icp-radar-card-head p,
+.icp-radar-card-scope {
+  margin: 0;
+  color: var(--fg2);
+  font: var(--body-sm);
+}
+
+.icp-radar-card-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-2);
+  margin: 0;
+}
+
+.icp-radar-card-metrics div {
+  min-width: 0;
+  padding: var(--s-2);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.icp-radar-card-metrics dt {
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.icp-radar-card-metrics dd {
+  margin: var(--s-1) 0 0;
+  overflow: hidden;
+  color: var(--ink);
+  font: var(--label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icp-radar-card-footer,
+.icp-radar-tabs,
+.icp-settings-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: var(--s-3);
+}
+
+.icp-radar-selected-shell {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.icp-radar-tabs {
+  justify-content: flex-start;
+}
+
 .icp-radar-table-wrap {
   width: 100%;
   min-width: 0;
@@ -1147,6 +1231,83 @@ button {
 
 .icp-candidate-detail-grid .card:last-child {
   grid-column: 1 / -1;
+}
+
+.icp-empty-shortlist {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-4);
+}
+
+.icp-empty-shortlist h2 {
+  margin: var(--s-1) 0;
+  font: var(--h3);
+}
+
+.icp-empty-shortlist p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.icp-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-5);
+}
+
+.icp-settings-grid .card:nth-child(5),
+.icp-settings-grid .card:nth-child(6) {
+  grid-column: 1 / -1;
+}
+
+.icp-settings-section {
+  display: grid;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.icp-settings-section > .icp-detail-section p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.icp-settings-formula-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-2);
+}
+
+.icp-settings-formula-grid div {
+  display: grid;
+  gap: var(--s-1);
+  min-width: 0;
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.icp-settings-formula-grid strong {
+  overflow: hidden;
+  color: var(--ink);
+  font: var(--body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icp-settings-thresholds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.icp-settings-list {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding-left: var(--s-5);
+  color: var(--fg2);
+  font: var(--body-sm);
 }
 
 .icp-score-grid {
@@ -2404,6 +2565,21 @@ button {
 
   .topbar-actions .button-primary span {
     display: none;
+  }
+
+  .icp-radar-catalog-grid,
+  .icp-settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .icp-settings-grid .card:nth-child(5),
+  .icp-settings-grid .card:nth-child(6) {
+    grid-column: auto;
+  }
+
+  .icp-radar-card-metrics,
+  .icp-settings-formula-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .icp-candidate-detail-grid {

@@ -14,7 +14,7 @@ The upstream module is called `ICP Radar`. An ICP Radar is configured for a prod
 
 ## Current Demo
 
-The current demo starts with a ТОиР/SIBUR-style `ICP Radar` shortlist imported from an XLSX fixture. It also keeps a six-account accepted portfolio with Russian-language company and person names for the downstream Power Web and Access Plan loop.
+The current demo starts with an `ICP Radar` catalog. The catalog contains one active ТОиР/SIBUR-style radar imported from an XLSX fixture plus two configured examples without generated shortlists yet. It also keeps a six-account accepted portfolio with Russian-language company and person names for the downstream Power Web and Access Plan loop.
 
 `ICP Radar` ranks legal entities by fit, intent, trigger, and total score. The accepted portfolio is ranked by Account Radar using deterministic ICP fit, signal strength, best Access Plan route score, and missing-role penalty.
 
@@ -24,11 +24,15 @@ Run:
 
 ```bash
 python demo/run_demo.py generate-icp-radar
+python demo/run_demo.py generate-icp-radar-catalog
 python demo/run_demo.py generate-account-radar
 npm --prefix ./frontend run dev
 ```
 
 Open the Vite URL printed by the frontend command. The demo opens in a bounded Power Web OS workspace shell with `ICP Radar` active. It shows:
+
+- ICP Radar catalog with multiple configured radars;
+- selected-radar `Shortlist` and `Settings` modes;
 
 - sidebar navigation for `ICP Radar`, `Accounts`, `Account Map`, `Access Plans`, `Signals`, and `Playbook`;
 - profile and navigation frame that stays visible while workspace content scrolls inside the app;
@@ -62,11 +66,13 @@ The language switcher localizes UI chrome plus visible deterministic demo data s
 
 ## Product Walkthrough
 
-### ICP Radar shortlist
+### ICP Radar catalog and shortlist
+
+The `ICP Radar` screen now starts with a catalog of radar cards. Each card represents a configured ICP Radar with owner, cadence, last run, run mode, candidate count, needs-review count, and accepted count. Open `ТОиР / SIBUR` to inspect the active fixture-backed radar. Its `Shortlist` tab contains the current ranked table, and its `Settings` tab shows the read-only radar definition: profile, discovery, monitoring, criteria, scoring formula, thresholds, and limitations.
 
 Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. The main surface is a wide table: the company column stays fixed while score, tier, evidence, and criteria-related columns can scroll horizontally inside the table. Click a candidate row to open a bounded inline preview with the main signal, short recommendation, top evidence refs, and top criteria. Open the read-only candidate detail view when you need the full C1-C20 breakdown and source refs. Signal validation and take-into-work actions are still planned follow-up slices.
 
-![ICP Radar shortlist](../qa/screenshots/visual-smoke/icp-radar-1366x768.png)
+![ICP Radar catalog](../qa/screenshots/visual-smoke/icp-radar-1366x768.png)
 
 ### Accounts portfolio
 
@@ -96,7 +102,9 @@ Open `Playbook` to see how the customer's rules shape the plan. The screen shows
 
 The current ICP Radar UI is table-first:
 
-- `ICP Radar` opens as a broad ranked account table.
+- The workspace opens with radar cards first; select a radar to enter its `Shortlist` and `Settings` tabs.
+- `Settings` is read-only in this slice and shows the radar definition that produced, or will produce, candidate shortlists.
+- The active `ТОиР / SIBUR` shortlist opens as a broad ranked account table.
 - The first account/company column stays fixed while the user scrolls horizontally across score, evidence, and criteria columns.
 - Clicking a candidate expands a compact preview directly under that row.
 - The inline preview has one bounded scroll area for the whole preview and shows only the top evidence refs and top criteria.
@@ -114,14 +122,17 @@ The generated JSON artifact is also available at:
 
 - `demo/output/access_plan.json`
 - `demo/output/icp_radar.json`
+- `demo/output/icp_radars.json`
 - `demo/output/account_radar.json`
 - `frontend/public/demo/access_plan.json`
 - `frontend/public/demo/icp_radar.json`
+- `frontend/public/demo/icp_radars.json`
 - `frontend/public/demo/account_radar.json`
 - `frontend/public/demo/access_plans/{account_id}.json`
 
 ## Current Limitations
 
+- ICP Radar settings are visible but read-only. Editing, saving, run scheduling, and live source setup are planned later.
 - ICP Radar signal validation is not implemented in the current UI yet.
 - `Take into work` does not create accepted accounts yet.
 - No live CRM integration yet.
@@ -135,5 +146,7 @@ The first ICP Radar demo uses a ТОиР automation profile based on the SIBUR-s
 
 - account discovery: find and qualify legal entities inside a holding, using stable attributes such as revenue, asset type, site, INN, and whether decisions are made independently;
 - signal monitoring: repeatedly collect current signals such as tenders, ТОиР/EAM mentions, predictive diagnostics, modernization, incidents, hiring, and import-substitution activity.
+
+The radar itself is inspectable as a configured object. The current catalog has multiple radars, and each selected radar has a read-only `Settings` tab showing ICP profile, search scope, source list, criteria, scoring formula, tier thresholds, run cadence, and whether the run is full or incremental.
 
 Each found signal should have evidence and a validation state. A user should be able to confirm, correct, reject, or mark a signal as stale. The final ICP score should update from validated signals and show the breakdown by fit, intent, trigger, evidence, and manual validation decisions.

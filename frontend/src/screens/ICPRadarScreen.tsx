@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ExternalLink,
   Radar,
+  Settings,
   ShieldCheck,
   SlidersHorizontal,
   Target,
@@ -18,28 +19,40 @@ import type {
   CriterionEvidenceExplanation,
   EvidenceSource,
   ICPRadarArtifact,
+  ICPRadarCatalogArtifact,
+  ICPRadarCatalogItem,
   ICPRadarCandidate,
+  RadarDefinition,
   SignalCriterion,
 } from '../types';
 
+type RadarDetailTab = 'shortlist' | 'settings';
+
 export function ICPRadarScreen({
   artifact,
+  catalog,
   error,
 }: {
   artifact: ICPRadarArtifact | null;
+  catalog: ICPRadarCatalogArtifact | null;
   error: string | null;
 }) {
   const { t } = useTranslation();
+  const [selectedRadarId, setSelectedRadarId] = useState<string | null>(null);
+  const [selectedTab, setSelectedTab] = useState<RadarDetailTab>('shortlist');
   const [expandedCandidateId, setExpandedCandidateId] = useState<string | null>(null);
   const [detailCandidateId, setDetailCandidateId] = useState<string | null>(null);
   const [criterionReviews, setCriterionReviews] = useState<Record<string, CriterionReviewState>>({});
+  const selectedRadar = catalog?.radars.find((item) => item.radar_id === selectedRadarId) ?? null;
+  const activeFixtureRadarId = catalog?.workflow_metadata.active_fixture_radar_id ?? 'toir-sibur';
+  const selectedRadarArtifact = selectedRadar?.radar_id === activeFixtureRadarId ? artifact : null;
   const detailCandidate = artifact?.candidates.find((item) => item.account_id === detailCandidateId) ?? null;
   const sourcesById = useMemo(() => {
-    const entries = artifact?.radar.sources.map((source) => [source.source_id, source]) ?? [];
+    const entries = selectedRadarArtifact?.radar.sources.map((source) => [source.source_id, source]) ?? [];
     return new Map(entries as Array<[string, EvidenceSource]>);
-  }, [artifact]);
+  }, [selectedRadarArtifact]);
 
-  if (error || !artifact) {
+  if (error || !catalog) {
     return (
       <section className="screen status-screen" aria-label={t('icpRadar.aria')}>
         <Card>
@@ -52,7 +65,24 @@ export function ICPRadarScreen({
     );
   }
 
-  if (detailCandidate) {
+  function openRadar(radar: ICPRadarCatalogItem) {
+    setSelectedRadarId(radar.radar_id);
+    setSelectedTab('shortlist');
+    setExpandedCandidateId(null);
+    setDetailCandidateId(null);
+  }
+
+  function backToCatalog() {
+    setSelectedRadarId(null);
+    setDetailCandidateId(null);
+    setExpandedCandidateId(null);
+  }
+
+  if (!selectedRadar) {
+    return <RadarCatalogScreen catalog={catalog} onOpenRadar={openRadar} />;
+  }
+
+  if (detailCandidate && selectedRadarArtifact) {
     return (
       <section className="screen icp-radar-screen icp-detail-screen" aria-label={t('icpRadar.aria')}>
         <div className="icp-detail-sticky-header">
@@ -61,6 +91,8 @@ export function ICPRadarScreen({
               {t('icpRadar.backToTable')}
             </Button>
             <span>{t('icpRadar.aria')}</span>
+            <ChevronRight aria-hidden="true" />
+            <span>{selectedRadar.name}</span>
             <ChevronRight aria-hidden="true" />
             <strong>{detailCandidate.legal_name}</strong>
           </div>
@@ -115,7 +147,7 @@ export function ICPRadarScreen({
               <section className="icp-detail-section">
                 <Eyebrow>{t('icpRadar.criteria')}</Eyebrow>
                 <CriteriaBreakdown
-                  artifact={artifact}
+                  artifact={selectedRadarArtifact}
                   candidate={detailCandidate}
                   reviews={criterionReviews}
                   onReviewChange={setCriterionReviews}
@@ -130,90 +162,415 @@ export function ICPRadarScreen({
 
   return (
     <section className="screen icp-radar-screen" aria-label={t('icpRadar.aria')}>
+      <RadarDetailHeader
+        activeTab={selectedTab}
+        artifact={selectedRadarArtifact}
+        onBack={backToCatalog}
+        onTabChange={setSelectedTab}
+        radar={selectedRadar}
+      />
+
+      {selectedTab === 'settings' ? (
+        <RadarSettings definition={selectedRadar.definition} status={selectedRadar.status} />
+      ) : selectedRadarArtifact ? (
+        <CandidateTable
+          artifact={selectedRadarArtifact}
+          expandedCandidateId={expandedCandidateId}
+          onOpenDetails={setDetailCandidateId}
+          onToggleCandidate={(candidateId) => setExpandedCandidateId(
+            expandedCandidateId === candidateId ? null : candidateId,
+          )}
+          sourcesById={sourcesById}
+        />
+      ) : (
+        <EmptyShortlist radar={selectedRadar} onOpenSettings={() => setSelectedTab('settings')} />
+      )}
+    </section>
+  );
+}
+
+function RadarCatalogScreen({
+  catalog,
+  onOpenRadar,
+}: {
+  catalog: ICPRadarCatalogArtifact;
+  onOpenRadar: (radar: ICPRadarCatalogItem) => void;
+}) {
+  const { t } = useTranslation();
+  const totals = catalog.radars.reduce(
+    (acc, radar) => ({
+      candidates: acc.candidates + radar.summary.candidate_count,
+      review: acc.review + radar.summary.needs_review_count,
+      accepted: acc.accepted + radar.summary.accepted_count,
+    }),
+    { candidates: 0, review: 0, accepted: 0 },
+  );
+
+  return (
+    <section className="screen icp-radar-screen" aria-label={t('icpRadar.catalogAria')}>
+      <header className="icp-radar-header">
+        <span className="section-icon">
+          <Radar aria-hidden="true" />
+        </span>
+        <div>
+          <Eyebrow>{t('icpRadar.catalogEyebrow')}</Eyebrow>
+          <h1>{t('icpRadar.catalogTitle')}</h1>
+          <p>{t('icpRadar.catalogSummary', { count: catalog.radars.length })}</p>
+        </div>
+        <div className="icp-profile-meta">
+          <Badge tone="cobalt">{t('icpRadar.catalogTotals.candidates', { count: totals.candidates })}</Badge>
+          <Badge tone="neutral">{t('icpRadar.catalogTotals.review', { count: totals.review })}</Badge>
+        </div>
+      </header>
+
+      <div className="icp-radar-catalog-grid">
+        {catalog.radars.map((radar) => (
+          <Card interactive key={radar.radar_id} onClick={() => onOpenRadar(radar)}>
+            <div className="icp-radar-card">
+              <div className="icp-radar-card-head">
+                <span className="section-icon">
+                  <Radar aria-hidden="true" />
+                </span>
+                <div>
+                  <Eyebrow>{t('icpRadar.radarCardEyebrow')}</Eyebrow>
+                  <h2>{radar.name}</h2>
+                  <p>{radar.profile.icp_profile}</p>
+                </div>
+                <Badge tone={radar.status === 'active' ? 'ally' : 'neutral'}>
+                  {t(radarStatusKey(radar.status))}
+                </Badge>
+              </div>
+              <p className="icp-radar-card-scope">{radar.profile.scope}</p>
+              <dl className="icp-radar-card-metrics">
+                <Metric label={t('icpRadar.cardFields.cadence')} value={t(cadenceKey(radar.summary.cadence))} />
+                <Metric label={t('icpRadar.cardFields.lastRun')} value={t(lastRunKey(radar.summary.last_run))} />
+                <Metric label={t('icpRadar.cardFields.candidates')} value={String(radar.summary.candidate_count)} />
+                <Metric label={t('icpRadar.cardFields.needsReview')} value={String(radar.summary.needs_review_count)} />
+                <Metric label={t('icpRadar.cardFields.accepted')} value={String(radar.summary.accepted_count)} />
+                <Metric label={t('icpRadar.cardFields.owner')} value={radar.owner} />
+              </dl>
+              <div className="icp-radar-card-footer">
+                <Mono>{t(runModeKey(radar.summary.run_mode))}</Mono>
+                <span className="row-action">
+                  {t('icpRadar.openRadar')}
+                  <ChevronRight aria-hidden="true" />
+                </span>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RadarDetailHeader({
+  activeTab,
+  artifact,
+  onBack,
+  onTabChange,
+  radar,
+}: {
+  activeTab: RadarDetailTab;
+  artifact: ICPRadarArtifact | null;
+  onBack: () => void;
+  onTabChange: (tab: RadarDetailTab) => void;
+  radar: ICPRadarCatalogItem;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="icp-radar-selected-shell">
+      <div className="icp-detail-breadcrumbs" aria-label={t('icpRadar.radarBreadcrumbs')}>
+        <Button icon={<ArrowLeft aria-hidden="true" />} variant="quiet" onClick={onBack}>
+          {t('icpRadar.backToCatalog')}
+        </Button>
+        <span>{t('icpRadar.aria')}</span>
+        <ChevronRight aria-hidden="true" />
+        <strong>{radar.name}</strong>
+      </div>
       <header className="icp-radar-header">
         <span className="section-icon">
           <Radar aria-hidden="true" />
         </span>
         <div>
           <Eyebrow>{t('icpRadar.eyebrow')}</Eyebrow>
-          <h1>{t('icpRadar.title')}</h1>
+          <h1>{radar.name}</h1>
           <p>
-            {t('icpRadar.summary', {
-              count: artifact.candidates.length,
-              holding: artifact.radar.profile.holding,
-              product: artifact.radar.profile.product,
-            })}
+            {artifact
+              ? t('icpRadar.summary', {
+                count: artifact.candidates.length,
+                holding: artifact.radar.profile.holding,
+                product: artifact.radar.profile.product,
+              })
+              : t('icpRadar.emptyShortlistSummary', { product: radar.profile.product })}
           </p>
         </div>
         <div className="icp-profile-meta">
-          <Badge tone="cobalt">{artifact.radar.profile.run_mode}</Badge>
-          <Mono>{artifact.radar.profile.source_workbook}</Mono>
+          <Badge tone={radar.status === 'active' ? 'ally' : 'neutral'}>{t(radarStatusKey(radar.status))}</Badge>
+          <Mono>{t(runModeKey(radar.summary.run_mode))}</Mono>
         </div>
       </header>
+      <div className="icp-radar-tabs" aria-label={t('icpRadar.radarTabs')}>
+        <button
+          aria-pressed={activeTab === 'shortlist'}
+          className={`criteria-chip${activeTab === 'shortlist' ? ' criteria-chip-active' : ''}`}
+          type="button"
+          onClick={() => onTabChange('shortlist')}
+        >
+          {t('icpRadar.shortlistTab')}
+        </button>
+        <button
+          aria-pressed={activeTab === 'settings'}
+          className={`criteria-chip${activeTab === 'settings' ? ' criteria-chip-active' : ''}`}
+          type="button"
+          onClick={() => onTabChange('settings')}
+        >
+          {t('icpRadar.settingsTab')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CandidateTable({
+  artifact,
+  expandedCandidateId,
+  onOpenDetails,
+  onToggleCandidate,
+  sourcesById,
+}: {
+  artifact: ICPRadarArtifact;
+  expandedCandidateId: string | null;
+  onOpenDetails: (candidateId: string) => void;
+  onToggleCandidate: (candidateId: string) => void;
+  sourcesById: Map<string, EvidenceSource>;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Card>
+      <div className="icp-radar-table-wrap" aria-label={t('icpRadar.tableAria')}>
+        <div className="icp-radar-table">
+          <div className="icp-radar-table-head">
+            <span className="icp-sticky-cell">{t('icpRadar.columns.company')}</span>
+            <span>{t('icpRadar.columns.total')}</span>
+            <span>{t('icpRadar.columns.fit')}</span>
+            <span>{t('icpRadar.columns.intent')}</span>
+            <span>{t('icpRadar.columns.trigger')}</span>
+            <span>{t('icpRadar.columns.tier')}</span>
+            <span>{t('icpRadar.columns.evidence')}</span>
+            <span>{t('icpRadar.columns.action')}</span>
+          </div>
+          {artifact.candidates.map((candidate) => {
+            const expanded = expandedCandidateId === candidate.account_id;
+            return (
+              <div className="icp-candidate-record" key={candidate.account_id}>
+                <button
+                  aria-expanded={expanded}
+                  className={`icp-candidate-row${expanded ? ' icp-candidate-row-selected' : ''}`}
+                  type="button"
+                  onClick={() => onToggleCandidate(candidate.account_id)}
+                >
+                  <span className="icp-company-cell icp-sticky-cell">
+                    <span className="account-initials">{candidate.rank}</span>
+                    <span>
+                      <strong>{candidate.legal_name}</strong>
+                      <small>{candidate.description}</small>
+                    </span>
+                  </span>
+                  <span className="score-cell">
+                    <span className="score-track">
+                      <span className="score-fill" style={{ width: `${Math.min(100, candidate.score.total_score * 2)}%` }} />
+                    </span>
+                    <Mono>{candidate.score.total_score}</Mono>
+                  </span>
+                  <Mono>{candidate.score.fit_score}</Mono>
+                  <Mono>{candidate.score.intent_score}</Mono>
+                  <Mono>{candidate.score.trigger_score}</Mono>
+                  <span>
+                    <Badge tone={candidate.score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{candidate.score.tier}</Badge>
+                  </span>
+                  <Mono>{candidate.evidence_refs.length}</Mono>
+                  <span className="row-action">
+                    <span className="planned-action">{t('icpRadar.takeIntoWorkPlanned')}</span>
+                    {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+                  </span>
+                </button>
+                {expanded && (
+                  <CandidatePreview
+                    artifact={artifact}
+                    candidate={candidate}
+                    onOpenDetails={() => onOpenDetails(candidate.account_id)}
+                    sourcesById={sourcesById}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function EmptyShortlist({
+  radar,
+  onOpenSettings,
+}: {
+  radar: ICPRadarCatalogItem;
+  onOpenSettings: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Card>
+      <div className="icp-empty-shortlist">
+        <span className="section-icon">
+          <Settings aria-hidden="true" />
+        </span>
+        <div>
+          <Eyebrow>{t('icpRadar.emptyShortlistEyebrow')}</Eyebrow>
+          <h2>{t('icpRadar.emptyShortlistTitle')}</h2>
+          <p>{t('icpRadar.emptyShortlistCopy', { radarName: radar.name })}</p>
+        </div>
+        <Button icon={<Settings aria-hidden="true" />} variant="default" onClick={onOpenSettings}>
+          {t('icpRadar.openSettings')}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function RadarSettings({
+  definition,
+  status,
+}: {
+  definition: RadarDefinition;
+  status: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="icp-settings-grid">
+      <Card>
+        <div className="icp-settings-section">
+          <div className="icp-settings-section-head">
+            <Eyebrow>{t('icpRadar.settings.profile')}</Eyebrow>
+            <Badge tone="neutral">{t('icpRadar.readOnly')}</Badge>
+          </div>
+          <dl className="icp-definition-list">
+            <Metric label={t('icpRadar.settings.product')} value={definition.product} />
+            <Metric label={t('icpRadar.settings.segment')} value={definition.segment} />
+            <Metric label={t('icpRadar.settings.holding')} value={definition.holding} />
+            <Metric label={t('icpRadar.settings.status')} value={t(radarStatusKey(status))} />
+          </dl>
+          <section className="icp-detail-section">
+            <Eyebrow>{t('icpRadar.settings.scope')}</Eyebrow>
+            <p>{definition.market_scope}</p>
+          </section>
+          <ListSection title={t('icpRadar.settings.exclusions')} items={definition.exclusions} />
+          <ListSection title={t('icpRadar.settings.assumptions')} items={definition.assumptions} />
+        </div>
+      </Card>
 
       <Card>
-        <div className="icp-radar-table-wrap" aria-label={t('icpRadar.tableAria')}>
-          <div className="icp-radar-table">
-            <div className="icp-radar-table-head">
-              <span className="icp-sticky-cell">{t('icpRadar.columns.company')}</span>
-              <span>{t('icpRadar.columns.total')}</span>
-              <span>{t('icpRadar.columns.fit')}</span>
-              <span>{t('icpRadar.columns.intent')}</span>
-              <span>{t('icpRadar.columns.trigger')}</span>
-              <span>{t('icpRadar.columns.tier')}</span>
-              <span>{t('icpRadar.columns.evidence')}</span>
-              <span>{t('icpRadar.columns.action')}</span>
-            </div>
-            {artifact.candidates.map((candidate) => {
-              const expanded = expandedCandidateId === candidate.account_id;
-              return (
-                <div className="icp-candidate-record" key={candidate.account_id}>
-                  <button
-                    aria-expanded={expanded}
-                    className={`icp-candidate-row${expanded ? ' icp-candidate-row-selected' : ''}`}
-                    type="button"
-                    onClick={() => setExpandedCandidateId(expanded ? null : candidate.account_id)}
-                  >
-                    <span className="icp-company-cell icp-sticky-cell">
-                      <span className="account-initials">{candidate.rank}</span>
-                      <span>
-                        <strong>{candidate.legal_name}</strong>
-                        <small>{candidate.description}</small>
-                      </span>
-                    </span>
-                    <span className="score-cell">
-                      <span className="score-track">
-                        <span className="score-fill" style={{ width: `${Math.min(100, candidate.score.total_score * 2)}%` }} />
-                      </span>
-                      <Mono>{candidate.score.total_score}</Mono>
-                    </span>
-                    <Mono>{candidate.score.fit_score}</Mono>
-                    <Mono>{candidate.score.intent_score}</Mono>
-                    <Mono>{candidate.score.trigger_score}</Mono>
-                    <span>
-                      <Badge tone={candidate.score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{candidate.score.tier}</Badge>
-                    </span>
-                    <Mono>{candidate.evidence_refs.length}</Mono>
-                    <span className="row-action">
-                      <span className="planned-action">{t('icpRadar.takeIntoWorkPlanned')}</span>
-                      {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
-                    </span>
-                  </button>
-                  {expanded && (
-                    <CandidatePreview
-                      artifact={artifact}
-                      candidate={candidate}
-                      onOpenDetails={() => setDetailCandidateId(candidate.account_id)}
-                      sourcesById={sourcesById}
-                    />
-                  )}
-                </div>
-              );
-            })}
+        <div className="icp-settings-section">
+          <div className="icp-settings-section-head">
+            <Eyebrow>{t('icpRadar.settings.discovery')}</Eyebrow>
+          </div>
+          <dl className="icp-definition-list">
+            <Metric label={t('icpRadar.settings.legalEntitySource')} value={definition.legal_entity_source} />
+            <Metric label={t('icpRadar.settings.discoveryMode')} value={t(discoveryModeKey(definition.discovery_mode))} />
+          </dl>
+          <ListSection title={t('icpRadar.settings.discoveryFilters')} items={definition.discovery_filters} />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="icp-settings-section">
+          <div className="icp-settings-section-head">
+            <Eyebrow>{t('icpRadar.settings.monitoring')}</Eyebrow>
+          </div>
+          <dl className="icp-definition-list">
+            <Metric label={t('icpRadar.cardFields.cadence')} value={t(cadenceKey(definition.cadence))} />
+            <Metric label={t('icpRadar.settings.lookbackWindow')} value={definition.lookback_window} />
+            <Metric label={t('icpRadar.cardFields.runMode')} value={t(runModeKey(definition.run_mode))} />
+          </dl>
+          <ListSection title={t('icpRadar.settings.sources')} items={definition.monitoring_sources} />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="icp-settings-section">
+          <div className="icp-settings-section-head">
+            <Eyebrow>{t('icpRadar.settings.scoring')}</Eyebrow>
+          </div>
+          <div className="icp-settings-formula-grid">
+            {Object.entries(definition.scoring_formula).map(([name, value]) => (
+              <div key={name}>
+                <Mono>{name}</Mono>
+                <strong>{typeof value === 'string' ? value : JSON.stringify(value)}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="icp-settings-thresholds">
+            {Object.entries(definition.tier_thresholds).map(([tier, value]) => (
+              <Badge key={tier} tone={tier === 'Tier 1' ? 'ally' : 'neutral'}>{tier} {value}</Badge>
+            ))}
           </div>
         </div>
       </Card>
+
+      <Card>
+        <div className="icp-settings-section">
+          <div className="icp-settings-section-head">
+            <Eyebrow>{t('icpRadar.settings.criteria')}</Eyebrow>
+            <Mono>{t('icpRadar.settings.criteriaCount', { count: definition.criteria.length })}</Mono>
+          </div>
+          <div className="criteria-list">
+            {definition.criteria.map((criterion) => (
+              <div className="criterion-row" key={criterion.code}>
+                <Mono>{criterion.code}</Mono>
+                <span>
+                  <strong>{criterion.name}</strong>
+                  <small>{criterion.description}</small>
+                  <small>{criterion.scoring_guidance}</small>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="icp-settings-section">
+          <div className="icp-settings-section-head">
+            <Eyebrow>{t('icpRadar.settings.limitations')}</Eyebrow>
+            <Badge tone="unsurfaced">{t('icpRadar.editingPlanned')}</Badge>
+          </div>
+          <ListSection title={t('icpRadar.settings.limitations')} items={definition.limitations} />
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function ListSection({ title, items }: { title: string; items: string[] }) {
+  return (
+    <section className="icp-detail-section">
+      <Eyebrow>{title}</Eyebrow>
+      <ul className="icp-settings-list">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
     </section>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
   );
 }
 
@@ -788,4 +1145,63 @@ function evidenceOriginKey(origin: CriterionEvidenceExplanation['evidence_origin
     return 'icpRadar.syntheticAnnotation';
   }
   return 'icpRadar.workbookFallback';
+}
+
+function radarStatusKey(status: string) {
+  if (status === 'active') {
+    return 'icpRadar.radarStatus.active';
+  }
+  if (status === 'configured') {
+    return 'icpRadar.radarStatus.configured';
+  }
+  if (status === 'planned') {
+    return 'icpRadar.radarStatus.planned';
+  }
+  return 'icpRadar.radarStatus.unknown';
+}
+
+function cadenceKey(cadence: string) {
+  if (cadence === 'weekly') {
+    return 'icpRadar.cadence.weekly';
+  }
+  if (cadence === 'monthly') {
+    return 'icpRadar.cadence.monthly';
+  }
+  return 'icpRadar.cadence.unknown';
+}
+
+function lastRunKey(lastRun: string) {
+  if (lastRun === 'not_run') {
+    return 'icpRadar.lastRun.notRun';
+  }
+  if (lastRun === 'not_scheduled') {
+    return 'icpRadar.lastRun.notScheduled';
+  }
+  return 'icpRadar.lastRun.fixture';
+}
+
+function runModeKey(runMode: string) {
+  if (runMode === 'incremental_signal_monitoring') {
+    return 'icpRadar.runMode.incremental';
+  }
+  if (runMode === 'configured_not_generated') {
+    return 'icpRadar.runMode.configured';
+  }
+  if (runMode === 'planned') {
+    return 'icpRadar.runMode.planned';
+  }
+  if (runMode === 'fixture_import') {
+    return 'icpRadar.runMode.fixtureImport';
+  }
+  return 'icpRadar.runMode.unknown';
+}
+
+function discoveryModeKey(discoveryMode: string) {
+  if (discoveryMode === 'one_time_import') {
+    return 'icpRadar.discoveryMode.oneTimeImport';
+  }
+  if (discoveryMode === 'configured_seed') {
+    return 'icpRadar.discoveryMode.configuredSeed';
+  }
+  return 'icpRadar.discoveryMode.unknown';
 }

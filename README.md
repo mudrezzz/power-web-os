@@ -46,6 +46,7 @@ The next recommended product slice is `Slice 0.6.2.1: ICP Radar table-first UX c
 python -m pip install -e ".[dev]"
 python -m pytest
 python -m power_web_os.demo generate-icp-radar
+python -m power_web_os.demo generate-icp-radar-catalog
 python -m power_web_os.demo generate-account-radar
 npm install --prefix ./frontend
 npm --prefix ./frontend run dev
@@ -55,6 +56,7 @@ Without installing the package, run the checkout demo directly:
 
 ```bash
 python demo/run_demo.py generate-icp-radar
+python demo/run_demo.py generate-icp-radar-catalog
 python demo/run_demo.py generate-account-radar
 npm --prefix ./frontend run dev
 ```

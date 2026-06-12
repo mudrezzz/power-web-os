@@ -6,6 +6,7 @@
 python -m pip install -e ".[dev]"
 python -m pytest
 python -m power_web_os.demo generate-icp-radar
+python -m power_web_os.demo generate-icp-radar-catalog
 python -m power_web_os.demo generate-account-radar
 npm install --prefix ./frontend
 npm --prefix ./frontend run dev
@@ -15,6 +16,7 @@ Direct checkout demo without installing:
 
 ```bash
 python demo/run_demo.py generate-icp-radar
+python demo/run_demo.py generate-icp-radar-catalog
 python demo/run_demo.py generate-account-radar
 npm --prefix ./frontend run dev
 ```
@@ -86,6 +88,16 @@ Implemented first fixture:
   - `not_observed` when score is zero.
 - Use Russian-language company names and people in generated accepted-account demo data.
 
+Radar catalog and configuration loop:
+
+- Treat `RadarDefinition` as a first-class configuration contract, not only metadata inside a generated report.
+- `generate-icp-radar` writes the active shortlist artifact and includes `radar.definition`.
+- `generate-icp-radar-catalog` writes the portfolio artifact for multiple configured ICP Radars.
+- The frontend loads `/demo/icp_radars.json` for radar cards and `/demo/icp_radar.json` for the active fixture-backed `ТОиР / SIBUR` shortlist.
+- The selected-radar `Settings` tab is read-only in Slice 0.6.2.5 and must show ICP profile, discovery scope, source registry, run cadence, full/incremental mode, lookback window, criteria, scoring formula, and tier thresholds.
+- Editable configuration comes later and must use constrained controls for weights, thresholds, sources, and cadence. Do not introduce arbitrary executable formula scripting.
+- Run history and monitoring schedule come after configuration, with explicit separation between one-time account discovery and recurring signal monitoring.
+
 Scoring formula:
 
 ```text
@@ -100,17 +112,20 @@ Generated command:
 
 ```bash
 python -m power_web_os.demo generate-icp-radar
+python -m power_web_os.demo generate-icp-radar-catalog
 ```
 
 It writes:
 
 ```text
 demo/output/icp_radar.json
+demo/output/icp_radars.json
 frontend/public/demo/icp_radar.json
+frontend/public/demo/icp_radars.json
 demo/fixtures/icp_radar/toir_sibur_icp_radar.json
 ```
 
-The generated ICP Radar artifact version is `0.6.2.3`. Each candidate keeps the backward-compatible fields `criteria_scores`, `evidence_refs`, and `source_urls`, and adds:
+The generated ICP Radar artifact version is `0.6.2.5`. It keeps `criteria_evidence_contract_version: "0.6.2.3"` and adds `radar.definition`. Each candidate keeps the backward-compatible fields `criteria_scores`, `evidence_refs`, and `source_urls`, and adds:
 
 ```text
 candidates[].criteria_evidence[criterion_code]
@@ -132,6 +147,20 @@ SignalValidation
 ICPScoringFormula
 RadarCandidate
 RadarRun
+```
+
+Current catalog artifact:
+
+```text
+artifact_type = icp_radar_catalog
+artifact_version = 0.6.2.5
+radars[].radar_id
+radars[].name
+radars[].status
+radars[].profile
+radars[].summary
+radars[].definition
+radars[].artifact_path
 ```
 
 Discovery and monitoring must stay separate. Discovery can be run once or imported manually because legal-entity structure changes slowly. Monitoring should run repeatedly and support incremental mode through evidence fingerprints so previously seen facts are not scored as new signals.
@@ -265,9 +294,11 @@ The frontend default locale is `en`. The supported locales are `en` and `ru`, an
 ```bash
 python -m pytest
 python -m power_web_os.demo generate-icp-radar
+python -m power_web_os.demo generate-icp-radar-catalog
 python -m power_web_os.demo generate-account-radar
 python -m power_web_os.demo generate-access-plan
 python demo/run_demo.py generate-icp-radar
+python demo/run_demo.py generate-icp-radar-catalog
 python demo/run_demo.py generate-account-radar
 python demo/run_demo.py generate-access-plan
 npm --prefix ./frontend run build
@@ -280,6 +311,7 @@ Use Playwright visual smoke whenever frontend layout, shell navigation, user-fac
 
 ```bash
 python -m power_web_os.demo generate-icp-radar
+python -m power_web_os.demo generate-icp-radar-catalog
 python -m power_web_os.demo generate-account-radar
 npm --prefix ./frontend run visual:smoke
 ```
