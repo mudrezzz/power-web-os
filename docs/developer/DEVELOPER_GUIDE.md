@@ -252,6 +252,7 @@ Rules:
 - Import `ui-design-system/colors_and_type.css`.
 - Use `ui-design-system/app-prototype/AppShell.jsx` for product shell structure.
 - Use the relevant `ui-design-system/app-prototype/*Screen.jsx` file before implementing a screen.
+- Follow the frontend workspace UX ADR family, starting with `2026-06-12-frontend-workspace-ux-principles.md`, for bounded SPA behavior, table-first dense data, sticky identity, evidence-first drilldown, read-only settings, i18n, and responsive constraints.
 - Use `lucide-react` for icons.
 - Keep UI copy sentence case, with uppercase only for mono eyebrow labels.
 - Add visible UI strings through `frontend/src/i18n.ts` and keep English/Russian resources synchronized.
