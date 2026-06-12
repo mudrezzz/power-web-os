@@ -27,6 +27,8 @@ Dense operational data should start table-first.
   - short recommendation/comment;
   - top-5 evidence refs;
   - top-5 criteria.
+- Inline previews in horizontally scrollable tables must not inherit the table's horizontal scroll position. Table columns may scroll, but the expanded preview content should stay anchored to the visible workspace and use its own responsive layout.
+- Inline preview actions should sit after the preview content, not in a separate left rail that consumes scan width on laptop screens.
 - Do not create nested vertical scrolls inside expanded previews. Prefer one scroll owner for the whole expanded block.
 - Do not duplicate score/tier blocks inside previews when those values already exist in the row. Emphasize the existing row values when expanded.
 

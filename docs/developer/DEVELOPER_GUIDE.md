@@ -270,6 +270,9 @@ Rules:
   - horizontal scroll is owned by the table wrapper;
   - the sticky column must keep its own background and z-index so scrolled columns do not bleed through;
   - candidate row preview expands inline under the selected row and has one bounded scroll area for the whole preview;
+  - expanded preview content is anchored to the visible table wrapper, not to the horizontally scrolled column grid;
+  - preview blocks start at the left of the visible workspace and must not require horizontal scrolling on laptop widths;
+  - preview actions sit below the content blocks instead of using a separate left rail;
   - do not put nested scroll containers inside the preview lists;
   - preview is intentionally short: top-5 evidence refs, top-5 criteria, main signal, and short recommendation;
   - score/tier values stay in the table row and should not be repeated inside the preview;

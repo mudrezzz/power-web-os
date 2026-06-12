@@ -919,6 +919,38 @@ Status:
 - Risks:
   - Read-only examples can look like live jobs; mitigate with status, run-mode, and limitation labels.
 
+### Slice 0.6.2.6: ICP Radar laptop-readable inline preview
+
+- Status: `Done`
+- Goal: Make expanded ICP Radar candidate preview usable on laptop-width screens while preserving the wide table and sticky company column.
+- User value: A sales user can expand a candidate on a normal laptop, read the preview blocks without horizontal fighting, and open details from a clear action below the preview.
+- Scope:
+  - Keep the shortlist table horizontally scrollable for columns.
+  - Anchor expanded preview content to the visible table/workspace area instead of the horizontally scrolled column grid.
+  - Remove the separate preview left rail; place preview context blocks at the left edge of the visible preview.
+  - Move `Open details` below preview blocks.
+  - Keep preview content responsive and width-contained with no horizontal scroll inside the preview.
+  - Increase preview height enough for the main blocks to fit on small desktop/laptop screens, with only one vertical scroll owner for the whole preview when needed.
+- Out of scope:
+  - Backend or artifact changes.
+  - Signal validation.
+  - Mobile-specific layout conversion.
+- Tests:
+  - Frontend contract tests for preview anchoring, no left-rail layout, responsive preview body, and table-owned horizontal scroll.
+  - `npm --prefix ./frontend run build`.
+  - Relevant Python documentation/frontend contract tests.
+- Docs:
+  - Update ADR, user guide, developer guide, and roadmap.
+- Demo impact:
+  - The active `ТОиР / SIBUR` shortlist preview becomes usable at laptop widths such as `1366x768`.
+- Acceptance criteria:
+  - Preview content does not move with horizontal table column scroll.
+  - Preview blocks fit the visible table/workspace width.
+  - `Open details` appears below preview content.
+  - Preview keeps one vertical scroll owner and no nested horizontal scroll.
+- Risks:
+  - CSS anchoring can regress in older browsers; mitigate with build checks and visual smoke in Chromium.
+
 ### Slice 0.6.3: ICP Radar signal validation loop
 
 - Status: `Backlog`
@@ -1460,6 +1492,11 @@ Status:
   - Removed oversized origin/confidence blocks from expanded criteria; origin is now a small note and confidence is a tag.
   - Made candidate detail breadcrumbs and compact account header sticky during criteria scrolling.
   - Kept review decisions as frontend-only demo state until the durable Slice 0.6.3 validation loop.
+- `Slice 0.6.2.6: ICP Radar laptop-readable inline preview`
+  - Reworked expanded shortlist preview so it anchors to the visible table/workspace area instead of the horizontally scrolled table columns.
+  - Removed the separate preview left rail and moved the detail action below preview content.
+  - Increased preview height and kept a single vertical scroll owner for the whole preview.
+  - Documented the anchored preview rule in the table-first UX ADR and frontend docs.
 
 ## Blocked Items
 

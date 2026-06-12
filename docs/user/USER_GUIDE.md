@@ -107,7 +107,8 @@ The current ICP Radar UI is table-first:
 - The active `ТОиР / SIBUR` shortlist opens as a broad ranked account table.
 - The first account/company column stays fixed while the user scrolls horizontally across score, evidence, and criteria columns.
 - Clicking a candidate expands a compact preview directly under that row.
-- The inline preview has one bounded scroll area for the whole preview and shows only the top evidence refs and top criteria.
+- The inline preview is anchored to the visible workspace rather than to the horizontally scrolled table columns. It uses a responsive layout, has one bounded scroll area for the whole preview, and shows only the top evidence refs and top criteria.
+- The preview action sits below the context blocks so laptop screens keep the content readable without a separate left rail.
 - Score and tier values stay in the table row; the expanded row strengthens those existing values instead of repeating them in the preview.
 - Full candidate work opens in a separate read-only candidate detail view with breadcrumbs back to `ICP Radar`.
 - The detail view keeps a compact candidate header sticky while the user scrolls through profile, source refs, evidence list, score explanation, and the full C1-C20 criteria breakdown.

@@ -589,14 +589,13 @@ function CandidatePreview({
   const criteria = topCriteria(artifact, candidate, 5);
   return (
     <div className="icp-candidate-preview">
-      <div className="icp-preview-sticky-cell icp-sticky-cell">
-        <Eyebrow>{t('icpRadar.previewEyebrow')}</Eyebrow>
-        <strong>{candidate.legal_name}</strong>
-        <Button icon={<ArrowRight aria-hidden="true" />} variant="default" onClick={onOpenDetails}>
-          {t('icpRadar.openDetails')}
-        </Button>
-      </div>
       <div className="icp-preview-body">
+        <header className="icp-preview-heading">
+          <div>
+            <Eyebrow>{t('icpRadar.previewEyebrow')}</Eyebrow>
+            <strong>{candidate.legal_name}</strong>
+          </div>
+        </header>
         <div className="icp-preview-main">
           <section className="icp-preview-section">
             <Eyebrow>{t('icpRadar.mainSignal')}</Eyebrow>
@@ -626,6 +625,11 @@ function CandidatePreview({
               ))}
             </div>
           </section>
+        </div>
+        <div className="icp-preview-actions">
+          <Button icon={<ArrowRight aria-hidden="true" />} variant="default" onClick={onOpenDetails}>
+            {t('icpRadar.openDetails')}
+          </Button>
         </div>
       </div>
     </div>

@@ -286,6 +286,12 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".account-meta span" in css
     assert ".icp-detail-section > .eyebrow" in css
     assert ".icp-definition-list div" in css
+    assert "container-type: inline-size" in css
+    assert "width: 100cqw" in css
+    assert ".icp-preview-heading" in css
+    assert ".icp-preview-actions" in css
+    assert "icp-preview-sticky-cell" not in screen
+    assert "grid-column: 2 / -1" not in css
     assert "candidate.evidence_refs.slice(0, 5)" in screen
     assert "icp-preview-section" in screen
 
