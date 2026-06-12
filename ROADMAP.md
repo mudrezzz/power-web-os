@@ -951,6 +951,38 @@ Status:
 - Risks:
   - CSS anchoring can regress in older browsers; mitigate with build checks and visual smoke in Chromium.
 
+### Slice 0.6.2.7: ICP Radar catalog list-first UX correction
+
+- Status: `Done`
+- Goal: Replace the three-column ICP Radar catalog cards with a list-first catalog that is readable on laptop screens.
+- User value: A sales or ABM user can compare configured radars, statuses, run cadence, owners, and candidate counts without truncated card content.
+- Scope:
+  - Replace the three-column radar card grid with a vertical list of wide radar rows.
+  - Keep one configured radar per row with name, ICP profile, scope, status, compact metrics, run mode, and open action.
+  - Use stable row columns for identity, status, metrics, run mode, and action so fields do not float between rows.
+  - Remove metric tiles inside narrow cards; use a compact metric strip.
+  - Keep small-screen behavior as a stacked row, not a return to narrow multi-column cards.
+- Out of scope:
+  - Backend or artifact changes.
+  - Editable radar settings.
+  - Mobile-specific catalog redesign.
+- Tests:
+  - Frontend contract tests for list-first catalog classes and no three-column catalog grid.
+  - `npm --prefix ./frontend run build`.
+  - Relevant Python frontend/docs contract tests.
+- Docs:
+  - Update configurable-object ADR, user guide, developer guide, and roadmap.
+- Demo impact:
+  - The `ICP Radar` start screen becomes easier to scan and aligns with dense-data UX decisions.
+- Acceptance criteria:
+  - Radar names and summaries are readable on laptop-width screens.
+  - Status, metrics, run mode, and action columns align predictably across radar rows.
+  - Stable catalog columns do not create page-level or workspace-level horizontal overflow.
+  - Catalog rows expose cadence, last run, candidates, needs review, accepted, owner, status, and run mode.
+  - No three-column radar catalog layout remains in frontend CSS.
+- Risks:
+  - Long radar names can still require ellipsis; full configuration remains available in selected radar `Settings`.
+
 ### Slice 0.6.3: ICP Radar signal validation loop
 
 - Status: `Backlog`
@@ -1497,6 +1529,11 @@ Status:
   - Removed the separate preview left rail and moved the detail action below preview content.
   - Increased preview height and kept a single vertical scroll owner for the whole preview.
   - Documented the anchored preview rule in the table-first UX ADR and frontend docs.
+- `Slice 0.6.2.7: ICP Radar catalog list-first UX correction`
+  - Replaced the three-column radar catalog card grid with wide list-first rows.
+  - Moved radar metrics into a compact strip instead of narrow metric tiles.
+  - Kept configured radar status, run mode, owner, cadence, last run, and counts visible in each row.
+  - Documented list-first catalogs for dense configurable objects.
 
 ## Blocked Items
 

@@ -223,11 +223,11 @@ function RadarCatalogScreen({
         </div>
       </header>
 
-      <div className="icp-radar-catalog-grid">
+      <div className="icp-radar-catalog-list">
         {catalog.radars.map((radar) => (
           <Card interactive key={radar.radar_id} onClick={() => onOpenRadar(radar)}>
-            <div className="icp-radar-card">
-              <div className="icp-radar-card-head">
+            <div className="icp-radar-list-row">
+              <div className="icp-radar-list-main">
                 <span className="section-icon">
                   <Radar aria-hidden="true" />
                 </span>
@@ -235,13 +235,15 @@ function RadarCatalogScreen({
                   <Eyebrow>{t('icpRadar.radarCardEyebrow')}</Eyebrow>
                   <h2>{radar.name}</h2>
                   <p>{radar.profile.icp_profile}</p>
+                  <small>{radar.profile.scope}</small>
                 </div>
+              </div>
+              <span className="icp-radar-list-status">
                 <Badge tone={radar.status === 'active' ? 'ally' : 'neutral'}>
                   {t(radarStatusKey(radar.status))}
                 </Badge>
-              </div>
-              <p className="icp-radar-card-scope">{radar.profile.scope}</p>
-              <dl className="icp-radar-card-metrics">
+              </span>
+              <dl className="icp-radar-list-metrics">
                 <Metric label={t('icpRadar.cardFields.cadence')} value={t(cadenceKey(radar.summary.cadence))} />
                 <Metric label={t('icpRadar.cardFields.lastRun')} value={t(lastRunKey(radar.summary.last_run))} />
                 <Metric label={t('icpRadar.cardFields.candidates')} value={String(radar.summary.candidate_count)} />
@@ -249,8 +251,10 @@ function RadarCatalogScreen({
                 <Metric label={t('icpRadar.cardFields.accepted')} value={String(radar.summary.accepted_count)} />
                 <Metric label={t('icpRadar.cardFields.owner')} value={radar.owner} />
               </dl>
-              <div className="icp-radar-card-footer">
+              <span className="icp-radar-run-mode">
                 <Mono>{t(runModeKey(radar.summary.run_mode))}</Mono>
+              </span>
+              <div className="icp-radar-list-action">
                 <span className="row-action">
                   {t('icpRadar.openRadar')}
                   <ChevronRight aria-hidden="true" />

@@ -68,7 +68,7 @@ The language switcher localizes UI chrome plus visible deterministic demo data s
 
 ### ICP Radar catalog and shortlist
 
-The `ICP Radar` screen now starts with a catalog of radar cards. Each card represents a configured ICP Radar with owner, cadence, last run, run mode, candidate count, needs-review count, and accepted count. Open `ТОиР / SIBUR` to inspect the active fixture-backed radar. Its `Shortlist` tab contains the current ranked table, and its `Settings` tab shows the read-only radar definition: profile, discovery, monitoring, criteria, scoring formula, thresholds, and limitations.
+The `ICP Radar` screen now starts with a list-first catalog of configured radars. Each row represents a configured ICP Radar with aligned columns for status, owner, cadence, last run, run mode, candidate count, needs-review count, and accepted count. Open `ТОиР / SIBUR` to inspect the active fixture-backed radar. Its `Shortlist` tab contains the current ranked table, and its `Settings` tab shows the read-only radar definition: profile, discovery, monitoring, criteria, scoring formula, thresholds, and limitations.
 
 Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. The main surface is a wide table: the company column stays fixed while score, tier, evidence, and criteria-related columns can scroll horizontally inside the table. Click a candidate row to open a bounded inline preview with the main signal, short recommendation, top evidence refs, and top criteria. Open the read-only candidate detail view when you need the full C1-C20 breakdown and source refs. Signal validation and take-into-work actions are still planned follow-up slices.
 
@@ -102,7 +102,7 @@ Open `Playbook` to see how the customer's rules shape the plan. The screen shows
 
 The current ICP Radar UI is table-first:
 
-- The workspace opens with radar cards first; select a radar to enter its `Shortlist` and `Settings` tabs.
+- The workspace opens with a list-first radar catalog; select a radar row to enter its `Shortlist` and `Settings` tabs.
 - `Settings` is read-only in this slice and shows the radar definition that produced, or will produce, candidate shortlists.
 - The active `ТОиР / SIBUR` shortlist opens as a broad ranked account table.
 - The first account/company column stays fixed while the user scrolls horizontally across score, evidence, and criteria columns.

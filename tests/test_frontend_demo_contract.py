@@ -351,8 +351,13 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".criteria-review-row" in css
     assert ".criterion-evidence-detail" in css
     assert ".criterion-review-panel" in css
-    assert ".icp-radar-catalog-grid" in css
-    assert ".icp-radar-card" in css
+    assert ".icp-radar-catalog-list" in css
+    assert ".icp-radar-list-row" in css
+    assert ".icp-radar-list-status" in css
+    assert ".icp-radar-run-mode" in css
+    assert "icp-radar-list-status" in screen
+    assert "icp-radar-run-mode" in screen
+    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" not in css
     assert ".icp-settings-grid" in css
     assert ".icp-radar-tabs" in css
     assert ".icp-detail-sticky-header" in css

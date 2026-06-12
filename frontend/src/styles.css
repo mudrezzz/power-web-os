@@ -859,64 +859,84 @@ button {
   gap: var(--s-2);
 }
 
-.icp-radar-catalog-grid {
+.icp-radar-catalog-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--s-4);
+  gap: var(--s-3);
 }
 
-.icp-radar-card {
+.icp-radar-list-row {
   display: grid;
-  gap: var(--s-4);
+  grid-template-columns:
+    minmax(0, 1.1fr)
+    minmax(var(--s-16), 0.32fr)
+    minmax(0, 1.05fr)
+    minmax(0, 0.58fr)
+    minmax(calc(var(--s-20) + var(--s-6)), 0.38fr);
+  align-items: center;
+  gap: var(--s-3);
   width: 100%;
   min-width: 0;
 }
 
-.icp-radar-card-head {
+.icp-radar-list-main {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
   gap: var(--s-3);
   min-width: 0;
 }
 
-.icp-radar-card-head h2 {
+.icp-radar-list-main h2 {
+  display: -webkit-box;
   margin: var(--s-1) 0;
   overflow: hidden;
   color: var(--ink);
   font: var(--h3);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.icp-radar-list-main p,
+.icp-radar-list-main small {
+  display: block;
+  margin: 0;
+  overflow: hidden;
+  color: var(--fg2);
+  font: var(--body-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.icp-radar-card-head p,
-.icp-radar-card-scope {
-  margin: 0;
-  color: var(--fg2);
-  font: var(--body-sm);
+.icp-radar-list-main small {
+  margin-top: var(--s-2);
 }
 
-.icp-radar-card-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.icp-radar-list-metrics {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
   gap: var(--s-2);
   margin: 0;
 }
 
-.icp-radar-card-metrics div {
+.icp-radar-list-metrics div {
+  display: inline-flex;
+  align-items: baseline;
   min-width: 0;
-  padding: var(--s-2);
+  gap: var(--s-2);
+  min-height: var(--s-7);
+  padding: var(--s-1) var(--s-2);
   border-radius: var(--r-md);
   background: var(--surface-2);
 }
 
-.icp-radar-card-metrics dt {
+.icp-radar-list-metrics dt {
   color: var(--fg3);
   font: var(--mono-sm);
 }
 
-.icp-radar-card-metrics dd {
-  margin: var(--s-1) 0 0;
+.icp-radar-list-metrics dd {
+  margin: 0;
   overflow: hidden;
   color: var(--ink);
   font: var(--label);
@@ -924,7 +944,22 @@ button {
   white-space: nowrap;
 }
 
-.icp-radar-card-footer,
+.icp-radar-list-status,
+.icp-radar-run-mode {
+  display: flex;
+  min-width: 0;
+}
+
+.icp-radar-list-status {
+  justify-content: flex-start;
+}
+
+.icp-radar-run-mode {
+  justify-content: flex-start;
+  overflow-wrap: anywhere;
+}
+
+.icp-radar-list-action,
 .icp-radar-tabs,
 .icp-settings-section-head {
   display: flex;
@@ -932,6 +967,15 @@ button {
   justify-content: space-between;
   min-width: 0;
   gap: var(--s-3);
+}
+
+.icp-radar-list-action {
+  justify-content: flex-end;
+}
+
+.icp-radar-list-action .row-action {
+  min-width: 0;
+  justify-content: flex-end;
 }
 
 .icp-radar-selected-shell {
@@ -2580,9 +2624,13 @@ button {
     display: none;
   }
 
-  .icp-radar-catalog-grid,
   .icp-settings-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .icp-radar-list-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
   }
 
   .icp-settings-grid .card:nth-child(5),
@@ -2590,9 +2638,12 @@ button {
     grid-column: auto;
   }
 
-  .icp-radar-card-metrics,
   .icp-settings-formula-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .icp-radar-list-action {
+    justify-content: space-between;
   }
 
   .icp-candidate-detail-grid {

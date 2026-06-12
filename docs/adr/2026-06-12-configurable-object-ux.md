@@ -14,8 +14,11 @@ The ICP Radar UI initially looked like a single radar existed by nature. We deci
 
 Configurable product objects should use catalog-first navigation.
 
-- When the product has many configured objects, start with a catalog/cards view before opening one object.
-- Cards should show the object name, status, owner, cadence or run mode, last activity, output counts, and whether the object is active, configured, or planned.
+- When the product has many configured objects, start with a catalog view before opening one object.
+- Catalogs for dense operational objects should use list-first rows rather than narrow multi-column cards when users need to compare status, cadence, last run, owner, and output counts.
+- Catalog rows should show the object name, status, owner, cadence or run mode, last activity, output counts, and whether the object is active, configured, or planned.
+- Catalog row columns must be stable across rows. Status, metrics, run mode, and primary action should occupy predictable columns instead of floating based on content width.
+- Stable columns must still shrink, wrap, or ellipsize inside the bounded workspace. Do not use fixed minimum column widths that create page-level horizontal overflow on laptop screens.
 - A selected object should use in-shell navigation such as tabs or segmented controls.
 - For ICP Radar the accepted baseline is `Shortlist` / `Settings`.
 - Settings screens may be read-only in early slices, but they must be visibly read-only.

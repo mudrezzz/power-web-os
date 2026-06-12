@@ -265,6 +265,7 @@ Rules:
 - Render the selected account's playbook analysis from `artifact.playbook_analysis` on `Playbook`.
 - Load the ICP Radar artifact from `/demo/icp_radar.json`.
 - Keep `ICP Radar` as a separate upstream screen; do not merge it with `Accounts`.
+- Treat the ICP Radar catalog as list-first: one configured radar per wide row with stable columns for identity, status, metrics, run mode, and action, not a three-column card grid or floating metric layout that truncates names and counts on laptop screens.
 - Treat the main `ICP Radar` screen as a table-first workspace:
   - account/company identity belongs in the first sticky column;
   - horizontal scroll is owned by the table wrapper;
