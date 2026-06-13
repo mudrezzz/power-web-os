@@ -1176,6 +1176,54 @@ Status:
 - Risks:
   - The source/rule editors are still local demo state; production execution and audit remain future work.
 
+### Slice 0.6.5.3: ICP Radar settings UX simplification
+
+- Status: `Done`
+- Goal: Simplify ICP Radar Settings for sales/ABM users by removing duplicate description blocks, rule groups, source-logic complexity, and technical confidence labels from the visible editor.
+- User value: A user can configure a radar without understanding internal IDs, rule groups, fallback confidence, or source operators: they edit the radar header, source base, simple account criteria, monitoring policy, signal list, global signal scale, and scoring presets.
+- Scope:
+  - Move radar name, description, active/inactive status, owner, run mode, duplicate, and delete actions into the selected radar header.
+  - Remove the separate Overview/Description Settings block.
+  - Show global source base as a bounded table with columns for name, type, reference, trust policy, and action.
+  - Bound keyword and exclusion lists in view mode and show exclusions outside edit mode.
+  - Add AI suggestion affordances to global source base and account qualification blocks.
+  - Simplify account qualification to a flat criterion list with `AND` / `OR`, optional `NOT`, natural-language rule text, requirement level, global-base checkbox, additional-source checkbox, cross-validation policy, and optional local sources.
+  - Remove visible rule groups, source logic operators, source id selection, fallback confidence labels, and source ID editing from Settings.
+  - Replace low/medium/high with user-facing trust policies: trusted, cross-check, and HITL required.
+  - Replace monitoring free-text dedup/lookback/stale fields with dropdown policy plus number/unit controls.
+  - Simplify intent signals to the same source/rule model as account criteria.
+  - Add a global signal scoring scale block and per-signal override checkbox; default scale remains `0 / 1 / 2`.
+  - Fix the source editor focus bug by keeping stable UI keys while editing and generating IDs only from saved/source content.
+  - Fix RU `???`/mojibake in the touched Settings labels.
+- Out of scope:
+  - Live AI generation.
+  - Backend persistence.
+  - Running edited settings against sources.
+  - Recalculating shortlists from edited criteria/signals.
+  - Full mobile redesign beyond keeping this Settings surface bounded and readable.
+- Implementation notes:
+  - The backend may keep `RuleGroup`, `AtomicRule`, and generated technical fields as normalized internal structure.
+  - The frontend should use a simpler view model over the existing definition rather than exposing nested groups directly.
+  - AI suggestion buttons are non-executing affordances in this slice and should be labelled as planned/local assistance.
+  - Artifact version can remain `0.6.5.2` unless the persisted JSON shape changes.
+- Tests:
+  - Frontend contract tests for no Overview block, no visible rule-group editor, no source logic UI, no fallback confidence UI, bounded source table, monitoring number/unit controls, global signal scale, and per-signal override affordance.
+  - i18n contract checks that touched RU Settings labels do not contain `???`.
+  - `python -m pytest`.
+  - `npm --prefix ./frontend run build`.
+- Docs:
+  - Update user/developer/demo docs and configurable-object UX ADR with the simplified Settings model.
+- Demo impact:
+  - The Settings tab becomes a usable sales-facing radar configuration surface instead of a domain-schema editor.
+- Acceptance criteria:
+  - Radar header is the only place where name/status/description are edited.
+  - Global sources render as a readable table with bounded scroll and no overlap.
+  - Qualification criteria and intent signals are flat, natural-language lists without visible groups.
+  - Monitoring policies use dropdowns and numeric duration controls.
+  - Source editor inputs keep focus while typing.
+- Risks:
+  - The simplified UI is a view model over the internal contract; future persistence should formalize this view model instead of letting UI helpers sprawl.
+
 ### Slice 0.6.6: ICP Radar run history and monitoring schedule loop
 
 - Status: `Backlog`
@@ -1638,6 +1686,13 @@ Status:
   - Added source selection by name, local source entities, global search base checkbox, and additional-source checkbox.
   - Replaced trigger/total scoring settings with Fit, Intent, and Tier models plus scoring preset dropdowns.
   - Updated ICP Radar artifacts to version `0.6.5.2`.
+- `Slice 0.6.5.3: ICP Radar settings UX simplification`
+  - Removed the duplicate Overview/Description settings block and moved radar name, description, active status, owner, duplicate, and delete actions into the selected radar header.
+  - Replaced visible nested rule groups with flat natural-language qualification criteria and intent-signal detection rules.
+  - Simplified source policies to global-base usage, optional local sources, cross-validation, and HITL additional-source switches.
+  - Reworked global sources into a bounded table and fixed source editor focus by keeping source IDs stable while typing.
+  - Replaced monitoring free-text fields with dedupe dropdowns and number/unit duration controls.
+  - Added a global signal scoring scale table with optional per-signal override and fixed touched RU Settings labels that contained `???`.
 
 ## Blocked Items
 

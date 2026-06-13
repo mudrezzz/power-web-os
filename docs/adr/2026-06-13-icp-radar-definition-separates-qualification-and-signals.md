@@ -33,16 +33,18 @@ It is split into:
 Rules and sources are first-class objects:
 
 - `RuleGroup` uses `AND`, `OR`, or `NOT`;
-- `AtomicRule` carries system-generated id, name, human description, requirement level, source policy, and optional generated technical fields for future agent execution;
+- `AtomicRule` carries system-generated id, human rule description, requirement level, source policy, and optional generated technical fields for future agent execution;
 - `SourceDefinition` represents `url`, `search_engine`, `api`, `mcp`, or `manual_dataset`;
-- `SourcePolicy` references shared sources internally by id, exposes source selection by name in the UI, supports local per-rule/per-signal sources, and controls fallback/additional source behavior.
+- `SourcePolicy` may reference shared sources internally by id, but the UI exposes a simpler policy: use global search base, optional local sources, cross-validation, and HITL-governed additional sources.
 
 The frontend must expose a business-language configuration surface:
 
 - do not make users edit internal ids;
 - show generated rule ids and signal codes only as compact references for custom formulas;
 - do not expose target-field/operator/value triples as user-authored controls;
-- use source entities and source selection, not textarea-only source lists;
+- do not expose nested rule groups, source ids, source boolean logic, or fallback-confidence labels as the primary UX;
+- use source entities and bounded source tables, not textarea-only source lists;
+- define shared signal scoring once and allow per-signal overrides only explicitly;
 - use scoring presets for normal configuration;
 - expose custom formula text only when the custom preset is selected;
 - keep radar Settings limited to `Fit`, `Intent`, and `Tier`, not `trigger` or `total` formulas.

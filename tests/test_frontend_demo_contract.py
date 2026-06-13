@@ -265,14 +265,15 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "RadarCatalogScreen",
         "RadarSettings",
         "SettingsBlockCard",
-        "RuleGroupEditor",
-        "addGroup",
-        "removeGroup",
-        "AtomicRuleEditor",
+        "QualificationRulesEditor",
+        "SimpleRuleEditor",
         "SourceListEditor",
-        "SourcePolicyEditor",
+        "SimpleSourcePolicyEditor",
         "IntentSignalsEditor",
-        "SignalRubricEditor",
+        "SignalRubricOverride",
+        "SignalRubricTable",
+        "DurationField",
+        "ToggleField",
         "ValidationReportView",
         "EmptyShortlist",
         "shortlistTab",
@@ -286,6 +287,7 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "saveDraft",
         "discardChanges",
         "duplicateRadar",
+        "deleteRadar",
         "resetToArtifact",
         "resetDemoChanges",
         "definition.intent_signals",
@@ -329,8 +331,19 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".icp-editor-field" in css
     assert ".criteria-editor-row" in css
     assert ".source-policy-editor" in css
+    assert ".source-table" in css
+    assert ".source-table-wrap" in css
+    assert ".simple-rule-row" in css
+    assert ".signal-scale-panel" in css
+    assert ".toggle-field" in css
     assert "targetField" not in screen
     assert "icpRadar.settings.comparison" not in screen
+    assert "SourcePicker" not in screen
+    assert "RuleGroupEditor" not in screen
+    assert "AtomicRuleEditor" not in screen
+    assert "selectedGlobalSources" not in screen
+    assert "setPrimaryRuleDescription" in screen
+    assert "source_id: sourceIdFrom(label" not in screen
     assert "triggerFormula" not in screen
     assert "totalFormula" not in screen
     assert "sourceIdFrom(" in screen
@@ -352,17 +365,26 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "qualificationRules",
         "intentSignals",
         "globalSearch",
-        "sourceLogic",
         "scoringRubric",
         "useGlobalSearchPolicy",
-        "selectedGlobalSources",
+        "globalSearchPolicyCopy",
         "generatedId",
+        "generatedIdReadonly",
         "generatedCode",
         "signalScaleLocked",
+        "aiSuggest",
+        "crossValidation",
+        "hitlAdditionalSources",
+        "notRule",
+        "durationUnits",
+        "deduplicationPolicies",
+        "trustPolicies",
+        "sourceTypes",
         "formulaPresets",
         "validConfiguration",
     ]:
         assert editable_key in i18n
+    assert "???" not in i18n
     assert ".icp-preview-heading" in css
     assert ".icp-preview-actions" in css
     assert "icp-preview-sticky-cell" not in screen
@@ -406,8 +428,8 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "icpRadar.openRadar",
         "icpRadar.backToCatalog",
         "icpRadar.settingsTab",
-        "icpRadar.settings.addGroup",
-        "icpRadar.settings.removeGroup",
+        "icpRadar.settings.aiSuggest",
+        "icpRadar.deleteRadar",
         "icpRadar.settings.intentSignals",
         "icpRadar.settings.qualificationRules",
         "icpRadar.settings.globalSearch",

@@ -27,11 +27,14 @@ Configurable product objects should use catalog-first navigation.
 - Local editable loops must label created or modified objects as local drafts or locally modified state.
 - Save, discard, duplicate, reset-one-object, and reset-all-demo-changes actions should be explicit for configurable objects.
 - Complex configuration screens should prefer block-level editing. Each block owns its own edit/save/discard lifecycle so users can change sources, rules, signals, monitoring, or scoring without putting the whole object into one broad edit mode.
+- The selected-object header owns identity and lifecycle controls when they are central to the object: name, description, active/inactive state, read-only owner, duplicate, local delete, and reset. Do not duplicate these fields in a separate Overview/Description block.
 - Generated artifacts remain the reset source of truth until backend persistence exists.
 - Editing configuration must not imply live execution, scheduling, connector setup, or output recalculation unless that behavior is implemented.
-- Constrained controls are preferred for settings such as cadence, run mode, thresholds, source definitions, source policies, rule groups, signal detection rules, and scoring rubrics.
+- Constrained controls are preferred for settings such as cadence, run mode, thresholds, source definitions, source policies, signal detection rules, and scoring rubrics.
 - Scoring setup should offer named presets first. Custom formula text is acceptable only as an explicit advanced mode that shows generated rule ids or signal codes as a reference.
-- User-facing rule editors should collect names, natural-language descriptions, requirement level, and source policy. Internal field/operator/value triples may be generated for future agent execution, but they must not be the primary UX.
+- User-facing rule editors should collect natural-language rule text, requirement level, simple logical operators, optional NOT, and source policy. Internal nested groups and field/operator/value triples may be generated for future agent execution, but they must not be the primary UX.
+- Source policies should not expose source ids, source boolean logic, or fallback-confidence terminology to sales users. Prefer global-source toggle, optional local sources, cross-validation, HITL additional-source controls, and user-facing trust states.
+- Repeated scoring rubrics should be configured globally first. Per-signal overrides should be explicit and hidden until the user chooses to override.
 - Planned, configured, active, fixture-backed, and live states must be explicit.
 - Demo fixtures must not imply live jobs, persistence, scheduling, connectors, or production state.
 

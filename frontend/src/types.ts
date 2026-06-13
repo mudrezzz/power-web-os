@@ -325,7 +325,7 @@ export type RadarDefinition = {
 export type EditableRadarDefinitionDraft = RadarDefinition;
 
 export type RadarConfigOverride = {
-  override_type: 'created' | 'edited';
+  override_type: 'created' | 'edited' | 'deleted';
   radar: ICPRadarCatalogItem;
   saved_at: string;
 };
