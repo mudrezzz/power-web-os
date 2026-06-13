@@ -41,7 +41,6 @@ import type {
 } from '../types';
 
 type RadarDetailTab = 'shortlist' | 'settings';
-type SettingsMode = 'view' | 'edit';
 
 const radarConfigStorageKey = 'power-web-os-icp-radar-config-overrides';
 
@@ -57,7 +56,6 @@ export function ICPRadarScreen({
   const { t } = useTranslation();
   const [selectedRadarId, setSelectedRadarId] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<RadarDetailTab>('shortlist');
-  const [settingsMode, setSettingsMode] = useState<SettingsMode>('view');
   const [expandedCandidateId, setExpandedCandidateId] = useState<string | null>(null);
   const [detailCandidateId, setDetailCandidateId] = useState<string | null>(null);
   const [criterionReviews, setCriterionReviews] = useState<Record<string, CriterionReviewState>>({});
@@ -68,10 +66,15 @@ export function ICPRadarScreen({
   const activeFixtureRadarId = catalog?.workflow_metadata.active_fixture_radar_id ?? 'toir-sibur';
   const selectedRadarArtifact = selectedRadar?.radar_id === activeFixtureRadarId ? artifact : null;
   const detailCandidate = artifact?.candidates.find((item) => item.account_id === detailCandidateId) ?? null;
+  const [settingsDraft, setSettingsDraft] = useState<EditableRadarDefinitionDraft | null>(null);
+  const [savedSettingsDraftSnapshot, setSavedSettingsDraftSnapshot] = useState('');
+  const [editingBlock, setEditingBlock] = useState<SettingsBlockId | null>(null);
   const sourcesById = useMemo(() => {
     const entries = selectedRadarArtifact?.radar.definition.global_search_policy.sources.map((source) => [source.source_id, source]) ?? [];
     return new Map(entries as Array<[string, SourceDefinition]>);
   }, [selectedRadarArtifact]);
+  const validationErrors = settingsDraft ? validateRadarDraft(settingsDraft, t) : [];
+  const settingsDirty = settingsDraft ? JSON.stringify(settingsDraft) !== savedSettingsDraftSnapshot : false;
 
   useEffect(() => {
     if (Object.keys(radarOverrides).length) {
@@ -80,6 +83,19 @@ export function ICPRadarScreen({
     }
     window.localStorage.removeItem(radarConfigStorageKey);
   }, [radarOverrides]);
+
+  useEffect(() => {
+    if (!selectedRadar) {
+      setSettingsDraft(null);
+      setSavedSettingsDraftSnapshot('');
+      setEditingBlock(null);
+      return;
+    }
+    const nextDraft = draftFromRadar(selectedRadar);
+    setSettingsDraft(nextDraft);
+    setSavedSettingsDraftSnapshot(JSON.stringify(nextDraft));
+    setEditingBlock(null);
+  }, [selectedRadar?.radar_id]);
 
   if (error || !catalog) {
     return (
@@ -97,7 +113,6 @@ export function ICPRadarScreen({
   function openRadar(radar: ICPRadarCatalogItem) {
     setSelectedRadarId(radar.radar_id);
     setSelectedTab('shortlist');
-    setSettingsMode('view');
     setExpandedCandidateId(null);
     setDetailCandidateId(null);
   }
@@ -106,7 +121,6 @@ export function ICPRadarScreen({
     setSelectedRadarId(null);
     setDetailCandidateId(null);
     setExpandedCandidateId(null);
-    setSettingsMode('view');
   }
 
   function createRadar() {
@@ -130,7 +144,7 @@ export function ICPRadarScreen({
     }));
     setSelectedRadarId(created.radar_id);
     setSelectedTab('settings');
-    setSettingsMode('edit');
+    setEditingBlock('overview');
     setExpandedCandidateId(null);
     setDetailCandidateId(null);
   }
@@ -145,7 +159,6 @@ export function ICPRadarScreen({
       },
     }));
     setSelectedRadarId(radar.radar_id);
-    setSettingsMode('view');
   }
 
   function deleteRadar(radar: ICPRadarCatalogItem) {
@@ -164,7 +177,6 @@ export function ICPRadarScreen({
     });
     setSelectedRadarId(null);
     setSelectedTab('shortlist');
-    setSettingsMode('view');
     setDetailCandidateId(null);
   }
 
@@ -178,14 +190,14 @@ export function ICPRadarScreen({
       setSelectedRadarId(null);
       setSelectedTab('shortlist');
     }
-    setSettingsMode('view');
+    setEditingBlock(null);
   }
 
   function resetDemoChanges() {
     setRadarOverrides({});
     setSelectedRadarId(null);
     setSelectedTab('shortlist');
-    setSettingsMode('view');
+    setEditingBlock(null);
   }
 
   function duplicateRadar(radar: ICPRadarCatalogItem) {
@@ -200,7 +212,35 @@ export function ICPRadarScreen({
     }));
     setSelectedRadarId(duplicate.radar_id);
     setSelectedTab('settings');
-    setSettingsMode('edit');
+    setEditingBlock('overview');
+  }
+
+  function startHeaderEdit() {
+    setSelectedTab('settings');
+    setEditingBlock('overview');
+  }
+
+  function saveSettingsDraft() {
+    if (!selectedRadar || !settingsDraft || validationErrors.length) {
+      return;
+    }
+    const nextRadar = radarFromDraft(selectedRadar, settingsDraft);
+    saveRadarDraft(
+      nextRadar,
+      selectedRadarOverride?.override_type === 'created' ? 'created' : 'edited',
+    );
+    setSavedSettingsDraftSnapshot(JSON.stringify(settingsDraft));
+    setEditingBlock(null);
+  }
+
+  function discardSettingsDraft() {
+    if (!selectedRadar) {
+      return;
+    }
+    const nextDraft = draftFromRadar(selectedRadar);
+    setSettingsDraft(nextDraft);
+    setSavedSettingsDraftSnapshot(JSON.stringify(nextDraft));
+    setEditingBlock(null);
   }
 
   if (!selectedRadar) {
@@ -298,25 +338,36 @@ export function ICPRadarScreen({
       <RadarDetailHeader
         activeTab={selectedTab}
         artifact={selectedRadarArtifact}
+        draft={settingsDraft}
+        dirty={settingsDirty}
+        editingBlock={editingBlock}
         isLocalDraft={selectedRadarOverride !== undefined}
         onBack={backToCatalog}
+        onDelete={() => deleteRadar(selectedRadar)}
+        onDiscard={discardSettingsDraft}
+        onDraftChange={setSettingsDraft}
+        onDuplicate={() => duplicateRadar(selectedRadar)}
+        onEditHeader={startHeaderEdit}
+        onReset={() => resetRadarToArtifact(selectedRadar.radar_id)}
+        onSave={saveSettingsDraft}
         onTabChange={setSelectedTab}
+        overrideType={selectedRadarOverride?.override_type}
         radar={selectedRadar}
+        validationErrors={validationErrors}
       />
 
       {selectedTab === 'settings' ? (
         <RadarSettings
-          mode={settingsMode}
-          onDelete={() => deleteRadar(selectedRadar)}
-          onDuplicate={() => duplicateRadar(selectedRadar)}
-          onModeChange={setSettingsMode}
-          onReset={() => resetRadarToArtifact(selectedRadar.radar_id)}
-          onSave={(nextRadar) => saveRadarDraft(
-            nextRadar,
-            selectedRadarOverride?.override_type === 'created' ? 'created' : 'edited',
-          )}
-          overrideType={selectedRadarOverride?.override_type}
-          radar={selectedRadar}
+          dirty={settingsDirty}
+          draft={settingsDraft ?? draftFromRadar(selectedRadar)}
+          editingBlock={editingBlock}
+          onCancel={discardSettingsDraft}
+          onDraftChange={setSettingsDraft}
+          onEdit={(blockId) => {
+            setEditingBlock(blockId);
+          }}
+          onSave={saveSettingsDraft}
+          validationErrors={validationErrors}
         />
       ) : selectedRadarArtifact ? (
         <CandidateTable
@@ -434,19 +485,54 @@ function RadarCatalogScreen({
 function RadarDetailHeader({
   activeTab,
   artifact,
+  dirty,
+  draft,
+  editingBlock,
   isLocalDraft,
   onBack,
+  onDelete,
+  onDiscard,
+  onDraftChange,
+  onDuplicate,
+  onEditHeader,
+  onReset,
+  onSave,
   onTabChange,
+  overrideType,
   radar,
+  validationErrors,
 }: {
   activeTab: RadarDetailTab;
   artifact: ICPRadarArtifact | null;
+  dirty: boolean;
+  draft: EditableRadarDefinitionDraft | null;
+  editingBlock: SettingsBlockId | null;
   isLocalDraft: boolean;
   onBack: () => void;
+  onDelete: () => void;
+  onDiscard: () => void;
+  onDraftChange: (draft: EditableRadarDefinitionDraft) => void;
+  onDuplicate: () => void;
+  onEditHeader: () => void;
+  onReset: () => void;
+  onSave: () => void;
   onTabChange: (tab: RadarDetailTab) => void;
+  overrideType: RadarConfigOverride['override_type'] | undefined;
   radar: ICPRadarCatalogItem;
+  validationErrors: string[];
 }) {
   const { t } = useTranslation();
+  const headerDraft = draft ?? radar.definition;
+  const headerDescription = headerDraft.metadata.description || radar.profile.scope || (
+    artifact
+      ? t('icpRadar.summary', {
+        count: artifact.candidates.length,
+        holding: artifact.radar.profile.holding,
+        product: artifact.radar.profile.product,
+      })
+      : t('icpRadar.emptyShortlistSummary', { product: radar.profile.product })
+  );
+  const editingHeader = activeTab === 'settings' && editingBlock === 'overview';
   return (
     <div className="icp-radar-selected-shell">
       <div className="icp-detail-breadcrumbs" aria-label={t('icpRadar.radarBreadcrumbs')}>
@@ -461,23 +547,61 @@ function RadarDetailHeader({
         <span className="section-icon">
           <Radar aria-hidden="true" />
         </span>
-        <div>
-          <Eyebrow>{t('icpRadar.eyebrow')}</Eyebrow>
-          <h1>{radar.name}</h1>
-          <p>
-            {artifact
-              ? t('icpRadar.summary', {
-                count: artifact.candidates.length,
-                holding: artifact.radar.profile.holding,
-                product: artifact.radar.profile.product,
-              })
-              : t('icpRadar.emptyShortlistSummary', { product: radar.profile.product })}
-          </p>
+        <div className="icp-radar-header-main">
+          {editingHeader ? (
+            <RadarHeaderEditor draft={headerDraft} onDraftChange={onDraftChange} />
+          ) : (
+            <>
+              <Eyebrow>{t('icpRadar.eyebrow')}</Eyebrow>
+              <h1>{headerDraft.metadata.name || radar.name}</h1>
+              <p>{headerDescription}</p>
+            </>
+          )}
         </div>
-        <div className="icp-profile-meta">
-          <Badge tone={radar.status === 'active' ? 'ally' : 'neutral'}>{t(radarStatusKey(radar.status))}</Badge>
-          {isLocalDraft && <Badge tone="unsurfaced">{t('icpRadar.localDraft')}</Badge>}
-          <Mono>{t(runModeKey(radar.summary.run_mode))}</Mono>
+        <div className="icp-profile-meta icp-radar-header-actions">
+          <div className="icp-radar-header-badges">
+            <Badge tone={headerDraft.metadata.status === 'active' || radar.status === 'active' ? 'ally' : 'neutral'}>
+              {t(radarStatusKey(headerDraft.metadata.status || radar.status))}
+            </Badge>
+            {isLocalDraft && <Badge tone="unsurfaced">{t('icpRadar.localDraft')}</Badge>}
+            <Mono>{t(runModeKey(radar.summary.run_mode))}</Mono>
+            <span>{t('icpRadar.cardFields.owner')}: {headerDraft.metadata.owner || radar.owner}</span>
+          </div>
+          {activeTab === 'settings' && (
+            <div className="icp-editor-actions">
+              {editingHeader ? (
+                <>
+                  <Button disabled={validationErrors.length > 0} icon={<Save aria-hidden="true" />} variant="default" onClick={onSave}>
+                    {t('icpRadar.saveDraft')}
+                  </Button>
+                  <Button icon={<X aria-hidden="true" />} variant="default" onClick={onDiscard}>
+                    {t('icpRadar.discardChanges')}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Badge tone={overrideType ? 'unsurfaced' : 'neutral'}>
+                    {overrideType ? t('icpRadar.localDraft') : t('icpRadar.readOnly')}
+                  </Badge>
+                  {dirty && <Badge tone="unsurfaced">{t('icpRadar.unsavedChanges')}</Badge>}
+                  <Button icon={<SlidersHorizontal aria-hidden="true" />} variant="default" onClick={onEditHeader}>
+                    {t('icpRadar.editSettings')}
+                  </Button>
+                  <Button icon={<Copy aria-hidden="true" />} variant="default" onClick={onDuplicate}>
+                    {t('icpRadar.duplicateRadar')}
+                  </Button>
+                  <Button icon={<Trash2 aria-hidden="true" />} variant="default" onClick={onDelete}>
+                    {t('icpRadar.deleteRadar')}
+                  </Button>
+                  {overrideType && (
+                    <Button icon={<RotateCcw aria-hidden="true" />} variant="default" onClick={onReset}>
+                      {t('icpRadar.resetToArtifact')}
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
       </header>
       <div className="icp-radar-tabs" aria-label={t('icpRadar.radarTabs')}>
@@ -610,124 +734,56 @@ function EmptyShortlist({
 }
 
 function RadarSettings({
-  mode,
-  onDelete,
-  onDuplicate,
-  onModeChange,
-  onReset,
+  dirty,
+  draft,
+  editingBlock,
+  onCancel,
+  onDraftChange,
+  onEdit,
   onSave,
-  overrideType,
-  radar,
+  validationErrors,
 }: {
-  mode: SettingsMode;
-  onDelete: () => void;
-  onDuplicate: () => void;
-  onModeChange: (mode: SettingsMode) => void;
-  onReset: () => void;
-  onSave: (radar: ICPRadarCatalogItem) => void;
-  overrideType: RadarConfigOverride['override_type'] | undefined;
-  radar: ICPRadarCatalogItem;
+  dirty: boolean;
+  draft: EditableRadarDefinitionDraft;
+  editingBlock: SettingsBlockId | null;
+  onCancel: () => void;
+  onDraftChange: (draft: EditableRadarDefinitionDraft) => void;
+  onEdit: (block: SettingsBlockId | null) => void;
+  onSave: () => void;
+  validationErrors: string[];
 }) {
   const { t } = useTranslation();
-  const [draft, setDraft] = useState<EditableRadarDefinitionDraft>(() => draftFromRadar(radar));
-  const [savedDraftSnapshot, setSavedDraftSnapshot] = useState(() => JSON.stringify(draftFromRadar(radar)));
-  const [editingBlock, setEditingBlock] = useState<SettingsBlockId | null>(null);
-  const validationErrors = validateRadarDraft(draft, t);
-  const dirty = JSON.stringify(draft) !== savedDraftSnapshot;
   const editorState: RadarEditorState = {
-    mode,
+    mode: editingBlock ? 'edit' : 'view',
     dirty,
     errors: validationErrors,
   };
 
-  useEffect(() => {
-    const nextDraft = draftFromRadar(radar);
-    setDraft(nextDraft);
-    setSavedDraftSnapshot(JSON.stringify(nextDraft));
-    setEditingBlock(null);
-  }, [radar.radar_id]);
-
-  function saveDraft() {
-    if (validationErrors.length) {
-      return;
-    }
-    const nextRadar = radarFromDraft(radar, draft);
-    onSave(nextRadar);
-    setSavedDraftSnapshot(JSON.stringify(draft));
-    setEditingBlock(null);
-  }
-
-  function discardDraft() {
-    const nextDraft = draftFromRadar(radar);
-    setDraft(nextDraft);
-    setSavedDraftSnapshot(JSON.stringify(nextDraft));
-    setEditingBlock(null);
-  }
-
-  const headerEditing = editingBlock === 'overview';
-
   return (
     <div className="icp-settings-stack">
-      {headerEditing ? (
-        <Card>
-          <div className="icp-settings-toolbar icp-settings-toolbar-editing">
-            <RadarHeaderEditor draft={draft} onDraftChange={setDraft} />
-            <div className="icp-editor-actions">
-              <Button icon={<Save aria-hidden="true" />} variant="default" onClick={saveDraft}>
-                {t('icpRadar.saveDraft')}
-              </Button>
-              <Button icon={<X aria-hidden="true" />} variant="default" onClick={discardDraft}>
-                {t('icpRadar.discardChanges')}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      ) : (
-        <div className="icp-settings-action-row">
-          <Badge tone={overrideType ? 'unsurfaced' : 'neutral'}>
-            {overrideType ? t('icpRadar.localDraft') : t('icpRadar.readOnly')}
-          </Badge>
-          <Button icon={<SlidersHorizontal aria-hidden="true" />} variant="default" onClick={() => {
-            setEditingBlock('overview');
-            onModeChange('edit');
-          }}>
-            {t('icpRadar.editSettings')}
-          </Button>
-          <Button icon={<Copy aria-hidden="true" />} variant="default" onClick={onDuplicate}>
-            {t('icpRadar.duplicateRadar')}
-          </Button>
-          <Button icon={<Trash2 aria-hidden="true" />} variant="default" onClick={onDelete}>
-            {t('icpRadar.deleteRadar')}
-          </Button>
-          {overrideType && (
-            <Button icon={<RotateCcw aria-hidden="true" />} variant="default" onClick={onReset}>
-              {t('icpRadar.resetToArtifact')}
-            </Button>
-          )}
+      {editorState.dirty && (
+        <div className="icp-editor-errors" role="status">
+          <span>{t('icpRadar.unsavedChanges')}</span>
         </div>
       )}
-        {editorState.dirty && (
-          <div className="icp-editor-errors" role="status">
-            <span>{t('icpRadar.unsavedChanges')}</span>
-          </div>
-        )}
-        {editorState.errors.length > 0 && (
-          <div className="icp-editor-errors" role="alert">
-            {editorState.errors.map((error) => <span key={error}>{error}</span>)}
-          </div>
-        )}
+      {editorState.errors.length > 0 && (
+        <div className="icp-editor-errors" role="alert">
+          {editorState.errors.map((error) => <span key={error}>{error}</span>)}
+        </div>
+      )}
 
       <div className="icp-settings-grid">
         <SettingsBlockCard
           blockId="global_search"
           editingBlock={editingBlock}
-          onCancel={discardDraft}
-          onEdit={setEditingBlock}
-          onSave={saveDraft}
+          headerAction={<AiSuggestButton />}
+          onCancel={onCancel}
+          onEdit={onEdit}
+          onSave={onSave}
           title={t('icpRadar.settings.globalSearch')}
         >
           {editingBlock === 'global_search' ? (
-            <GlobalSearchEditor draft={draft} onDraftChange={setDraft} />
+            <GlobalSearchEditor draft={draft} onDraftChange={onDraftChange} />
           ) : (
             <GlobalSearchSummary definition={draft} />
           )}
@@ -736,16 +792,17 @@ function RadarSettings({
         <SettingsBlockCard
           blockId="qualification"
           editingBlock={editingBlock}
-          onCancel={discardDraft}
-          onEdit={setEditingBlock}
-          onSave={saveDraft}
+          headerAction={<AiSuggestButton />}
+          onCancel={onCancel}
+          onEdit={onEdit}
+          onSave={onSave}
           title={t('icpRadar.settings.qualificationRules')}
         >
           {editingBlock === 'qualification' ? (
             <QualificationRulesEditor
               group={draft.account_qualification.rule_group}
               globalSources={draft.global_search_policy.sources}
-              onChange={(rule_group) => setDraft({ ...draft, account_qualification: { rule_group } })}
+              onChange={(rule_group) => onDraftChange({ ...draft, account_qualification: { rule_group } })}
             />
           ) : (
             <RuleGroupSummary group={draft.account_qualification.rule_group} />
@@ -755,28 +812,43 @@ function RadarSettings({
         <SettingsBlockCard
           blockId="monitoring"
           editingBlock={editingBlock}
-          onCancel={discardDraft}
-          onEdit={setEditingBlock}
-          onSave={saveDraft}
+          onCancel={onCancel}
+          onEdit={onEdit}
+          onSave={onSave}
           title={t('icpRadar.settings.monitoring')}
         >
           {editingBlock === 'monitoring' ? (
-            <MonitoringEditor draft={draft} onDraftChange={setDraft} />
+            <MonitoringEditor draft={draft} onDraftChange={onDraftChange} />
           ) : (
             <MonitoringSummary definition={draft} />
           )}
         </SettingsBlockCard>
 
         <SettingsBlockCard
+          blockId="signal_scale"
+          editingBlock={editingBlock}
+          onCancel={onCancel}
+          onEdit={onEdit}
+          onSave={onSave}
+          title={t('icpRadar.settings.signalScale')}
+        >
+          {editingBlock === 'signal_scale' ? (
+            <SignalScaleEditor draft={draft} onDraftChange={onDraftChange} />
+          ) : (
+            <SignalScaleSummary definition={draft} />
+          )}
+        </SettingsBlockCard>
+
+        <SettingsBlockCard
           blockId="intent_signals"
           editingBlock={editingBlock}
-          onCancel={discardDraft}
-          onEdit={setEditingBlock}
-          onSave={saveDraft}
+          onCancel={onCancel}
+          onEdit={onEdit}
+          onSave={onSave}
           title={t('icpRadar.settings.intentSignals')}
         >
           {editingBlock === 'intent_signals' ? (
-            <IntentSignalsEditor draft={draft} onDraftChange={setDraft} />
+            <IntentSignalsEditor draft={draft} onDraftChange={onDraftChange} />
           ) : (
             <IntentSignalsSummary definition={draft} />
           )}
@@ -785,13 +857,13 @@ function RadarSettings({
         <SettingsBlockCard
           blockId="scoring"
           editingBlock={editingBlock}
-          onCancel={discardDraft}
-          onEdit={setEditingBlock}
-          onSave={saveDraft}
+          onCancel={onCancel}
+          onEdit={onEdit}
+          onSave={onSave}
           title={t('icpRadar.settings.scoring')}
         >
           {editingBlock === 'scoring' ? (
-            <ScoringModelEditor draft={draft} onDraftChange={setDraft} />
+            <ScoringModelEditor draft={draft} onDraftChange={onDraftChange} />
           ) : (
             <ScoringModelSummary definition={draft} />
           )}
@@ -800,9 +872,9 @@ function RadarSettings({
         <SettingsBlockCard
           blockId="validation"
           editingBlock={editingBlock}
-          onCancel={discardDraft}
-          onEdit={setEditingBlock}
-          onSave={saveDraft}
+          onCancel={onCancel}
+          onEdit={onEdit}
+          onSave={onSave}
           title={t('icpRadar.settings.validation')}
         >
           <ValidationReportView report={draft.validation_report} />
@@ -812,12 +884,13 @@ function RadarSettings({
   );
 }
 
-type SettingsBlockId = 'overview' | 'global_search' | 'qualification' | 'monitoring' | 'intent_signals' | 'scoring' | 'validation';
+type SettingsBlockId = 'overview' | 'global_search' | 'qualification' | 'monitoring' | 'signal_scale' | 'intent_signals' | 'scoring' | 'validation';
 
 function SettingsBlockCard({
   blockId,
   children,
   editingBlock,
+  headerAction,
   onCancel,
   onEdit,
   onSave,
@@ -826,6 +899,7 @@ function SettingsBlockCard({
   blockId: SettingsBlockId;
   children: ReactNode;
   editingBlock: SettingsBlockId | null;
+  headerAction?: ReactNode;
   onCancel: () => void;
   onEdit: (block: SettingsBlockId | null) => void;
   onSave: () => void;
@@ -840,6 +914,7 @@ function SettingsBlockCard({
           <Eyebrow>{title}</Eyebrow>
           {blockId !== 'validation' && (
             <div className="icp-editor-actions">
+              {headerAction}
               {editing ? (
                 <>
                   <Button icon={<Save aria-hidden="true" />} variant="default" onClick={onSave}>
@@ -860,6 +935,15 @@ function SettingsBlockCard({
         {children}
       </div>
     </Card>
+  );
+}
+
+function AiSuggestButton() {
+  const { t } = useTranslation();
+  return (
+    <Button disabled icon={<Sparkles aria-hidden="true" />} variant="default">
+      {t('icpRadar.settings.aiSuggest')}
+    </Button>
   );
 }
 
@@ -892,20 +976,19 @@ function GlobalSearchSummary({ definition }: { definition: RadarDefinition }) {
   const { t } = useTranslation();
   return (
     <>
-      <div className="icp-section-toolbar">
-        <dl className="icp-definition-list icp-definition-list-compact">
-          <Metric label={t('icpRadar.settings.sources')} value={String(definition.global_search_policy.sources.length)} />
-          <Metric label={t('icpRadar.settings.systemSources')} value={definition.global_search_policy.allow_system_sources ? t('icpRadar.settings.yes') : t('icpRadar.settings.no')} />
-        </dl>
-        <Button disabled icon={<Sparkles aria-hidden="true" />} variant="default">
-          {t('icpRadar.settings.aiSuggest')}
-        </Button>
-      </div>
       <div className="icp-search-policy-grid">
         <ListSection bounded title={t('icpRadar.settings.keywords')} items={definition.global_search_policy.keywords} />
         <ListSection bounded title={t('icpRadar.settings.exclusions')} items={definition.global_search_policy.exclusions} />
       </div>
       <SourceTable sources={definition.global_search_policy.sources} />
+      <div className="policy-switch-strip policy-switch-strip-end">
+        <ToggleField
+          checked={definition.global_search_policy.allow_system_sources}
+          disabled
+          label={t('icpRadar.settings.systemSources')}
+          onChange={() => undefined}
+        />
+      </div>
     </>
   );
 }
@@ -924,20 +1007,19 @@ function GlobalSearchEditor({
   }
   return (
     <div className="criteria-editor-list">
-      <Button disabled icon={<Sparkles aria-hidden="true" />} variant="default">
-        {t('icpRadar.settings.aiSuggest')}
-      </Button>
-      <CheckboxField
-        checked={policy.allow_system_sources}
-        label={t('icpRadar.settings.systemSources')}
-        onChange={(allow_system_sources) => updatePolicy({ allow_system_sources })}
-      />
       <ArrayTextAreaField label={t('icpRadar.settings.keywords')} value={policy.keywords} onChange={(keywords) => updatePolicy({ keywords })} />
       <ArrayTextAreaField label={t('icpRadar.settings.exclusions')} value={policy.exclusions} onChange={(exclusions) => updatePolicy({ exclusions })} />
       <SourceListEditor
         sources={policy.sources}
         onChange={(sources) => updatePolicy({ sources })}
       />
+      <div className="policy-switch-strip policy-switch-strip-end">
+        <ToggleField
+          checked={policy.allow_system_sources}
+          label={t('icpRadar.settings.systemSources')}
+          onChange={(allow_system_sources) => updatePolicy({ allow_system_sources })}
+        />
+      </div>
     </div>
   );
 }
@@ -949,6 +1031,7 @@ function SourceTable({ sources }: { sources: SourceDefinition[] }) {
       <table className="source-table">
         <thead>
           <tr>
+            <th>{t('icpRadar.settings.sourceNumber')}</th>
             <th>{t('icpRadar.settings.sourceLabel')}</th>
             <th>{t('icpRadar.settings.sourceType')}</th>
             <th>{t('icpRadar.settings.trustLevel')}</th>
@@ -956,8 +1039,9 @@ function SourceTable({ sources }: { sources: SourceDefinition[] }) {
           </tr>
         </thead>
         <tbody>
-          {sources.map((source) => (
+          {sources.map((source, index) => (
             <tr key={source.source_id}>
+              <td><Mono>{index + 1}</Mono></td>
               <td><strong>{source.label}</strong></td>
               <td>{t(sourceTypeKey(source.source_type))}</td>
               <td><Badge tone={trustPolicyTone(source.trust_level)}>{t(trustPolicyKey(source.trust_level))}</Badge></td>
@@ -1001,13 +1085,26 @@ function SourceListEditor({
 function RuleGroupSummary({ group }: { group: RuleGroup }) {
   const { t } = useTranslation();
   return (
-    <div className="simple-rule-list">
+    <div className="settings-table qualification-table">
+      <div className="settings-table-head">
+        <span>{t('icpRadar.settings.operator')}</span>
+        <span>{t('icpRadar.settings.rule')}</span>
+        <span>{t('icpRadar.settings.sources')}</span>
+        <span>{t('icpRadar.settings.crossValidationShort')}</span>
+        <span>{t('icpRadar.settings.additionalSourcesShort')}</span>
+        <span>{t('icpRadar.settings.requirement')}</span>
+      </div>
       {group.rules.map((rule) => (
-        <div className="simple-rule-row" key={rule.rule_id}>
-          <Mono>{rule.rule_id}</Mono>
+        <div className="settings-table-row simple-rule-row" key={rule.rule_id}>
+          <Mono>{ruleOperatorLabel(group.operator, rule)}</Mono>
+          <span>
+            <strong>{rule.description || t('icpRadar.settings.rule')}</strong>
+            <small>{rule.rule_id}</small>
+          </span>
+          <span>{sourcePolicySummary(rule.source_policy, t)}</span>
+          <BooleanPill active={rule.source_policy.source_logic === 'AND'} />
+          <BooleanPill active={rule.source_policy.allow_additional_sources} />
           <Badge tone={rule.requirement_level === 'required' ? 'ally' : 'neutral'}>{t(requirementKey(rule.requirement_level))}</Badge>
-          {isNotRule(rule) && <Badge tone="unsurfaced">NOT</Badge>}
-          <strong>{rule.description || t('icpRadar.settings.rule')}</strong>
         </div>
       ))}
     </div>
@@ -1037,9 +1134,6 @@ function QualificationRulesEditor({
           onChange={(operator) => onChange({ ...group, operator, groups: [] })}
           optionLabel={(option) => t(logicalOperatorKey(option))}
         />
-        <Button disabled icon={<Sparkles aria-hidden="true" />} variant="default">
-          {t('icpRadar.settings.aiSuggest')}
-        </Button>
       </div>
       {group.rules.map((rule, index) => (
         <SimpleRuleEditor
@@ -1075,14 +1169,14 @@ function SimpleRuleEditor({
         <Mono>{rule.rule_id || t('icpRadar.settings.rule')}</Mono>
         <small>{t('icpRadar.settings.generatedIdReadonly')}</small>
       </div>
-      <TextAreaField label={t('icpRadar.settings.ruleDescription')} value={rule.description} onChange={(description) => onChange({ ...rule, description })} />
-      <div className="simple-rule-controls">
-        <SelectField label={t('icpRadar.settings.requirement')} options={['required', 'recommended']} value={rule.requirement_level} onChange={(requirement_level) => onChange({ ...rule, requirement_level })} optionLabel={(option) => t(requirementKey(option))} />
+      <div className="simple-rule-editor-main">
         <ToggleField
           checked={isNotRule(rule)}
           label={t('icpRadar.settings.notRule')}
           onChange={(checked) => onChange({ ...rule, generated_comparison_operator: checked ? 'not_equals' : '' })}
         />
+        <TextAreaField label={t('icpRadar.settings.ruleDescription')} value={rule.description} onChange={(description) => onChange({ ...rule, description })} />
+        <SelectField label={t('icpRadar.settings.requirement')} options={['required', 'recommended']} value={rule.requirement_level} onChange={(requirement_level) => onChange({ ...rule, requirement_level })} optionLabel={(option) => t(requirementKey(option))} />
       </div>
       <SimpleSourcePolicyEditor globalSources={globalSources} policy={rule.source_policy} onChange={(source_policy) => onChange({ ...rule, source_policy })} />
       <Button icon={<X aria-hidden="true" />} variant="default" onClick={onRemove}>
@@ -1104,20 +1198,22 @@ function SimpleSourcePolicyEditor({
   const { t } = useTranslation();
   return (
     <div className="source-policy-editor">
-      <CheckboxField checked={policy.use_global_search_policy} label={t('icpRadar.settings.useGlobalSearchPolicy')} onChange={(use_global_search_policy) => onChange({ ...policy, use_global_search_policy })} />
+      <div className="policy-switch-strip">
+        <ToggleField checked={policy.use_global_search_policy} label={t('icpRadar.settings.useGlobalSearchPolicy')} onChange={(use_global_search_policy) => onChange({ ...policy, use_global_search_policy })} />
+        <ToggleField
+          checked={policy.source_logic === 'AND'}
+          label={t('icpRadar.settings.crossValidation')}
+          onChange={(checked) => onChange({ ...policy, source_logic: checked ? 'AND' : 'OR' })}
+        />
+        <ToggleField
+          checked={policy.allow_additional_sources}
+          label={t('icpRadar.settings.hitlAdditionalSources')}
+          onChange={(allow_additional_sources) => onChange({ ...policy, allow_additional_sources, fallback_confidence: allow_additional_sources ? 'hitl_required' : 'trusted' })}
+        />
+      </div>
       {policy.use_global_search_policy && (
         <small>{t('icpRadar.settings.globalSearchPolicyCopy', { count: globalSources.length })}</small>
       )}
-      <ToggleField
-        checked={policy.source_logic === 'AND'}
-        label={t('icpRadar.settings.crossValidation')}
-        onChange={(checked) => onChange({ ...policy, source_logic: checked ? 'AND' : 'OR' })}
-      />
-      <ToggleField
-        checked={policy.allow_additional_sources}
-        label={t('icpRadar.settings.hitlAdditionalSources')}
-        onChange={(allow_additional_sources) => onChange({ ...policy, allow_additional_sources, fallback_confidence: allow_additional_sources ? 'hitl_required' : 'trusted' })}
-      />
       <SourceListEditor
         sources={policy.local_sources ?? []}
         onChange={(local_sources) => onChange({ ...policy, local_sources })}
@@ -1164,18 +1260,64 @@ function MonitoringEditor({
 
 function IntentSignalsSummary({ definition }: { definition: RadarDefinition }) {
   const { t } = useTranslation();
+  const globalRubric = globalSignalRubric(definition);
   return (
-    <div className="criteria-list">
-      <Mono>{t('icpRadar.settings.signalCount', { count: definition.intent_signals.length })}</Mono>
+    <div className="settings-table intent-signal-table">
+      <div className="settings-table-head">
+        <span>{t('icpRadar.settings.signalCode')}</span>
+        <span>{t('icpRadar.settings.signalDetection')}</span>
+        <span>{t('icpRadar.settings.sources')}</span>
+        <span>{t('icpRadar.settings.crossValidationShort')}</span>
+        <span>{t('icpRadar.settings.additionalSourcesShort')}</span>
+        <span>{t('icpRadar.settings.scaleOverrideShort')}</span>
+      </div>
       {definition.intent_signals.slice(0, 8).map((signal) => (
-        <div className="criterion-row" key={signal.signal_id}>
+        <div className="settings-table-row criterion-row" key={signal.signal_id}>
           <Mono>{signal.code}</Mono>
           <span>
-            <strong>{signal.name}</strong>
-            <small>{signal.description}</small>
+            <strong>{signalRuleText(signal)}</strong>
+            <small>{signal.signal_id}</small>
           </span>
+          <span>{sourcePolicySummary(signal.source_policy, t)}</span>
+          <BooleanPill active={signal.source_policy.source_logic === 'AND'} />
+          <BooleanPill active={signal.source_policy.allow_additional_sources} />
+          <BooleanPill active={!sameRubric(signal.scoring_rubric, globalRubric)} />
         </div>
       ))}
+    </div>
+  );
+}
+
+function SignalScaleSummary({ definition }: { definition: RadarDefinition }) {
+  return <SignalRubricSummary rubric={globalSignalRubric(definition)} />;
+}
+
+function SignalScaleEditor({
+  draft,
+  onDraftChange,
+}: {
+  draft: EditableRadarDefinitionDraft;
+  onDraftChange: (draft: EditableRadarDefinitionDraft) => void;
+}) {
+  const { t } = useTranslation();
+  const globalRubric = globalSignalRubric(draft);
+  function updateAllRubrics(scoring_rubric: IntentSignalDefinition['scoring_rubric']) {
+    onDraftChange({
+      ...draft,
+      intent_signals: draft.intent_signals.map((signal) => (
+        sameRubric(signal.scoring_rubric, globalRubric)
+          ? { ...signal, scoring_rubric }
+          : signal
+      )),
+    });
+  }
+  return (
+    <div className="signal-scale-editor">
+      <div className="generated-code-row">
+        <Mono>{globalRubric.scale.join(' / ')}</Mono>
+        <small>{t('icpRadar.settings.signalScaleLocked')}</small>
+      </div>
+      <SignalRubricTable rubric={globalRubric} onChange={updateAllRubrics} />
     </div>
   );
 }
@@ -1189,35 +1331,16 @@ function IntentSignalsEditor({
 }) {
   const { t } = useTranslation();
   const globalSources = draft.global_search_policy.sources;
-  const globalRubric = draft.intent_signals[0]?.scoring_rubric ?? {
-    scale: [0, 1, 2],
-    rules: [0, 1, 2].map((score) => ({ score, description: '', rule_group: newRuleGroup(`global-rubric-${score}`) })),
-  };
-
-  function updateAllRubrics(scoring_rubric: IntentSignalDefinition['scoring_rubric']) {
-    onDraftChange({
-      ...draft,
-      intent_signals: draft.intent_signals.map((signal) => ({ ...signal, scoring_rubric })),
-    });
-  }
+  const globalRubric = globalSignalRubric(draft);
 
   return (
     <div className="criteria-editor-list">
-      <div className="signal-scale-panel">
-        <div className="generated-code-row">
-          <Mono>{globalRubric.scale.join(' / ')}</Mono>
-          <small>{t('icpRadar.settings.signalScaleLocked')}</small>
-        </div>
-        <SignalRubricTable rubric={globalRubric} onChange={updateAllRubrics} />
-      </div>
       {draft.intent_signals.map((signal, index) => (
         <div className="criteria-editor-row" key={`${signal.signal_id}-${index}`}>
           <div className="generated-code-row">
             <Mono>{signal.code}</Mono>
             <small>{t('icpRadar.settings.generatedCode')}</small>
           </div>
-          <TextField label={t('icpRadar.settings.signalName')} value={signal.name} onChange={(name) => onDraftChange({ ...draft, intent_signals: replaceAt(draft.intent_signals, index, { ...signal, name }) })} />
-          <TextAreaField label={t('icpRadar.settings.signalDescription')} value={signal.description} onChange={(description) => onDraftChange({ ...draft, intent_signals: replaceAt(draft.intent_signals, index, { ...signal, description }) })} />
           <TextAreaField
             label={t('icpRadar.settings.signalDetection')}
             value={primaryRuleDescription(signal.trigger_rule_group)}
@@ -1254,7 +1377,7 @@ function SignalRubricOverride({
   const [override, setOverride] = useState(!sameRubric(signal.scoring_rubric, globalRubric));
   return (
     <div className="scoring-rubric-editor">
-      <CheckboxField
+      <ToggleField
         checked={override}
         label={t('icpRadar.settings.overrideSignalScoring')}
         onChange={(checked) => {
@@ -1271,6 +1394,28 @@ function SignalRubricOverride({
         />
       )}
     </div>
+  );
+}
+
+function SignalRubricSummary({ rubric }: { rubric: IntentSignalDefinition['scoring_rubric'] }) {
+  const { t } = useTranslation();
+  return (
+    <table className="rubric-table rubric-table-compact">
+      <thead>
+        <tr>
+          <th>{t('icpRadar.settings.scoreValue')}</th>
+          <th>{t('icpRadar.settings.whenToScore')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rubric.rules.map((rule) => (
+          <tr key={rule.score}>
+            <td><Mono>{rule.score}</Mono></td>
+            <td>{rule.description}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -1497,15 +1642,6 @@ function TextAreaField({ label, onChange, value }: { label: string; onChange: (v
   );
 }
 
-function CheckboxField({ checked, label, onChange }: { checked: boolean; label: string; onChange: (value: boolean) => void }) {
-  return (
-    <label className="icp-editor-field icp-editor-checkbox">
-      <input checked={checked} type="checkbox" onChange={(event) => onChange(event.target.checked)} />
-      <span>{label}</span>
-    </label>
-  );
-}
-
 function ArrayTextAreaField({ label, onChange, value }: { label: string; onChange: (value: string[]) => void; value: string[] }) {
   return (
     <TextAreaField
@@ -1543,10 +1679,20 @@ function SelectField({
   );
 }
 
-function ToggleField({ checked, label, onChange }: { checked: boolean; label: string; onChange: (value: boolean) => void }) {
+function ToggleField({
+  checked,
+  disabled = false,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  label: string;
+  onChange: (value: boolean) => void;
+}) {
   return (
-    <label className="toggle-field">
-      <input checked={checked} type="checkbox" onChange={(event) => onChange(event.target.checked)} />
+    <label className={`toggle-field${disabled ? ' toggle-field-disabled' : ''}`}>
+      <input checked={checked} disabled={disabled} type="checkbox" onChange={(event) => onChange(event.target.checked)} />
       <span aria-hidden="true" />
       <strong>{label}</strong>
     </label>
@@ -2276,8 +2422,33 @@ function requirementKey(value: string) {
   return `icpRadar.settings.requirements.${value}`;
 }
 
+function ruleOperatorLabel(operator: string, rule: AtomicRule) {
+  const base = operator === 'OR' ? 'OR' : 'AND';
+  return isNotRule(rule) ? `${base} NOT` : base;
+}
+
 function isNotRule(rule: AtomicRule) {
   return rule.generated_comparison_operator?.startsWith('not') ?? false;
+}
+
+function signalRuleText(signal: IntentSignalDefinition) {
+  return primaryRuleDescription(signal.trigger_rule_group) || signal.name || signal.description;
+}
+
+function sourcePolicySummary(policy: SourcePolicy, t: (key: string, options?: Record<string, unknown>) => string) {
+  const localCount = policy.local_sources?.length ?? 0;
+  if (policy.use_global_search_policy && localCount > 0) {
+    return t('icpRadar.settings.globalAndLocalSources', { count: localCount });
+  }
+  if (policy.use_global_search_policy) {
+    return t('icpRadar.settings.globalSources');
+  }
+  return t('icpRadar.settings.localSourceCount', { count: localCount });
+}
+
+function BooleanPill({ active }: { active: boolean }) {
+  const { t } = useTranslation();
+  return <Badge tone={active ? 'ally' : 'neutral'}>{active ? t('icpRadar.settings.yes') : t('icpRadar.settings.no')}</Badge>;
 }
 
 function deduplicationValue(value: string) {
@@ -2329,6 +2500,13 @@ function setPrimaryRuleDescription(group: RuleGroup, description: string): RuleG
 function sameRubric(left: IntentSignalDefinition['scoring_rubric'], right: IntentSignalDefinition['scoring_rubric']) {
   return JSON.stringify(left.scale) === JSON.stringify(right.scale)
     && JSON.stringify(left.rules.map((rule) => rule.description)) === JSON.stringify(right.rules.map((rule) => rule.description));
+}
+
+function globalSignalRubric(definition: RadarDefinition) {
+  return definition.intent_signals[0]?.scoring_rubric ?? {
+    scale: [0, 1, 2],
+    rules: [0, 1, 2].map((score) => ({ score, description: '', rule_group: newRuleGroup(`global-rubric-${score}`) })),
+  };
 }
 
 function replaceAt<T>(items: T[], index: number, nextItem: T): T[] {

@@ -1224,6 +1224,43 @@ Status:
 - Risks:
   - The simplified UI is a view model over the internal contract; future persistence should formalize this view model instead of letting UI helpers sprawl.
 
+### Slice 0.6.5.4: ICP Radar settings layout and signal editor polish
+
+- Status: `Done`
+- Goal: Polish the current ICP Radar Settings UX without changing the backend artifact contract.
+- User value: A user can edit radar settings from the radar header and scan source, qualification, and signal settings without misaligned tables, duplicated action rows, oversized signal-scale editors, or broken switches.
+- Scope:
+  - Move Settings edit/save/discard/duplicate/delete/reset actions into the selected radar header.
+  - Show radar description in the selected-radar header instead of generated shortlist summary copy while configuring the radar.
+  - Remove the separate Settings action row.
+  - Show global search sources as a bounded numbered table and move additional system sources to the end of the block as a switch.
+  - Keep keywords and exclusions as bounded list blocks.
+  - Render qualification rules as a table with operator, rule, source summary, cross-check, additional-source, and requirement columns.
+  - Render intent signals as a table with code, detection rule, source summary, cross-check, additional-source, and scale-override columns.
+  - Move signal scale into its own compact Settings block.
+  - Use one switch component style for boolean settings in these blocks.
+- Out of scope:
+  - Backend schema changes.
+  - Live AI suggestion generation.
+  - Running edited radar settings against sources.
+  - Recalculating the shortlist.
+- Tests:
+  - Frontend contract tests for header-owned actions, no standalone Settings action row, numbered source table, table summaries, separate signal-scale block, and EN/RU labels.
+  - `npm --prefix ./frontend run build`.
+  - `python -m pytest`.
+  - `npm --prefix ./frontend run visual:smoke`.
+- Docs:
+  - Update user/developer/demo docs with header-owned Settings actions, source table, rule table, signal table, and signal scale block.
+- Demo impact:
+  - The Settings tab stays browser-local and read/write in demo state, but becomes more readable on laptop screens.
+- Acceptance criteria:
+  - Settings has no global action row outside blocks/header.
+  - Header owns radar metadata editing and lifecycle actions.
+  - Global search sources, qualification rules, and intent signals do not visually overlap.
+  - Signal scale is compact and separate from the signal list.
+- Risks:
+  - The Settings UI is still a frontend view model over the existing artifact contract; future persistence should formalize the same simplified model.
+
 ### Slice 0.6.6: ICP Radar run history and monitoring schedule loop
 
 - Status: `Backlog`
@@ -1693,6 +1730,12 @@ Status:
   - Reworked global sources into a bounded table and fixed source editor focus by keeping source IDs stable while typing.
   - Replaced monitoring free-text fields with dedupe dropdowns and number/unit duration controls.
   - Added a global signal scoring scale table with optional per-signal override and fixed touched RU Settings labels that contained `???`.
+- `Slice 0.6.5.4: ICP Radar settings layout and signal editor polish`
+  - Moved Settings-level actions into the selected radar header and removed the standalone Settings action row.
+  - Kept radar description visible in the header while configuring a radar.
+  - Reworked the global search base into bounded keyword/exclusion lists plus a numbered source table.
+  - Reworked account qualification rules and intent signals into aligned table summaries with operator/source/check columns.
+  - Moved signal scale into a separate compact Settings block and standardized boolean controls as switches.
 
 ## Blocked Items
 

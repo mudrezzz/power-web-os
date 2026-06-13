@@ -279,7 +279,6 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "shortlistTab",
         "settingsTab",
         "readOnly",
-        "settingsMode",
         "radarOverrides",
         "power-web-os-icp-radar-config-overrides",
         "localStorage",
@@ -327,14 +326,20 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".icp-definition-list div" in css
     assert "container-type: inline-size" in css
     assert "width: 100cqw" in css
-    assert ".icp-settings-edit-grid" in css
+    assert ".icp-settings-grid" in css
     assert ".icp-editor-field" in css
     assert ".criteria-editor-row" in css
     assert ".source-policy-editor" in css
     assert ".source-table" in css
     assert ".source-table-wrap" in css
-    assert ".simple-rule-row" in css
-    assert ".signal-scale-panel" in css
+    assert ".settings-table-row" in css
+    assert ".signal-scale-editor" in css
+    assert ".settings-table" in css
+    assert ".qualification-table" in css
+    assert ".intent-signal-table" in css
+    assert ".policy-switch-strip" in css
+    assert "icp-settings-action-row" not in screen
+    assert "signal-scale-panel" not in screen
     assert ".toggle-field" in css
     assert "targetField" not in screen
     assert "icpRadar.settings.comparison" not in screen
@@ -376,6 +381,15 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "crossValidation",
         "hitlAdditionalSources",
         "notRule",
+        "sourceNumber",
+        "operator",
+        "crossValidationShort",
+        "additionalSourcesShort",
+        "globalSources",
+        "globalAndLocalSources",
+        "localSourceCount",
+        "scaleOverrideShort",
+        "signalScale",
         "durationUnits",
         "deduplicationPolicies",
         "trustPolicies",
@@ -384,6 +398,16 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "validConfiguration",
     ]:
         assert editable_key in i18n
+    assert "onEditHeader" in screen
+    assert "SignalScaleSummary" in screen
+    assert "SignalScaleEditor" in screen
+    assert "BooleanPill" in screen
+    assert "sourcePolicySummary" in screen
+    assert "signalRuleText" in screen
+    header_segment = screen.split("function RadarDetailHeader", 1)[1].split("function CandidateTable", 1)[0]
+    assert "headerDraft.metadata.description" in header_segment
+    assert "TextField label={t('icpRadar.settings.signalName')" not in screen
+    assert "TextAreaField label={t('icpRadar.settings.signalDescription')" not in screen
     assert "???" not in i18n
     assert ".icp-preview-heading" in css
     assert ".icp-preview-actions" in css
