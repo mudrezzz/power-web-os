@@ -1261,6 +1261,43 @@ Status:
 - Risks:
   - The Settings UI is still a frontend view model over the existing artifact contract; future persistence should formalize the same simplified model.
 
+### Slice 0.6.5.5: ICP Radar settings header and switch polish
+
+- Status: `Done`
+- Goal: Fix the remaining ICP Radar Settings header/action layout and switch behavior after Slice 0.6.5.4.
+- User value: A user can edit radar metadata and block settings without confusing header action placement, duplicated monitoring metadata, malformed bounded list headings, or broken switch interactions.
+- Scope:
+  - Keep all selected-radar actions in the top-right header action row.
+  - Move status/local/draft/read-only metadata to the left header content under the radar description.
+  - Remove run mode from the selected-radar header; monitoring mode belongs only in the Monitoring settings block.
+  - Keep header edit mode structurally close to view mode: name, description, then active status/owner metadata.
+  - Fix bounded keyword/exclusion section alignment so labels do not stretch vertically.
+  - Fix switch geometry so the active thumb stays inside the track.
+  - Guard disabled switches from firing state changes.
+  - Normalize generated and localStorage radar definitions before render/edit so legacy or partial browser-local drafts cannot crash Settings after a switch change.
+- Out of scope:
+  - Backend schema changes.
+  - New radar settings fields.
+  - Live AI suggestions.
+  - Recalculating shortlist or monitoring runs.
+- Tests:
+  - Frontend contract tests for header metadata/action separation, no header run-mode copy, bounded list alignment, switch geometry, and disabled-switch guard.
+  - `npm --prefix ./frontend run settings:toggle-smoke`, including persisted draft reload, legacy localStorage override cases, and explicit viewport assertions so switching controls cannot scroll the fixed SPA shell out of view.
+  - `npm --prefix ./frontend run build`.
+  - `python -m pytest`.
+  - Browser smoke for Settings switches.
+- Docs:
+  - Update user/developer docs with header action placement, monitoring metadata ownership, and switch interaction rules.
+- Demo impact:
+  - The Settings tab is visually cleaner and less fragile on laptop screens.
+- Acceptance criteria:
+  - Header actions are consistently top-right.
+  - Status and owner metadata remain with the radar description on the left.
+  - Header does not repeat incremental monitoring state.
+  - Switches do not crash the screen and active switch geometry is correct.
+- Risks:
+  - Switch regressions may be browser-specific; mitigate with Playwright smoke for header and block switches.
+
 ### Slice 0.6.6: ICP Radar run history and monitoring schedule loop
 
 - Status: `Backlog`
@@ -1736,6 +1773,14 @@ Status:
   - Reworked the global search base into bounded keyword/exclusion lists plus a numbered source table.
   - Reworked account qualification rules and intent signals into aligned table summaries with operator/source/check columns.
   - Moved signal scale into a separate compact Settings block and standardized boolean controls as switches.
+- `Slice 0.6.5.5: ICP Radar settings header and switch polish`
+  - Aligned selected-radar header actions in the top-right row and moved status/local/read-only metadata to the left header content.
+  - Removed run-mode copy from the selected-radar header so monitoring mode is shown only in the Monitoring settings block.
+  - Kept header edit mode close to view mode and fixed bounded keyword/exclusion heading alignment.
+  - Corrected active switch thumb geometry and guarded disabled switches from firing changes.
+  - Pinned the SPA shell to the viewport and constrained hidden switch inputs so switch clicks cannot move the browser document scroll and visually blank the app.
+  - Normalized legacy/incomplete browser-local radar overrides before rendering Settings.
+  - Added a repeatable Playwright `settings:toggle-smoke` command that opens RU Settings, saves/reloads the global-search switch, injects a legacy override, clicks every switch in every editable block twice, and fails if `.app-shell` leaves the viewport.
 
 ## Blocked Items
 

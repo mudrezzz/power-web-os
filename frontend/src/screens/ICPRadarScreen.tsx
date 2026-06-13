@@ -31,10 +31,14 @@ import type {
   ICPRadarCatalogItem,
   ICPRadarCandidate,
   IntentSignalDefinition,
+  GlobalSearchPolicy,
+  MonitoringPolicy,
   RadarConfigOverride,
   RadarDefinition,
   RadarEditorState,
+  RadarMetadata,
   RadarScoringModel,
+  RadarValidationReport,
   RuleGroup,
   SourceDefinition,
   SourcePolicy,
@@ -150,15 +154,16 @@ export function ICPRadarScreen({
   }
 
   function saveRadarDraft(radar: ICPRadarCatalogItem, overrideType: RadarConfigOverride['override_type']) {
+    const normalizedRadar = normalizeRadarCatalogItem(radar);
     setRadarOverrides((current) => ({
       ...current,
-      [radar.radar_id]: {
+      [normalizedRadar.radar_id]: {
         override_type: overrideType === 'deleted' ? 'edited' : overrideType,
-        radar,
+        radar: normalizedRadar,
         saved_at: new Date().toISOString(),
       },
     }));
-    setSelectedRadarId(radar.radar_id);
+    setSelectedRadarId(normalizedRadar.radar_id);
   }
 
   function deleteRadar(radar: ICPRadarCatalogItem) {
@@ -533,6 +538,8 @@ function RadarDetailHeader({
       : t('icpRadar.emptyShortlistSummary', { product: radar.profile.product })
   );
   const editingHeader = activeTab === 'settings' && editingBlock === 'overview';
+  const effectiveHeaderStatus = headerDraft.metadata.status || radar.status;
+  const statusTone = effectiveHeaderStatus === 'active' ? 'ally' : 'neutral';
   return (
     <div className="icp-radar-selected-shell">
       <div className="icp-detail-breadcrumbs" aria-label={t('icpRadar.radarBreadcrumbs')}>
@@ -555,18 +562,19 @@ function RadarDetailHeader({
               <Eyebrow>{t('icpRadar.eyebrow')}</Eyebrow>
               <h1>{headerDraft.metadata.name || radar.name}</h1>
               <p>{headerDescription}</p>
+              <div className="icp-radar-header-meta-row">
+                <Badge tone={statusTone}>{t(radarStatusKey(effectiveHeaderStatus))}</Badge>
+                {isLocalDraft && <Badge tone="unsurfaced">{t('icpRadar.localDraft')}</Badge>}
+                <Badge tone={overrideType ? 'unsurfaced' : 'neutral'}>
+                  {overrideType ? t('icpRadar.localDraft') : t('icpRadar.readOnly')}
+                </Badge>
+                {dirty && <Badge tone="unsurfaced">{t('icpRadar.unsavedChanges')}</Badge>}
+                <span>{t('icpRadar.cardFields.owner')}: {headerDraft.metadata.owner || radar.owner}</span>
+              </div>
             </>
           )}
         </div>
-        <div className="icp-profile-meta icp-radar-header-actions">
-          <div className="icp-radar-header-badges">
-            <Badge tone={headerDraft.metadata.status === 'active' || radar.status === 'active' ? 'ally' : 'neutral'}>
-              {t(radarStatusKey(headerDraft.metadata.status || radar.status))}
-            </Badge>
-            {isLocalDraft && <Badge tone="unsurfaced">{t('icpRadar.localDraft')}</Badge>}
-            <Mono>{t(runModeKey(radar.summary.run_mode))}</Mono>
-            <span>{t('icpRadar.cardFields.owner')}: {headerDraft.metadata.owner || radar.owner}</span>
-          </div>
+        <div className="icp-radar-header-actions">
           {activeTab === 'settings' && (
             <div className="icp-editor-actions">
               {editingHeader ? (
@@ -580,10 +588,6 @@ function RadarDetailHeader({
                 </>
               ) : (
                 <>
-                  <Badge tone={overrideType ? 'unsurfaced' : 'neutral'}>
-                    {overrideType ? t('icpRadar.localDraft') : t('icpRadar.readOnly')}
-                  </Badge>
-                  {dirty && <Badge tone="unsurfaced">{t('icpRadar.unsavedChanges')}</Badge>}
                   <Button icon={<SlidersHorizontal aria-hidden="true" />} variant="default" onClick={onEditHeader}>
                     {t('icpRadar.editSettings')}
                   </Button>
@@ -958,16 +962,15 @@ function RadarHeaderEditor({
   return (
     <div className="icp-settings-header-editor">
       <TextField label={t('icpRadar.settings.radarName')} value={draft.metadata.name} onChange={(name) => onDraftChange({ ...draft, metadata: { ...draft.metadata, name } })} />
-      <ToggleField
-        checked={draft.metadata.status === 'active'}
-        label={t('icpRadar.settings.activeStatus')}
-        onChange={(active) => onDraftChange({ ...draft, metadata: { ...draft.metadata, status: active ? 'active' : 'configured' } })}
-      />
-      <div className="icp-readonly-field">
-        <span>{t('icpRadar.cardFields.owner')}</span>
-        <strong>{draft.metadata.owner}</strong>
-      </div>
       <TextAreaField label={t('icpRadar.settings.description')} value={draft.metadata.description} onChange={(description) => onDraftChange({ ...draft, metadata: { ...draft.metadata, description } })} />
+      <div className="icp-radar-header-meta-row">
+        <ToggleField
+          checked={draft.metadata.status === 'active'}
+          label={t('icpRadar.settings.activeStatus')}
+          onChange={(active) => onDraftChange({ ...draft, metadata: { ...draft.metadata, status: active ? 'active' : 'configured' } })}
+        />
+        <span>{t('icpRadar.cardFields.owner')}: {draft.metadata.owner}</span>
+      </div>
     </div>
   );
 }
@@ -1692,7 +1695,16 @@ function ToggleField({
 }) {
   return (
     <label className={`toggle-field${disabled ? ' toggle-field-disabled' : ''}`}>
-      <input checked={checked} disabled={disabled} type="checkbox" onChange={(event) => onChange(event.target.checked)} />
+      <input
+        checked={checked}
+        disabled={disabled}
+        type="checkbox"
+        onChange={(event) => {
+          if (!disabled) {
+            onChange(event.target.checked);
+          }
+        }}
+      />
       <span aria-hidden="true" />
       <strong>{label}</strong>
     </label>
@@ -2600,8 +2612,24 @@ function newIntentSignal(sourceIds: string[]): IntentSignalDefinition {
 function loadRadarConfigOverrides(): Record<string, RadarConfigOverride> {
   try {
     const raw = window.localStorage.getItem(radarConfigStorageKey);
-    return raw ? JSON.parse(raw) as Record<string, RadarConfigOverride> : {};
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as Record<string, RadarConfigOverride>;
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .filter(([, override]) => override?.radar?.radar_id)
+        .map(([radarId, override]) => [
+          radarId,
+          {
+            override_type: override.override_type === 'created' || override.override_type === 'deleted' ? override.override_type : 'edited',
+            radar: normalizeRadarCatalogItem(override.radar),
+            saved_at: override.saved_at || new Date(0).toISOString(),
+          },
+        ]),
+    );
   } catch {
+    window.localStorage.removeItem(radarConfigStorageKey);
     return {};
   }
 }
@@ -2620,17 +2648,17 @@ function mergeRadarCatalog(
     .filter((radar) => !deletedIds.has(radar.radar_id))
     .map((radar) => {
       const override = overrides[radar.radar_id];
-      return override && override.override_type !== 'deleted' ? override.radar : radar;
+      return normalizeRadarCatalogItem(override && override.override_type !== 'deleted' ? override.radar : radar);
     });
   const existingIds = new Set(merged.map((radar) => radar.radar_id));
   const created = Object.values(overrides)
     .filter((override) => override.override_type !== 'deleted' && !existingIds.has(override.radar.radar_id))
-    .map((override) => override.radar);
+    .map((override) => normalizeRadarCatalogItem(override.radar));
   return [...merged, ...created];
 }
 
 function draftFromRadar(radar: ICPRadarCatalogItem): EditableRadarDefinitionDraft {
-  return cloneDefinition(radar.definition);
+  return normalizeRadarDefinition(radar.definition);
 }
 
 function radarFromDraft(base: ICPRadarCatalogItem, draft: EditableRadarDefinitionDraft): ICPRadarCatalogItem {
@@ -2652,7 +2680,7 @@ function radarFromDraft(base: ICPRadarCatalogItem, draft: EditableRadarDefinitio
       cadence: draft.monitoring_policy.cadence,
       run_mode: draft.monitoring_policy.run_mode,
     },
-    definition,
+    definition: normalizeRadarDefinition(definition),
   };
 }
 
@@ -2739,12 +2767,184 @@ function duplicateLocalRadar(radar: ICPRadarCatalogItem, name: string): ICPRadar
   };
 }
 
+function normalizeRadarCatalogItem(radar: ICPRadarCatalogItem): ICPRadarCatalogItem {
+  const definition = normalizeRadarDefinition(radar.definition);
+  return {
+    ...radar,
+    radar_id: radar.radar_id || `radar-${Date.now()}`,
+    name: radar.name || definition.metadata.name || 'ICP Radar',
+    status: radar.status || definition.metadata.status || 'configured',
+    owner: radar.owner || definition.metadata.owner || 'ABM Research',
+    profile: {
+      icp_profile: radar.profile?.icp_profile || definition.metadata.name || 'ICP Radar',
+      product: radar.profile?.product || definition.scoring_model.fit_model.description || '',
+      segment: radar.profile?.segment || definition.account_qualification.rule_group.name || '',
+      scope: radar.profile?.scope || definition.metadata.description || '',
+    },
+    summary: {
+      cadence: radar.summary?.cadence || definition.monitoring_policy.cadence || 'monthly',
+      last_run: radar.summary?.last_run || 'not_run',
+      candidate_count: Number.isFinite(Number(radar.summary?.candidate_count)) ? Number(radar.summary.candidate_count) : 0,
+      needs_review_count: Number.isFinite(Number(radar.summary?.needs_review_count)) ? Number(radar.summary.needs_review_count) : 0,
+      accepted_count: Number.isFinite(Number(radar.summary?.accepted_count)) ? Number(radar.summary.accepted_count) : 0,
+      run_mode: radar.summary?.run_mode || definition.monitoring_policy.run_mode || 'configured_not_generated',
+    },
+    definition,
+    artifact_path: radar.artifact_path ?? null,
+  };
+}
+
+function normalizeRadarDefinition(definition: RadarDefinition): RadarDefinition {
+  const fallbackDefinition = (definition ?? {}) as Partial<RadarDefinition>;
+  const fallbackMetadata = (fallbackDefinition.metadata ?? {}) as Partial<RadarMetadata>;
+  const fallbackGlobal = (fallbackDefinition.global_search_policy ?? {}) as Partial<GlobalSearchPolicy>;
+  const fallbackMonitoring = (fallbackDefinition.monitoring_policy ?? {}) as Partial<MonitoringPolicy>;
+  const fallbackScoring = (fallbackDefinition.scoring_model ?? {}) as Partial<RadarScoringModel>;
+  const fallbackValidation = (fallbackDefinition.validation_report ?? {}) as Partial<RadarValidationReport>;
+  const fitModel = (fallbackScoring.fit_model ?? {}) as Partial<RadarScoringModel['fit_model']>;
+  const intentModel = (fallbackScoring.intent_model ?? {}) as Partial<RadarScoringModel['intent_model']>;
+  const tierModel = (fallbackScoring.tier_model ?? {}) as Partial<RadarScoringModel['tier_model']>;
+
+  return {
+    definition_id: fallbackDefinition.definition_id || `definition-${Date.now()}`,
+    metadata: {
+      name: fallbackMetadata.name || 'ICP Radar',
+      description: fallbackMetadata.description || '',
+      owner: fallbackMetadata.owner || 'ABM Research',
+      status: fallbackMetadata.status || 'configured',
+    },
+    global_search_policy: {
+      sources: arrayOf(fallbackGlobal.sources).map(normalizeSourceDefinition),
+      keywords: arrayOf(fallbackGlobal.keywords).map(String),
+      exclusions: arrayOf(fallbackGlobal.exclusions).map(String),
+      allow_system_sources: fallbackGlobal.allow_system_sources !== false,
+    },
+    account_qualification: {
+      rule_group: normalizeRuleGroup(fallbackDefinition.account_qualification?.rule_group, 'qualification-root'),
+    },
+    intent_signals: arrayOf(fallbackDefinition.intent_signals).map(normalizeIntentSignal),
+    monitoring_policy: {
+      cadence: fallbackMonitoring.cadence || 'monthly',
+      lookback_window: fallbackMonitoring.lookback_window || '30 days',
+      run_mode: fallbackMonitoring.run_mode || 'configured_not_generated',
+      deduplication: fallbackMonitoring.deduplication || 'dedupe_by_source_url_and_signal_code',
+      stale_after: fallbackMonitoring.stale_after || '180 days',
+    },
+    scoring_model: {
+      fit_model: {
+        formula_preset: fitModel.formula_preset || 'weighted_average',
+        description: fitModel.description || '',
+        custom_formula: fitModel.custom_formula || '',
+        uses: arrayOf(fitModel.uses).map(String),
+      },
+      intent_model: {
+        formula_preset: intentModel.formula_preset || 'weighted_average',
+        description: intentModel.description || '',
+        custom_formula: intentModel.custom_formula || '',
+        uses: arrayOf(intentModel.uses).map(String),
+      },
+      tier_model: {
+        basis: tierModel.basis || 'fit + intent',
+        description: tierModel.description || '',
+      },
+      tier_thresholds: fallbackScoring.tier_thresholds ?? {},
+      confidence_penalties: fallbackScoring.confidence_penalties ?? {},
+    },
+    validation_report: {
+      errors: arrayOf(fallbackValidation.errors),
+      warnings: arrayOf(fallbackValidation.warnings),
+      info: arrayOf(fallbackValidation.info),
+    },
+  };
+}
+
+function normalizeSourceDefinition(source: SourceDefinition): SourceDefinition {
+  const fallbackSource = (source ?? {}) as Partial<SourceDefinition>;
+  const label = fallbackSource.label || fallbackSource.reference || 'Source';
+  const reference = fallbackSource.reference || '';
+  return {
+    source_id: fallbackSource.source_id || sourceIdFrom(label, reference),
+    source_type: fallbackSource.source_type || 'url',
+    label,
+    reference,
+    trust_level: fallbackSource.trust_level || 'cross_check',
+  };
+}
+
+function normalizeSourcePolicy(policy: SourcePolicy | undefined): SourcePolicy {
+  const fallbackPolicy = (policy ?? {}) as Partial<SourcePolicy>;
+  return {
+    source_ids: arrayOf(fallbackPolicy.source_ids).map(String),
+    source_logic: fallbackPolicy.source_logic === 'AND' ? 'AND' : 'OR',
+    use_global_search_policy: fallbackPolicy.use_global_search_policy !== false,
+    allow_additional_sources: fallbackPolicy.allow_additional_sources !== false,
+    fallback_confidence: fallbackPolicy.fallback_confidence || 'hitl_required',
+    local_sources: arrayOf(fallbackPolicy.local_sources).map(normalizeSourceDefinition),
+  };
+}
+
+function normalizeRuleGroup(group: RuleGroup | undefined, fallbackId: string): RuleGroup {
+  const fallbackGroup = (group ?? {}) as Partial<RuleGroup>;
+  return {
+    group_id: fallbackGroup.group_id || fallbackId,
+    name: fallbackGroup.name || '',
+    operator: fallbackGroup.operator || 'AND',
+    rules: arrayOf(fallbackGroup.rules).map(normalizeAtomicRule),
+    groups: arrayOf(fallbackGroup.groups).map((nestedGroup, index) => normalizeRuleGroup(nestedGroup, `${fallbackId}-${index}`)),
+  };
+}
+
+function normalizeAtomicRule(rule: AtomicRule): AtomicRule {
+  const fallbackRule = (rule ?? {}) as Partial<AtomicRule>;
+  const description = fallbackRule.description || fallbackRule.name || '';
+  return {
+    rule_id: fallbackRule.rule_id || ruleIdFrom(description),
+    name: fallbackRule.name || description,
+    description,
+    generated_target_field: fallbackRule.generated_target_field || '',
+    generated_comparison_operator: fallbackRule.generated_comparison_operator || '',
+    generated_value: fallbackRule.generated_value || '',
+    requirement_level: fallbackRule.requirement_level || 'recommended',
+    source_policy: normalizeSourcePolicy(fallbackRule.source_policy),
+  };
+}
+
+function normalizeIntentSignal(signal: IntentSignalDefinition): IntentSignalDefinition {
+  const fallbackSignal = (signal ?? {}) as Partial<IntentSignalDefinition>;
+  const code = fallbackSignal.code || fallbackSignal.signal_id || `S${Date.now()}`;
+  const scoringRubric = fallbackSignal.scoring_rubric ?? { scale: [0, 1, 2], rules: [] };
+  const scale = arrayOf(scoringRubric.scale).length ? arrayOf(scoringRubric.scale).map(Number) : [0, 1, 2];
+  return {
+    signal_id: fallbackSignal.signal_id || `signal-${code}`,
+    code,
+    name: fallbackSignal.name || code,
+    description: fallbackSignal.description || '',
+    trigger_rule_group: normalizeRuleGroup(fallbackSignal.trigger_rule_group, `trigger-${code}`),
+    source_policy: normalizeSourcePolicy(fallbackSignal.source_policy),
+    scoring_rubric: {
+      scale,
+      rules: scale.map((score) => {
+        const sourceRule = arrayOf(scoringRubric.rules).find((rule) => Number(rule.score) === score);
+        return {
+          score,
+          description: sourceRule?.description || '',
+          rule_group: normalizeRuleGroup(sourceRule?.rule_group, `rubric-${code}-${score}`),
+        };
+      }),
+    },
+  };
+}
+
+function arrayOf<T>(value: T[] | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 function cloneDefinition(definition: RadarDefinition): RadarDefinition {
   return JSON.parse(JSON.stringify(definition)) as RadarDefinition;
 }
 
 function definitionFromDraft(draft: EditableRadarDefinitionDraft): RadarDefinition {
-  return cloneDefinition(draft);
+  return normalizeRadarDefinition(cloneDefinition(draft));
 }
 
 function validateRadarDraft(draft: EditableRadarDefinitionDraft, t: (key: string) => string) {

@@ -11,12 +11,14 @@ def test_frontend_imports_design_system_tokens() -> None:
 
 def test_frontend_i18n_resources_cover_supported_locales() -> None:
     i18n = Path("frontend/src/i18n.ts").read_text(encoding="utf-8")
+    package_json = Path("frontend/package.json").read_text(encoding="utf-8")
 
     assert "supportedLocales = ['en', 'ru']" in i18n
     assert "defaultLocale: SupportedLocale = 'en'" in i18n
     assert "localeStorageKey" in i18n
-    assert "i18next" in Path("frontend/package.json").read_text(encoding="utf-8")
-    assert "react-i18next" in Path("frontend/package.json").read_text(encoding="utf-8")
+    assert "i18next" in package_json
+    assert "react-i18next" in package_json
+    assert "settings:toggle-smoke" in package_json
 
 
 def test_frontend_localizes_visible_demo_artifact_data_for_ru() -> None:
@@ -406,6 +408,8 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert "signalRuleText" in screen
     header_segment = screen.split("function RadarDetailHeader", 1)[1].split("function CandidateTable", 1)[0]
     assert "headerDraft.metadata.description" in header_segment
+    assert "icp-radar-header-meta-row" in header_segment
+    assert "runModeKey(radar.summary.run_mode)" not in header_segment
     assert "TextField label={t('icpRadar.settings.signalName')" not in screen
     assert "TextAreaField label={t('icpRadar.settings.signalDescription')" not in screen
     assert "???" not in i18n
@@ -481,6 +485,20 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".icp-radar-list-row" in css
     assert ".icp-radar-list-status" in css
     assert ".icp-radar-run-mode" in css
+    assert ".icp-radar-header-meta-row" in css
+    assert ".icp-radar-header-badges" not in css
+    assert "html,\nbody,\n#root" in css
+    assert ".app-shell {\n  position: fixed;\n  inset: 0;" in css
+    assert "transform: translate(var(--s-4), -50%)" in css
+    assert "transform: translate(calc(var(--s-4) + var(--s-1)), -50%)" not in css
+    assert ".toggle-field {\n  position: relative;" in css
+    assert ".toggle-field input {\n  position: absolute;\n  inset: 0;" in css
+    assert ".icp-search-policy-grid .icp-detail-section" in css
+    assert "if (!disabled)" in screen
+    assert "normalizeRadarDefinition" in screen
+    assert "normalizeRadarCatalogItem" in screen
+    assert "normalizeSourcePolicy" in screen
+    assert "normalizeRuleGroup" in screen
     assert "icp-radar-list-status" in screen
     assert "icp-radar-run-mode" in screen
     assert "grid-template-columns: repeat(3, minmax(0, 1fr))" not in css
@@ -491,6 +509,20 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".icp-detail-screen" in css
     assert "top: 0" in css
     assert "criteria-action-head" in screen
+
+    toggle_smoke = Path("frontend/scripts/settings-toggle-smoke.mjs").read_text(encoding="utf-8")
+    assert "power-web-os-locale" in toggle_smoke
+    assert "'ru'" in toggle_smoke
+    assert "clickAllTogglesIn" in toggle_smoke
+    assert "Settings toggle smoke passed" in toggle_smoke
+    assert "clicked < 90" in toggle_smoke
+    assert "toggleGlobalSearchAndPersist" in toggle_smoke
+    assert "clickGlobalSearchSwitchWithLegacyOverride" in toggle_smoke
+    assert "legacy override global search switch" in toggle_smoke
+    assert "SPA shell left viewport" in toggle_smoke
+    assert "window.scrollY" in toggle_smoke
+    assert "shellTop" in toggle_smoke
+    assert "shellBottom" in toggle_smoke
 
     for ru_label in [
         "Соответствие",

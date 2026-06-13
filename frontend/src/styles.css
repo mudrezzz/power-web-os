@@ -6,6 +6,7 @@ html,
 body,
 #root {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -28,6 +29,8 @@ button {
 }
 
 .app-shell {
+  position: fixed;
+  inset: 0;
   display: flex;
   width: 100%;
   height: 100dvh;
@@ -988,18 +991,29 @@ button {
 }
 
 .icp-radar-header-actions {
-  align-items: flex-end;
-  gap: var(--s-3);
-}
-
-.icp-radar-header-badges {
+  align-self: start;
+  justify-self: end;
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: flex-end;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.icp-radar-header-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--s-2);
+  margin-top: var(--s-2);
   min-width: 0;
   color: var(--fg3);
   font: var(--body-sm);
+}
+
+.icp-radar-header-meta-row .toggle-field {
+  min-height: var(--s-6);
 }
 
 .icp-radar-tabs {
@@ -1423,12 +1437,8 @@ button {
 
 .icp-settings-header-editor {
   flex: 1;
-  grid-template-columns: minmax(0, 1.4fr) minmax(calc(var(--s-20) * 2), auto) minmax(calc(var(--s-20) * 2), auto);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-}
-
-.icp-settings-header-editor .icp-editor-field:last-child {
-  grid-column: 1 / -1;
 }
 
 .icp-settings-title-row,
@@ -1546,6 +1556,7 @@ button {
 }
 
 .toggle-field {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--s-2);
@@ -1558,8 +1569,13 @@ button {
 
 .toggle-field input {
   position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   opacity: 0;
-  pointer-events: none;
+  cursor: inherit;
 }
 
 .toggle-field > span {
@@ -1592,11 +1608,15 @@ button {
 }
 
 .toggle-field input:checked + span::after {
-  transform: translate(calc(var(--s-4) + var(--s-1)), -50%);
+  transform: translate(var(--s-4), -50%);
 }
 
 .toggle-field input:disabled + span {
   opacity: 0.72;
+}
+
+.toggle-field input:focus-visible + span {
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .toggle-field-disabled {
@@ -1684,7 +1704,12 @@ button {
   min-width: 0;
 }
 
+.icp-search-policy-grid .icp-detail-section {
+  align-self: start;
+}
+
 .icp-settings-list-bounded {
+  width: 100%;
   max-height: calc(var(--s-20) * 2.4);
   overflow-y: auto;
   padding-right: var(--s-2);
@@ -1974,11 +1999,15 @@ button {
 
 .icp-detail-section {
   display: grid;
+  align-content: start;
+  align-items: start;
   gap: var(--s-3);
+  min-width: 0;
 }
 
 .icp-detail-section > .eyebrow,
 .icp-preview-section > .eyebrow {
+  align-self: start;
   justify-self: start;
   padding: var(--s-1) var(--s-2);
   border-radius: var(--r-sm);
