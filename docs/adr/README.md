@@ -10,8 +10,9 @@ ADRs capture decisions that shape product architecture.
 - `2026-06-12-bounded-spa-workspace-shell.md` - Keep product screens inside a viewport-bounded SPA workspace shell.
 - `2026-06-12-table-first-dense-data-ux.md` - Use table-first scan surfaces, sticky identity, and explicit drilldown for dense operational data.
 - `2026-06-12-evidence-first-review-ux.md` - Make score, evidence, rationale, and review workflows scan-first and expandable.
-- `2026-06-12-configurable-object-ux.md` - Use catalog-first navigation and explicit read-only settings for configurable product objects.
+- `2026-06-12-configurable-object-ux.md` - Use catalog-first navigation, explicit settings states, and clear local-draft boundaries for configurable product objects.
 - `2026-06-12-bilingual-responsive-frontend-baseline.md` - Treat EN/RU i18n and small-screen/mobile constraints as frontend baseline requirements.
+- `2026-06-13-icp-radar-definition-separates-qualification-and-signals.md` - Model ICP Radar configuration as structured qualification rules, intent signals, source policies, scoring, and validation.
 
 ## Template
 

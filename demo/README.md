@@ -7,8 +7,9 @@ The demo shows the current Power Web OS loop: a ТОиР/SIBUR-style ICP Radar f
 ## What The Demo Shows
 
 - ICP Radar catalog with one active fixture-backed radar and two configured/planned examples.
+- Browser-local ICP Radar definition editing: create, edit, duplicate, save draft, discard, and reset demo changes across structured sources, qualification rules, intent signals, monitoring, scoring, and validation.
 - ICP Radar ranking from the `sibur_icp_pass1.xlsx` fixture.
-- Table-first ICP Radar shortlist with sticky company column, inline candidate preview, fit/intent/trigger/total score, tier, top evidence refs, top criteria, and C1-C20 criteria breakdown in the read-only detail view.
+- Table-first ICP Radar shortlist with sticky company column, inline candidate preview, imported fit/intent/trigger/total score fields, tier, top evidence refs, top criteria, and C1-C20 criteria breakdown in the read-only detail view.
 - Account Radar ranking across six accepted synthetic accounts.
 - Account signals with evidence refs.
 - Power Web Lite roles and missing roles.
@@ -61,7 +62,7 @@ python demo/run_demo.py generate-access-plan
 
 The Python commands print and write JSON for the ICP Radar catalog, the active ICP Radar shortlist, and the ranked accepted-account portfolio. The portfolio output should include six ranked accounts and a matching generated Access Plan artifact for every account.
 
-The frontend command prints a local Vite URL. Open it to inspect the `ICP Radar` catalog first, switch the UI between EN/RU from the top bar if needed, then open `ТОиР / SIBUR`. Use `Shortlist` to scan candidates and `Settings` to inspect the read-only radar definition. Click a candidate row to open a bounded inline preview with one scroll area, top evidence refs, and top criteria; open the candidate detail view for evidence and criteria review. In candidate detail, C1-C20 criteria start as a compact table with filters, sorting, expandable evidence rows, and local accept/reject/edit controls. Those controls are demo-only local state until Slice 0.6.3 adds durable validation. Then use `Accounts` for the accepted portfolio. Click an account row to inspect that account's Access Plan visually inside the Power Web OS shell. Use the sidebar `Account Map` item to inspect the selected account's Power Web Lite board and highlighted recommended access route. Use `Playbook` to compare the current playbook with the pre-generated `No partner motion` variant and see how route decisions and route preview change without a page reload.
+The frontend command prints a local Vite URL. Open it to inspect the `ICP Radar` catalog first, switch the UI between EN/RU from the top bar if needed, then open `ТОиР / SIBUR`. Use `Shortlist` to scan candidates and `Settings` to inspect or edit the radar definition. Settings are edited by block: overview, global search base, account qualification rules, monitoring, intent signals, scoring model, and validation. Rules and signals are edited in business language; generated IDs/codes are shown only as compact references and are not manually edited. Sources are entities selected by name or added locally. Scoring uses Fit, Intent, and Tier models with preset dropdowns; custom formula text appears only in custom mode. Settings edits are saved only to browser local demo state under `power-web-os-icp-radar-config-overrides`; they do not rewrite generated JSON, run live search, or recalculate the fixture shortlist. Click a candidate row to open a bounded inline preview with one scroll area, top evidence refs, and top criteria; open the candidate detail view for evidence and criteria review. In candidate detail, C1-C20 criteria start as a compact table with filters, sorting, expandable evidence rows, and local accept/reject/edit controls. Those controls are demo-only local state until Slice 0.6.3 adds durable validation. Then use `Accounts` for the accepted portfolio. Click an account row to inspect that account's Access Plan visually inside the Power Web OS shell. Use the sidebar `Account Map` item to inspect the selected account's Power Web Lite board and highlighted recommended access route. Use `Playbook` to compare the current playbook with the pre-generated `No partner motion` variant and see how route decisions and route preview change without a page reload.
 
 ## Demo Data
 
@@ -88,7 +89,7 @@ The ICP Radar fixture source is the SIBUR-style spreadsheet analysis:
 - `Summary`: ranked shortlist and recommended triage action;
 - `Sources`: evidence source registry.
 
-The current demo also generates an ICP Radar catalog. It contains the active `ТОиР / SIBUR` radar plus configured/planned radar examples. Open a radar card to switch between `Shortlist` and read-only `Settings`.
+The current demo also generates an ICP Radar catalog. It contains the active `ТОиР / SIBUR` radar plus configured/planned radar examples. Open a radar row to switch between `Shortlist` and `Settings`. In `Settings`, edit each block independently: human metadata, shared source base, account qualification rules, intent signals with `0/1/2` rubric tables, monitoring policy, Fit/Intent/Tier scoring presets, and validation findings. Local drafts can be duplicated, discarded, reset to the generated artifact, or reset globally from the catalog.
 
 The XLSX does not contain criterion-level facts. The demo therefore adds a curated synthetic annotation fixture:
 
@@ -104,7 +105,7 @@ Signal validation must be visible in the demo once implemented: users should be 
 
 - The planner is deterministic.
 - ICP Radar signal validation is not implemented yet.
-- ICP Radar settings are read-only; editing and schedule execution are not implemented yet.
+- ICP Radar settings edits are browser-local demo drafts only; production persistence, schedule execution, live source setup, and shortlist recalculation are not implemented yet.
 - ICP Radar candidate detail is read-only.
 - `Take into work` is visible as a planned affordance and does not change state yet.
 - No live source connectors yet.

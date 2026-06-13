@@ -234,6 +234,20 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert "ICPRadarCatalogArtifact" in types
     assert "ICPRadarCatalogItem" in types
     assert "RadarDefinition" in types
+    assert "EditableRadarDefinitionDraft" in types
+    assert "RadarConfigOverride" in types
+    assert "RadarEditorState" in types
+    assert "RadarMetadata" in types
+    assert "GlobalSearchPolicy" in types
+    assert "RuleGroup" in types
+    assert "AtomicRule" in types
+    assert "SourceDefinition" in types
+    assert "SourcePolicy" in types
+    assert "IntentSignalDefinition" in types
+    assert "SignalScoringRubric" in types
+    assert "MonitoringPolicy" in types
+    assert "RadarScoringModel" in types
+    assert "RadarValidationReport" in types
     assert "CriterionEvidenceExplanation" in types
     assert "criteria_evidence" in types
     assert "definition: RadarDefinition" in types
@@ -242,7 +256,7 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "criteria_scores",
         "criteria_evidence",
         "evidence_refs",
-        "artifact.radar.criteria",
+        "artifact.radar.definition.intent_signals",
         "candidate.score.fit_score",
         "candidate.score.intent_score",
         "candidate.score.trigger_score",
@@ -250,17 +264,40 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "selectedRadarId",
         "RadarCatalogScreen",
         "RadarSettings",
+        "SettingsBlockCard",
+        "RuleGroupEditor",
+        "addGroup",
+        "removeGroup",
+        "AtomicRuleEditor",
+        "SourceListEditor",
+        "SourcePolicyEditor",
+        "IntentSignalsEditor",
+        "SignalRubricEditor",
+        "ValidationReportView",
         "EmptyShortlist",
         "shortlistTab",
         "settingsTab",
         "readOnly",
-        "definition.criteria",
-        "definition.scoring_formula",
+        "settingsMode",
+        "radarOverrides",
+        "power-web-os-icp-radar-config-overrides",
+        "localStorage",
+        "createRadar",
+        "saveDraft",
+        "discardChanges",
+        "duplicateRadar",
+        "resetToArtifact",
+        "resetDemoChanges",
+        "definition.intent_signals",
+        "definition.scoring_model",
+        "draft.validation_report",
+        "local_draft",
+        "modified_locally",
     ]:
         assert contract_value in screen
 
-    assert "onSave" not in screen
-    assert "Save" not in screen
+    assert "/api/" not in screen
+    assert "fetch(" not in screen
 
     for table_first_value in [
         "expandedCandidateId",
@@ -288,6 +325,44 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".icp-definition-list div" in css
     assert "container-type: inline-size" in css
     assert "width: 100cqw" in css
+    assert ".icp-settings-edit-grid" in css
+    assert ".icp-editor-field" in css
+    assert ".criteria-editor-row" in css
+    assert ".source-policy-editor" in css
+    assert "targetField" not in screen
+    assert "icpRadar.settings.comparison" not in screen
+    assert "triggerFormula" not in screen
+    assert "totalFormula" not in screen
+    assert "sourceIdFrom(" in screen
+    assert "generated_target_field" in types
+    assert "formula_preset" in types
+
+    for editable_key in [
+        "createRadar",
+        "editSettings",
+        "viewSettings",
+        "saveDraft",
+        "discardChanges",
+        "duplicateRadar",
+        "resetToArtifact",
+        "resetDemoChanges",
+        "unsavedChanges",
+        "localDraft",
+        "validation",
+        "qualificationRules",
+        "intentSignals",
+        "globalSearch",
+        "sourceLogic",
+        "scoringRubric",
+        "useGlobalSearchPolicy",
+        "selectedGlobalSources",
+        "generatedId",
+        "generatedCode",
+        "signalScaleLocked",
+        "formulaPresets",
+        "validConfiguration",
+    ]:
+        assert editable_key in i18n
     assert ".icp-preview-heading" in css
     assert ".icp-preview-actions" in css
     assert "icp-preview-sticky-cell" not in screen
@@ -331,8 +406,13 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "icpRadar.openRadar",
         "icpRadar.backToCatalog",
         "icpRadar.settingsTab",
-        "icpRadar.settings.criteria",
-        "icpRadar.editingPlanned",
+        "icpRadar.settings.addGroup",
+        "icpRadar.settings.removeGroup",
+        "icpRadar.settings.intentSignals",
+        "icpRadar.settings.qualificationRules",
+        "icpRadar.settings.globalSearch",
+        "criteria",
+        "editingPlanned",
     ]:
         assert label_key in screen or label_key in i18n
 

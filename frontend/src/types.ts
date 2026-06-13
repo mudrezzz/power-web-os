@@ -194,25 +194,146 @@ export type EvidenceSource = {
   usage: string;
 };
 
-export type RadarDefinition = {
-  definition_id: string;
-  product: string;
-  segment: string;
-  holding: string;
-  market_scope: string;
+export type RadarMetadata = {
+  name: string;
+  description: string;
+  owner: string;
+  status: string;
+};
+
+export type SourceDefinition = {
+  source_id: string;
+  source_type: 'url' | 'search_engine' | 'api' | 'mcp' | 'manual_dataset' | string;
+  label: string;
+  reference: string;
+  trust_level: 'high' | 'medium' | 'low' | string;
+};
+
+export type SourcePolicy = {
+  source_ids: string[];
+  source_logic: 'AND' | 'OR' | string;
+  use_global_search_policy: boolean;
+  allow_additional_sources: boolean;
+  fallback_confidence: 'high' | 'medium' | 'low' | 'none' | string;
+  local_sources: SourceDefinition[];
+};
+
+export type AtomicRule = {
+  rule_id: string;
+  name: string;
+  description: string;
+  generated_target_field: string;
+  generated_comparison_operator: string;
+  generated_value: string;
+  requirement_level: 'required' | 'recommended' | string;
+  source_policy: SourcePolicy;
+};
+
+export type RuleGroup = {
+  group_id: string;
+  name: string;
+  operator: 'AND' | 'OR' | 'NOT' | string;
+  rules: AtomicRule[];
+  groups: RuleGroup[];
+};
+
+export type GlobalSearchPolicy = {
+  sources: SourceDefinition[];
+  keywords: string[];
   exclusions: string[];
-  assumptions: string[];
-  legal_entity_source: string;
-  discovery_mode: string;
-  discovery_filters: string[];
-  monitoring_sources: string[];
+  allow_system_sources: boolean;
+};
+
+export type AccountQualificationModel = {
+  rule_group: RuleGroup;
+};
+
+export type SignalScoreRule = {
+  score: number;
+  description: string;
+  rule_group: RuleGroup;
+};
+
+export type SignalScoringRubric = {
+  scale: number[];
+  rules: SignalScoreRule[];
+};
+
+export type IntentSignalDefinition = {
+  signal_id: string;
+  code: string;
+  name: string;
+  description: string;
+  trigger_rule_group: RuleGroup;
+  source_policy: SourcePolicy;
+  scoring_rubric: SignalScoringRubric;
+};
+
+export type MonitoringPolicy = {
   cadence: string;
   lookback_window: string;
   run_mode: string;
-  scoring_formula: Record<string, string | Record<string, string>>;
+  deduplication: string;
+  stale_after: string;
+};
+
+export type RadarScoringModel = {
+  fit_model: {
+    formula_preset: string;
+    description: string;
+    custom_formula: string;
+    uses: string[];
+  };
+  intent_model: {
+    formula_preset: string;
+    description: string;
+    custom_formula: string;
+    uses: string[];
+  };
+  tier_model: {
+    basis: string;
+    description: string;
+  };
   tier_thresholds: Record<string, string>;
-  criteria: SignalCriterion[];
-  limitations: string[];
+  confidence_penalties: Record<string, string>;
+};
+
+export type RadarValidationIssue = {
+  level: 'error' | 'warning' | 'info' | string;
+  code: string;
+  message: string;
+  path: string;
+};
+
+export type RadarValidationReport = {
+  errors: RadarValidationIssue[];
+  warnings: RadarValidationIssue[];
+  info: RadarValidationIssue[];
+};
+
+export type RadarDefinition = {
+  definition_id: string;
+  metadata: RadarMetadata;
+  global_search_policy: GlobalSearchPolicy;
+  account_qualification: AccountQualificationModel;
+  intent_signals: IntentSignalDefinition[];
+  monitoring_policy: MonitoringPolicy;
+  scoring_model: RadarScoringModel;
+  validation_report: RadarValidationReport;
+};
+
+export type EditableRadarDefinitionDraft = RadarDefinition;
+
+export type RadarConfigOverride = {
+  override_type: 'created' | 'edited';
+  radar: ICPRadarCatalogItem;
+  saved_at: string;
+};
+
+export type RadarEditorState = {
+  mode: 'view' | 'edit';
+  dirty: boolean;
+  errors: string[];
 };
 
 export type ICPRadarScore = {
@@ -265,7 +386,7 @@ export type ICPRadarCandidate = {
 
 export type ICPRadarArtifact = {
   artifact_type: 'icp_radar';
-  artifact_version: '0.6.2.5';
+  artifact_version: '0.6.5.2';
   criteria_evidence_contract_version: '0.6.2.3';
   radar: {
     profile: {
@@ -278,8 +399,6 @@ export type ICPRadarArtifact = {
       scoring_formula: Record<string, unknown>;
     };
     definition: RadarDefinition;
-    criteria: SignalCriterion[];
-    sources: EvidenceSource[];
   };
   candidates: ICPRadarCandidate[];
   workflow_metadata: {
@@ -319,7 +438,7 @@ export type ICPRadarCatalogItem = {
 
 export type ICPRadarCatalogArtifact = {
   artifact_type: 'icp_radar_catalog';
-  artifact_version: '0.6.2.5';
+  artifact_version: '0.6.5.2';
   radars: ICPRadarCatalogItem[];
   workflow_metadata: {
     workflow_name: string;

@@ -23,6 +23,15 @@ Configurable product objects should use catalog-first navigation.
 - For ICP Radar the accepted baseline is `Shortlist` / `Settings`.
 - Settings screens may be read-only in early slices, but they must be visibly read-only.
 - Read-only settings must not include save actions or imply persistence.
+- Editable settings may be introduced as a local demo loop before production persistence, but the persistence boundary must be visible in the UI.
+- Local editable loops must label created or modified objects as local drafts or locally modified state.
+- Save, discard, duplicate, reset-one-object, and reset-all-demo-changes actions should be explicit for configurable objects.
+- Complex configuration screens should prefer block-level editing. Each block owns its own edit/save/discard lifecycle so users can change sources, rules, signals, monitoring, or scoring without putting the whole object into one broad edit mode.
+- Generated artifacts remain the reset source of truth until backend persistence exists.
+- Editing configuration must not imply live execution, scheduling, connector setup, or output recalculation unless that behavior is implemented.
+- Constrained controls are preferred for settings such as cadence, run mode, thresholds, source definitions, source policies, rule groups, signal detection rules, and scoring rubrics.
+- Scoring setup should offer named presets first. Custom formula text is acceptable only as an explicit advanced mode that shows generated rule ids or signal codes as a reference.
+- User-facing rule editors should collect names, natural-language descriptions, requirement level, and source policy. Internal field/operator/value triples may be generated for future agent execution, but they must not be the primary UX.
 - Planned, configured, active, fixture-backed, and live states must be explicit.
 - Demo fixtures must not imply live jobs, persistence, scheduling, connectors, or production state.
 
@@ -31,6 +40,7 @@ Configurable product objects should use catalog-first navigation.
 - Future configuration work can evolve from read-only settings to editable controls without changing the navigation model.
 - Product screens can support multiple radars/playbooks/rulesets instead of hardcoding one global object.
 - UI copy must be precise about what is active versus planned.
+- Frontend-local configuration is useful for PoC learning, but it must not blur into production persistence or durable workflow state.
 
 ## Alternatives considered
 

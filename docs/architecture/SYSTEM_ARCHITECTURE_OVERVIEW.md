@@ -36,7 +36,7 @@ The current baseline has:
 |---|---|---|---|
 | Web UI / BFF | Product screens and user workflow | Account workspace, review queue, demo UX | Product API |
 | Frontend demo | Local product shell with active ICP Radar, Accounts, Access Plans, Account Map, and Playbook screens | Reads generated ICP Radar, Account Radar, and Access Plan artifacts and renders planned workspace placeholders | Vite, design system |
-| ICP Radar | Configurable ABM account-search and signal-monitoring layer | ICP profile, discovery rules, signal criteria, scoring formula, candidate queue, signal validation state; current demo imports XLSX fixture into a deterministic read model | Source connectors, evidence layer, domain scoring |
+| ICP Radar | Configurable ABM account-search and signal-monitoring layer | ICP profile, structured radar definition, source policies, qualification rule groups, intent signals, scoring model, validation report, candidate queue; current demo imports XLSX fixture into a deterministic read model | Source connectors, evidence layer, domain scoring |
 | Account Radar | Deterministic portfolio read model | Portfolio score, top reason, best route, owner, review status | Domain services, Access Plan artifacts |
 | Power Web Board | Deterministic selected-account read model | Board summary, people/partner/missing nodes, account edges, highlighted route path | Account, Access Plan artifact |
 | Playbook Analysis | Deterministic selected-account read model | Current and what-if playbook snapshots, route policy decisions, review policy, route previews | Account, Playbook, Access Plan artifact |
@@ -82,7 +82,8 @@ Current demo ICP Radar flow:
 ```text
 demo/fixtures/icp_radar/sibur_icp_pass1.xlsx
   -> ICPRadarXlsxImport
-  -> deterministic fit / intent / trigger / total score
+  -> deterministic imported workbook score fields
+  -> structured radar definition with fit / intent / tier configuration
   -> demo/output/icp_radar.json
   -> frontend/public/demo/icp_radar.json
   -> ICP Radar screen
@@ -126,15 +127,24 @@ An ICP Radar is not the Power Web itself. It is the ABM funnel layer that decide
 
 An ICP Radar owns:
 
+- `RadarDefinition`: executable radar configuration with metadata, global search policy, account qualification rules, intent signals, monitoring policy, scoring model, and validation report.
+- `SourceDefinition` and `SourcePolicy`: typed source/API/MCP/search/manual-dataset references and the logic for how rules or signals can use them.
+- `RuleGroup` and `AtomicRule`: stable legal-entity qualification rules, such as holding membership, industry, revenue, asset type, and whether buying decisions are likely made independently. Rules are description-first for users; optional generated technical fields may support future agent execution.
+- `IntentSignalDefinition`: configurable interest signals, such as TOiR/EAM, predictive diagnostics, tenders, hiring, modernization, incidents, import substitution, or ESG/safety, each with detection rules and a `0/1/2` scoring rubric.
+- `RadarScoringModel`: fit model, intent model, tier model, formula preset, optional custom formula, tier thresholds, and confidence penalties.
+- `RadarDefinitionValidator`: conservative structural validation for required fields, duplicate ids, source-policy misuse, `NOT` misuse, simple numeric contradictions, and invalid custom formula references.
+
+Older conceptual names such as account discovery rules and signal criteria map into the structured `RuleGroup` / `AtomicRule` and `IntentSignalDefinition` contracts. Qualification filters and intent signals are intentionally separate domain concepts.
+
 - `ICPProfile`: product, target industries, company-size thresholds, geography, exclusions, and qualification assumptions.
 - `RadarDefinition`: search scope, sources, run cadence, full/incremental mode, and radar-specific overrides.
 - `AccountDiscoveryRule`: stable legal-entity discovery and filtering rules, such as revenue, holding membership, asset type, and whether buying decisions are likely made independently.
 - `SignalCriterion`: configurable signal definitions, such as ТОиР/EAM, predictive diagnostics, tenders, hiring, modernization, incidents, import substitution, or ESG/safety.
 - `SignalObservation`: a concrete found signal with source, date, confidence, strength, evidence refs, novelty fingerprint, and validation status.
-- `ICPScoringFormula`: transparent fit/intent/trigger aggregation and tier thresholds.
+- `ICPScoringFormula`: transparent fit/intent aggregation and tier thresholds.
 - `RadarCandidate`: a scored account candidate before it is accepted into Power Web work.
 
-Radar configuration is a first-class product boundary. There can be many ICP Radars running in parallel for different products, markets, holdings, or source scopes. Each radar owns its definition and can produce its own candidate shortlist; only approved candidates should flow into the shared `Accounts` portfolio and then into Power Web work. The current implementation exposes this through an `icp_radar_catalog` artifact and a read-only selected-radar settings editor. Editable configuration, scheduling, and run history are planned as later concentric slices.
+Radar configuration is a first-class product boundary. There can be many ICP Radars running in parallel for different products, markets, holdings, or source scopes. Each radar owns its definition and can produce its own candidate shortlist; only approved candidates should flow into the shared `Accounts` portfolio and then into Power Web work. The current implementation exposes this through an `icp_radar_catalog` artifact and a block-editable selected-radar settings editor backed by browser-local demo state. The settings editor exposes business-language rules, source entities, generated codes, and scoring presets; it does not require users to edit internal IDs or field/operator/value triples. Production persistence, scheduling, live connector execution, and run history are planned as later concentric slices.
 
 The first realistic demo ICP profile uses `demo/fixtures/icp_radar/sibur_icp_pass1.xlsx` as a fixture. It discovers Russian legal entities inside a holding, scores them against ТОиР criteria, and shows a ranked candidate shortlist for the active `ТОиР / SIBUR` radar. The catalog also includes configured/planned radar examples without generated candidates yet. Numeric C1-C20 scores come from the XLSX. Criterion-level evidence is added by a separate curated synthetic fixture, `demo/fixtures/icp_radar/toir_sibur_criterion_evidence.json`, so the demo can exercise evidence-backed score explanation before production source extraction exists.
 

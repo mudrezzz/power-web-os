@@ -7,14 +7,28 @@ import warnings
 from openpyxl import load_workbook
 
 from power_web_os.icp_radar import (
+    AccountQualificationModel,
+    AtomicRule,
     CRITERION_CODES,
+    GlobalSearchPolicy,
     ICPProfile,
     ICPRadar,
     ICPRadarArtifact,
     ICPRadarCandidate,
+    IntentSignalDefinition,
+    MonitoringPolicy,
     RadarDefinition,
+    RadarDefinitionValidator,
+    RadarMetadata,
+    RadarScoringModel,
+    RadarValidationReport,
+    RuleGroup,
+    SignalScoreRule,
     SignalCriterion,
+    SignalScoringRubric,
+    SourceDefinition,
     EvidenceSource,
+    SourcePolicy,
 )
 from power_web_os.icp_radar_evidence import CriterionEvidenceBuilder, load_criterion_evidence_fixture
 
@@ -104,7 +118,7 @@ def _artifact_from_workbook(workbook: Any, path: Path) -> ICPRadarArtifact:
         candidates=ranked_candidates,
         workflow_metadata={
             "workflow_name": "ICPRadarXlsxImport",
-            "artifact_version": "0.6.2.5",
+            "artifact_version": "0.6.5.2",
             "source_workbook": path.name,
             "criteria_evidence_contract_version": "0.6.2.3",
             "criteria_evidence_fixture": evidence_fixture_path.name,
@@ -123,50 +137,266 @@ def _definition(
     criteria: tuple[SignalCriterion, ...],
     sources: tuple[EvidenceSource, ...],
 ) -> RadarDefinition:
-    return RadarDefinition(
+    source_definitions = _source_definitions_from_workbook(sources)
+    source_ids = tuple(source.source_id for source in source_definitions)
+    definition = RadarDefinition(
         definition_id="radar-def-toir-sibur",
-        product="Автоматизация ТОиР",
-        segment="Нефтехимия и производственные активы",
-        holding="СИБУР",
-        market_scope="Юридические лица внутри группы СИБУР с самостоятельной производственной или сервисной повесткой.",
-        exclusions=(
-            "Непрофильные сервисные юрлица без производственного контура",
-            "Дочерние структуры с отсутствующими открытыми источниками по ТОиР",
+        metadata=RadarMetadata(
+            name="ТОиР / SIBUR",
+            description="ICP Radar для поиска юридических лиц СИБУР с релевантностью к автоматизации ТОиР и промышленной аналитике.",
+            owner="ABM Research",
+            status="active",
         ),
-        assumptions=(
-            "Первичное обнаружение юрлиц считается импортированным из XLSX и не пересчитывается каждый запуск.",
-            "Регулярный мониторинг работает по сигналам интереса к ТОиР/EAM, модернизации и промышленной аналитике.",
-            "Числовые C1-C20 scores берутся из XLSX, а criterion-level evidence в демо добавлен отдельной synthetic annotation fixture.",
+        global_search_policy=GlobalSearchPolicy(
+            sources=source_definitions,
+            keywords=("СИБУР ТОиР", "СИБУР EAM", "СИБУР предиктивная аналитика", "СИБУР модернизация ремонтов"),
+            exclusions=(
+                "Непрофильные сервисные юрлица без производственного контура",
+                "Дочерние структуры без открытых источников по ТОиР",
+            ),
+            allow_system_sources=True,
         ),
-        legal_entity_source=f"Workbook sheet: {path.name} / ICP Matrix",
-        discovery_mode="one_time_import",
-        discovery_filters=(
-            "Группа компаний: СИБУР",
-            "Выручка и тип юрлица используются как первичный fit-фильтр",
-            "Производственная, ремонтная, энергетическая или сервисная релевантность",
+        account_qualification=AccountQualificationModel(
+            rule_group=RuleGroup(
+                group_id="qualification-root",
+                name="Account qualification rules",
+                operator="AND",
+                rules=(
+                    AtomicRule(
+                        rule_id="qualification-sibur-group",
+                        name="SIBUR group membership",
+                        description="Компания входит в группу СИБУР.",
+                        target_field="holding",
+                        comparison_operator="equals",
+                        value="СИБУР",
+                        requirement_level="required",
+                        source_policy=SourcePolicy(
+                            source_ids=("sibur_workbook",),
+                            source_logic="OR",
+                            allow_additional_sources=True,
+                            fallback_confidence="medium",
+                        ),
+                    ),
+                    AtomicRule(
+                        rule_id="qualification-industry",
+                        name="Industrial profile",
+                        description="Компания относится к нефтехимии, нефтегазу или промышленным производственным активам.",
+                        target_field="industry",
+                        comparison_operator="in",
+                        value="нефтехимия, нефтегаз, промышленное производство",
+                        requirement_level="required",
+                        source_policy=SourcePolicy(
+                            source_ids=("sibur_workbook",),
+                            source_logic="OR",
+                            allow_additional_sources=True,
+                            fallback_confidence="medium",
+                        ),
+                    ),
+                    AtomicRule(
+                        rule_id="qualification-revenue",
+                        name="Enterprise scale",
+                        description="Выручка выше 10 млрд рублей или есть сопоставимый enterprise-масштаб.",
+                        target_field="revenue_billion_rub",
+                        comparison_operator="greater_than",
+                        value="10",
+                        requirement_level="recommended",
+                        source_policy=SourcePolicy(
+                            source_ids=("sbis",),
+                            source_logic="OR",
+                            allow_additional_sources=True,
+                            fallback_confidence="low",
+                        ),
+                    ),
+                ),
+            )
         ),
-        monitoring_sources=tuple(source.source_id for source in sources),
-        cadence="monthly",
-        lookback_window="90 days",
-        run_mode="incremental_signal_monitoring",
-        scoring_formula={
-            "fit_score": "C13 + C14 + C15 + C16 + C17",
-            "intent_score": "C1..C9 + C18 + C19",
-            "trigger_score": "C10 + C11 + C12 + C20",
-            "total_score": "sum(C1..C20)",
-        },
-        tier_thresholds={
-            "Tier 1": ">=38",
-            "Tier 2": ">=25",
-            "Tier 3": ">=15",
-            "Monitor": "<15",
-        },
-        criteria=criteria,
-        limitations=(
-            "Read-only fixture-backed radar definition in Slice 0.6.2.5",
-            "No live connectors, scheduler, editable weights, or persisted validation decisions yet",
-            "Approved candidate handoff into shared Accounts is planned for Slice 0.6.4",
+        intent_signals=tuple(_intent_signal_from_criterion(criterion, source_ids) for criterion in criteria),
+        monitoring_policy=MonitoringPolicy(
+            cadence="monthly",
+            lookback_window="90 days",
+            run_mode="incremental_signal_monitoring",
+            deduplication="ignore_evidence_refs_seen_in_previous_runs",
+            stale_after="180 days",
         ),
+        scoring_model=RadarScoringModel(
+            fit_model={
+                "formula_preset": "weighted_average",
+                "description": "Account fit is calculated from account qualification rules.",
+                "custom_formula": "",
+                "uses": ["qualification-sibur-group", "qualification-industry", "qualification-revenue"],
+            },
+            intent_model={
+                "formula_preset": "weighted_average",
+                "description": "Intent is calculated from observed interest signals C1-C20.",
+                "custom_formula": "",
+                "uses": list(CRITERION_CODES),
+            },
+            tier_model={
+                "basis": "fit + intent",
+                "description": "Tier classifies candidates using fit and intent thresholds.",
+            },
+            tier_thresholds={
+                "Tier 1": ">=38",
+                "Tier 2": ">=25",
+                "Tier 3": ">=15",
+                "Monitor": "<15",
+            },
+            confidence_penalties={
+                "low": "-20%",
+                "medium": "-10%",
+                "high": "0%",
+                "none": "exclude from positive score",
+            },
+        ),
+        validation_report=RadarValidationReport(errors=(), warnings=(), info=()),
+    )
+    return _definition_with_validation(definition)
+
+
+def _source_definitions_from_workbook(sources: tuple[EvidenceSource, ...]) -> tuple[SourceDefinition, ...]:
+    workbook_sources = tuple(
+        SourceDefinition(
+            source_id=source.source_id,
+            source_type="url",
+            label=source.usage or source.source_id,
+            reference=source.url,
+            trust_level="medium",
+        )
+        for source in sources
+    )
+    return (
+        SourceDefinition(
+            source_id="sibur_workbook",
+            source_type="manual_dataset",
+            label="SIBUR ICP workbook",
+            reference="demo/fixtures/icp_radar/sibur_icp_pass1.xlsx",
+            trust_level="high",
+        ),
+        SourceDefinition(
+            source_id="sbis",
+            source_type="api",
+            label="СБИС",
+            reference="https://sbis.ru",
+            trust_level="high",
+        ),
+        SourceDefinition(
+            source_id="yandex_search",
+            source_type="search_engine",
+            label="Яндекс поиск",
+            reference="https://ya.ru",
+            trust_level="medium",
+        ),
+        *workbook_sources,
+    )
+
+
+def _intent_signal_from_criterion(
+    criterion: SignalCriterion,
+    source_ids: tuple[str, ...],
+) -> IntentSignalDefinition:
+    source_policy = SourcePolicy(
+        source_ids=source_ids[: min(3, len(source_ids))],
+        source_logic="OR",
+        allow_additional_sources=True,
+        fallback_confidence="low",
+    )
+    return IntentSignalDefinition(
+        signal_id=f"signal-{criterion.code.lower()}",
+        code=criterion.code,
+        name=criterion.name,
+        description=criterion.description,
+        trigger_rule_group=RuleGroup(
+            group_id=f"trigger-{criterion.code.lower()}",
+            operator="OR",
+            rules=(
+                AtomicRule(
+                    rule_id=f"trigger-{criterion.code.lower()}-mention",
+                    description=criterion.description,
+                    target_field="public_evidence",
+                    comparison_operator="contains",
+                    value=criterion.name,
+                    requirement_level="recommended",
+                    source_policy=source_policy,
+                ),
+            ),
+        ),
+        source_policy=source_policy,
+        scoring_rubric=SignalScoringRubric(
+            scale=(0, 1, 2),
+            rules=(
+                SignalScoreRule(
+                    score=0,
+                    description="Сигнал не наблюдается или не подтвержден источниками.",
+                    rule_group=RuleGroup(
+                        group_id=f"rubric-{criterion.code.lower()}-0",
+                        operator="AND",
+                        rules=(
+                            AtomicRule(
+                                rule_id=f"rubric-{criterion.code.lower()}-0-rule",
+                                description="Нет подтвержденного наблюдения по сигналу.",
+                                target_field=criterion.code,
+                                comparison_operator="equals",
+                                value="0",
+                                requirement_level="recommended",
+                                source_policy=source_policy,
+                            ),
+                        ),
+                    ),
+                ),
+                SignalScoreRule(
+                    score=1,
+                    description="Есть косвенное или слабое наблюдение, требующее проверки.",
+                    rule_group=RuleGroup(
+                        group_id=f"rubric-{criterion.code.lower()}-1",
+                        operator="AND",
+                        rules=(
+                            AtomicRule(
+                                rule_id=f"rubric-{criterion.code.lower()}-1-rule",
+                                description="Есть один слабый источник или непрямой индикатор.",
+                                target_field=criterion.code,
+                                comparison_operator="equals",
+                                value="1",
+                                requirement_level="recommended",
+                                source_policy=source_policy,
+                            ),
+                        ),
+                    ),
+                ),
+                SignalScoreRule(
+                    score=2,
+                    description="Сигнал подтвержден релевантным источником и может усиливать скоринг.",
+                    rule_group=RuleGroup(
+                        group_id=f"rubric-{criterion.code.lower()}-2",
+                        operator="AND",
+                        rules=(
+                            AtomicRule(
+                                rule_id=f"rubric-{criterion.code.lower()}-2-rule",
+                                description="Есть сильное наблюдение или несколько согласованных источников.",
+                                target_field=criterion.code,
+                                comparison_operator="equals",
+                                value="2",
+                                requirement_level="recommended",
+                                source_policy=source_policy,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
+def _definition_with_validation(definition: RadarDefinition) -> RadarDefinition:
+    report = RadarDefinitionValidator().validate(definition)
+    return RadarDefinition(
+        definition_id=definition.definition_id,
+        metadata=definition.metadata,
+        global_search_policy=definition.global_search_policy,
+        account_qualification=definition.account_qualification,
+        intent_signals=definition.intent_signals,
+        monitoring_policy=definition.monitoring_policy,
+        scoring_model=definition.scoring_model,
+        validation_report=report,
     )
 
 

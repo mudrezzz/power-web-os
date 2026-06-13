@@ -897,7 +897,7 @@ Status:
 - Implementation notes:
   - The screen should make it explicit that the current ТОиР/SIBUR radar is imported from fixture configuration.
   - Treat the catalog as a read model over configured radar definitions.
-  - Real editing remains `Slice 0.6.5`.
+  - Frontend local editable settings are delivered in `Slice 0.6.5`; production persistence, scheduler, and live execution remain later work.
   - Take-into-work remains `Slice 0.6.4`.
   - Formula display remains declarative and constrained; no executable formula scripting is introduced.
 - Tests:
@@ -1054,40 +1054,127 @@ Status:
 
 ### Slice 0.6.5: Editable ICP Radar configuration loop
 
-- Status: `Backlog`
-- Goal: Add the first editable radar configuration workflow over a local/demo radar definition.
-- User value: A user can adjust ICP Radar criteria, score weights/thresholds, source scope, and run cadence, then preview how the shortlist would change.
+- Status: `Done`
+- Goal: Add the first editable radar configuration workflow over frontend local demo state.
+- User value: A user can create a new ICP Radar, edit an existing radar configuration, save a local draft, discard changes, duplicate a radar, and reset demo changes without implying production persistence.
 - Scope:
-  - Add edit mode for radar name/profile, source selection, run cadence, lookback window, and full/incremental mode.
-  - Add editable criteria weight/strength settings while preserving C1-C20 criterion identity.
-  - Add editable tier thresholds with validation.
-  - Add a read-only preview of scoring impact on the current fixture candidates.
-  - Store edited configuration in local demo state or a generated local JSON artifact.
+  - Add `Create radar` in the ICP Radar catalog.
+  - Add local `draft/local` and `modified locally` states for radars created or changed in the browser.
+  - Add `View` / `Edit` modes to selected-radar `Settings`.
+  - Add editable controls for radar name, owner, profile, discovery, monitoring, cadence, lookback window, run mode, tier thresholds, and C1-C20 criterion names/descriptions/scoring guidance.
+  - Keep scoring formula display constrained/read-only while thresholds and criteria guidance are editable.
+  - Store created/edited radar definitions in browser `localStorage` under `power-web-os-icp-radar-config-overrides`.
+  - Add `Save draft`, `Discard changes`, `Duplicate radar`, `Reset to artifact`, and `Reset demo changes`.
+  - Keep generated artifacts read-only and leave the fixture-backed shortlist unchanged after settings edits.
 - Out of scope:
   - Multi-user configuration governance.
   - Production database persistence.
   - Live connector configuration secrets.
   - Arbitrary formula scripting.
+  - Live radar execution or shortlist recalculation from edited settings.
 - Implementation notes:
   - Use constrained form controls, not free-form executable formulas.
   - Keep original fixture configuration recoverable.
-  - Clearly separate source workbook scores from user-adjusted scoring simulation.
+  - Clearly label saved browser-only changes as local demo drafts.
+  - Keep `0.6.3` signal validation and `0.6.4` take-into-work next in the product sequence.
 - Tests:
-  - Unit tests for configuration validation and scoring preview.
-  - Frontend contract tests for edit mode, validation errors, reset, and preview impact.
+  - Frontend contract tests for edit mode, validation errors, localStorage overlay, create/save/discard/duplicate/reset actions, no API calls, and local draft labels.
   - `python -m pytest`.
   - `npm --prefix ./frontend run build`.
 - Docs:
-  - Update user/developer docs with editable configuration and preview rules.
+  - Update user/developer/demo docs with editable configuration, local demo persistence, and reset behavior.
 - Demo impact:
   - Demo shows radar setup as a controllable ABM object, not only a report.
 - Acceptance criteria:
-  - User can edit constrained radar settings locally.
-  - Invalid thresholds/cadence values are rejected.
-  - Preview shows candidate score/tier changes without mutating source artifact.
+  - User can create and edit constrained radar settings locally.
+  - Invalid drafts block saving and show inline validation.
+  - Saved local drafts appear in the catalog and are labelled as local/demo state.
   - User can reset to fixture configuration.
 - Risks:
   - Users may expect production persistence; label local/demo persistence clearly.
+
+### Slice 0.6.5.1: ICP Radar definition model correction
+
+- Status: `Done`
+- Goal: Replace the flat ICP Radar settings model with an executable definition model that separates human metadata, shared source policy, account qualification rules, intent signals, monitoring policy, scoring, and validation.
+- User value: A user can understand and locally edit how a radar is actually configured: which accounts qualify, which signals matter, which sources are trusted, how signals are scored, and whether the configuration is structurally valid.
+- Scope:
+  - Replace the old `RadarDefinition` artifact contract with `metadata`, `global_search_policy`, `account_qualification`, `intent_signals`, `monitoring_policy`, `scoring_model`, and `validation_report`.
+  - Model sources as typed entities (`url`, `search_engine`, `api`, `mcp`, `manual_dataset`) instead of textarea-only references.
+  - Model account qualification as `RuleGroup` + `AtomicRule` with `AND` / `OR` / `NOT`, requirement level, and per-rule source policy.
+  - Model C1-C20 as intent signals with trigger rules and a fixed `0/1/2` scoring rubric.
+  - Add `RadarDefinitionValidator` for required fields, duplicates, invalid operators, source-policy misuse, `NOT` misuse, and simple numeric contradictions.
+  - Rebuild the Settings UI as block-level editing for Overview, Global search base, Account qualification rules, Monitoring, Intent signals, Scoring model, and Validation.
+  - Keep browser-local draft persistence and do not add backend persistence, scheduler, connectors, or shortlist recalculation.
+- Out of scope:
+  - Production persistence or audit log for radar definitions.
+  - Live API/MCP connector execution.
+  - Semantic validation against industry dictionaries.
+  - Recalculating the XLSX-derived shortlist after settings edits.
+- Implementation notes:
+  - The artifact contract intentionally moves to `0.6.5.1`; no parallel `definition_v2` is kept.
+  - Qualification filters and intent signals are different domain concepts and must remain separate in future slices.
+  - Validator findings are part of the artifact/UI contract, but conservative: structural checks first, domain semantics later.
+- Tests:
+  - Unit tests for new definition serialization and validator cases.
+  - Frontend contract tests for block-level settings, rule builder, source editor, intent signal editor, scoring model, validation report, and i18n keys.
+  - `python -m pytest`.
+  - `npm --prefix ./frontend run build`.
+- Docs:
+  - Add ADR for separating qualification rules from intent signals.
+  - Update architecture, developer, user, and demo docs with the new rule/signal definition model.
+- Demo impact:
+  - The active `ТОиР / SIBUR` radar now shows an inspectable executable definition instead of flat settings.
+  - Local settings drafts now edit structured rules, sources, signals, scoring thresholds, and validation-aware blocks.
+- Acceptance criteria:
+  - Generated `icp_radar.json` and `icp_radars.json` use artifact version `0.6.5.1`.
+  - `radar.definition.intent_signals[]` replaces old generic criteria in public definition.
+  - Settings editing is block-level, not one global edit mode.
+  - Validation report is visible and generated by the domain validator.
+- Risks:
+  - The first rule builder is intentionally constrained; production connector execution and semantic validation remain future work.
+
+### Slice 0.6.5.2: ICP Radar settings UX and scoring model correction
+
+- Status: `Done`
+- Goal: Keep the structured radar definition model, but make `Settings` usable for ABM/sales users instead of exposing developer-facing IDs, field/operator/value controls, and overloaded trigger/total formulas.
+- User value: A user can configure a radar in business language: what accounts to qualify, where to search, what signals indicate interest, how each signal is scored, and how fit/intent/tier are calculated.
+- Scope:
+  - Stack `Overview` and `Global search base` vertically and make source rows wrap/ellipsis correctly without overlap.
+  - Keep source, rule, and signal IDs system-generated; show compact generated IDs/codes only where they help explain custom formulas.
+  - Replace editable `target field` / `comparison operator` / `value` controls with natural-language rule names and descriptions.
+  - Let rule/signal source policies select shared sources by name, add local sources as entities, use the global search base, and allow system-selected additional sources.
+  - Show signal scoring as a fixed `0 / 1 / 2` rubric table instead of large textarea cards.
+  - Replace trigger/total settings with `Fit`, `Intent`, and `Tier` models.
+  - Add scoring preset dropdowns: arithmetic mean, weighted average, maximum signal, capped sum, and custom formula.
+  - Show custom formula text input only when the custom preset is selected.
+  - Replace the raw validation counter block with a compact valid/issue summary grouped by settings block.
+- Out of scope:
+  - Live radar execution.
+  - Backend persistence.
+  - Scheduler or connector secrets.
+  - Recalculating the existing XLSX-derived shortlist from edited settings.
+- Implementation notes:
+  - The artifact contract intentionally moves to `0.6.5.2`.
+  - Candidate score fields still keep historical workbook-compatible `fit_score`, `intent_score`, `trigger_score`, and `total_score` for backward compatibility.
+  - Settings UI must not present `trigger` or `total` as configurable radar concepts.
+  - Generated technical fields may remain in the artifact for future agent execution, but they are not user-authored controls.
+- Tests:
+  - Python validator tests for generated IDs, empty source policy choices, invalid formula presets, and invalid custom formula references.
+  - Frontend contract tests for no editable target/comparison/value controls, source selection by name, local source editor, scoring presets, and no trigger/total settings UI.
+  - `python -m pytest`.
+  - `npm --prefix ./frontend run build`.
+- Docs:
+  - Update ADR, architecture, developer, user, and demo docs with description-first rules, source policies, fit/intent/tier scoring, and generated IDs.
+- Demo impact:
+  - Radar Settings reads as a business configuration surface rather than a developer schema editor.
+- Acceptance criteria:
+  - Generated `icp_radar.json` and `icp_radars.json` use artifact version `0.6.5.2`.
+  - Source rows do not overlap and Settings no longer has a two-equal-column Overview/Search layout.
+  - Rule and signal editors do not expose editable IDs or field/operator/value controls.
+  - Scoring UI exposes only Fit, Intent, and Tier with preset selection.
+- Risks:
+  - The source/rule editors are still local demo state; production execution and audit remain future work.
 
 ### Slice 0.6.6: ICP Radar run history and monitoring schedule loop
 
@@ -1534,6 +1621,23 @@ Status:
   - Moved radar metrics into a compact strip instead of narrow metric tiles.
   - Kept configured radar status, run mode, owner, cadence, last run, and counts visible in each row.
   - Documented list-first catalogs for dense configurable objects.
+- `Slice 0.6.5: Editable ICP Radar configuration loop`
+  - Added frontend-local create/edit configuration flow for ICP Radars before durable signal validation and take-into-work.
+  - Added `View` / `Edit` settings modes, draft validation, save/discard/duplicate/reset actions, and catalog-level reset of demo changes.
+  - Stored created/edited radar definitions in browser `localStorage` under `power-web-os-icp-radar-config-overrides`.
+  - Labelled local/demo drafts explicitly and kept generated artifacts, live execution, and shortlist recalculation out of scope.
+- `Slice 0.6.5.1: ICP Radar definition model correction`
+  - Replaced flat radar settings with structured `RadarDefinition` blocks: metadata, global search policy, account qualification, intent signals, monitoring, scoring, and validation.
+  - Added typed sources, source policies, rule groups, atomic rules, signal trigger rules, and `0/1/2` signal scoring rubrics.
+  - Added `RadarDefinitionValidator` for structural checks and obvious contradictions.
+  - Rebuilt Settings into block-level editing with rule/source/signal editors and validation report.
+  - Updated ICP Radar artifacts to version `0.6.5.1`.
+- `Slice 0.6.5.2: ICP Radar settings UX and scoring model correction`
+  - Reworked Settings for business-language rule editing: generated IDs/codes are visible only as compact references and are not manually edited.
+  - Removed user-facing target-field/operator/value controls from rule and signal editors.
+  - Added source selection by name, local source entities, global search base checkbox, and additional-source checkbox.
+  - Replaced trigger/total scoring settings with Fit, Intent, and Tier models plus scoring preset dropdowns.
+  - Updated ICP Radar artifacts to version `0.6.5.2`.
 
 ## Blocked Items
 

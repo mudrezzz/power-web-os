@@ -1309,7 +1309,7 @@ button {
 
 .icp-settings-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--s-5);
 }
 
@@ -1331,7 +1331,7 @@ button {
 
 .icp-settings-formula-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--s-20) * 3)), 1fr));
   gap: var(--s-2);
 }
 
@@ -1365,6 +1365,262 @@ button {
   padding-left: var(--s-5);
   color: var(--fg2);
   font: var(--body-sm);
+}
+
+.icp-settings-stack {
+  display: grid;
+  gap: var(--s-5);
+  min-width: 0;
+}
+
+.icp-settings-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.icp-settings-toolbar h2 {
+  margin: var(--s-1) 0;
+  font: var(--h3);
+}
+
+.icp-settings-toolbar p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.icp-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.icp-editor-errors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-4);
+}
+
+.icp-editor-errors span {
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--blocker-tint);
+  color: var(--blocker);
+  font: var(--meta);
+}
+
+.icp-settings-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-5);
+  min-width: 0;
+}
+
+.icp-settings-edit-grid .card:nth-child(5),
+.icp-settings-edit-grid .card:nth-child(6) {
+  grid-column: 1 / -1;
+}
+
+.icp-editor-field {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.icp-editor-field input,
+.icp-editor-field select,
+.icp-editor-field textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font: var(--body-sm);
+}
+
+.icp-editor-field input,
+.icp-editor-field select {
+  min-height: calc(var(--s-8) + var(--s-1));
+  padding: 0 var(--s-3);
+}
+
+.icp-editor-field textarea {
+  min-height: calc(var(--s-20) + var(--s-5));
+  padding: var(--s-3);
+  resize: vertical;
+}
+
+.icp-editor-checkbox {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.icp-editor-checkbox input {
+  width: var(--s-4);
+  min-height: var(--s-4);
+}
+
+.icp-editor-field input:focus,
+.icp-editor-field select:focus,
+.icp-editor-field textarea:focus {
+  border-color: var(--cobalt);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.icp-threshold-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--s-20) * 2), 1fr));
+  gap: var(--s-3);
+}
+
+.criteria-editor-list {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.criteria-editor-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-3);
+  min-width: 0;
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.source-policy-editor {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: var(--s-3);
+  min-width: 0;
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.source-list-editor,
+.source-picker,
+.scoring-rubric-editor,
+.formula-model-editor,
+.validation-summary {
+  display: grid;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.source-editor-row {
+  display: grid;
+  grid-template-columns: minmax(calc(var(--s-20) * 1.6), 0.8fr) minmax(0, 1.5fr) minmax(0, 2fr) minmax(calc(var(--s-20) * 1.2), 0.8fr) auto;
+  gap: var(--s-3);
+  align-items: end;
+  min-width: 0;
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.source-picker-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s-2);
+  align-items: start;
+  min-width: 0;
+  padding: var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+
+.source-picker-item span,
+.generated-code-row,
+.formula-code-reference,
+.validation-group {
+  min-width: 0;
+}
+
+.source-picker-item strong,
+.source-picker-item small,
+.formula-code-reference span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.generated-code-row,
+.formula-code-reference {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  align-items: center;
+  color: var(--fg3);
+}
+
+.rubric-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.rubric-table th,
+.rubric-table td {
+  padding: var(--s-3);
+  border-bottom: 1px solid var(--border-faint);
+  text-align: left;
+  vertical-align: top;
+}
+
+.rubric-table th {
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.rubric-table .icp-editor-field span {
+  display: none;
+}
+
+.validation-summary.valid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.validation-group {
+  display: grid;
+  grid-template-columns: minmax(calc(var(--s-20) * 1.6), auto) auto minmax(0, 1fr);
+  gap: var(--s-3);
+  align-items: start;
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.validation-group ul {
+  margin: 0;
+  padding-left: var(--s-5);
+  color: var(--fg2);
+}
+
+.source-policy-editor small {
+  overflow-wrap: anywhere;
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.rule-group-nested {
+  grid-column: 1 / -1;
+  border-left-color: var(--border-strong);
+  padding-left: var(--s-4);
 }
 
 .icp-score-grid {
@@ -2624,7 +2880,8 @@ button {
     display: none;
   }
 
-  .icp-settings-grid {
+  .icp-settings-grid,
+  .icp-settings-edit-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -2634,7 +2891,9 @@ button {
   }
 
   .icp-settings-grid .card:nth-child(5),
-  .icp-settings-grid .card:nth-child(6) {
+  .icp-settings-grid .card:nth-child(6),
+  .icp-settings-edit-grid .card:nth-child(5),
+  .icp-settings-edit-grid .card:nth-child(6) {
     grid-column: auto;
   }
 
@@ -2644,6 +2903,14 @@ button {
 
   .icp-radar-list-action {
     justify-content: space-between;
+  }
+
+  .icp-settings-toolbar {
+    flex-direction: column;
+  }
+
+  .icp-editor-actions {
+    justify-content: flex-start;
   }
 
   .icp-candidate-detail-grid {
