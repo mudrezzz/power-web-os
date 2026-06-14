@@ -409,6 +409,11 @@ def test_generate_icp_radar_catalog_writes_portfolio_artifact(tmp_path: Path) ->
     assert artifact["artifact_type"] == "icp_radar_catalog"
     assert artifact["artifact_version"] == "0.6.5.2"
     assert len(artifact["radars"]) >= 3
+    expected_signal_codes = [f"C{index}" for index in range(1, 21)]
+    for radar in artifact["radars"]:
+        assert [
+            item["code"] for item in radar["definition"]["intent_signals"]
+        ] == expected_signal_codes
 
     fixture_backed = [item for item in artifact["radars"] if item["artifact_path"] == "/demo/icp_radar.json"]
     assert len(fixture_backed) == 1

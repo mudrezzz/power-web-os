@@ -410,6 +410,7 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert "BooleanPill" in screen
     assert "sourcePolicySummary" in screen
     assert "signalRuleText" in screen
+    assert "definition.intent_signals.slice(0, 8)" not in screen
     header_segment = screen.split("function RadarDetailHeader", 1)[1].split("function CandidateTable", 1)[0]
     assert "headerDraft.metadata.description" in header_segment
     assert "icp-radar-header-meta-row" in header_segment

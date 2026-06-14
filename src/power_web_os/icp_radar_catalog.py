@@ -45,6 +45,7 @@ class ICPRadarCatalogArtifact:
 def build_icp_radar_catalog(active_radar_payload: dict[str, Any]) -> dict[str, Any]:
     active_definition = active_radar_payload["radar"]["definition"]
     active_definition_model = _definition_from_payload(active_definition)
+    active_signal_criteria = _criteria_from_signals(active_definition_model.intent_signals)
     active_candidates = active_radar_payload.get("candidates", [])
     radars = (
         ICPRadarCatalogItem(
@@ -94,12 +95,15 @@ def build_icp_radar_catalog(active_radar_payload: dict[str, Any]) -> dict[str, A
                 segment="Горнодобывающие предприятия",
                 holding="Рынок РФ / горнодобыча",
                 market_scope="Юрлица с производственными активами, тяжелым оборудованием и публичными сигналами по ремонтам.",
-                criteria=(
+                criteria=_merge_criteria(
+                    active_signal_criteria,
+                    (
                     ("C1", "ТОиР / EAM", "Упоминание ремонтов, надежности, EAM или планирования ТОиР"),
                     ("C2", "Тяжелое оборудование", "Парк карьерной, дробильной, конвейерной или энергетической техники"),
                     ("C3", "Простои и надежность", "Сигналы о снижении простоев, OEE или повышении надежности"),
                     ("C4", "Цифровизация производства", "Программы цифровизации промышленных процессов"),
                     ("C5", "Закупочная активность", "Тендеры или закупки по диагностике, ремонтам, датчикам или аналитике"),
+                    ),
                 ),
             ),
             artifact_path=None,
@@ -129,12 +133,15 @@ def build_icp_radar_catalog(active_radar_payload: dict[str, Any]) -> dict[str, A
                 segment="Федеральный ритейл и склады",
                 holding="Рынок РФ / ритейл",
                 market_scope="Операторы сетей с большим количеством объектов и затратами на энергоресурсы.",
-                criteria=(
+                criteria=_merge_criteria(
+                    active_signal_criteria,
+                    (
                     ("C1", "Распределенная сеть", "Большое число торговых, складских или холодильных объектов"),
                     ("C2", "Энергозатраты", "Публичные сигналы об оптимизации энергопотребления"),
                     ("C3", "ESG / устойчивость", "Заявленные программы устойчивого развития или снижения выбросов"),
                     ("C4", "IoT / диспетчеризация", "Интерес к удаленному мониторингу инженерной инфраструктуры"),
                     ("C5", "Бюджетный триггер", "Открытые закупки или проекты по энергоэффективности"),
+                    ),
                 ),
             ),
             artifact_path=None,
@@ -151,6 +158,20 @@ def build_icp_radar_catalog(active_radar_payload: dict[str, Any]) -> dict[str, A
             },
         )
     )
+
+
+def _criteria_from_signals(signals: tuple[IntentSignalDefinition, ...]) -> tuple[tuple[str, str, str], ...]:
+    return tuple((signal.code, signal.name, signal.description) for signal in signals)
+
+
+def _merge_criteria(
+    base: tuple[tuple[str, str, str], ...],
+    overrides: tuple[tuple[str, str, str], ...],
+) -> tuple[tuple[str, str, str], ...]:
+    by_code = {code: (code, name, description) for code, name, description in base}
+    for code, name, description in overrides:
+        by_code[code] = (code, name, description)
+    return tuple(by_code[code] for code, _, _ in base)
 
 
 def icp_radar_catalog_to_payload(artifact: ICPRadarCatalogArtifact) -> dict[str, Any]:

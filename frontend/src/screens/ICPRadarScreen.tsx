@@ -1328,7 +1328,7 @@ function IntentSignalsSummary({ definition }: { definition: RadarDefinition }) {
         <span>{t('icpRadar.settings.additionalSourcesShort')}</span>
         <span>{t('icpRadar.settings.scaleOverrideShort')}</span>
       </div>
-      {definition.intent_signals.slice(0, 8).map((signal) => (
+      {definition.intent_signals.map((signal) => (
         <div className="settings-table-row criterion-row" key={signal.signal_id}>
           <Mono>{signal.code}</Mono>
           <span>
