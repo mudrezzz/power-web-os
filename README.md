@@ -39,7 +39,7 @@ Slice 0.6 is implemented. The repository contains:
 
 The current product direction is an ABM-oriented `ICP Radar` layer before Power Web work: configurable ICP profiles, account discovery, recurring signal monitoring, human validation of found signals, transparent scoring, and a `take into work` handoff into Power Web discovery. The first realistic fixture uses the ТОиР/SIBUR-style analysis workbook.
 
-The next recommended product slice is `Slice 0.6.3: ICP Radar signal validation loop`. `Slice 0.6.5.2` corrected the radar settings UX before durable validation and take-into-work: qualification filters and intent signals remain structured objects, but the UI now exposes business-language rules, source entities, generated codes, scoring presets, and a compact validator summary instead of developer-facing field/operator/value controls.
+The next recommended product slice is `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`. `Slice 0.6.3` added browser-local ICP Radar signal validation: users can confirm, correct, reject, or mark C1-C20 signals stale, and the visible shortlist score/ranking updates without mutating generated artifacts.
 
 ## Quick Start
 

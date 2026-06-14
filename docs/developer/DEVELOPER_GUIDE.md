@@ -158,7 +158,7 @@ frontend/public/demo/icp_radars.json
 demo/fixtures/icp_radar/toir_sibur_icp_radar.json
 ```
 
-The generated ICP Radar artifact version is `0.6.5.2`. It keeps `criteria_evidence_contract_version: "0.6.2.3"` and writes the structured `radar.definition` model. Each candidate keeps the backward-compatible fields `criteria_scores`, `evidence_refs`, and `source_urls`, and adds:
+The generated ICP Radar artifact version is `0.6.5.2`. It keeps `criteria_evidence_contract_version: "0.6.2.3"` and writes the structured `radar.definition` model. `radar.definition.intent_signals` is the canonical C1-C20 dictionary for Settings, candidate scores, and evidence explanations. The top-level `criteria` field is generated from `intent_signals` as a backward-compatible alias and must not diverge. Each candidate keeps the backward-compatible fields `criteria_scores`, `evidence_refs`, and `source_urls`, and adds:
 
 ```text
 candidates[].criteria_evidence[criterion_code]
@@ -209,6 +209,14 @@ Signal validation is a first-class domain concern. A user must be able to:
 - mark it stale when it is no longer actionable.
 
 Validated signals feed the final score. Rejected and stale signals must reduce or remove their scoring contribution while preserving evidence and audit history. The score explanation must show raw observations, validation decisions, and the resulting fit/intent/tier contribution.
+
+The current demo stores validation decisions in browser-local state under:
+
+```text
+power-web-os-icp-radar-signal-validation
+```
+
+The decision key is `radar_id + account_id + signal_code`. The decision payload contains status, original score, adjusted score, confidence override, corrected summary, selected evidence refs, comment, and `reviewed_at`. The frontend applies this overlay with the same deterministic semantics as `ICPRadarValidationScorer`: `unreviewed` and `confirmed` keep the original score, `corrected` uses the adjusted score, and `rejected` / `stale` contribute `0`. Generated JSON artifacts are not mutated by local validation.
 
 ## Access Planning Workflow
 
@@ -315,12 +323,12 @@ Rules:
   - score/tier values stay in the table row and should not be repeated inside the preview;
   - full candidate evidence/criteria work belongs on a separate candidate detail screen with breadcrumbs back to `ICP Radar`;
   - the candidate detail view keeps a compact sticky header so account identity remains visible while criteria scroll.
-- Treat candidate criterion review as table-first inside the detail view:
+- Treat candidate signal validation as table-first inside the detail view:
   - C1-C20 initially render as compact rows, not fully expanded evidence cards;
-  - filter by evidence/review status before drilling into detail;
+  - filter by signal validation status before drilling into detail;
   - sort by score, status, or confidence;
-  - expand one criterion row at a time for rationale, facts, and source refs;
-  - local accept/reject/edit controls may exist in frontend state, but they must be clearly labelled as non-persistent until Slice 0.6.3.
+  - expand one signal row at a time for rationale, facts, source refs, and validation controls;
+  - local confirm/correct/reject/stale controls must be clearly labelled as browser-local demo state until durable persistence exists.
 - Keep `ICP Radar` navigation local to `ICPRadarScreen` until a broader routing need appears:
   - `expandedCandidateId` owns inline preview state;
   - `detailCandidateId` owns the read-only candidate detail view;

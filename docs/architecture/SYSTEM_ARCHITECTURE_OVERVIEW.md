@@ -146,7 +146,7 @@ Older conceptual names such as account discovery rules and signal criteria map i
 
 Radar configuration is a first-class product boundary. There can be many ICP Radars running in parallel for different products, markets, holdings, or source scopes. Each radar owns its definition and can produce its own candidate shortlist; only approved candidates should flow into the shared `Accounts` portfolio and then into Power Web work. The current implementation exposes this through an `icp_radar_catalog` artifact and a block-editable selected-radar settings editor backed by browser-local demo state. The settings editor exposes business-language rules, source entities, generated codes, and scoring presets; it does not require users to edit internal IDs or field/operator/value triples. Production persistence, scheduling, live connector execution, and run history are planned as later concentric slices.
 
-The first realistic demo ICP profile uses `demo/fixtures/icp_radar/sibur_icp_pass1.xlsx` as a fixture. It discovers Russian legal entities inside a holding, scores them against ТОиР criteria, and shows a ranked candidate shortlist for the active `ТОиР / SIBUR` radar. The catalog also includes configured/planned radar examples without generated candidates yet. Numeric C1-C20 scores come from the XLSX. Criterion-level evidence is added by a separate curated synthetic fixture, `demo/fixtures/icp_radar/toir_sibur_criterion_evidence.json`, so the demo can exercise evidence-backed score explanation before production source extraction exists.
+The first realistic demo ICP profile uses `demo/fixtures/icp_radar/sibur_icp_pass1.xlsx` as a fixture. It discovers Russian legal entities inside a holding, scores them against ТОиР criteria, and shows a ranked candidate shortlist for the active `ТОиР / SIBUR` radar. The catalog also includes configured/planned radar examples without generated candidates yet. Numeric C1-C20 scores come from the XLSX. `radar.definition.intent_signals` is the canonical C1-C20 dictionary; top-level `criteria` is generated from it only as a backward-compatible alias. Criterion-level evidence is added by a separate curated synthetic fixture, `demo/fixtures/icp_radar/toir_sibur_criterion_evidence.json`, so the demo can exercise evidence-backed score explanation before production source extraction exists.
 
 The current criterion evidence contract is deliberately explicit:
 
@@ -154,11 +154,11 @@ The current criterion evidence contract is deliberately explicit:
 - `inferred`: the XLSX score is nonzero, but the demo does not yet contain criterion-level facts;
 - `not_observed`: the XLSX score is zero.
 
-This read model is not a substitute for production extraction. It defines the UI and artifact surface that future source ingestion and validation should populate. Signal validation and the take-into-work handoff are still planned follow-up slices.
+This read model is not a substitute for production extraction. It defines the UI and artifact surface that future source ingestion should populate. The current demo adds browser-local signal validation on top of the generated artifact: confirmed and unreviewed signals keep their score, corrected signals use an adjusted score, and rejected/stale signals remain visible but contribute `0`.
 
-Signal validation is part of the ICP Radar boundary. A human must be able to confirm, correct, reject, or mark a signal as stale. Validation changes must affect the score and preserve an audit trail explaining why the candidate score changed.
+Signal validation is part of the ICP Radar boundary. A human must be able to confirm, correct, reject, or mark a signal as stale. Validation changes must affect the score and preserve an audit trail explaining why the candidate score changed. In this slice that audit trail is browser-local demo state under `power-web-os-icp-radar-signal-validation`; durable persistence, multi-user audit, and live source re-checking remain future boundaries.
 
-The frontend ICP Radar workspace should be table-first. The main screen is a broad shortlist table with a sticky account column, bounded inline candidate preview, and a separate candidate detail screen. The detail screen is the intended surface for future evidence validation actions; the shortlist should stay optimized for scanning and comparison.
+The frontend ICP Radar workspace should be table-first. The main screen is a broad shortlist table with a sticky account column, bounded inline candidate preview, effective score deltas, and a separate candidate detail screen. The detail screen is the intended surface for signal validation actions; the shortlist should stay optimized for scanning and comparison.
 
 ## LangGraph Platform Usage
 
@@ -192,7 +192,8 @@ The demo should evolve through these stages:
 6. Playbook Analysis for current and no-partner-motion route previews.
 7. ICP Radar fixture using the ТОиР/SIBUR-style analysis and Russian-language demo companies.
 8. ICP Radar signal validation with score recalculation.
-9. Review queue and approved CRM task export.
+9. Take-into-work handoff from ICP Radar candidates to Power Web.
+10. Review queue and approved CRM task export.
 
 ## Trade-Offs
 

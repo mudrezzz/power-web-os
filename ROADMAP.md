@@ -985,16 +985,17 @@ Status:
 
 ### Slice 0.6.3: ICP Radar signal validation loop
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Add human validation for found ICP Radar signals and make validation affect the candidate score.
 - User value: A user can prevent wrong, distorted, or stale information from driving account prioritization.
 - Scope:
+  - Make `radar.definition.intent_signals` the canonical C1-C20 dictionary for Settings, candidate scores, and evidence explanations.
   - Add `SignalValidation` states: `unreviewed`, `confirmed`, `corrected`, `rejected`, `stale`.
-  - Add correction fields for criterion, strength, confidence, summary, and evidence mapping.
-  - Add a deterministic rescore service that uses validated signal state.
+  - Add correction fields for adjusted score, confidence, corrected summary, selected evidence refs, comment, and review timestamp.
+  - Add a deterministic rescore service that uses validated signal state and keeps rejected/stale signals in the audit trail with zero score contribution.
   - Add UI controls to confirm, correct, reject, or mark a signal stale.
-  - Show before/after score impact and audit history.
-  - Keep validation local/demo-state only until persistence slice.
+  - Show before/after score impact, candidate-level validation summary, and score delta in the shortlist.
+  - Store validation decisions in browser-local demo state under `power-web-os-icp-radar-signal-validation`.
 - Out of scope:
   - Multi-user review.
   - Permanent database persistence.
@@ -1016,7 +1017,7 @@ Status:
 - Acceptance criteria:
   - Confirm/correct/reject/stale actions visibly change candidate score or contribution.
   - Score explanation shows validation decisions.
-  - The action history is preserved in the artifact or local state.
+  - The action history is preserved in browser local state.
 - Risks:
   - Browser-only validation can be mistaken for persisted workflow; label it as local demo state until persistence exists.
 
@@ -1781,6 +1782,13 @@ Status:
   - Pinned the SPA shell to the viewport and constrained hidden switch inputs so switch clicks cannot move the browser document scroll and visually blank the app.
   - Normalized legacy/incomplete browser-local radar overrides before rendering Settings.
   - Added a repeatable Playwright `settings:toggle-smoke` command that opens RU Settings, saves/reloads the global-search switch, injects a legacy override, clicks every switch in every editable block twice, and fails if `.app-shell` leaves the viewport.
+- `Slice 0.6.3: ICP Radar signal validation loop`
+  - Made `radar.definition.intent_signals` the canonical C1-C20 source for Settings, candidate `criteria_scores`, and `criteria_evidence`.
+  - Added deterministic `ICPRadarValidationScorer` with `unreviewed`, `confirmed`, `corrected`, `rejected`, and `stale` status semantics.
+  - Added browser-local signal validation overlay under `power-web-os-icp-radar-signal-validation`.
+  - Updated shortlist ranking and candidate detail score grids to use effective score and visible score deltas.
+  - Replaced criteria review UI with signal validation actions: confirm, correct, reject, mark stale, selected evidence refs, confidence override, and comments.
+  - Regenerated ICP Radar demo artifacts so the top-level `criteria` alias is generated from `intent_signals` and no longer diverges.
 
 ## Blocked Items
 
@@ -1788,7 +1796,7 @@ None.
 
 ## Open Questions
 
-- What is the first persistence mechanism for signal validation decisions before Slice 0.9: browser local state, generated JSON artifact, or lightweight local state file?
+- What is the first durable persistence mechanism for signal validation decisions after the browser-local demo overlay: generated JSON artifact, lightweight local state file, SQLite, or production API?
 - Which CRM should be the first integration target: file export, HubSpot, Salesforce, Bitrix24, amoCRM, or another system?
 - Which Russian/CIS data source should be first: procurement, HH, company websites, news, CRM history, or a partner ecosystem file?
 - Should the first durable UI be static demo, lightweight local web app, or API-backed app after Slice 0.2?
@@ -1797,4 +1805,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.6.3: ICP Radar signal validation loop`.
+Implement `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`.

@@ -83,7 +83,7 @@ Settings are intentionally business-facing:
 - Scoring uses only `Fit / Соответствие`, `Intent / Интент`, and `Tier / Уровень`. Presets cover arithmetic mean, weighted average, maximum signal, capped sum, and custom formula.
 - Custom formula mode is the only place where generated rule IDs and signal codes matter.
 
-Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. The main surface is a wide table: the company column stays fixed while score, tier, evidence, and criteria-related columns can scroll horizontally inside the table. Click a candidate row to open a bounded inline preview with the main signal, short recommendation, top evidence refs, and top criteria. Open the read-only candidate detail view when you need the full C1-C20 breakdown and source refs. Signal validation and take-into-work actions are still planned follow-up slices.
+Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. The main surface is a wide table: the company column stays fixed while score, tier, evidence, and criteria-related columns can scroll horizontally inside the table. Click a candidate row to open a bounded inline preview with the main signal, short recommendation, top evidence refs, and top criteria. Open the candidate detail view when you need the full C1-C20 signal breakdown, source refs, and local signal validation controls. Take-into-work is still a planned follow-up slice.
 
 ![ICP Radar catalog](../qa/screenshots/visual-smoke/icp-radar-1366x768.png)
 
@@ -131,12 +131,15 @@ The current ICP Radar UI is table-first:
 - Score and tier values stay in the table row; the expanded row strengthens those existing values instead of repeating them in the preview.
 - Full candidate work opens in a separate read-only candidate detail view with breadcrumbs back to `ICP Radar`.
 - The detail view keeps a compact candidate header sticky while the user scrolls through profile, source refs, evidence list, score explanation, and the full C1-C20 criteria breakdown.
-- The C1-C20 breakdown starts as a compact table. Use filters to focus on supported, inferred, not observed, or needs-review criteria, and sort by score, evidence status, or confidence.
-- Click a criterion row to inspect rationale, source refs, and facts. The expanded view keeps confidence compact and does not repeat origin as a large block.
-- You can accept, reject, or edit a criterion score with a comment. These review actions are local demo state only; they do not persist and do not recalculate the shortlist score yet.
+- The C1-C20 breakdown is now a signal validation table sourced from the same `intent_signals` dictionary used in radar Settings.
+- Use filters to focus on all, needs review, confirmed, corrected, rejected, or stale signals, and sort by score, validation status, or confidence.
+- Click a signal row to inspect rationale, source refs, facts, original score, effective score, and validation state.
+- You can confirm a signal, reject it, mark it stale, or correct its score with confidence, selected evidence refs, corrected summary, and a mandatory comment for negative/corrective actions.
+- Confirmed and unreviewed signals keep their original score. Corrected signals use the adjusted score. Rejected and stale signals stay visible in the evidence trail but contribute `0` to the effective score.
+- Validation decisions are saved in browser-local demo state under `power-web-os-icp-radar-signal-validation`. They update the visible shortlist score and ranking, but they do not mutate generated JSON artifacts or persist to a backend.
 - Numeric C1-C20 scores come from the XLSX fixture. Criterion-level facts are a curated synthetic demo annotation layer, clearly labelled as `synthetic_demo_annotation`; they demonstrate the product mechanic that future production extraction should replace.
 - Criteria without curated facts are still explicit: nonzero scores are marked as inferred from the XLSX score, and zero scores are marked as not observed.
-- Durable signal confirm/correct/reject/stale actions are planned for the following signal validation slice.
+- Use `Reset local validation` in candidate detail to remove local validation decisions for the selected candidate.
 
 The generated JSON artifact is also available at:
 
@@ -153,7 +156,7 @@ The generated JSON artifact is also available at:
 ## Current Limitations
 
 - ICP Radar settings can be edited as local browser demo drafts. Production persistence, run scheduling, live source setup, and shortlist recalculation are not implemented yet.
-- ICP Radar signal validation is not implemented in the current UI yet.
+- ICP Radar signal validation is browser-local demo state. It is not backend-persisted yet.
 - `Take into work` does not create accepted accounts yet.
 - No live CRM integration yet.
 - No live source connectors yet.

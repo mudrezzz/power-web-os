@@ -1997,6 +1997,31 @@ button {
   font: var(--h3);
 }
 
+.score-delta {
+  color: var(--fg2);
+  font: var(--mono-sm);
+}
+
+.validation-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.validation-summary-grid span {
+  display: grid;
+  gap: var(--s-1);
+  min-width: 0;
+  padding: var(--s-2);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.validation-summary-grid strong {
+  font: var(--label);
+}
+
 .icp-detail-section {
   display: grid;
   align-content: start;
@@ -2457,6 +2482,34 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--surface);
+}
+
+.criterion-evidence-ref-picker {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-2);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+}
+
+.criterion-evidence-ref-picker legend {
+  padding: 0 var(--s-1);
+  color: var(--fg2);
+  font: var(--meta);
+}
+
+.criterion-evidence-ref-picker label {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--s-2);
+}
+
+.criterion-evidence-ref-picker .mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .criterion-review-actions {

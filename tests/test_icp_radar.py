@@ -8,9 +8,11 @@ from power_web_os.icp_radar import (
     CRITERION_CODES,
     AtomicRule,
     ICPRadar,
+    ICPRadarValidationScorer,
     RadarDefinition,
     RadarDefinitionValidator,
     RuleGroup,
+    SignalValidationDecision,
     SourcePolicy,
 )
 from power_web_os.icp_radar_xlsx import REQUIRED_SHEETS, load_icp_radar_workbook
@@ -36,6 +38,29 @@ def test_icp_radar_importer_parses_exactly_twenty_criteria() -> None:
     assert len(artifact.definition.intent_signals) == 20
     assert artifact.definition.intent_signals[0].code == "C1"
     assert artifact.definition.intent_signals[-1].scoring_rubric.scale == (0, 1, 2)
+
+
+def test_icp_radar_signal_dictionary_is_consistent_across_settings_and_candidates() -> None:
+    artifact = load_icp_radar_workbook(WORKBOOK)
+    signal_codes = tuple(signal.code for signal in artifact.definition.intent_signals)
+    signal_labels = {
+        signal.code: (signal.name, signal.description)
+        for signal in artifact.definition.intent_signals
+    }
+
+    assert signal_codes == CRITERION_CODES
+    assert tuple(criterion.code for criterion in artifact.criteria) == signal_codes
+    assert {
+        criterion.code: (criterion.name, criterion.description)
+        for criterion in artifact.criteria
+    } == signal_labels
+
+    for candidate in artifact.candidates:
+        assert tuple(candidate.criteria_scores) == signal_codes
+        assert tuple(candidate.criteria_evidence) == signal_codes
+        for code in signal_codes:
+            assert candidate.criteria_evidence[code].criterion_code == code
+            assert candidate.criteria_evidence[code].score == candidate.criteria_scores[code]
 
 
 def test_icp_radar_definition_has_rule_signal_source_model() -> None:
@@ -226,6 +251,55 @@ def test_icp_radar_ranking_sort_order_is_stable() -> None:
     assert [item.legal_name for item in sorted_again] == candidate_names
 
 
+def test_icp_radar_validation_scorer_applies_human_decisions() -> None:
+    artifact = load_icp_radar_workbook(WORKBOOK)
+    candidate = artifact.candidates[0]
+    result = ICPRadarValidationScorer().score(
+        criteria_scores=candidate.criteria_scores,
+        decisions={
+            "C1": SignalValidationDecision("C1", "confirmed", candidate.criteria_scores["C1"]),
+            "C2": SignalValidationDecision("C2", "corrected", candidate.criteria_scores["C2"], adjusted_score=1),
+            "C5": SignalValidationDecision("C5", "rejected", candidate.criteria_scores["C5"], comment="Wrong source"),
+            "C12": SignalValidationDecision("C12", "stale", candidate.criteria_scores["C12"], comment="Old signal"),
+        },
+    )
+
+    assert result.original_score == candidate.score
+    assert result.signal_scores["C1"].effective_score == candidate.criteria_scores["C1"]
+    assert result.signal_scores["C2"].effective_score == 1
+    assert result.signal_scores["C5"].effective_score == 0
+    assert result.signal_scores["C12"].effective_score == 0
+    assert result.signal_scores["C5"].delta == -candidate.criteria_scores["C5"]
+    assert result.status_counts["confirmed"] == 1
+    assert result.status_counts["corrected"] == 1
+    assert result.status_counts["rejected"] == 1
+    assert result.status_counts["stale"] == 1
+    assert result.effective_score.total_score < candidate.score.total_score
+
+
+def test_icp_radar_validation_scorer_reranks_by_effective_score() -> None:
+    artifact = load_icp_radar_workbook(WORKBOOK)
+    first, second = artifact.candidates[:2]
+    scorer = ICPRadarValidationScorer()
+    first_result = scorer.score(
+        criteria_scores=first.criteria_scores,
+        decisions={
+            code: SignalValidationDecision(code, "rejected", score, comment="Reject demo signal")
+            for code, score in first.criteria_scores.items()
+            if score > 0
+        },
+    )
+    second_result = scorer.score(criteria_scores=second.criteria_scores)
+
+    ranked = sorted(
+        [(first.account_id, first_result.effective_score), (second.account_id, second_result.effective_score)],
+        key=lambda item: (-item[1].total_score, -item[1].intent_score, item[0]),
+    )
+
+    assert ranked[0][0] == second.account_id
+    assert ranked[1][0] == first.account_id
+
+
 def test_icp_radar_attaches_criterion_evidence_for_all_criteria() -> None:
     artifact = load_icp_radar_workbook(WORKBOOK)
 
@@ -311,6 +385,10 @@ def test_generate_icp_radar_writes_backend_frontend_and_normalized_artifacts(tmp
     assert not artifact["radar"]["definition"]["validation_report"]["errors"]
 
     payload = json.loads(frontend_output_path.read_text(encoding="utf-8"))
+    assert [item["code"] for item in payload["criteria"]] == [
+        item["code"] for item in payload["radar"]["definition"]["intent_signals"]
+    ]
+    assert len(payload["criteria"]) == 20
     assert len(payload["radar"]["definition"]["intent_signals"]) == 20
     assert payload["candidates"][0]["evidence_refs"]
     assert len(payload["candidates"][0]["criteria_evidence"]) == 20

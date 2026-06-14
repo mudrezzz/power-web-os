@@ -40,13 +40,22 @@ import type {
   RadarScoringModel,
   RadarValidationReport,
   RuleGroup,
+  SignalValidationDecision,
+  SignalValidationOverlay,
+  SignalValidationStatus,
   SourceDefinition,
   SourcePolicy,
+  ValidatedCandidateScore,
 } from '../types';
 
 type RadarDetailTab = 'shortlist' | 'settings';
 
 const radarConfigStorageKey = 'power-web-os-icp-radar-config-overrides';
+const signalValidationStorageKey = 'power-web-os-icp-radar-signal-validation';
+const signalCodes = Array.from({ length: 20 }, (_, index) => `C${index + 1}`);
+const fitSignalCodes = ['C13', 'C14', 'C15', 'C16', 'C17'];
+const intentSignalCodes = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C18', 'C19'];
+const triggerSignalCodes = ['C10', 'C11', 'C12', 'C20'];
 
 export function ICPRadarScreen({
   artifact,
@@ -62,7 +71,7 @@ export function ICPRadarScreen({
   const [selectedTab, setSelectedTab] = useState<RadarDetailTab>('shortlist');
   const [expandedCandidateId, setExpandedCandidateId] = useState<string | null>(null);
   const [detailCandidateId, setDetailCandidateId] = useState<string | null>(null);
-  const [criterionReviews, setCriterionReviews] = useState<Record<string, CriterionReviewState>>({});
+  const [signalValidation, setSignalValidation] = useState<SignalValidationOverlay>(() => loadSignalValidationOverlay());
   const [radarOverrides, setRadarOverrides] = useState<Record<string, RadarConfigOverride>>(() => loadRadarConfigOverrides());
   const mergedRadars = useMemo(() => mergeRadarCatalog(catalog, radarOverrides), [catalog, radarOverrides]);
   const selectedRadar = mergedRadars.find((item) => item.radar_id === selectedRadarId) ?? null;
@@ -87,6 +96,14 @@ export function ICPRadarScreen({
     }
     window.localStorage.removeItem(radarConfigStorageKey);
   }, [radarOverrides]);
+
+  useEffect(() => {
+    if (Object.keys(signalValidation).length) {
+      window.localStorage.setItem(signalValidationStorageKey, JSON.stringify(signalValidation));
+      return;
+    }
+    window.localStorage.removeItem(signalValidationStorageKey);
+  }, [signalValidation]);
 
   useEffect(() => {
     if (!selectedRadar) {
@@ -205,6 +222,21 @@ export function ICPRadarScreen({
     setEditingBlock(null);
   }
 
+  function saveSignalValidationDecision(decision: SignalValidationDecision) {
+    setSignalValidation((current) => ({
+      ...current,
+      [signalValidationKey(decision.radar_id, decision.account_id, decision.signal_code)]: decision,
+    }));
+  }
+
+  function resetCandidateSignalValidation(radarId: string, accountId: string) {
+    setSignalValidation((current) => Object.fromEntries(
+      Object.entries(current).filter(([, decision]) => (
+        decision.radar_id !== radarId || decision.account_id !== accountId
+      )),
+    ));
+  }
+
   function duplicateRadar(radar: ICPRadarCatalogItem) {
     const duplicate = duplicateLocalRadar(radar, t('icpRadar.duplicateName', { name: radar.name }));
     setRadarOverrides((current) => ({
@@ -260,7 +292,11 @@ export function ICPRadarScreen({
     );
   }
 
-  if (detailCandidate && selectedRadarArtifact) {
+  const detailValidatedScore = detailCandidate && selectedRadar
+    ? buildValidatedCandidateScore(detailCandidate, validationForCandidate(signalValidation, selectedRadar.radar_id, detailCandidate.account_id))
+    : null;
+
+  if (detailCandidate && selectedRadarArtifact && detailValidatedScore) {
     return (
       <section className="screen icp-radar-screen icp-detail-screen" aria-label={t('icpRadar.aria')}>
         <div className="icp-detail-sticky-header">
@@ -285,7 +321,7 @@ export function ICPRadarScreen({
               <p>{detailCandidate.main_signal}</p>
             </div>
             <div className="icp-profile-meta">
-              <Badge tone={detailCandidate.score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{detailCandidate.score.tier}</Badge>
+              <Badge tone={detailValidatedScore.effective_score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{detailValidatedScore.effective_score.tier}</Badge>
               <Mono>#{detailCandidate.rank}</Mono>
             </div>
           </header>
@@ -294,15 +330,22 @@ export function ICPRadarScreen({
         <div className="icp-candidate-detail-grid">
           <Card>
             <div className="icp-detail-card">
-              <CandidateScoreGrid candidate={detailCandidate} />
+              <CandidateScoreGrid candidate={detailCandidate} validatedScore={detailValidatedScore} />
               <CompanyContext candidate={detailCandidate} />
               <section className="icp-detail-section">
                 <Eyebrow>{t('icpRadar.signalSummary')}</Eyebrow>
                 <p>{detailCandidate.signal_summary || detailCandidate.comment}</p>
               </section>
               <section className="icp-detail-section">
-                <Eyebrow>{t('icpRadar.plannedValidation')}</Eyebrow>
-                <p>{t('icpRadar.validationPlannedCopy')}</p>
+                <Eyebrow>{t('icpRadar.signalValidation')}</Eyebrow>
+                <ValidationSummary score={detailValidatedScore} />
+                <Button
+                  icon={<RotateCcw aria-hidden="true" />}
+                  variant="default"
+                  onClick={() => resetCandidateSignalValidation(selectedRadar.radar_id, detailCandidate.account_id)}
+                >
+                  {t('icpRadar.resetLocalValidation')}
+                </Button>
               </section>
             </div>
           </Card>
@@ -327,8 +370,10 @@ export function ICPRadarScreen({
                 <CriteriaBreakdown
                   artifact={selectedRadarArtifact}
                   candidate={detailCandidate}
-                  reviews={criterionReviews}
-                  onReviewChange={setCriterionReviews}
+                  radarId={selectedRadar.radar_id}
+                  signalValidation={signalValidation}
+                  validatedScore={detailValidatedScore}
+                  onDecisionChange={saveSignalValidationDecision}
                 />
               </section>
             </div>
@@ -383,6 +428,8 @@ export function ICPRadarScreen({
             expandedCandidateId === candidateId ? null : candidateId,
           )}
           sourcesById={sourcesById}
+          radarId={selectedRadar.radar_id}
+          signalValidation={signalValidation}
         />
       ) : (
         <EmptyShortlist radar={selectedRadar} onOpenSettings={() => setSelectedTab('settings')} />
@@ -635,15 +682,20 @@ function CandidateTable({
   expandedCandidateId,
   onOpenDetails,
   onToggleCandidate,
+  radarId,
+  signalValidation,
   sourcesById,
 }: {
   artifact: ICPRadarArtifact;
   expandedCandidateId: string | null;
   onOpenDetails: (candidateId: string) => void;
   onToggleCandidate: (candidateId: string) => void;
+  radarId: string;
+  signalValidation: SignalValidationOverlay;
   sourcesById: Map<string, SourceDefinition>;
 }) {
   const { t } = useTranslation();
+  const candidates = useMemo(() => validatedCandidatesForArtifact(artifact, radarId, signalValidation), [artifact, radarId, signalValidation]);
   return (
     <Card>
       <div className="icp-radar-table-wrap" aria-label={t('icpRadar.tableAria')}>
@@ -658,8 +710,9 @@ function CandidateTable({
             <span>{t('icpRadar.columns.evidence')}</span>
             <span>{t('icpRadar.columns.action')}</span>
           </div>
-          {artifact.candidates.map((candidate) => {
+          {candidates.map(({ candidate, score }) => {
             const expanded = expandedCandidateId === candidate.account_id;
+            const scoreDelta = score.effective_score.total_score - score.original_score.total_score;
             return (
               <div className="icp-candidate-record" key={candidate.account_id}>
                 <button
@@ -677,15 +730,16 @@ function CandidateTable({
                   </span>
                   <span className="score-cell">
                     <span className="score-track">
-                      <span className="score-fill" style={{ width: `${Math.min(100, candidate.score.total_score * 2)}%` }} />
+                      <span className="score-fill" style={{ width: `${Math.min(100, score.effective_score.total_score * 2)}%` }} />
                     </span>
-                    <Mono>{candidate.score.total_score}</Mono>
+                    <Mono>{score.effective_score.total_score}</Mono>
+                    {scoreDelta !== 0 && <span className="score-delta">{formatDelta(scoreDelta)}</span>}
                   </span>
-                  <Mono>{candidate.score.fit_score}</Mono>
-                  <Mono>{candidate.score.intent_score}</Mono>
-                  <Mono>{candidate.score.trigger_score}</Mono>
+                  <Mono>{score.effective_score.fit_score}</Mono>
+                  <Mono>{score.effective_score.intent_score}</Mono>
+                  <Mono>{score.effective_score.trigger_score}</Mono>
                   <span>
-                    <Badge tone={candidate.score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{candidate.score.tier}</Badge>
+                    <Badge tone={score.effective_score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{score.effective_score.tier}</Badge>
                   </span>
                   <Mono>{candidate.evidence_refs.length}</Mono>
                   <span className="row-action">
@@ -1817,14 +1871,15 @@ function CandidatePreview({
   );
 }
 
-function CandidateScoreGrid({ candidate }: { candidate: ICPRadarCandidate }) {
+function CandidateScoreGrid({ candidate, validatedScore }: { candidate: ICPRadarCandidate; validatedScore: ValidatedCandidateScore }) {
   const { t } = useTranslation();
+  const delta = validatedScore.effective_score.total_score - validatedScore.original_score.total_score;
   return (
     <div className="icp-score-grid">
-      <ScoreBox label={t('icpRadar.fit')} value={candidate.score.fit_score} />
-      <ScoreBox label={t('icpRadar.intent')} value={candidate.score.intent_score} />
-      <ScoreBox label={t('icpRadar.trigger')} value={candidate.score.trigger_score} />
-      <ScoreBox label={t('icpRadar.total')} value={candidate.score.total_score} />
+      <ScoreBox label={t('icpRadar.fit')} value={validatedScore.effective_score.fit_score} />
+      <ScoreBox label={t('icpRadar.intent')} value={validatedScore.effective_score.intent_score} />
+      <ScoreBox label={t('icpRadar.trigger')} value={validatedScore.effective_score.trigger_score} />
+      <ScoreBox delta={delta} label={t('icpRadar.total')} value={validatedScore.effective_score.total_score} />
     </div>
   );
 }
@@ -1905,11 +1960,45 @@ function SourceUrlList({ candidate }: { candidate: ICPRadarCandidate }) {
   );
 }
 
-function ScoreBox({ label, value }: { label: string; value: number }) {
+function ScoreBox({ delta = 0, label, value }: { delta?: number; label: string; value: number }) {
   return (
     <div className="icp-score-box">
       <Mono>{label}</Mono>
       <strong>{value}</strong>
+      {delta !== 0 && <small className="score-delta">{formatDelta(delta)}</small>}
+    </div>
+  );
+}
+
+function ValidationSummary({ score }: { score: ValidatedCandidateScore }) {
+  const { t } = useTranslation();
+  const reviewedCount = score.status_counts.confirmed
+    + score.status_counts.corrected
+    + score.status_counts.rejected
+    + score.status_counts.stale;
+  const needsReviewCount = signalCodes.length - reviewedCount;
+  return (
+    <div className="validation-summary-grid">
+      <span>
+        <Mono>{t('icpRadar.reviewStatus.confirmed')}</Mono>
+        <strong>{score.status_counts.confirmed}</strong>
+      </span>
+      <span>
+        <Mono>{t('icpRadar.reviewStatus.corrected')}</Mono>
+        <strong>{score.status_counts.corrected}</strong>
+      </span>
+      <span>
+        <Mono>{t('icpRadar.reviewStatus.rejected')}</Mono>
+        <strong>{score.status_counts.rejected}</strong>
+      </span>
+      <span>
+        <Mono>{t('icpRadar.reviewStatus.stale')}</Mono>
+        <strong>{score.status_counts.stale}</strong>
+      </span>
+      <span>
+        <Mono>{t('icpRadar.criteriaFilters.needs_review')}</Mono>
+        <strong>{needsReviewCount}</strong>
+      </span>
     </div>
   );
 }
@@ -1925,25 +2014,23 @@ function topCriteria(artifact: ICPRadarArtifact, candidate: ICPRadarCandidate, c
     .slice(0, count);
 }
 
-type CriterionFilter = 'all' | 'supported' | 'inferred' | 'not_observed' | 'needs_review';
+type CriterionFilter = 'all' | 'needs_review' | 'confirmed' | 'corrected' | 'rejected' | 'stale';
 type CriterionSort = 'score_desc' | 'status' | 'confidence';
-
-type CriterionReviewState = {
-  status: 'accepted' | 'rejected' | 'edited';
-  adjustedScore: number;
-  comment: string;
-};
 
 function CriteriaBreakdown({
   artifact,
   candidate,
-  reviews,
-  onReviewChange,
+  onDecisionChange,
+  radarId,
+  signalValidation,
+  validatedScore,
 }: {
   artifact: ICPRadarArtifact;
   candidate: ICPRadarCandidate;
-  reviews: Record<string, CriterionReviewState>;
-  onReviewChange: (reviews: Record<string, CriterionReviewState>) => void;
+  onDecisionChange: (decision: SignalValidationDecision) => void;
+  radarId: string;
+  signalValidation: SignalValidationOverlay;
+  validatedScore: ValidatedCandidateScore;
 }) {
   const { t } = useTranslation();
   const [expandedCriterionCode, setExpandedCriterionCode] = useState<string | null>(null);
@@ -1953,26 +2040,31 @@ function CriteriaBreakdown({
     artifact.radar.definition.intent_signals
       .map((criterion) => {
         const evidence = candidate.criteria_evidence[criterion.code];
-        const review = reviews[criterion.code];
+        const decision = signalValidation[signalValidationKey(radarId, candidate.account_id, criterion.code)];
+        const signalScore = validatedScore.signal_scores[criterion.code];
         return {
           criterion,
+          decision,
           evidence,
-          review,
-          score: evidence?.score ?? candidate.criteria_scores[criterion.code] ?? 0,
+          signalScore,
+          score: signalScore?.original_score ?? evidence?.score ?? candidate.criteria_scores[criterion.code] ?? 0,
         };
       })
-      .filter((row) => matchesCriterionFilter(row.evidence, row.review, filter))
+      .filter((row) => matchesCriterionFilter(row.evidence, row.decision, filter))
       .sort((left, right) => compareCriterionRows(left, right, sort))
-  ), [artifact.radar.definition.intent_signals, candidate.criteria_evidence, candidate.criteria_scores, filter, reviews, sort]);
+  ), [
+    artifact.radar.definition.intent_signals,
+    candidate.account_id,
+    candidate.criteria_evidence,
+    candidate.criteria_scores,
+    filter,
+    radarId,
+    signalValidation,
+    sort,
+    validatedScore.signal_scores,
+  ]);
 
-  function updateReview(code: string, review: CriterionReviewState) {
-    onReviewChange({
-      ...reviews,
-      [code]: review,
-    });
-  }
-
-  const filterOptions: CriterionFilter[] = ['all', 'supported', 'inferred', 'not_observed', 'needs_review'];
+  const filterOptions: CriterionFilter[] = ['all', 'needs_review', 'confirmed', 'corrected', 'rejected', 'stale'];
   const sortOptions: CriterionSort[] = ['score_desc', 'status', 'confidence'];
 
   return (
@@ -2020,11 +2112,13 @@ function CriteriaBreakdown({
           <span className="criteria-action-head" aria-label={t('icpRadar.criteriaColumns.action')} />
         </div>
 
-        {rows.map(({ criterion, evidence, review, score }) => {
+        {rows.map(({ criterion, decision, evidence, score, signalScore }) => {
           const expanded = expandedCriterionCode === criterion.code;
-          const adjusted = review?.status === 'edited' && review.adjustedScore !== score;
+          const effectiveScore = signalScore?.effective_score ?? score;
+          const adjusted = effectiveScore !== score;
           const statusLabel = evidence ? t(evidenceStatusKey(evidence.evidence_status)) : t('icpRadar.notObserved');
           const confidenceLabel = evidence ? t(confidenceKey(evidence.confidence)) : t('icpRadar.confidenceValues.none');
+          const validationStatus = decision?.status ?? 'unreviewed';
 
           return (
             <div className={`criteria-review-record${expanded ? ' criteria-review-record-expanded' : ''}`} key={criterion.code}>
@@ -2044,7 +2138,8 @@ function CriteriaBreakdown({
                   {adjusted && (
                     <>
                       <span aria-hidden="true">-&gt;</span>
-                      <Mono>{review.adjustedScore}</Mono>
+                      <Mono>{effectiveScore}</Mono>
+                      <small className="score-delta">{formatDelta(effectiveScore - score)}</small>
                     </>
                   )}
                 </span>
@@ -2056,7 +2151,7 @@ function CriteriaBreakdown({
                 </span>
                 <Mono>{evidence?.facts.length ?? 0}</Mono>
                 <span>
-                  <Badge tone={reviewTone(review)}>{review ? t(reviewStatusKey(review.status)) : t('icpRadar.unreviewed')}</Badge>
+                  <Badge tone={validationTone(validationStatus)}>{t(validationStatusKey(validationStatus))}</Badge>
                 </span>
                 <span className="row-action">
                   {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
@@ -2065,10 +2160,13 @@ function CriteriaBreakdown({
 
               {expanded && evidence && (
                 <CriterionEvidenceDetail
+                  candidate={candidate}
                   criterion={criterion}
+                  decision={decision}
                   evidence={evidence}
-                  review={review}
-                  onReview={(nextReview) => updateReview(criterion.code, nextReview)}
+                  radarId={radarId}
+                  signalScore={signalScore}
+                  onDecision={onDecisionChange}
                 />
               )}
             </div>
@@ -2080,26 +2178,64 @@ function CriteriaBreakdown({
 }
 
 function CriterionEvidenceDetail({
+  candidate,
   criterion,
+  decision,
   evidence,
-  review,
-  onReview,
+  onDecision,
+  radarId,
+  signalScore,
 }: {
+  candidate: ICPRadarCandidate;
   criterion: IntentSignalDefinition;
+  decision: SignalValidationDecision | undefined;
   evidence: CriterionEvidenceExplanation;
-  review: CriterionReviewState | undefined;
-  onReview: (review: CriterionReviewState) => void;
+  onDecision: (decision: SignalValidationDecision) => void;
+  radarId: string;
+  signalScore: ValidatedCandidateScore['signal_scores'][string] | undefined;
 }) {
   const { t } = useTranslation();
-  const [draftScore, setDraftScore] = useState(review?.adjustedScore ?? evidence.score);
-  const [comment, setComment] = useState(review?.comment ?? '');
+  const [draftScore, setDraftScore] = useState(decision?.adjusted_score ?? signalScore?.effective_score ?? evidence.score);
+  const [confidence, setConfidence] = useState(decision?.confidence ?? evidence.confidence);
+  const [correctedSummary, setCorrectedSummary] = useState(decision?.corrected_summary ?? '');
+  const [selectedEvidenceRefs, setSelectedEvidenceRefs] = useState<string[]>(
+    decision?.evidence_refs?.length ? decision.evidence_refs : evidence.evidence_refs,
+  );
+  const [comment, setComment] = useState(decision?.comment ?? '');
   const commentRequired = !comment.trim();
+
+  function submitDecision(status: SignalValidationStatus) {
+    const needsComment = status === 'corrected' || status === 'rejected' || status === 'stale';
+    if (needsComment && commentRequired) {
+      return;
+    }
+    onDecision({
+      radar_id: radarId,
+      account_id: candidate.account_id,
+      signal_code: criterion.code,
+      status,
+      original_score: evidence.score,
+      adjusted_score: status === 'corrected' ? draftScore : null,
+      confidence: status === 'corrected' ? confidence : null,
+      corrected_summary: status === 'corrected' ? correctedSummary : null,
+      evidence_refs: status === 'corrected' ? selectedEvidenceRefs : evidence.evidence_refs,
+      comment,
+      reviewed_at: new Date().toISOString(),
+    });
+  }
+
+  function toggleEvidenceRef(ref: string) {
+    setSelectedEvidenceRefs((current) => (
+      current.includes(ref) ? current.filter((item) => item !== ref) : [...current, ref]
+    ));
+  }
 
   return (
     <div className="criterion-evidence-detail">
       <div className="criterion-detail-topline">
         <Badge tone={evidenceBadgeTone(evidence.evidence_status)}>{t(evidenceStatusKey(evidence.evidence_status))}</Badge>
         <Badge tone={confidenceTone(evidence.confidence)}>{t(confidenceKey(evidence.confidence))}</Badge>
+        <Badge tone={validationTone(decision?.status ?? 'unreviewed')}>{t(validationStatusKey(decision?.status ?? 'unreviewed'))}</Badge>
         <span className="criterion-origin-note">{t(evidenceOriginKey(evidence.evidence_origin))}</span>
       </div>
 
@@ -2133,8 +2269,8 @@ function CriterionEvidenceDetail({
 
       <section className="criterion-review-panel">
         <div>
-          <Eyebrow>{t('icpRadar.localReview')}</Eyebrow>
-          <p>{t('icpRadar.localReviewCopy')}</p>
+          <Eyebrow>{t('icpRadar.localValidation')}</Eyebrow>
+          <p>{t('icpRadar.localValidationCopy')}</p>
         </div>
         <div className="criterion-review-form">
           <label>
@@ -2147,6 +2283,42 @@ function CriterionEvidenceDetail({
               ))}
             </select>
           </label>
+          <label>
+            <span>{t('icpRadar.confidenceOverride')}</span>
+            <select
+              value={confidence}
+              onChange={(event) => setConfidence(event.target.value as CriterionEvidenceExplanation['confidence'])}
+            >
+              {(['high', 'medium', 'low', 'none'] as const).map((value) => (
+                <option key={value} value={value}>
+                  {t(confidenceKey(value))}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="criterion-comment-field">
+            <span>{t('icpRadar.correctedSummary')}</span>
+            <textarea
+              placeholder={t('icpRadar.correctedSummaryPlaceholder')}
+              value={correctedSummary}
+              onChange={(event) => setCorrectedSummary(event.target.value)}
+            />
+          </label>
+          {evidence.evidence_refs.length > 0 && (
+            <fieldset className="criterion-evidence-ref-picker">
+              <legend>{t('icpRadar.selectedEvidenceRefs')}</legend>
+              {evidence.evidence_refs.map((ref) => (
+                <label key={ref}>
+                  <input
+                    checked={selectedEvidenceRefs.includes(ref)}
+                    type="checkbox"
+                    onChange={() => toggleEvidenceRef(ref)}
+                  />
+                  <Mono>{ref}</Mono>
+                </label>
+              ))}
+            </fieldset>
+          )}
           <label className="criterion-comment-field">
             <span>{t('icpRadar.comment')}</span>
             <textarea
@@ -2159,25 +2331,33 @@ function CriterionEvidenceDetail({
             <Button
               icon={<Check aria-hidden="true" />}
               variant="default"
-              onClick={() => onReview({ status: 'accepted', adjustedScore: evidence.score, comment })}
+              onClick={() => submitDecision('confirmed')}
             >
-              {t('icpRadar.acceptCriterion')}
+              {t('icpRadar.confirmSignal')}
             </Button>
             <Button
               disabled={commentRequired}
               icon={<X aria-hidden="true" />}
               variant="default"
-              onClick={() => onReview({ status: 'rejected', adjustedScore: 0, comment })}
+              onClick={() => submitDecision('rejected')}
             >
-              {t('icpRadar.rejectCriterion')}
+              {t('icpRadar.rejectSignal')}
+            </Button>
+            <Button
+              disabled={commentRequired}
+              icon={<RotateCcw aria-hidden="true" />}
+              variant="default"
+              onClick={() => submitDecision('stale')}
+            >
+              {t('icpRadar.markSignalStale')}
             </Button>
             <Button
               disabled={commentRequired}
               icon={<SlidersHorizontal aria-hidden="true" />}
               variant="default"
-              onClick={() => onReview({ status: 'edited', adjustedScore: draftScore, comment })}
+              onClick={() => submitDecision('corrected')}
             >
-              {t('icpRadar.editCriterionScore')}
+              {t('icpRadar.correctSignal')}
             </Button>
           </div>
         </div>
@@ -2188,39 +2368,39 @@ function CriterionEvidenceDetail({
 
 function matchesCriterionFilter(
   evidence: CriterionEvidenceExplanation | undefined,
-  review: CriterionReviewState | undefined,
+  decision: SignalValidationDecision | undefined,
   filter: CriterionFilter,
 ) {
   if (filter === 'all') {
     return true;
   }
   if (filter === 'needs_review') {
-    return !review && (
+    return !decision && (
       evidence?.evidence_status !== 'supported'
       || evidence.confidence === 'low'
       || evidence.confidence === 'none'
     );
   }
-  return evidence?.evidence_status === filter;
+  return decision?.status === filter;
 }
 
 function compareCriterionRows(
   left: {
     evidence: CriterionEvidenceExplanation | undefined;
-    review: CriterionReviewState | undefined;
+    decision: SignalValidationDecision | undefined;
     score: number;
     criterion: IntentSignalDefinition;
   },
   right: {
     evidence: CriterionEvidenceExplanation | undefined;
-    review: CriterionReviewState | undefined;
+    decision: SignalValidationDecision | undefined;
     score: number;
     criterion: IntentSignalDefinition;
   },
   sort: CriterionSort,
 ) {
   if (sort === 'status') {
-    return statusRank(left.evidence?.evidence_status) - statusRank(right.evidence?.evidence_status)
+    return validationRank(left.decision?.status ?? 'unreviewed') - validationRank(right.decision?.status ?? 'unreviewed')
       || right.score - left.score
       || left.criterion.code.localeCompare(right.criterion.code);
   }
@@ -2263,23 +2443,6 @@ function criterionFilterKey(filter: CriterionFilter) {
 
 function criterionSortKey(sort: CriterionSort) {
   return `icpRadar.criteriaSort.${sort}`;
-}
-
-function reviewStatusKey(status: CriterionReviewState['status']) {
-  return `icpRadar.reviewStatus.${status}`;
-}
-
-function reviewTone(review: CriterionReviewState | undefined) {
-  if (review?.status === 'accepted') {
-    return 'ally';
-  }
-  if (review?.status === 'rejected') {
-    return 'blocker';
-  }
-  if (review?.status === 'edited') {
-    return 'cobalt';
-  }
-  return 'neutral';
 }
 
 function confidenceTone(confidence: CriterionEvidenceExplanation['confidence'] | undefined) {
@@ -2330,6 +2493,196 @@ function evidenceOriginKey(origin: CriterionEvidenceExplanation['evidence_origin
     return 'icpRadar.syntheticAnnotation';
   }
   return 'icpRadar.workbookFallback';
+}
+
+function loadSignalValidationOverlay(): SignalValidationOverlay {
+  try {
+    const raw = window.localStorage.getItem(signalValidationStorageKey);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .map(([key, value]) => [key, normalizeSignalValidationDecision(value)])
+        .filter((entry): entry is [string, SignalValidationDecision] => entry[1] !== null),
+    );
+  } catch {
+    window.localStorage.removeItem(signalValidationStorageKey);
+    return {};
+  }
+}
+
+function normalizeSignalValidationDecision(value: unknown): SignalValidationDecision | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const item = value as Partial<SignalValidationDecision>;
+  if (!item.radar_id || !item.account_id || !item.signal_code || !isSignalValidationStatus(item.status)) {
+    return null;
+  }
+  const originalScore = Number(item.original_score);
+  const adjustedScore = item.adjusted_score === null || item.adjusted_score === undefined
+    ? null
+    : Number(item.adjusted_score);
+  return {
+    radar_id: String(item.radar_id),
+    account_id: String(item.account_id),
+    signal_code: String(item.signal_code),
+    status: item.status,
+    original_score: Number.isFinite(originalScore) ? originalScore : 0,
+    adjusted_score: adjustedScore !== null && Number.isFinite(adjustedScore) ? adjustedScore : null,
+    confidence: item.confidence ?? null,
+    corrected_summary: item.corrected_summary ?? null,
+    evidence_refs: Array.isArray(item.evidence_refs) ? item.evidence_refs.map(String) : [],
+    comment: item.comment ?? '',
+    reviewed_at: item.reviewed_at ?? '',
+  };
+}
+
+function isSignalValidationStatus(status: unknown): status is SignalValidationStatus {
+  return status === 'unreviewed'
+    || status === 'confirmed'
+    || status === 'corrected'
+    || status === 'rejected'
+    || status === 'stale';
+}
+
+function signalValidationKey(radarId: string, accountId: string, signalCode: string) {
+  return `${radarId}:${accountId}:${signalCode}`;
+}
+
+function validationForCandidate(
+  overlay: SignalValidationOverlay,
+  radarId: string,
+  accountId: string,
+): Record<string, SignalValidationDecision> {
+  return Object.fromEntries(
+    Object.values(overlay)
+      .filter((decision) => decision.radar_id === radarId && decision.account_id === accountId)
+      .map((decision) => [decision.signal_code, decision]),
+  );
+}
+
+function validatedCandidatesForArtifact(
+  artifact: ICPRadarArtifact,
+  radarId: string,
+  overlay: SignalValidationOverlay,
+) {
+  return artifact.candidates
+    .map((candidate) => ({
+      candidate,
+      score: buildValidatedCandidateScore(candidate, validationForCandidate(overlay, radarId, candidate.account_id)),
+    }))
+    .sort((left, right) => right.score.effective_score.total_score - left.score.effective_score.total_score
+      || right.score.effective_score.intent_score - left.score.effective_score.intent_score
+      || left.candidate.legal_name.localeCompare(right.candidate.legal_name, 'ru'));
+}
+
+function buildValidatedCandidateScore(
+  candidate: ICPRadarCandidate,
+  decisions: Record<string, SignalValidationDecision> = {},
+): ValidatedCandidateScore {
+  const status_counts: ValidatedCandidateScore['status_counts'] = {
+    unreviewed: 0,
+    confirmed: 0,
+    corrected: 0,
+    rejected: 0,
+    stale: 0,
+  };
+  const effectiveScores: Record<string, number> = {};
+  const signal_scores: ValidatedCandidateScore['signal_scores'] = {};
+
+  signalCodes.forEach((code) => {
+    const originalScore = Number(candidate.criteria_scores[code] ?? 0);
+    const decision = decisions[code];
+    const status = decision?.status ?? 'unreviewed';
+    let effectiveScore = originalScore;
+    if (status === 'corrected') {
+      effectiveScore = Math.max(0, Number(decision?.adjusted_score ?? originalScore));
+    }
+    if (status === 'rejected' || status === 'stale') {
+      effectiveScore = 0;
+    }
+    status_counts[status] += 1;
+    effectiveScores[code] = effectiveScore;
+    signal_scores[code] = {
+      signal_code: code,
+      original_score: originalScore,
+      effective_score: effectiveScore,
+      delta: effectiveScore - originalScore,
+      status,
+    };
+  });
+
+  return {
+    original_score: candidate.score,
+    effective_score: buildCandidateScore(effectiveScores),
+    signal_scores,
+    status_counts,
+  };
+}
+
+function buildCandidateScore(scores: Record<string, number>) {
+  const sumCodes = (codes: string[]) => codes.reduce((total, code) => total + Number(scores[code] ?? 0), 0);
+  const fit_score = sumCodes(fitSignalCodes);
+  const intent_score = sumCodes(intentSignalCodes);
+  const trigger_score = sumCodes(triggerSignalCodes);
+  const total_score = fit_score + intent_score + trigger_score;
+  return {
+    fit_score,
+    intent_score,
+    trigger_score,
+    total_score,
+    tier: tierForTotal(total_score),
+  };
+}
+
+function tierForTotal(totalScore: number) {
+  if (totalScore >= 38) {
+    return 'Tier 1';
+  }
+  if (totalScore >= 25) {
+    return 'Tier 2';
+  }
+  if (totalScore >= 15) {
+    return 'Tier 3';
+  }
+  return 'Monitor';
+}
+
+function formatDelta(delta: number) {
+  return delta > 0 ? `+${delta}` : String(delta);
+}
+
+function validationStatusKey(status: SignalValidationStatus) {
+  return `icpRadar.reviewStatus.${status}`;
+}
+
+function validationTone(status: SignalValidationStatus) {
+  if (status === 'confirmed') {
+    return 'ally';
+  }
+  if (status === 'rejected' || status === 'stale') {
+    return 'blocker';
+  }
+  if (status === 'corrected') {
+    return 'cobalt';
+  }
+  return 'neutral';
+}
+
+function validationRank(status: SignalValidationStatus) {
+  if (status === 'rejected' || status === 'stale') {
+    return 0;
+  }
+  if (status === 'corrected') {
+    return 1;
+  }
+  if (status === 'confirmed') {
+    return 2;
+  }
+  return 3;
 }
 
 function radarStatusKey(status: string) {

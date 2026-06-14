@@ -177,6 +177,36 @@ class ICPRadarScore:
 
 
 @dataclass(frozen=True, slots=True)
+class SignalValidationDecision:
+    signal_code: str
+    status: str
+    original_score: int
+    adjusted_score: int | None = None
+    confidence: str | None = None
+    corrected_summary: str | None = None
+    evidence_refs: tuple[str, ...] = ()
+    comment: str = ""
+    reviewed_at: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ValidatedSignalScore:
+    signal_code: str
+    original_score: int
+    effective_score: int
+    delta: int
+    status: str
+
+
+@dataclass(frozen=True, slots=True)
+class ValidatedCandidateScore:
+    original_score: ICPRadarScore
+    effective_score: ICPRadarScore
+    signal_scores: dict[str, ValidatedSignalScore]
+    status_counts: dict[str, int]
+
+
+@dataclass(frozen=True, slots=True)
 class CriterionEvidenceFact:
     evidence_ref: str
     source_url: str
@@ -282,6 +312,63 @@ class ICPRadar:
         if total_score >= 15:
             return "Tier 3"
         return "Monitor"
+
+
+class ICPRadarValidationScorer:
+    supported_statuses = {"unreviewed", "confirmed", "corrected", "rejected", "stale"}
+
+    def __init__(self, radar: ICPRadar | None = None) -> None:
+        self._radar = radar or ICPRadar()
+
+    def score(
+        self,
+        *,
+        criteria_scores: dict[str, int],
+        decisions: dict[str, SignalValidationDecision] | None = None,
+    ) -> ValidatedCandidateScore:
+        decisions = decisions or {}
+        normalized = {code: int(criteria_scores.get(code, 0)) for code in CRITERION_CODES}
+        effective_scores: dict[str, int] = {}
+        signal_scores: dict[str, ValidatedSignalScore] = {}
+        status_counts = {status: 0 for status in self.supported_statuses}
+
+        for code in CRITERION_CODES:
+            original_score = normalized[code]
+            decision = decisions.get(code)
+            status = self._normalize_status(decision.status if decision else "unreviewed")
+            status_counts[status] += 1
+            effective_score = self._effective_score(original_score, decision, status)
+            effective_scores[code] = effective_score
+            signal_scores[code] = ValidatedSignalScore(
+                signal_code=code,
+                original_score=original_score,
+                effective_score=effective_score,
+                delta=effective_score - original_score,
+                status=status,
+            )
+
+        return ValidatedCandidateScore(
+            original_score=self._radar.build_score(normalized),
+            effective_score=self._radar.build_score(effective_scores),
+            signal_scores=signal_scores,
+            status_counts=status_counts,
+        )
+
+    @classmethod
+    def _normalize_status(cls, status: str) -> str:
+        return status if status in cls.supported_statuses else "unreviewed"
+
+    @staticmethod
+    def _effective_score(
+        original_score: int,
+        decision: SignalValidationDecision | None,
+        status: str,
+    ) -> int:
+        if status == "corrected":
+            return max(0, int(decision.adjusted_score if decision and decision.adjusted_score is not None else original_score))
+        if status in {"rejected", "stale"}:
+            return 0
+        return original_score
 
 
 class RadarDefinitionValidator:
@@ -561,6 +648,15 @@ class RadarDefinitionValidator:
 
 
 def icp_radar_artifact_to_payload(artifact: ICPRadarArtifact) -> dict[str, Any]:
+    criteria_alias = tuple(
+        SignalCriterion(
+            code=signal.code,
+            name=signal.name,
+            description=signal.description,
+            scoring_guidance=_signal_scoring_guidance(signal),
+        )
+        for signal in artifact.definition.intent_signals
+    )
     return {
         "artifact_type": "icp_radar",
         "artifact_version": "0.6.5.2",
@@ -569,9 +665,17 @@ def icp_radar_artifact_to_payload(artifact: ICPRadarArtifact) -> dict[str, Any]:
             "profile": profile_to_payload(artifact.profile),
             "definition": radar_definition_to_payload(artifact.definition),
         },
+        "criteria": [criterion_to_payload(item) for item in criteria_alias],
         "candidates": [candidate_to_payload(item) for item in artifact.candidates],
         "workflow_metadata": artifact.workflow_metadata,
     }
+
+
+def _signal_scoring_guidance(signal: IntentSignalDefinition) -> str:
+    return " | ".join(
+        f"{rule.score}: {rule.description}"
+        for rule in sorted(signal.scoring_rubric.rules, key=lambda item: item.score)
+    )
 
 
 def profile_to_payload(profile: ICPProfile) -> dict[str, Any]:

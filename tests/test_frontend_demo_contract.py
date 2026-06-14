@@ -251,6 +251,9 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert "RadarScoringModel" in types
     assert "RadarValidationReport" in types
     assert "CriterionEvidenceExplanation" in types
+    assert "SignalValidationDecision" in types
+    assert "SignalValidationOverlay" in types
+    assert "ValidatedCandidateScore" in types
     assert "criteria_evidence" in types
     assert "definition: RadarDefinition" in types
 
@@ -259,10 +262,10 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "criteria_evidence",
         "evidence_refs",
         "artifact.radar.definition.intent_signals",
-        "candidate.score.fit_score",
-        "candidate.score.intent_score",
-        "candidate.score.trigger_score",
-        "candidate.score.total_score",
+        "score.effective_score.fit_score",
+        "score.effective_score.intent_score",
+        "score.effective_score.trigger_score",
+        "score.effective_score.total_score",
         "selectedRadarId",
         "RadarCatalogScreen",
         "RadarSettings",
@@ -283,6 +286,7 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "readOnly",
         "radarOverrides",
         "power-web-os-icp-radar-config-overrides",
+        "power-web-os-icp-radar-signal-validation",
         "localStorage",
         "createRadar",
         "saveDraft",
@@ -448,10 +452,14 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "icpRadar.criteriaReviewToolbar",
         "icpRadar.criteriaFilters",
         "icpRadar.criteriaSort",
-        "icpRadar.localReview",
-        "icpRadar.acceptCriterion",
-        "icpRadar.rejectCriterion",
-        "icpRadar.editCriterionScore",
+        "icpRadar.localValidation",
+        "icpRadar.confirmSignal",
+        "icpRadar.rejectSignal",
+        "icpRadar.markSignalStale",
+        "icpRadar.correctSignal",
+        "icpRadar.resetLocalValidation",
+        "icpRadar.correctedSummary",
+        "icpRadar.selectedEvidenceRefs",
         "icpRadar.catalogTitle",
         "icpRadar.openRadar",
         "icpRadar.backToCatalog",
@@ -467,15 +475,27 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         assert label_key in screen or label_key in i18n
 
     assert "takeIntoWorkPlanned" in i18n
-    assert "CriterionReviewState" in screen
+    assert "SignalValidationDecision" in screen
+    assert "SignalValidationOverlay" in screen
+    assert "ValidatedCandidateScore" in screen
     assert "expandedCriterionCode" in screen
     assert "matchesCriterionFilter" in screen
     assert "compareCriterionRows" in screen
     assert "CriterionEvidenceDetail" in screen
-    assert "criterionReviews" in screen
-    assert "onReview({ status: 'accepted'" in screen
-    assert "onReview({ status: 'rejected'" in screen
-    assert "onReview({ status: 'edited'" in screen
+    assert "signalValidation" in screen
+    assert "loadSignalValidationOverlay" in screen
+    assert "buildValidatedCandidateScore" in screen
+    assert "validatedCandidatesForArtifact" in screen
+    assert "resetCandidateSignalValidation" in screen
+    assert "scoreDelta" in screen
+    assert "submitDecision('confirmed')" in screen
+    assert "submitDecision('rejected')" in screen
+    assert "submitDecision('stale')" in screen
+    assert "submitDecision('corrected')" in screen
+    assert "criterionReviews" not in screen
+    assert "CriterionReviewState" not in screen
+    assert "onReview({ status: 'accepted'" not in screen
+    assert "onReview({ status: 'edited'" not in screen
     assert ".criteria-review-table" in css
     assert ".criteria-review-head" in css
     assert ".criteria-review-row" in css

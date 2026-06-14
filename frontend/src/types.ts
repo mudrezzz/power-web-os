@@ -344,6 +344,39 @@ export type ICPRadarScore = {
   tier: string;
 };
 
+export type SignalValidationStatus = 'unreviewed' | 'confirmed' | 'corrected' | 'rejected' | 'stale';
+
+export type SignalValidationDecision = {
+  radar_id: string;
+  account_id: string;
+  signal_code: string;
+  status: SignalValidationStatus;
+  original_score: number;
+  adjusted_score?: number | null;
+  confidence?: string | null;
+  corrected_summary?: string | null;
+  evidence_refs: string[];
+  comment: string;
+  reviewed_at: string;
+};
+
+export type SignalValidationOverlay = Record<string, SignalValidationDecision>;
+
+export type ValidatedSignalScore = {
+  signal_code: string;
+  original_score: number;
+  effective_score: number;
+  delta: number;
+  status: SignalValidationStatus;
+};
+
+export type ValidatedCandidateScore = {
+  original_score: ICPRadarScore;
+  effective_score: ICPRadarScore;
+  signal_scores: Record<string, ValidatedSignalScore>;
+  status_counts: Record<SignalValidationStatus, number>;
+};
+
 export type CriterionEvidenceFact = {
   evidence_ref: string;
   source_url: string;
