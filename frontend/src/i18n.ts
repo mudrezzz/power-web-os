@@ -93,6 +93,8 @@ export const resources = {
           noDescription: 'No source-backed description',
           needsReview: 'Needs human review',
           reviewRequired: 'Live AI run, requires human review',
+          reviewRequiredShort: 'Review first',
+          summary: 'Summary',
           detailEyebrow: 'Live candidate',
           qualification: 'Qualification evidence',
           signals: 'Signals found',
@@ -103,6 +105,7 @@ export const resources = {
             fit: 'Fit',
             intent: 'Intent',
             tier: 'Tier',
+            evidence: 'Evidence',
             review: 'Review',
           },
           qualificationStatus: {
@@ -708,6 +711,8 @@ export const resources = {
           noDescription: 'Нет описания из источников',
           needsReview: 'Нужна проверка',
           reviewRequired: 'Live AI-запуск, требуется проверка человеком',
+          reviewRequiredShort: 'Сначала проверка',
+          summary: 'Сводка',
           detailEyebrow: 'Live-кандидат',
           qualification: 'Доказательства квалификации',
           signals: 'Найденные сигналы',
@@ -718,6 +723,7 @@ export const resources = {
             fit: 'Fit',
             intent: 'Intent',
             tier: 'Tier',
+            evidence: 'Доказательства',
             review: 'Проверка',
           },
           qualificationStatus: {

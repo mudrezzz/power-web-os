@@ -1070,11 +1070,40 @@ Status:
   - Frontend does not show fake live candidates when no artifact exists.
   - Generated live artifacts do not contain secrets.
 - Validation notes:
-  - Local live smoke reached OpenRouter but returned `401 User not found` for the provided credentials, so no live artifact was committed.
+  - Local live smoke reached OpenRouter after repository-local `.env` precedence was fixed.
   - The implementation keeps the UI in missing-artifact empty state until a valid OpenRouter account/key produces an artifact.
 - Risks:
   - OpenRouter web search/server tools are beta; the provider boundary keeps fallback/replacement isolated.
   - LLM/provider output can hallucinate source URLs; reachability filtering prevents those URLs from becoming trusted evidence.
+
+### Slice 0.6.3.2: Align Live ICP Radar UX with table-first shortlist pattern
+
+- Status: `Done`
+- Goal: Make `ТОиР Quick Live Radar` use the same ICP Radar shortlist UX as fixture-backed radars.
+- User value: A user reviews live provider-backed findings in the same familiar table-preview-detail flow instead of learning a separate live-radar screen.
+- Scope:
+  - Replace the live-only split/grid/detail layout with the shared table-first shortlist pattern.
+  - Keep live run metadata as a compact context block above the table.
+  - Render live candidates in a wide table with sticky identity column and owned horizontal scroll.
+  - Add bounded inline preview for live candidates.
+  - Add an in-shell live candidate detail view with breadcrumbs and sticky compact header.
+  - Preserve the missing-artifact empty state and avoid fake candidates.
+- Out of scope:
+  - Backend schema changes.
+  - Live provider changes.
+  - UI run button.
+  - Take-into-work behavior.
+- Tests:
+  - Frontend contract tests forbid live-only split/grid/detail classes.
+  - Frontend contract tests require live preview/detail state and shared shortlist classes.
+  - Visual smoke covers live radar table, preview, and detail when `live_mini_icp_radar_run.json` exists.
+- Docs:
+  - Table-first UX ADR, live radar ADR, developer guide, user guide, and demo README updated.
+- Acceptance criteria:
+  - Live radar opens through the standard table-first ICP Radar surface.
+  - Row click opens inline preview.
+  - `Open details` opens a separate in-shell detail view.
+  - No standalone live side panel remains.
 
 ### Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web
 
@@ -1851,6 +1880,11 @@ Status:
   - Added dry-run and live CLI commands for search plan and provider-backed artifact generation.
   - Added frontend empty/present live artifact states, live run metadata, live shortlist, qualification, signals, evidence, and review flags.
   - Added source reachability filtering so model-produced fake URLs cannot support live candidates.
+- `Slice 0.6.3.2: Align Live ICP Radar UX with table-first shortlist pattern`
+  - Reworked `ТОиР Quick Live Radar` to use the same wide table, sticky identity column, inline preview, and in-shell detail view as fixture-backed ICP Radars.
+  - Removed the live-only split/grid/detail visual pattern.
+  - Kept live runtime metadata as a compact context block above the shared shortlist table.
+  - Updated ADRs, developer docs, user docs, demo docs, frontend contract tests, and visual smoke coverage for provider-backed shortlist UX.
 
 ## Blocked Items
 

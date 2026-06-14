@@ -1,4 +1,5 @@
 import { chromium } from '@playwright/test';
+import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +11,7 @@ const repoRoot = path.resolve(frontendRoot, '..');
 const outputRoot = path.resolve(repoRoot, 'docs', 'qa', 'screenshots', 'visual-smoke');
 const port = Number(process.env.POWER_WEB_OS_VISUAL_PORT ?? 4175);
 const baseURL = `http://127.0.0.1:${port}`;
+const liveRadarArtifactPath = path.resolve(frontendRoot, 'public', 'demo', 'live_mini_icp_radar_run.json');
 
 const viewports = [
   { name: '1280x720', width: 1280, height: 720 },
@@ -70,6 +72,10 @@ try {
       });
     }
 
+    if (existsSync(liveRadarArtifactPath)) {
+      await captureLiveRadarFlow(page, viewport.name);
+    }
+
     await context.close();
   }
 
@@ -101,5 +107,55 @@ async function assertNotBlank(page, screenName) {
   const bodyText = await page.locator('body').innerText();
   if (bodyText.trim().length < 80) {
     throw new Error(`Visual smoke detected a blank or under-rendered ${screenName} screen.`);
+  }
+}
+
+async function captureLiveRadarFlow(page, viewportName) {
+  await page.getByRole('button', { name: 'ICP Radar', exact: true }).click();
+  await page.getByText('Quick Live', { exact: false }).first().click();
+  await page.getByText('Live AI run', { exact: false }).first().waitFor({ state: 'visible' });
+  await assertNoSplitLiveLayout(page);
+  await assertNoPageHorizontalScroll(page, 'live-radar-table');
+  await page.screenshot({
+    animations: 'disabled',
+    fullPage: false,
+    path: path.join(outputRoot, `live-icp-radar-${viewportName}.png`),
+  });
+
+  await page.locator('.icp-radar-table-live .icp-candidate-row').first().click();
+  await page.locator('.icp-candidate-preview').first().waitFor({ state: 'visible' });
+  await assertNoSplitLiveLayout(page);
+  await assertNoPageHorizontalScroll(page, 'live-radar-preview');
+  await page.screenshot({
+    animations: 'disabled',
+    fullPage: false,
+    path: path.join(outputRoot, `live-icp-radar-preview-${viewportName}.png`),
+  });
+
+  await page.locator('.icp-candidate-preview').first().getByRole('button', { name: 'Open details' }).click();
+  await page.locator('.icp-detail-sticky-header').waitFor({ state: 'visible' });
+  await assertNoSplitLiveLayout(page);
+  await assertNoPageHorizontalScroll(page, 'live-radar-detail');
+  await page.screenshot({
+    animations: 'disabled',
+    fullPage: false,
+    path: path.join(outputRoot, `live-icp-radar-detail-${viewportName}.png`),
+  });
+}
+
+async function assertNoSplitLiveLayout(page) {
+  const splitCount = await page.locator('.live-radar-grid, .live-radar-detail, .live-radar-table').count();
+  if (splitCount > 0) {
+    throw new Error('Live radar visual smoke found a standalone live split/detail layout.');
+  }
+}
+
+async function assertNoPageHorizontalScroll(page, screenName) {
+  const overflow = await page.evaluate(() => {
+    const root = document.scrollingElement ?? document.documentElement;
+    return root.scrollWidth - root.clientWidth;
+  });
+  if (overflow > 2) {
+    throw new Error(`Visual smoke detected page-level horizontal overflow on ${screenName}: ${overflow}px.`);
   }
 }

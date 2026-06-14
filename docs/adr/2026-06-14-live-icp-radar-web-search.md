@@ -32,6 +32,8 @@ Live run output is a reviewable artifact, not accepted account state. The workfl
 
 Model-supplied URLs are not enough to establish evidence. Source URLs must be filtered before they can support candidates, and artifacts must not include API keys, authorization headers, bearer tokens, or raw provider dumps.
 
+Live findings are rendered inside the standard ICP Radar review UX. The live radar uses the same table-first shortlist, sticky identity column, bounded inline preview, and in-shell detail view as fixture-backed radars. Runtime metadata is a compact context block above the table, not a separate product surface or always-visible side detail panel.
+
 ## Consequences
 
 - OpenRouter can be replaced or supplemented without changing ICP Radar domain contracts.
@@ -39,6 +41,7 @@ Model-supplied URLs are not enough to establish evidence. Source URLs must be fi
 - Live results are separated from the stable XLSX demo and from the accepted `Accounts` portfolio.
 - A live run can legitimately produce no candidates.
 - Human validation remains the trusted state transition before live findings affect downstream work.
+- UI work for new providers must add data adapters into the shared shortlist pattern instead of creating provider-specific scan/detail layouts.
 
 ## Follow-Ups
 

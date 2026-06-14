@@ -31,12 +31,15 @@ Dense operational data should start table-first.
 - Inline preview actions should sit after the preview content, not in a separate left rail that consumes scan width on laptop screens.
 - Do not create nested vertical scrolls inside expanded previews. Prefer one scroll owner for the whole expanded block.
 - Do not duplicate score/tier blocks inside previews when those values already exist in the row. Emphasize the existing row values when expanded.
+- All ICP Radar shortlist surfaces must use the same table -> inline preview -> in-shell detail interaction model, including live/provider-backed radars.
+- Provider or data-source differences are handled by data adapters, not by introducing a separate visual paradigm. A live radar may add compact run metadata, but that metadata does not replace the shortlist table pattern.
 
 ## Consequences
 
 - Future dense screens should define row, preview, and detail modes explicitly.
 - Some screens need separate desktop and mobile representations instead of trying to make a wide table usable everywhere.
 - Contract tests and visual smoke should cover scroll ownership, sticky identity, and no text overlap.
+- Frontend contract tests should fail if a new ICP Radar source uses an always-visible split panel, live-only grid, or separate detail layout instead of the shared shortlist pattern.
 
 ## Alternatives considered
 

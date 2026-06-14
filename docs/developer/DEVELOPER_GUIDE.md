@@ -207,6 +207,8 @@ frontend/public/demo/live_mini_icp_radar_run.json
 
 Live artifacts must never contain API keys, authorization headers, bearer tokens, or raw provider dumps. Model-supplied URLs are filtered by HTTP reachability before they can support candidates. If OpenRouter rejects the credentials or no usable sources are returned, the frontend should show the live radar empty state rather than fabricated candidates.
 
+Frontend rendering for live radar results must go through the same ICP Radar table-first shortlist pattern as fixture-backed radars. Treat `icp_radar_live_run` as a different data adapter, not as permission to create a separate live-only grid, side panel, or standalone detail surface.
+
 Expected future domain objects:
 
 ```text
@@ -362,6 +364,12 @@ Rules:
   - score/tier values stay in the table row and should not be repeated inside the preview;
   - full candidate evidence/criteria work belongs on a separate candidate detail screen with breadcrumbs back to `ICP Radar`;
   - the candidate detail view keeps a compact sticky header so account identity remains visible while criteria scroll.
+- Apply that same table-preview-detail pattern to every ICP Radar shortlist source, including live/provider-backed radars:
+  - live run metadata may appear as a compact summary above the table;
+  - live candidates still scan in the same wide table with sticky identity;
+  - live preview expands inline and stays bounded;
+  - live detail opens as a separate in-shell detail view with breadcrumbs and sticky header;
+  - do not add provider-specific split grids or always-visible side detail panels.
 - Treat candidate signal validation as table-first inside the detail view:
   - C1-C20 initially render as compact rows, not fully expanded evidence cards;
   - filter by signal validation status before drilling into detail;

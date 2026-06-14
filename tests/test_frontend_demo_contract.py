@@ -305,8 +305,11 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "draft.validation_report",
         "local_draft",
         "modified_locally",
-        "LiveMiniRadarShortlist",
-        "LiveRadarCandidateDetail",
+        "LiveRadarShortlistTable",
+        "LiveRadarCandidatePreview",
+        "LiveRadarCandidateDetailView",
+        "expandedLiveCandidateId",
+        "detailLiveCandidateId",
         "toir-quick-live",
         "python -m power_web_os.demo run-live-mini-icp-radar --live",
         "icpRadar.live.emptyTitle",
@@ -526,10 +529,14 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".icp-radar-list-status" in css
     assert ".icp-radar-run-mode" in css
     assert ".icp-radar-header-meta-row" in css
-    assert ".live-radar-layout" in css
-    assert ".live-radar-table" in css
-    assert ".live-radar-detail" in css
+    assert ".icp-radar-table-live" in css
     assert ".live-radar-source-list" in css
+    assert ".live-radar-layout" not in css
+    assert ".live-radar-grid" not in css
+    assert ".live-radar-table" not in css
+    assert ".live-radar-detail" not in css
+    assert "LiveMiniRadarShortlist" not in screen
+    assert "LiveRadarCandidateDetail(" not in screen
     assert ".icp-radar-header-badges" not in css
     assert "html,\nbody,\n#root" in css
     assert ".app-shell {\n  position: fixed;\n  inset: 0;" in css
@@ -568,6 +575,14 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert "shellTop" in toggle_smoke
     assert "shellBottom" in toggle_smoke
 
+    visual_smoke = Path("frontend/scripts/visual-smoke.mjs").read_text(encoding="utf-8")
+    assert "live_mini_icp_radar_run.json" in visual_smoke
+    assert "captureLiveRadarFlow" in visual_smoke
+    assert "live-icp-radar-preview" in visual_smoke
+    assert "live-icp-radar-detail" in visual_smoke
+    assert "assertNoSplitLiveLayout" in visual_smoke
+    assert "assertNoPageHorizontalScroll" in visual_smoke
+
     for ru_label in [
         "Соответствие",
         "Интент",
@@ -601,6 +616,18 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
     assert "/demo/live_mini_icp_radar_run.json" in catalog
     assert "fetch(liveMiniRadarArtifactUrl)" in app
     assert "return null" in app
-    assert "LiveMiniRadarShortlist" in screen
+    assert "LiveRadarShortlistTable" in screen
+    assert "LiveRadarCandidatePreview" in screen
+    assert "LiveRadarCandidateDetailView" in screen
+    assert "expandedLiveCandidateId" in screen
+    assert "detailLiveCandidateId" in screen
+    assert "document.querySelector('.workspace-body')?.scrollTo({ top: 0 })" in screen
+    assert "icp-radar-table-live" in screen
+    assert "icp-candidate-preview" in screen
+    assert "icp-detail-sticky-header" in screen
+    assert "LiveMiniRadarShortlist" not in screen
+    assert "live-radar-grid" not in screen
+    assert "live-radar-table" not in screen
+    assert "live-radar-detail" not in screen
     assert "fetch(" not in screen
     assert "LiveICPRadarRunArtifact" in types
