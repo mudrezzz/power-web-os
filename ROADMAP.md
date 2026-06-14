@@ -1021,6 +1021,61 @@ Status:
 - Risks:
   - Browser-only validation can be mistaken for persisted workflow; label it as local demo state until persistence exists.
 
+### Slice 0.6.3.1: Live mini ICP Radar run with OpenRouter web search
+
+- Status: `Done`
+- Goal: Add the first real live ICP Radar run without touching the stable XLSX-based ТОиР/SIBUR demo.
+- User value: A user can run a small ICP Radar from the CLI and see what the AI/search workflow actually found, including weak or empty results, instead of synthetic candidates.
+- Scope:
+  - Add mini radar `ТОиР Quick Live Radar` with two qualification criteria and three intent signals.
+  - Add `LiveICPRadarRunWorkflow` using the `langgraph-dai` / `BaseWorkflow` pattern when available and a local runner for tests.
+  - Add provider-neutral `WebSearchProvider` boundary with `OpenRouterWebSearchProvider` and `RecordedWebSearchProvider`.
+  - Add OpenRouter env support: `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_WEB_MODE`.
+  - Add CLI:
+    - `python -m power_web_os.demo run-live-mini-icp-radar --dry-run-plan`
+    - `python -m power_web_os.demo run-live-mini-icp-radar --live`
+  - Write live artifacts only from actual provider output:
+    - `demo/output/live_mini_icp_radar_run.json`
+    - `frontend/public/demo/live_mini_icp_radar_run.json`
+  - Add the live radar to the ICP Radar catalog.
+  - Show empty state when the live artifact is absent, and show live shortlist/run metadata only when the artifact exists.
+- Out of scope:
+  - UI run button.
+  - Scheduler.
+  - Source crawling outside provider web search.
+  - Take-into-work handoff.
+  - Mixing live mini radar findings into the accepted `Accounts` portfolio.
+  - Synthetic fallback candidates for live runs.
+- Implementation notes:
+  - OpenRouter is the first provider, not an architectural dependency.
+  - Server-side OpenRouter web search is attempted first; plugin web mode is isolated behind the same provider boundary.
+  - Live artifacts must not contain API keys, authorization headers, bearer tokens, or raw provider dumps.
+  - Model-supplied source URLs are filtered by reachability before they can support candidates; if sources cannot be verified, the result should remain empty/weak rather than fabricate confidence.
+- Tests:
+  - Unit tests for search plan, request modes, recorded provider normalization, optional langgraph runtime, and secret filtering.
+  - Frontend contract tests for missing/present live artifact behavior.
+  - `python -m pytest`
+  - `npm --prefix ./frontend run build`
+  - `npm --prefix ./frontend run settings:toggle-smoke`
+- Docs:
+  - README, user guide, developer guide, architecture overview, demo README, and ADR updated.
+- Demo impact:
+  - The ICP Radar catalog now includes `ТОиР Quick Live Radar`.
+  - Before a live run, the UI shows the CLI command and no fake candidates.
+  - After a successful live run, the UI reads `/demo/live_mini_icp_radar_run.json` and shows provider runtime metadata, sources, qualification, signals, and review flags.
+- Acceptance criteria:
+  - Dry-run plan performs no network call and produces no candidates.
+  - Live run refuses to run without a key.
+  - Live run uses OpenRouter through `WebSearchProvider`.
+  - Frontend does not show fake live candidates when no artifact exists.
+  - Generated live artifacts do not contain secrets.
+- Validation notes:
+  - Local live smoke reached OpenRouter but returned `401 User not found` for the provided credentials, so no live artifact was committed.
+  - The implementation keeps the UI in missing-artifact empty state until a valid OpenRouter account/key produces an artifact.
+- Risks:
+  - OpenRouter web search/server tools are beta; the provider boundary keeps fallback/replacement isolated.
+  - LLM/provider output can hallucinate source URLs; reachability filtering prevents those URLs from becoming trusted evidence.
+
 ### Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web
 
 - Status: `Backlog`
@@ -1789,6 +1844,13 @@ Status:
   - Updated shortlist ranking and candidate detail score grids to use effective score and visible score deltas.
   - Replaced criteria review UI with signal validation actions: confirm, correct, reject, mark stale, selected evidence refs, confidence override, and comments.
   - Regenerated ICP Radar demo artifacts so the top-level `criteria` alias is generated from `intent_signals` and no longer diverges.
+- `Slice 0.6.3.1: Live mini ICP Radar run with OpenRouter web search`
+  - Added `ТОиР Quick Live Radar` as a small live-search radar beside the stable XLSX radar.
+  - Added `LiveICPRadarRunWorkflow` with optional `langgraph-dai` runtime metadata and local fallback runner.
+  - Added provider-neutral `WebSearchProvider`, OpenRouter live provider, and recorded provider for tests.
+  - Added dry-run and live CLI commands for search plan and provider-backed artifact generation.
+  - Added frontend empty/present live artifact states, live run metadata, live shortlist, qualification, signals, evidence, and review flags.
+  - Added source reachability filtering so model-produced fake URLs cannot support live candidates.
 
 ## Blocked Items
 

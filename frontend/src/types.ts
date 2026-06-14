@@ -446,6 +446,88 @@ export type ICPRadarArtifact = {
   };
 };
 
+export type LiveRadarSourceEvidence = {
+  evidence_ref: string;
+  title: string;
+  url: string;
+  snippet: string;
+  query_id: string | null;
+  source_type: string;
+};
+
+export type LiveRadarQualificationResult = {
+  criterion_code: string;
+  criterion: string;
+  status: 'confirmed' | 'weak' | 'unknown' | 'rejected';
+  confidence: string;
+  rationale: string;
+  evidence_refs: string[];
+};
+
+export type LiveRadarSignalResult = {
+  signal_code: string;
+  signal: string;
+  status: 'observed' | 'not_observed' | 'unclear';
+  score: number;
+  confidence: string;
+  summary: string;
+  evidence_refs: string[];
+};
+
+export type LiveRadarCandidate = {
+  candidate_id: string;
+  legal_name: string;
+  description: string;
+  qualification: LiveRadarQualificationResult[];
+  signals: LiveRadarSignalResult[];
+  score: {
+    fit_score: number;
+    intent_score: number;
+    tier: string;
+  };
+  review_flags: string[];
+  evidence_refs: string[];
+};
+
+export type LiveICPRadarRunArtifact = {
+  artifact_type: 'icp_radar_live_run';
+  artifact_version: '0.6.3.1';
+  radar: {
+    radar_id: string;
+    name: string;
+    description: string;
+    qualification_criteria: Array<{ code: string; label: string; rule: string }>;
+    intent_signals: Array<{ code: string; label: string; rule: string }>;
+    source_policy: Record<string, unknown>;
+  };
+  run_metadata: {
+    workflow_name: string;
+    runtime: string;
+    framework_available: boolean;
+    runtime_mode: string;
+    node_name: string;
+    task_id: string | null;
+    correlation_id: string | null;
+    model: string | null;
+    web_mode: string | null;
+    query_count: number;
+    source_count: number;
+    candidate_count: number;
+    run_at: string;
+  };
+  search_plan: {
+    radar_id: string;
+    queries: Array<{
+      query_id: string;
+      query: string;
+      purpose: string;
+      expected_evidence: string[];
+    }>;
+  };
+  sources: LiveRadarSourceEvidence[];
+  candidates: LiveRadarCandidate[];
+};
+
 export type ICPRadarCatalogItem = {
   radar_id: string;
   name: string;

@@ -3494,6 +3494,621 @@
       "artifact_path": "/demo/icp_radar.json"
     },
     {
+      "radar_id": "toir-quick-live",
+      "name": "ТОиР Quick Live Radar",
+      "status": "configured",
+      "owner": "ABM Research",
+      "profile": {
+        "icp_profile": "Живой мини-радар ТОиР для СИБУР",
+        "product": "Автоматизация ТОиР",
+        "segment": "Промышленные и нефтехимические активы СИБУР",
+        "scope": "CLI-запуск с live web search через OpenRouter. Результаты требуют проверки человеком."
+      },
+      "summary": {
+        "cadence": "manual",
+        "last_run": "not_run",
+        "candidate_count": 0,
+        "needs_review_count": 0,
+        "accepted_count": 0,
+        "run_mode": "live_cli"
+      },
+      "definition": {
+        "definition_id": "radar-def-toir-quick-live",
+        "metadata": {
+          "name": "ТОиР Quick Live Radar",
+          "description": "Мини-радар для живого поиска производственных активов СИБУР с сигналами по ТОиР, модернизации и цифровизации.",
+          "owner": "ABM Research",
+          "status": "configured"
+        },
+        "global_search_policy": {
+          "sources": [
+            {
+              "source_id": "openrouter_web",
+              "source_type": "search_engine",
+              "label": "OpenRouter web search",
+              "reference": "openrouter:web_search",
+              "trust_level": "medium"
+            },
+            {
+              "source_id": "sibur_site",
+              "source_type": "url",
+              "label": "Сайт СИБУР",
+              "reference": "https://www.sibur.ru",
+              "trust_level": "high"
+            }
+          ],
+          "keywords": [
+            "СИБУР ТОиР",
+            "СИБУР ремонты",
+            "СИБУР модернизация",
+            "СИБУР цифровизация"
+          ],
+          "exclusions": [
+            "Сервисные юрлица без производственного актива"
+          ],
+          "allow_system_sources": true
+        },
+        "account_qualification": {
+          "rule_group": {
+            "group_id": "toir-quick-live-qualification",
+            "name": "toir-quick-live-qualification",
+            "operator": "AND",
+            "rules": [
+              {
+                "rule_id": "q1-sibur-group",
+                "name": "Компания входит в группу СИБУР",
+                "description": "Компания входит в группу СИБУР.",
+                "generated_target_field": "holding",
+                "generated_comparison_operator": "contains",
+                "generated_value": "СИБУР",
+                "requirement_level": "required",
+                "source_policy": {
+                  "source_ids": [
+                    "openrouter_web",
+                    "sibur_site"
+                  ],
+                  "source_logic": "OR",
+                  "use_global_search_policy": true,
+                  "allow_additional_sources": true,
+                  "fallback_confidence": "low",
+                  "local_sources": []
+                }
+              },
+              {
+                "rule_id": "q2-industrial-asset",
+                "name": "Промышленный актив",
+                "description": "Компания относится к промышленным или нефтехимическим производственным активам.",
+                "generated_target_field": "asset_type",
+                "generated_comparison_operator": "contains",
+                "generated_value": "industrial",
+                "requirement_level": "required",
+                "source_policy": {
+                  "source_ids": [
+                    "openrouter_web",
+                    "sibur_site"
+                  ],
+                  "source_logic": "OR",
+                  "use_global_search_policy": true,
+                  "allow_additional_sources": true,
+                  "fallback_confidence": "low",
+                  "local_sources": []
+                }
+              }
+            ],
+            "groups": []
+          }
+        },
+        "intent_signals": [
+          {
+            "signal_id": "radar-def-toir-quick-live-s1",
+            "code": "S1",
+            "name": "ТОиР / ремонты / надежность",
+            "description": "Найти упоминания ремонтов, надежности, ТОиР или межремонтного интервала.",
+            "trigger_rule_group": {
+              "group_id": "radar-def-toir-quick-live-s1-trigger",
+              "name": "radar-def-toir-quick-live-s1-trigger",
+              "operator": "OR",
+              "rules": [
+                {
+                  "rule_id": "radar-def-toir-quick-live-s1-trigger-rule",
+                  "name": "Найти упоминания ремонтов, надежности, ТОиР или межремонтного интервала.",
+                  "description": "Найти упоминания ремонтов, надежности, ТОиР или межремонтного интервала.",
+                  "generated_target_field": "public_evidence",
+                  "generated_comparison_operator": "contains",
+                  "generated_value": "ТОиР / ремонты / надежность",
+                  "requirement_level": "recommended",
+                  "source_policy": {
+                    "source_ids": [
+                      "openrouter_web",
+                      "sibur_site"
+                    ],
+                    "source_logic": "OR",
+                    "use_global_search_policy": true,
+                    "allow_additional_sources": true,
+                    "fallback_confidence": "low",
+                    "local_sources": []
+                  }
+                }
+              ],
+              "groups": []
+            },
+            "source_policy": {
+              "source_ids": [
+                "openrouter_web",
+                "sibur_site"
+              ],
+              "source_logic": "OR",
+              "use_global_search_policy": true,
+              "allow_additional_sources": true,
+              "fallback_confidence": "low",
+              "local_sources": []
+            },
+            "scoring_rubric": {
+              "scale": [
+                0,
+                1,
+                2
+              ],
+              "rules": [
+                {
+                  "score": 0,
+                  "description": "Сигнал не наблюдается.",
+                  "rule_group": {
+                    "group_id": "radar-def-toir-quick-live-s1-score-0",
+                    "name": "radar-def-toir-quick-live-s1-score-0",
+                    "operator": "AND",
+                    "rules": [
+                      {
+                        "rule_id": "radar-def-toir-quick-live-s1-score-0-rule",
+                        "name": "Сигнал не наблюдается.",
+                        "description": "Сигнал не наблюдается.",
+                        "generated_target_field": "S1",
+                        "generated_comparison_operator": "equals",
+                        "generated_value": "0",
+                        "requirement_level": "recommended",
+                        "source_policy": {
+                          "source_ids": [
+                            "openrouter_web",
+                            "sibur_site"
+                          ],
+                          "source_logic": "OR",
+                          "use_global_search_policy": true,
+                          "allow_additional_sources": true,
+                          "fallback_confidence": "low",
+                          "local_sources": []
+                        }
+                      }
+                    ],
+                    "groups": []
+                  }
+                },
+                {
+                  "score": 1,
+                  "description": "Есть слабое или косвенное наблюдение.",
+                  "rule_group": {
+                    "group_id": "radar-def-toir-quick-live-s1-score-1",
+                    "name": "radar-def-toir-quick-live-s1-score-1",
+                    "operator": "AND",
+                    "rules": [
+                      {
+                        "rule_id": "radar-def-toir-quick-live-s1-score-1-rule",
+                        "name": "Есть слабое или косвенное наблюдение.",
+                        "description": "Есть слабое или косвенное наблюдение.",
+                        "generated_target_field": "S1",
+                        "generated_comparison_operator": "equals",
+                        "generated_value": "1",
+                        "requirement_level": "recommended",
+                        "source_policy": {
+                          "source_ids": [
+                            "openrouter_web",
+                            "sibur_site"
+                          ],
+                          "source_logic": "OR",
+                          "use_global_search_policy": true,
+                          "allow_additional_sources": true,
+                          "fallback_confidence": "low",
+                          "local_sources": []
+                        }
+                      }
+                    ],
+                    "groups": []
+                  }
+                },
+                {
+                  "score": 2,
+                  "description": "Сигнал подтвержден релевантным источником.",
+                  "rule_group": {
+                    "group_id": "radar-def-toir-quick-live-s1-score-2",
+                    "name": "radar-def-toir-quick-live-s1-score-2",
+                    "operator": "AND",
+                    "rules": [
+                      {
+                        "rule_id": "radar-def-toir-quick-live-s1-score-2-rule",
+                        "name": "Сигнал подтвержден релевантным источником.",
+                        "description": "Сигнал подтвержден релевантным источником.",
+                        "generated_target_field": "S1",
+                        "generated_comparison_operator": "equals",
+                        "generated_value": "2",
+                        "requirement_level": "recommended",
+                        "source_policy": {
+                          "source_ids": [
+                            "openrouter_web",
+                            "sibur_site"
+                          ],
+                          "source_logic": "OR",
+                          "use_global_search_policy": true,
+                          "allow_additional_sources": true,
+                          "fallback_confidence": "low",
+                          "local_sources": []
+                        }
+                      }
+                    ],
+                    "groups": []
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "signal_id": "radar-def-toir-quick-live-s2",
+            "code": "S2",
+            "name": "Модернизация / инвестиции / рост мощности",
+            "description": "Найти упоминания модернизации оборудования, инвестиций или роста мощности.",
+            "trigger_rule_group": {
+              "group_id": "radar-def-toir-quick-live-s2-trigger",
+              "name": "radar-def-toir-quick-live-s2-trigger",
+              "operator": "OR",
+              "rules": [
+                {
+                  "rule_id": "radar-def-toir-quick-live-s2-trigger-rule",
+                  "name": "Найти упоминания модернизации оборудования, инвестиций или роста мощности.",
+                  "description": "Найти упоминания модернизации оборудования, инвестиций или роста мощности.",
+                  "generated_target_field": "public_evidence",
+                  "generated_comparison_operator": "contains",
+                  "generated_value": "Модернизация / инвестиции / рост мощности",
+                  "requirement_level": "recommended",
+                  "source_policy": {
+                    "source_ids": [
+                      "openrouter_web",
+                      "sibur_site"
+                    ],
+                    "source_logic": "OR",
+                    "use_global_search_policy": true,
+                    "allow_additional_sources": true,
+                    "fallback_confidence": "low",
+                    "local_sources": []
+                  }
+                }
+              ],
+              "groups": []
+            },
+            "source_policy": {
+              "source_ids": [
+                "openrouter_web",
+                "sibur_site"
+              ],
+              "source_logic": "OR",
+              "use_global_search_policy": true,
+              "allow_additional_sources": true,
+              "fallback_confidence": "low",
+              "local_sources": []
+            },
+            "scoring_rubric": {
+              "scale": [
+                0,
+                1,
+                2
+              ],
+              "rules": [
+                {
+                  "score": 0,
+                  "description": "Сигнал не наблюдается.",
+                  "rule_group": {
+                    "group_id": "radar-def-toir-quick-live-s2-score-0",
+                    "name": "radar-def-toir-quick-live-s2-score-0",
+                    "operator": "AND",
+                    "rules": [
+                      {
+                        "rule_id": "radar-def-toir-quick-live-s2-score-0-rule",
+                        "name": "Сигнал не наблюдается.",
+                        "description": "Сигнал не наблюдается.",
+                        "generated_target_field": "S2",
+                        "generated_comparison_operator": "equals",
+                        "generated_value": "0",
+                        "requirement_level": "recommended",
+                        "source_policy": {
+                          "source_ids": [
+                            "openrouter_web",
+                            "sibur_site"
+                          ],
+                          "source_logic": "OR",
+                          "use_global_search_policy": true,
+                          "allow_additional_sources": true,
+                          "fallback_confidence": "low",
+                          "local_sources": []
+                        }
+                      }
+                    ],
+                    "groups": []
+                  }
+                },
+                {
+                  "score": 1,
+                  "description": "Есть слабое или косвенное наблюдение.",
+                  "rule_group": {
+                    "group_id": "radar-def-toir-quick-live-s2-score-1",
+                    "name": "radar-def-toir-quick-live-s2-score-1",
+                    "operator": "AND",
+                    "rules": [
+                      {
+                        "rule_id": "radar-def-toir-quick-live-s2-score-1-rule",
+                        "name": "Есть слабое или косвенное наблюдение.",
+                        "description": "Есть слабое или косвенное наблюдение.",
+                        "generated_target_field": "S2",
+                        "generated_comparison_operator": "equals",
+                        "generated_value": "1",
+                        "requirement_level": "recommended",
+                        "source_policy": {
+                          "source_ids": [
+                            "openrouter_web",
+                            "sibur_site"
+                          ],
+                          "source_logic": "OR",
+                          "use_global_search_policy": true,
+                          "allow_additional_sources": true,
+                          "fallback_confidence": "low",
+                          "local_sources": []
+                        }
+                      }
+                    ],
+                    "groups": []
+                  }
+                },
+                {
+                  "score": 2,
+                  "description": "Сигнал подтвержден релевантным источником.",
+                  "rule_group": {
+                    "group_id": "radar-def-toir-quick-live-s2-score-2",
+                    "name": "radar-def-toir-quick-live-s2-score-2",
+                    "operator": "AND",
+                    "rules": [
+                      {
+                        "rule_id": "radar-def-toir-quick-live-s2-score-2-rule",
+                        "name": "Сигнал подтвержден релевантным источником.",
+                        "description": "Сигнал подтвержден релевантным источником.",
+                        "generated_target_field": "S2",
+                        "generated_comparison_operator": "equals",
+                        "generated_value": "2",
+                        "requirement_level": "recommended",
+                        "source_policy": {
+                          "source_ids": [
+                            "openrouter_web",
+                            "sibur_site"
+                          ],
+                          "source_logic": "OR",
+                          "use_global_search_policy": true,
+                          "allow_additional_sources": true,
+                          "fallback_confidence": "low",
+                          "local_sources": []
+                        }
+                      }
+                    ],
+                    "groups": []
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "signal_id": "radar-def-toir-quick-live-s3",
+            "code": "S3",
+            "name": "Цифровизация / диагностика / предиктивная аналитика",
+            "description": "Найти упоминания цифровизации производства, диагностики или предиктивной аналитики.",
+            "trigger_rule_group": {
+              "group_id": "radar-def-toir-quick-live-s3-trigger",
+              "name": "radar-def-toir-quick-live-s3-trigger",
+              "operator": "OR",
+              "rules": [
+                {
+                  "rule_id": "radar-def-toir-quick-live-s3-trigger-rule",
+                  "name": "Найти упоминания цифровизации производства, диагностики или предиктивной аналитики.",
+                  "description": "Найти упоминания цифровизации производства, диагностики или предиктивной аналитики.",
+                  "generated_target_field": "public_evidence",
+                  "generated_comparison_operator": "contains",
+                  "generated_value": "Цифровизация / диагностика / предиктивная аналитика",
+                  "requirement_level": "recommended",
+                  "source_policy": {
+                    "source_ids": [
+                      "openrouter_web",
+                      "sibur_site"
+                    ],
+                    "source_logic": "OR",
+                    "use_global_search_policy": true,
+                    "allow_additional_sources": true,
+                    "fallback_confidence": "low",
+                    "local_sources": []
+                  }
+                }
+              ],
+              "groups": []
+            },
+            "source_policy": {
+              "source_ids": [
+                "openrouter_web",
+                "sibur_site"
+              ],
+              "source_logic": "OR",
+              "use_global_search_policy": true,
+              "allow_additional_sources": true,
+              "fallback_confidence": "low",
+              "local_sources": []
+            },
+            "scoring_rubric": {
+              "scale": [
+                0,
+                1,
+                2
+              ],
+              "rules": [
+                {
+                  "score": 0,
+                  "description": "Сигнал не наблюдается.",
+                  "rule_group": {
+                    "group_id": "radar-def-toir-quick-live-s3-score-0",
+                    "name": "radar-def-toir-quick-live-s3-score-0",
+                    "operator": "AND",
+                    "rules": [
+                      {
+                        "rule_id": "radar-def-toir-quick-live-s3-score-0-rule",
+                        "name": "Сигнал не наблюдается.",
+                        "description": "Сигнал не наблюдается.",
+                        "generated_target_field": "S3",
+                        "generated_comparison_operator": "equals",
+                        "generated_value": "0",
+                        "requirement_level": "recommended",
+                        "source_policy": {
+                          "source_ids": [
+                            "openrouter_web",
+                            "sibur_site"
+                          ],
+                          "source_logic": "OR",
+                          "use_global_search_policy": true,
+                          "allow_additional_sources": true,
+                          "fallback_confidence": "low",
+                          "local_sources": []
+                        }
+                      }
+                    ],
+                    "groups": []
+                  }
+                },
+                {
+                  "score": 1,
+                  "description": "Есть слабое или косвенное наблюдение.",
+                  "rule_group": {
+                    "group_id": "radar-def-toir-quick-live-s3-score-1",
+                    "name": "radar-def-toir-quick-live-s3-score-1",
+                    "operator": "AND",
+                    "rules": [
+                      {
+                        "rule_id": "radar-def-toir-quick-live-s3-score-1-rule",
+                        "name": "Есть слабое или косвенное наблюдение.",
+                        "description": "Есть слабое или косвенное наблюдение.",
+                        "generated_target_field": "S3",
+                        "generated_comparison_operator": "equals",
+                        "generated_value": "1",
+                        "requirement_level": "recommended",
+                        "source_policy": {
+                          "source_ids": [
+                            "openrouter_web",
+                            "sibur_site"
+                          ],
+                          "source_logic": "OR",
+                          "use_global_search_policy": true,
+                          "allow_additional_sources": true,
+                          "fallback_confidence": "low",
+                          "local_sources": []
+                        }
+                      }
+                    ],
+                    "groups": []
+                  }
+                },
+                {
+                  "score": 2,
+                  "description": "Сигнал подтвержден релевантным источником.",
+                  "rule_group": {
+                    "group_id": "radar-def-toir-quick-live-s3-score-2",
+                    "name": "radar-def-toir-quick-live-s3-score-2",
+                    "operator": "AND",
+                    "rules": [
+                      {
+                        "rule_id": "radar-def-toir-quick-live-s3-score-2-rule",
+                        "name": "Сигнал подтвержден релевантным источником.",
+                        "description": "Сигнал подтвержден релевантным источником.",
+                        "generated_target_field": "S3",
+                        "generated_comparison_operator": "equals",
+                        "generated_value": "2",
+                        "requirement_level": "recommended",
+                        "source_policy": {
+                          "source_ids": [
+                            "openrouter_web",
+                            "sibur_site"
+                          ],
+                          "source_logic": "OR",
+                          "use_global_search_policy": true,
+                          "allow_additional_sources": true,
+                          "fallback_confidence": "low",
+                          "local_sources": []
+                        }
+                      }
+                    ],
+                    "groups": []
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "monitoring_policy": {
+          "cadence": "manual",
+          "lookback_window": "90 days",
+          "run_mode": "live_cli",
+          "deduplication": "dedupe_by_source_url_and_signal_code",
+          "stale_after": "90 days"
+        },
+        "scoring_model": {
+          "fit_model": {
+            "formula_preset": "arithmetic_mean",
+            "description": "Fit is based on Q1/Q2 qualification.",
+            "custom_formula": "",
+            "uses": [
+              "q1-sibur-group",
+              "q2-industrial-asset"
+            ]
+          },
+          "intent_model": {
+            "formula_preset": "capped_sum",
+            "description": "Intent is based on S1-S3 observed signals.",
+            "custom_formula": "",
+            "uses": [
+              "S1",
+              "S2",
+              "S3"
+            ]
+          },
+          "tier_model": {
+            "basis": "fit + intent",
+            "description": "Tier is assigned from confirmed fit and observed intent."
+          },
+          "tier_thresholds": {
+            "Tier 1": "fit=2 and intent>=3",
+            "Tier 2": "fit>=1 and intent>=1",
+            "Monitor": "otherwise"
+          },
+          "confidence_penalties": {
+            "low": "-20%",
+            "medium": "-10%",
+            "high": "0%",
+            "none": "exclude"
+          }
+        },
+        "validation_report": {
+          "errors": [],
+          "warnings": [],
+          "info": [
+            {
+              "level": "info",
+              "code": "validator_scope",
+              "message": "Validator checks structure and obvious contradictions; semantic industry dictionaries are out of scope.",
+              "path": "validation_report"
+            }
+          ]
+        }
+      },
+      "artifact_path": "/demo/live_mini_icp_radar_run.json"
+    },
+    {
       "radar_id": "mining-toir",
       "name": "ТОиР / Горнодобыча",
       "status": "configured",
@@ -10090,6 +10705,6 @@
     "workflow_name": "ICPRadarCatalog",
     "artifact_version": "0.6.5.2",
     "active_fixture_radar_id": "toir-sibur",
-    "radar_count": 3
+    "radar_count": 4
   }
 }

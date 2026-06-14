@@ -1340,6 +1340,189 @@ button {
   color: var(--fg2);
 }
 
+.live-radar-layout {
+  display: grid;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.live-radar-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--s-4);
+}
+
+.live-radar-summary h2,
+.live-radar-detail h2 {
+  margin: var(--s-1) 0;
+  font: var(--h3);
+}
+
+.live-radar-summary p,
+.live-radar-detail p,
+.live-radar-fact small,
+.live-radar-source-list small {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.live-radar-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  margin: 0;
+}
+
+.live-radar-metadata div {
+  display: inline-flex;
+  align-items: baseline;
+  max-width: calc(var(--s-20) * 4);
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.live-radar-metadata dt {
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.live-radar-metadata dd {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-radar-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--s-20) * 4), 0.8fr);
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.live-radar-table,
+.live-radar-detail {
+  display: grid;
+  min-width: 0;
+}
+
+.live-radar-table-head,
+.live-radar-row {
+  display: grid;
+  grid-template-columns:
+    minmax(calc(var(--s-20) * 2), 1fr)
+    var(--s-12)
+    var(--s-12)
+    calc(var(--s-20) + var(--s-4))
+    calc(var(--s-20) + var(--s-8));
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.live-radar-table-head {
+  padding: 0 0 var(--s-3);
+  border-bottom: 1px solid var(--border);
+  color: var(--fg3);
+  font: var(--mono-sm);
+  text-transform: uppercase;
+}
+
+.live-radar-row {
+  width: 100%;
+  padding: var(--s-3) 0;
+  border: none;
+  border-bottom: 1px solid var(--border-faint);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.live-radar-row:hover,
+.live-radar-row-selected {
+  background: var(--surface-2);
+}
+
+.live-radar-row > span,
+.live-radar-table-head > span {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.live-radar-row strong,
+.live-radar-row small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-radar-row small {
+  color: var(--fg2);
+}
+
+.live-radar-detail {
+  gap: var(--s-4);
+}
+
+.live-radar-detail-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.live-radar-fact-list,
+.live-radar-source-list {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.live-radar-fact,
+.live-radar-source-list a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: inherit;
+  text-decoration: none;
+}
+
+.live-radar-source-list a {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.live-radar-fact strong,
+.live-radar-fact small,
+.live-radar-source-list strong,
+.live-radar-source-list small {
+  display: block;
+  min-width: 0;
+}
+
+.live-radar-score {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.live-radar-empty code {
+  display: inline-flex;
+  max-width: 100%;
+  margin-top: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  overflow-x: auto;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--fg2);
+}
+
 .icp-settings-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

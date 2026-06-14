@@ -31,6 +31,7 @@ Slice 0.6 is implemented. The repository contains:
 - deterministic Power Web Lite board read model added to Access Plan artifacts;
 - deterministic Playbook Analysis read model with current and no-partner-motion route previews;
 - deterministic ICP Radar XLSX import for the ТОиР/SIBUR-style fixture;
+- experimental `ТОиР Quick Live Radar` CLI flow that runs a small provider-backed ICP Radar through OpenRouter web search when `.[agent]` and local credentials are available;
 - browser-local editable ICP Radar definitions with structured sources, natural-language account qualification rules, intent signals, fit/intent/tier scoring presets, and validation;
 - realistic portfolio demo input, Account Radar artifact, and generated Access Plan artifacts;
 - React + TypeScript + Vite frontend demo inside a bounded Power Web OS workspace shell with ICP Radar, Accounts, Access Plans, Account Map, and Playbook screens;
@@ -73,6 +74,17 @@ To install the required LangGraph document AI framework for agent workflow work:
 ```bash
 python -m pip install -e ".[agent,dev]"
 ```
+
+Optional live mini ICP Radar run:
+
+```bash
+copy .env.example .env
+# Fill OPENROUTER_API_KEY and OPENROUTER_MODEL locally.
+python -m power_web_os.demo run-live-mini-icp-radar --dry-run-plan
+python -m power_web_os.demo run-live-mini-icp-radar --live
+```
+
+The live command writes `demo/output/live_mini_icp_radar_run.json` and `frontend/public/demo/live_mini_icp_radar_run.json` only from actual provider output. It does not fabricate candidates when OpenRouter returns no usable evidence or rejects the credentials.
 
 Build checks:
 

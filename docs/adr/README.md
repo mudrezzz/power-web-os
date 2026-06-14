@@ -13,6 +13,7 @@ ADRs capture decisions that shape product architecture.
 - `2026-06-12-configurable-object-ux.md` - Use catalog-first navigation, explicit settings states, and clear local-draft boundaries for configurable product objects.
 - `2026-06-12-bilingual-responsive-frontend-baseline.md` - Treat EN/RU i18n and small-screen/mobile constraints as frontend baseline requirements.
 - `2026-06-13-icp-radar-definition-separates-qualification-and-signals.md` - Model ICP Radar configuration as structured qualification rules, intent signals, source policies, scoring, and validation.
+- `2026-06-14-live-icp-radar-web-search.md` - Run live ICP Radar searches through a provider-neutral web search boundary and treat outputs as reviewable artifacts.
 
 ## Template
 

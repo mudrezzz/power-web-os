@@ -408,18 +408,28 @@ def test_generate_icp_radar_catalog_writes_portfolio_artifact(tmp_path: Path) ->
     assert frontend_output_path.exists()
     assert artifact["artifact_type"] == "icp_radar_catalog"
     assert artifact["artifact_version"] == "0.6.5.2"
-    assert len(artifact["radars"]) >= 3
+    assert len(artifact["radars"]) >= 4
     expected_signal_codes = [f"C{index}" for index in range(1, 21)]
     for radar in artifact["radars"]:
-        assert [
-            item["code"] for item in radar["definition"]["intent_signals"]
-        ] == expected_signal_codes
+        if radar["radar_id"] == "toir-quick-live":
+            assert [
+                item["code"] for item in radar["definition"]["intent_signals"]
+            ] == ["S1", "S2", "S3"]
+        else:
+            assert [
+                item["code"] for item in radar["definition"]["intent_signals"]
+            ] == expected_signal_codes
 
     fixture_backed = [item for item in artifact["radars"] if item["artifact_path"] == "/demo/icp_radar.json"]
     assert len(fixture_backed) == 1
     assert fixture_backed[0]["radar_id"] == "toir-sibur"
     assert fixture_backed[0]["summary"]["candidate_count"] > 0
     assert fixture_backed[0]["definition"]["intent_signals"]
+
+    live_radars = [item for item in artifact["radars"] if item["artifact_path"] == "/demo/live_mini_icp_radar_run.json"]
+    assert len(live_radars) == 1
+    assert live_radars[0]["radar_id"] == "toir-quick-live"
+    assert live_radars[0]["summary"]["run_mode"] == "live_cli"
 
     configured_only = [item for item in artifact["radars"] if item["artifact_path"] is None]
     assert len(configured_only) == 2

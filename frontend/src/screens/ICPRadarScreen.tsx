@@ -32,6 +32,9 @@ import type {
   ICPRadarCandidate,
   IntentSignalDefinition,
   GlobalSearchPolicy,
+  LiveICPRadarRunArtifact,
+  LiveRadarCandidate,
+  LiveRadarSourceEvidence,
   MonitoringPolicy,
   RadarConfigOverride,
   RadarDefinition,
@@ -61,10 +64,12 @@ export function ICPRadarScreen({
   artifact,
   catalog,
   error,
+  liveRunArtifact,
 }: {
   artifact: ICPRadarArtifact | null;
   catalog: ICPRadarCatalogArtifact | null;
   error: string | null;
+  liveRunArtifact: LiveICPRadarRunArtifact | null;
 }) {
   const { t } = useTranslation();
   const [selectedRadarId, setSelectedRadarId] = useState<string | null>(null);
@@ -78,6 +83,7 @@ export function ICPRadarScreen({
   const selectedRadarOverride = selectedRadar ? radarOverrides[selectedRadar.radar_id] : undefined;
   const activeFixtureRadarId = catalog?.workflow_metadata.active_fixture_radar_id ?? 'toir-sibur';
   const selectedRadarArtifact = selectedRadar?.radar_id === activeFixtureRadarId ? artifact : null;
+  const selectedLiveRunArtifact = selectedRadar?.radar_id === 'toir-quick-live' ? liveRunArtifact : null;
   const detailCandidate = artifact?.candidates.find((item) => item.account_id === detailCandidateId) ?? null;
   const [settingsDraft, setSettingsDraft] = useState<EditableRadarDefinitionDraft | null>(null);
   const [savedSettingsDraftSnapshot, setSavedSettingsDraftSnapshot] = useState('');
@@ -430,6 +436,11 @@ export function ICPRadarScreen({
           sourcesById={sourcesById}
           radarId={selectedRadar.radar_id}
           signalValidation={signalValidation}
+        />
+      ) : selectedRadar?.radar_id === 'toir-quick-live' ? (
+        <LiveMiniRadarShortlist
+          artifact={selectedLiveRunArtifact}
+          onOpenSettings={() => setSelectedTab('settings')}
         />
       ) : (
         <EmptyShortlist radar={selectedRadar} onOpenSettings={() => setSelectedTab('settings')} />
@@ -786,6 +797,210 @@ function EmptyShortlist({
         <Button icon={<Settings aria-hidden="true" />} variant="default" onClick={onOpenSettings}>
           {t('icpRadar.openSettings')}
         </Button>
+      </div>
+    </Card>
+  );
+}
+
+function LiveMiniRadarShortlist({
+  artifact,
+  onOpenSettings,
+}: {
+  artifact: LiveICPRadarRunArtifact | null;
+  onOpenSettings: () => void;
+}) {
+  const { t } = useTranslation();
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(artifact?.candidates[0]?.candidate_id ?? null);
+  const selectedCandidate = artifact?.candidates.find((candidate) => candidate.candidate_id === selectedCandidateId) ?? artifact?.candidates[0] ?? null;
+  const sourcesByRef = useMemo(() => {
+    return new Map((artifact?.sources ?? []).map((source) => [source.evidence_ref, source]));
+  }, [artifact]);
+
+  useEffect(() => {
+    setSelectedCandidateId(artifact?.candidates[0]?.candidate_id ?? null);
+  }, [artifact?.run_metadata.run_at]);
+
+  if (!artifact) {
+    return (
+      <Card>
+        <div className="icp-empty-shortlist live-radar-empty">
+          <span className="section-icon">
+            <Radar aria-hidden="true" />
+          </span>
+          <div>
+            <Eyebrow>{t('icpRadar.live.emptyEyebrow')}</Eyebrow>
+            <h2>{t('icpRadar.live.emptyTitle')}</h2>
+            <p>{t('icpRadar.live.emptyCopy')}</p>
+            <code>python -m power_web_os.demo run-live-mini-icp-radar --live</code>
+          </div>
+          <Button icon={<Settings aria-hidden="true" />} variant="default" onClick={onOpenSettings}>
+            {t('icpRadar.openSettings')}
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="live-radar-layout">
+      <Card>
+        <div className="live-radar-summary">
+          <div>
+            <Eyebrow>{t('icpRadar.live.runEyebrow')}</Eyebrow>
+            <h2>{artifact.radar.name}</h2>
+            <p>{artifact.radar.description}</p>
+          </div>
+          <dl className="live-radar-metadata">
+            <Metric label={t('icpRadar.live.runtime')} value={t(liveRuntimeKey(artifact.run_metadata.runtime))} />
+            <Metric label={t('icpRadar.live.model')} value={artifact.run_metadata.model ?? t('icpRadar.unknown')} />
+            <Metric label={t('icpRadar.live.webMode')} value={artifact.run_metadata.web_mode ?? t('icpRadar.unknown')} />
+            <Metric label={t('icpRadar.live.queries')} value={String(artifact.run_metadata.query_count)} />
+            <Metric label={t('icpRadar.live.sources')} value={String(artifact.sources.length)} />
+          </dl>
+        </div>
+      </Card>
+
+      {artifact.candidates.length === 0 ? (
+        <Card>
+          <div className="icp-empty-shortlist">
+            <span className="section-icon">
+              <ShieldCheck aria-hidden="true" />
+            </span>
+            <div>
+              <Eyebrow>{t('icpRadar.live.noCandidatesEyebrow')}</Eyebrow>
+              <h2>{t('icpRadar.live.noCandidatesTitle')}</h2>
+              <p>{t('icpRadar.live.noCandidatesCopy')}</p>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <div className="live-radar-grid">
+          <Card>
+            <div className="live-radar-table" aria-label={t('icpRadar.live.tableAria')}>
+              <div className="live-radar-table-head">
+                <span>{t('icpRadar.live.columns.company')}</span>
+                <span>{t('icpRadar.live.columns.fit')}</span>
+                <span>{t('icpRadar.live.columns.intent')}</span>
+                <span>{t('icpRadar.live.columns.tier')}</span>
+                <span>{t('icpRadar.live.columns.review')}</span>
+              </div>
+              {artifact.candidates.map((candidate) => (
+                <button
+                  className={`live-radar-row${selectedCandidate?.candidate_id === candidate.candidate_id ? ' live-radar-row-selected' : ''}`}
+                  key={candidate.candidate_id}
+                  type="button"
+                  onClick={() => setSelectedCandidateId(candidate.candidate_id)}
+                >
+                  <span>
+                    <strong>{candidate.legal_name}</strong>
+                    <small>{candidate.description || t('icpRadar.live.noDescription')}</small>
+                  </span>
+                  <Mono>{candidate.score.fit_score}</Mono>
+                  <Mono>{candidate.score.intent_score}</Mono>
+                  <Badge tone={candidate.score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{candidate.score.tier}</Badge>
+                  <span>{candidate.review_flags.length ? t('icpRadar.live.needsReview') : t('accounts.ready')}</span>
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          {selectedCandidate && (
+            <LiveRadarCandidateDetail candidate={selectedCandidate} sourcesByRef={sourcesByRef} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LiveRadarCandidateDetail({
+  candidate,
+  sourcesByRef,
+}: {
+  candidate: LiveRadarCandidate;
+  sourcesByRef: Map<string, LiveRadarSourceEvidence>;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Card>
+      <div className="live-radar-detail">
+        <div className="live-radar-detail-head">
+          <div>
+            <Eyebrow>{t('icpRadar.live.detailEyebrow')}</Eyebrow>
+            <h2>{candidate.legal_name}</h2>
+            <p>{candidate.description || t('icpRadar.live.noDescription')}</p>
+          </div>
+          <Badge tone="unsurfaced">{t('icpRadar.live.reviewRequired')}</Badge>
+        </div>
+
+        <section className="icp-detail-section">
+          <Eyebrow>{t('icpRadar.live.qualification')}</Eyebrow>
+          <div className="live-radar-fact-list">
+            {candidate.qualification.map((item) => (
+              <div className="live-radar-fact" key={item.criterion_code}>
+                <span>
+                  <Mono>{item.criterion_code}</Mono>
+                  <strong>{item.criterion}</strong>
+                  <small>{item.rationale}</small>
+                </span>
+                <Badge tone={item.status === 'confirmed' ? 'ally' : item.status === 'rejected' ? 'blocker' : 'neutral'}>
+                  {t(`icpRadar.live.qualificationStatus.${item.status}`)}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="icp-detail-section">
+          <Eyebrow>{t('icpRadar.live.signals')}</Eyebrow>
+          <div className="live-radar-fact-list">
+            {candidate.signals.map((item) => (
+              <div className="live-radar-fact" key={item.signal_code}>
+                <span>
+                  <Mono>{item.signal_code}</Mono>
+                  <strong>{item.signal}</strong>
+                  <small>{item.summary}</small>
+                </span>
+                <span className="live-radar-score">
+                  <Mono>{item.score}</Mono>
+                  <Badge tone={item.status === 'observed' ? 'ally' : item.status === 'unclear' ? 'unsurfaced' : 'neutral'}>
+                    {t(`icpRadar.live.signalStatus.${item.status}`)}
+                  </Badge>
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="icp-detail-section">
+          <Eyebrow>{t('icpRadar.live.evidence')}</Eyebrow>
+          <div className="live-radar-source-list">
+            {candidate.evidence_refs.map((ref) => {
+              const source = sourcesByRef.get(ref);
+              return (
+                <a href={source?.url ?? '#'} key={ref} rel="noreferrer" target="_blank">
+                  <ShieldCheck aria-hidden="true" />
+                  <span>
+                    <strong>{source?.title ?? ref}</strong>
+                    <small>{source?.snippet ?? ref}</small>
+                  </span>
+                  {source?.url && <ExternalLink aria-hidden="true" />}
+                </a>
+              );
+            })}
+          </div>
+        </section>
+
+        {candidate.review_flags.length > 0 && (
+          <section className="icp-detail-section">
+            <Eyebrow>{t('icpRadar.live.reviewFlags')}</Eyebrow>
+            <div className="badge-list">
+              {candidate.review_flags.map((flag) => (
+                <Badge key={flag} tone="unsurfaced">{flag}</Badge>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </Card>
   );
@@ -2738,6 +2953,19 @@ function runModeKey(runMode: string) {
     return 'icpRadar.runMode.fixtureImport';
   }
   return 'icpRadar.runMode.unknown';
+}
+
+function liveRuntimeKey(runtime: string) {
+  if (runtime === 'openrouter_live') {
+    return 'icpRadar.live.runtimeOpenRouter';
+  }
+  if (runtime === 'langgraph_dai') {
+    return 'icpRadar.live.runtimeLanggraph';
+  }
+  if (runtime === 'recorded') {
+    return 'icpRadar.live.runtimeRecorded';
+  }
+  return 'icpRadar.live.runtimeUnknown';
 }
 
 function discoveryModeKey(discoveryMode: string) {

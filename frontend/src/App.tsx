@@ -12,10 +12,12 @@ import type {
   AccessPlanArtifact,
   ICPRadarArtifact,
   ICPRadarCatalogArtifact,
+  LiveICPRadarRunArtifact,
 } from './types';
 
 const icpRadarCatalogUrl = '/demo/icp_radars.json';
 const icpRadarArtifactUrl = '/demo/icp_radar.json';
+const liveMiniRadarArtifactUrl = '/demo/live_mini_icp_radar_run.json';
 const radarArtifactUrl = '/demo/account_radar.json';
 
 export function App() {
@@ -24,6 +26,7 @@ export function App() {
   const [icpRadarCatalogError, setIcpRadarCatalogError] = useState<string | null>(null);
   const [icpRadarArtifact, setIcpRadarArtifact] = useState<ICPRadarArtifact | null>(null);
   const [icpRadarError, setIcpRadarError] = useState<string | null>(null);
+  const [liveMiniRadarArtifact, setLiveMiniRadarArtifact] = useState<LiveICPRadarRunArtifact | null>(null);
   const [radarArtifact, setRadarArtifact] = useState<AccountRadarArtifact | null>(null);
   const [radarError, setRadarError] = useState<string | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -52,6 +55,18 @@ export function App() {
       })
       .then(setIcpRadarArtifact)
       .catch((requestError: Error) => setIcpRadarError(requestError.message));
+  }, []);
+
+  useEffect(() => {
+    fetch(liveMiniRadarArtifactUrl)
+      .then((response) => {
+        if (!response.ok) {
+          return null;
+        }
+        return response.json() as Promise<LiveICPRadarRunArtifact>;
+      })
+      .then(setLiveMiniRadarArtifact)
+      .catch(() => setLiveMiniRadarArtifact(null));
   }, []);
 
   useEffect(() => {
@@ -99,6 +114,7 @@ export function App() {
           artifact={icpRadarArtifact}
           catalog={icpRadarCatalog}
           error={icpRadarCatalogError ?? icpRadarError}
+          liveRunArtifact={liveMiniRadarArtifact}
         />
       ) : activeScreen === 'accounts' ? (
         <AccountsScreen

@@ -1,4 +1,4 @@
-import i18n from 'i18next';
+﻿import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
 export const supportedLocales = ['en', 'ru'] as const;
@@ -72,6 +72,51 @@ export const resources = {
         plannedValidation: 'Planned validation',
         validationPlannedCopy:
           'Signal confirm, correction, rejection, and stale states are planned for Slice 0.6.3.',
+        live: {
+          emptyEyebrow: 'Live radar',
+          emptyTitle: 'No live run artifact yet',
+          emptyCopy: 'Run the live mini radar from CLI. The UI will show only what the agent finds; no synthetic candidates are created.',
+          runEyebrow: 'Live AI run',
+          runtime: 'Runtime',
+          runtimeOpenRouter: 'OpenRouter live',
+          runtimeLanggraph: 'langgraph-dai',
+          runtimeRecorded: 'Recorded test run',
+          runtimeUnknown: 'Unknown runtime',
+          model: 'Model',
+          webMode: 'Web mode',
+          queries: 'Queries',
+          sources: 'Sources',
+          tableAria: 'Live ICP Radar candidate table',
+          noCandidatesEyebrow: 'Live result',
+          noCandidatesTitle: 'No candidates found',
+          noCandidatesCopy: 'The live run completed, but the agent did not find source-backed candidates for this mini radar.',
+          noDescription: 'No source-backed description',
+          needsReview: 'Needs human review',
+          reviewRequired: 'Live AI run, requires human review',
+          detailEyebrow: 'Live candidate',
+          qualification: 'Qualification evidence',
+          signals: 'Signals found',
+          evidence: 'Source evidence',
+          reviewFlags: 'Review flags',
+          columns: {
+            company: 'Candidate',
+            fit: 'Fit',
+            intent: 'Intent',
+            tier: 'Tier',
+            review: 'Review',
+          },
+          qualificationStatus: {
+            confirmed: 'Confirmed',
+            weak: 'Weak',
+            unknown: 'Unknown',
+            rejected: 'Rejected',
+          },
+          signalStatus: {
+            observed: 'Observed',
+            not_observed: 'Not observed',
+            unclear: 'Unclear',
+          },
+        },
         signalValidation: 'Signal validation',
         resetLocalValidation: 'Reset local validation',
         sourceUrls: 'Source URLs',
@@ -642,7 +687,51 @@ export const resources = {
         plannedValidation: 'Планируемая валидация',
         validationPlannedCopy:
           'Подтверждение, корректировка, отклонение и stale-статус сигналов запланированы на Slice 0.6.3.',
-        signalValidation: 'Валидация сигналов',
+        live: {
+          emptyEyebrow: 'Живой радар',
+          emptyTitle: 'Live-run artifact еще не создан',
+          emptyCopy: 'Запустите мини-радар из CLI. UI покажет только то, что агент реально найдет; синтетические кандидаты не создаются.',
+          runEyebrow: 'Живой AI-запуск',
+          runtime: 'Runtime',
+          runtimeOpenRouter: 'OpenRouter live',
+          runtimeLanggraph: 'langgraph-dai',
+          runtimeRecorded: 'Записанный тестовый запуск',
+          runtimeUnknown: 'Неизвестный runtime',
+          model: 'Модель',
+          webMode: 'Web mode',
+          queries: 'Запросы',
+          sources: 'Источники',
+          tableAria: 'Таблица кандидатов live ICP Radar',
+          noCandidatesEyebrow: 'Live-результат',
+          noCandidatesTitle: 'Кандидаты не найдены',
+          noCandidatesCopy: 'Live-запуск завершился, но агент не нашел кандидатов с подтверждением источниками для этого мини-радара.',
+          noDescription: 'Нет описания из источников',
+          needsReview: 'Нужна проверка',
+          reviewRequired: 'Live AI-запуск, требуется проверка человеком',
+          detailEyebrow: 'Live-кандидат',
+          qualification: 'Доказательства квалификации',
+          signals: 'Найденные сигналы',
+          evidence: 'Источники',
+          reviewFlags: 'Флаги проверки',
+          columns: {
+            company: 'Кандидат',
+            fit: 'Fit',
+            intent: 'Intent',
+            tier: 'Tier',
+            review: 'Проверка',
+          },
+          qualificationStatus: {
+            confirmed: 'Подтверждено',
+            weak: 'Слабое',
+            unknown: 'Неизвестно',
+            rejected: 'Отклонено',
+          },
+          signalStatus: {
+            observed: 'Наблюдается',
+            not_observed: 'Не найден',
+            unclear: 'Неясно',
+          },
+        },        signalValidation: 'Валидация сигналов',
         resetLocalValidation: 'Сбросить локальную валидацию',
         sourceUrls: 'Ссылки на источники',
         fit: 'Соответствие',
@@ -1165,3 +1254,4 @@ void i18n.use(initReactI18next).init({
 });
 
 export { i18n };
+

@@ -29,9 +29,19 @@ python demo/run_demo.py generate-account-radar
 npm --prefix ./frontend run dev
 ```
 
+Optional live mini radar:
+
+```bash
+python -m power_web_os.demo run-live-mini-icp-radar --dry-run-plan
+python -m power_web_os.demo run-live-mini-icp-radar --live
+```
+
+The live command requires local OpenRouter credentials in `.env`. If the live artifact is absent or OpenRouter rejects the credentials, `ТОиР Quick Live Radar` stays visible in the catalog but shows an empty state and the CLI command instead of fake candidates.
+
 Open the Vite URL printed by the frontend command. The demo opens in a bounded Power Web OS workspace shell with `ICP Radar` active. It shows:
 
 - ICP Radar catalog with multiple configured radars;
+- experimental `ТОиР Quick Live Radar`, which shows only real provider-backed findings from `frontend/public/demo/live_mini_icp_radar_run.json`;
 - selected-radar `Shortlist` and editable local-demo `Settings` modes;
 
 - sidebar navigation for `ICP Radar`, `Accounts`, `Account Map`, `Access Plans`, `Signals`, and `Playbook`;
@@ -82,6 +92,8 @@ Settings are intentionally business-facing:
 - Monitoring uses constrained controls: cadence, run mode, deduplication policy, and number/unit fields for lookback and stale windows.
 - Scoring uses only `Fit / Соответствие`, `Intent / Интент`, and `Tier / Уровень`. Presets cover arithmetic mean, weighted average, maximum signal, capped sum, and custom formula.
 - Custom formula mode is the only place where generated rule IDs and signal codes matter.
+
+The catalog also includes `ТОиР Quick Live Radar`. This is the first live experimental radar. It is launched from the CLI, not from the UI. Before a successful run, its `Shortlist` tab shows an empty state and the command to generate `live_mini_icp_radar_run.json`. After a successful run, the same screen shows run metadata, sources, qualification evidence, found signals, review flags, and a live shortlist. Live findings always require human review and do not flow into `Accounts` automatically.
 
 Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. The main surface is a wide table: the company column stays fixed while score, tier, evidence, and criteria-related columns can scroll horizontally inside the table. Click a candidate row to open a bounded inline preview with the main signal, short recommendation, top evidence refs, and top criteria. Open the candidate detail view when you need the full C1-C20 signal breakdown, source refs, and local signal validation controls. Take-into-work is still a planned follow-up slice.
 

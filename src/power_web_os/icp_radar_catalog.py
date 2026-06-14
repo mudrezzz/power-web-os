@@ -71,6 +71,28 @@ def build_icp_radar_catalog(active_radar_payload: dict[str, Any]) -> dict[str, A
             artifact_path="/demo/icp_radar.json",
         ),
         ICPRadarCatalogItem(
+            radar_id="toir-quick-live",
+            name="ТОиР Quick Live Radar",
+            status="configured",
+            owner="ABM Research",
+            profile={
+                "icp_profile": "Живой мини-радар ТОиР для СИБУР",
+                "product": "Автоматизация ТОиР",
+                "segment": "Промышленные и нефтехимические активы СИБУР",
+                "scope": "CLI-запуск с live web search через OpenRouter. Результаты требуют проверки человеком.",
+            },
+            summary={
+                "cadence": "manual",
+                "last_run": "not_run",
+                "candidate_count": 0,
+                "needs_review_count": 0,
+                "accepted_count": 0,
+                "run_mode": "live_cli",
+            },
+            definition=_live_quick_definition(),
+            artifact_path="/demo/live_mini_icp_radar_run.json",
+        ),
+        ICPRadarCatalogItem(
             radar_id="mining-toir",
             name="ТОиР / Горнодобыча",
             status="configured",
@@ -458,4 +480,119 @@ def _planned_signal(
                 )
             ),
         ),
+    )
+
+
+def _live_quick_definition() -> RadarDefinition:
+    sources = (
+        SourceDefinition("openrouter_web", "search_engine", "OpenRouter web search", "openrouter:web_search", "medium"),
+        SourceDefinition("sibur_site", "url", "Сайт СИБУР", "https://www.sibur.ru", "high"),
+    )
+    source_policy = SourcePolicy(
+        source_ids=("openrouter_web", "sibur_site"),
+        source_logic="OR",
+        allow_additional_sources=True,
+        fallback_confidence="low",
+        use_global_search_policy=True,
+    )
+    signal_specs = (
+        ("S1", "ТОиР / ремонты / надежность", "Найти упоминания ремонтов, надежности, ТОиР или межремонтного интервала."),
+        ("S2", "Модернизация / инвестиции / рост мощности", "Найти упоминания модернизации оборудования, инвестиций или роста мощности."),
+        ("S3", "Цифровизация / диагностика / предиктивная аналитика", "Найти упоминания цифровизации производства, диагностики или предиктивной аналитики."),
+    )
+    definition = RadarDefinition(
+        definition_id="radar-def-toir-quick-live",
+        metadata=RadarMetadata(
+            name="ТОиР Quick Live Radar",
+            description="Мини-радар для живого поиска производственных активов СИБУР с сигналами по ТОиР, модернизации и цифровизации.",
+            owner="ABM Research",
+            status="configured",
+        ),
+        global_search_policy=GlobalSearchPolicy(
+            sources=sources,
+            keywords=("СИБУР ТОиР", "СИБУР ремонты", "СИБУР модернизация", "СИБУР цифровизация"),
+            exclusions=("Сервисные юрлица без производственного актива",),
+            allow_system_sources=True,
+        ),
+        account_qualification=AccountQualificationModel(
+            rule_group=RuleGroup(
+                group_id="toir-quick-live-qualification",
+                operator="AND",
+                rules=(
+                    AtomicRule(
+                        rule_id="q1-sibur-group",
+                        name="Компания входит в группу СИБУР",
+                        description="Компания входит в группу СИБУР.",
+                        target_field="holding",
+                        comparison_operator="contains",
+                        value="СИБУР",
+                        requirement_level="required",
+                        source_policy=source_policy,
+                    ),
+                    AtomicRule(
+                        rule_id="q2-industrial-asset",
+                        name="Промышленный актив",
+                        description="Компания относится к промышленным или нефтехимическим производственным активам.",
+                        target_field="asset_type",
+                        comparison_operator="contains",
+                        value="industrial",
+                        requirement_level="required",
+                        source_policy=source_policy,
+                    ),
+                ),
+            )
+        ),
+        intent_signals=tuple(
+            _planned_signal(
+                definition_id="radar-def-toir-quick-live",
+                code=code,
+                name=name,
+                description=description,
+                source_ids=("openrouter_web", "sibur_site"),
+            )
+            for code, name, description in signal_specs
+        ),
+        monitoring_policy=MonitoringPolicy(
+            cadence="manual",
+            lookback_window="90 days",
+            run_mode="live_cli",
+            deduplication="dedupe_by_source_url_and_signal_code",
+            stale_after="90 days",
+        ),
+        scoring_model=RadarScoringModel(
+            fit_model={
+                "formula_preset": "arithmetic_mean",
+                "description": "Fit is based on Q1/Q2 qualification.",
+                "custom_formula": "",
+                "uses": ["q1-sibur-group", "q2-industrial-asset"],
+            },
+            intent_model={
+                "formula_preset": "capped_sum",
+                "description": "Intent is based on S1-S3 observed signals.",
+                "custom_formula": "",
+                "uses": ["S1", "S2", "S3"],
+            },
+            tier_model={
+                "basis": "fit + intent",
+                "description": "Tier is assigned from confirmed fit and observed intent.",
+            },
+            tier_thresholds={
+                "Tier 1": "fit=2 and intent>=3",
+                "Tier 2": "fit>=1 and intent>=1",
+                "Monitor": "otherwise",
+            },
+            confidence_penalties={"low": "-20%", "medium": "-10%", "high": "0%", "none": "exclude"},
+        ),
+        validation_report=RadarValidationReport(errors=(), warnings=(), info=()),
+    )
+    report = RadarDefinitionValidator().validate(definition)
+    return RadarDefinition(
+        definition_id=definition.definition_id,
+        metadata=definition.metadata,
+        global_search_policy=definition.global_search_policy,
+        account_qualification=definition.account_qualification,
+        intent_signals=definition.intent_signals,
+        monitoring_policy=definition.monitoring_policy,
+        scoring_model=definition.scoring_model,
+        validation_report=report,
     )

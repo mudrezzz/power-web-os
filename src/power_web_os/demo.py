@@ -10,6 +10,11 @@ from power_web_os.domain import Account, Playbook
 from power_web_os.icp_radar import icp_radar_artifact_to_payload
 from power_web_os.icp_radar_catalog import build_icp_radar_catalog
 from power_web_os.icp_radar_xlsx import load_icp_radar_workbook
+from power_web_os.live_icp_radar import (
+    OpenRouterWebSearchProvider,
+    build_live_mini_radar_artifact,
+    build_live_mini_radar_search_plan_artifact,
+)
 from power_web_os.planner import DeterministicAccessPlanner
 from power_web_os.radar import AccountRadar
 from power_web_os.serialization import (
@@ -163,9 +168,40 @@ def generate_icp_radar_catalog_artifact(
     return artifact
 
 
+def generate_live_mini_icp_radar_plan(
+    *,
+    output_path: Path,
+) -> dict[str, Any]:
+    artifact = build_live_mini_radar_search_plan_artifact()
+    _write_json(output_path, artifact)
+    return artifact
+
+
+def generate_live_mini_icp_radar_artifact(
+    *,
+    output_path: Path,
+    frontend_output_path: Path,
+) -> dict[str, Any]:
+    artifact = build_live_mini_radar_artifact(
+        provider=OpenRouterWebSearchProvider(),
+        live=True,
+    )
+    _assert_no_secrets(artifact)
+    _write_json(output_path, artifact)
+    _write_json(frontend_output_path, artifact)
+    return artifact
+
+
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _assert_no_secrets(payload: dict[str, Any]) -> None:
+    serialized = json.dumps(payload, ensure_ascii=False)
+    forbidden = ("OPENROUTER_API_KEY", "Authorization", "Bearer ")
+    if any(token in serialized for token in forbidden):
+        raise RuntimeError("Refusing to write live radar artifact containing secret-like content")
 
 
 def main() -> None:
@@ -184,6 +220,7 @@ def main() -> None:
             "generate-account-radar",
             "generate-icp-radar",
             "generate-icp-radar-catalog",
+            "run-live-mini-icp-radar",
         ),
     )
     parser.add_argument("--input", type=Path, default=root / "demo" / "sample_account.json")
@@ -235,6 +272,23 @@ def main() -> None:
         type=Path,
         default=root / "frontend" / "public" / "demo" / "icp_radars.json",
     )
+    parser.add_argument(
+        "--live-mini-radar-output",
+        type=Path,
+        default=root / "demo" / "output" / "live_mini_icp_radar_run.json",
+    )
+    parser.add_argument(
+        "--frontend-live-mini-radar-output",
+        type=Path,
+        default=root / "frontend" / "public" / "demo" / "live_mini_icp_radar_run.json",
+    )
+    parser.add_argument(
+        "--live-mini-radar-plan-output",
+        type=Path,
+        default=root / "demo" / "output" / "live_mini_icp_radar_search_plan.json",
+    )
+    parser.add_argument("--dry-run-plan", action="store_true")
+    parser.add_argument("--live", action="store_true")
     args = parser.parse_args()
 
     if args.command == "generate-access-plan":
@@ -263,6 +317,18 @@ def main() -> None:
             output_path=args.icp_radar_catalog_output,
             frontend_output_path=args.frontend_icp_radar_catalog_output,
         )
+    elif args.command == "run-live-mini-icp-radar":
+        if args.dry_run_plan:
+            artifact = generate_live_mini_icp_radar_plan(
+                output_path=args.live_mini_radar_plan_output,
+            )
+        elif args.live:
+            artifact = generate_live_mini_icp_radar_artifact(
+                output_path=args.live_mini_radar_output,
+                frontend_output_path=args.frontend_live_mini_radar_output,
+            )
+        else:
+            parser.error("run-live-mini-icp-radar requires --dry-run-plan or --live")
     else:
         artifact = build_demo_plan(args.input)
     print(json.dumps(artifact, ensure_ascii=False, indent=2))

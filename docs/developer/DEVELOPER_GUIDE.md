@@ -168,6 +168,45 @@ candidates[].criteria_evidence[criterion_code].rationale
 candidates[].criteria_evidence[criterion_code].facts[]
 ```
 
+## Live Mini ICP Radar
+
+`Slice 0.6.3.1` adds the first provider-backed ICP Radar run without changing the stable XLSX fixture radar. The live radar is intentionally small: `toir-quick-live`, two qualification criteria, and three intent signals.
+
+The backend boundary is provider-neutral:
+
+- `WebSearchProvider` is the interface used by the workflow.
+- `OpenRouterWebSearchProvider` is the first live provider.
+- `RecordedWebSearchProvider` is used by tests and mocked runs.
+- `LiveICPRadarRunWorkflow` follows the optional `langgraph-dai` / `BaseWorkflow` pattern used elsewhere in the project.
+
+Environment variables are loaded from the process environment or local `.env`:
+
+```text
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL=
+OPENROUTER_WEB_MODE=auto
+```
+
+For local CLI demo runs, explicit constructor arguments are strongest, then project `.env`, then ambient OS environment variables. This prevents an old Windows/user `OPENROUTER_API_KEY` from silently overriding the key in the repository-local `.env`.
+
+Supported web modes are `auto`, `server_tools`, `plugin_web`, and `model_native`. `auto` tries OpenRouter server-side web search first and falls back to the OpenRouter web plugin if server tools are unsupported.
+
+Commands:
+
+```bash
+python -m power_web_os.demo run-live-mini-icp-radar --dry-run-plan
+python -m power_web_os.demo run-live-mini-icp-radar --live
+```
+
+`--dry-run-plan` does not call the network and does not create fake candidates. `--live` requires `OPENROUTER_API_KEY` and writes:
+
+```text
+demo/output/live_mini_icp_radar_run.json
+frontend/public/demo/live_mini_icp_radar_run.json
+```
+
+Live artifacts must never contain API keys, authorization headers, bearer tokens, or raw provider dumps. Model-supplied URLs are filtered by HTTP reachability before they can support candidates. If OpenRouter rejects the credentials or no usable sources are returned, the frontend should show the live radar empty state rather than fabricated candidates.
+
 Expected future domain objects:
 
 ```text

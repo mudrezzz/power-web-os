@@ -229,12 +229,17 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert "useState<ScreenId>('icp_radar')" in app
     assert "/demo/icp_radars.json" in app
     assert "/demo/icp_radar.json" in app
+    assert "/demo/live_mini_icp_radar_run.json" in app
+    assert "liveRunArtifact={liveMiniRadarArtifact}" in app
     assert "activeScreen === 'icp_radar'" in app
     assert "nav.icpRadar" in shell
     assert "topbar.icpRadar" in shell
     assert "ICPRadarArtifact" in types
     assert "ICPRadarCatalogArtifact" in types
     assert "ICPRadarCatalogItem" in types
+    assert "LiveICPRadarRunArtifact" in types
+    assert "LiveRadarCandidate" in types
+    assert "LiveRadarSourceEvidence" in types
     assert "RadarDefinition" in types
     assert "EditableRadarDefinitionDraft" in types
     assert "RadarConfigOverride" in types
@@ -300,6 +305,15 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "draft.validation_report",
         "local_draft",
         "modified_locally",
+        "LiveMiniRadarShortlist",
+        "LiveRadarCandidateDetail",
+        "toir-quick-live",
+        "python -m power_web_os.demo run-live-mini-icp-radar --live",
+        "icpRadar.live.emptyTitle",
+        "icpRadar.live.runEyebrow",
+        "icpRadar.live.qualification",
+        "icpRadar.live.signals",
+        "icpRadar.live.evidence",
     ]:
         assert contract_value in screen
 
@@ -470,6 +484,11 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "icpRadar.settings.intentSignals",
         "icpRadar.settings.qualificationRules",
         "icpRadar.settings.globalSearch",
+        "icpRadar.live.emptyTitle",
+        "icpRadar.live.runtimeOpenRouter",
+        "icpRadar.live.reviewRequired",
+        "icpRadar.live.qualificationStatus",
+        "icpRadar.live.signalStatus",
         "criteria",
         "editingPlanned",
     ]:
@@ -507,6 +526,10 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".icp-radar-list-status" in css
     assert ".icp-radar-run-mode" in css
     assert ".icp-radar-header-meta-row" in css
+    assert ".live-radar-layout" in css
+    assert ".live-radar-table" in css
+    assert ".live-radar-detail" in css
+    assert ".live-radar-source-list" in css
     assert ".icp-radar-header-badges" not in css
     assert "html,\nbody,\n#root" in css
     assert ".app-shell {\n  position: fixed;\n  inset: 0;" in css
@@ -566,3 +589,18 @@ def test_frontend_public_artifact_is_available_for_vite() -> None:
     assert icp_radar_path.exists()
     assert icp_radars_path.exists()
     assert Path("frontend/public/demo/access_plans").exists()
+
+
+def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
+    catalog = Path("frontend/public/demo/icp_radars.json").read_text(encoding="utf-8")
+    app = Path("frontend/src/App.tsx").read_text(encoding="utf-8")
+    screen = Path("frontend/src/screens/ICPRadarScreen.tsx").read_text(encoding="utf-8")
+    types = Path("frontend/src/types.ts").read_text(encoding="utf-8")
+
+    assert "toir-quick-live" in catalog
+    assert "/demo/live_mini_icp_radar_run.json" in catalog
+    assert "fetch(liveMiniRadarArtifactUrl)" in app
+    assert "return null" in app
+    assert "LiveMiniRadarShortlist" in screen
+    assert "fetch(" not in screen
+    assert "LiveICPRadarRunArtifact" in types
