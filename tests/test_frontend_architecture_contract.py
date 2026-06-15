@@ -1,0 +1,155 @@
+from pathlib import Path
+
+
+def line_count(path: Path) -> int:
+    return len(path.read_text(encoding="utf-8").splitlines())
+
+
+def read(path: str) -> str:
+    return Path(path).read_text(encoding="utf-8")
+
+
+def test_icp_radar_screen_is_feature_backed_thin_wrapper() -> None:
+    wrapper = Path("frontend/src/screens/ICPRadarScreen.tsx")
+    wrapper_text = wrapper.read_text(encoding="utf-8")
+
+    assert line_count(wrapper) <= 10
+    assert "features/icp-radar/ICPRadarScreen" in wrapper_text
+
+
+def test_icp_radar_feature_is_decomposed_by_responsibility() -> None:
+    feature_dir = Path("frontend/src/features/icp-radar")
+    expected_tsx_modules = {
+        "ICPRadarScreen.tsx",
+        "candidateViews.tsx",
+        "criteriaBreakdown.tsx",
+        "detailPrimitives.tsx",
+        "fixtureDetail.tsx",
+        "fixturePreview.tsx",
+        "fixtureShortlist.tsx",
+        "liveDetail.tsx",
+        "liveCandidateViews.tsx",
+        "liveShortlist.tsx",
+        "settings.tsx",
+        "settingsBlocks.tsx",
+        "settingsFields.tsx",
+        "settingsHeader.tsx",
+        "settingsMonitoring.tsx",
+        "settingsQualification.tsx",
+        "settingsScoring.tsx",
+        "settingsSearch.tsx",
+        "settingsSignals.tsx",
+        "settingsValidation.tsx",
+    }
+    expected_model_modules = {
+        "liveModel.ts",
+        "model.tsx",
+        "modelTypes.ts",
+        "radarMetaModel.ts",
+        "settingsModel.ts",
+        "validationModel.ts",
+    }
+
+    module_names = {path.name for path in feature_dir.glob("*.ts*")}
+    assert expected_tsx_modules.issubset(module_names)
+    assert expected_model_modules.issubset(module_names)
+    assert line_count(feature_dir / "ICPRadarScreen.tsx") <= 800
+    assert line_count(feature_dir / "candidateViews.tsx") <= 10
+    assert line_count(feature_dir / "liveCandidateViews.tsx") <= 10
+    assert line_count(feature_dir / "settings.tsx") <= 250
+    assert line_count(feature_dir / "fixtureDetail.tsx") <= 400
+    assert line_count(feature_dir / "fixturePreview.tsx") <= 160
+    assert line_count(feature_dir / "fixtureShortlist.tsx") <= 180
+    assert line_count(feature_dir / "liveDetail.tsx") <= 600
+    assert line_count(feature_dir / "liveShortlist.tsx") <= 260
+    assert line_count(feature_dir / "model.tsx") <= 10
+    assert line_count(feature_dir / "settingsModel.ts") <= 700
+    assert line_count(feature_dir / "validationModel.ts") <= 300
+    assert line_count(feature_dir / "liveModel.ts") <= 250
+
+    entrypoint = read("frontend/src/features/icp-radar/ICPRadarScreen.tsx")
+    for component_name in [
+        "function RadarSettings",
+        "function CriteriaBreakdown",
+        "function LiveRadarCandidateDetailView",
+        "function FixtureRadarCandidateDetailView",
+    ]:
+        assert component_name not in entrypoint
+
+
+def test_icp_radar_component_barrels_stay_small() -> None:
+    candidate_barrel = read("frontend/src/features/icp-radar/candidateViews.tsx")
+    live_barrel = read("frontend/src/features/icp-radar/liveCandidateViews.tsx")
+
+    assert "export { CandidateTable, EmptyShortlist } from './fixtureShortlist';" in candidate_barrel
+    assert "export { FixtureRadarCandidateDetailView } from './fixtureDetail';" in candidate_barrel
+    assert "export { LiveRadarCandidatePreview, LiveRadarShortlistTable } from './liveShortlist';" in live_barrel
+    assert "export { LiveRadarCandidateDetailView } from './liveDetail';" in live_barrel
+
+
+def test_icp_radar_feature_modules_document_non_obvious_boundaries() -> None:
+    comment_expectations = {
+        "fixtureShortlist.tsx": "Fixture shortlist is optimized for scanning",
+        "fixturePreview.tsx": "Preview stays intentionally bounded",
+        "fixtureDetail.tsx": "Fixture detail hosts signal validation",
+        "liveShortlist.tsx": "Live shortlist deliberately mirrors fixture shortlist",
+        "liveDetail.tsx": "Detail tabs keep runtime/provider evidence separate",
+        "settings.tsx": "Settings is block-editable by design",
+    }
+
+    for file_name, expected_comment in comment_expectations.items():
+        assert expected_comment in read(f"frontend/src/features/icp-radar/{file_name}")
+
+
+def test_icp_radar_model_barrel_has_responsibility_boundaries() -> None:
+    model = read("frontend/src/features/icp-radar/model.tsx")
+
+    for boundary in [
+        "modelTypes",
+        "validationModel",
+        "radarMetaModel",
+        "liveModel",
+        "settingsModel",
+    ]:
+        assert f"export * from './{boundary}';" in model
+
+
+def test_icp_radar_settings_are_lazy_loaded() -> None:
+    entrypoint = read("frontend/src/features/icp-radar/ICPRadarScreen.tsx")
+
+    assert "lazy(() => import('./settings')" in entrypoint
+    assert "<Suspense" in entrypoint
+    assert "icpRadar.settings.loading" in entrypoint
+
+
+def test_i18n_runtime_is_separate_from_large_resource_dictionary() -> None:
+    runtime = read("frontend/src/i18n.ts")
+    resources = read("frontend/src/i18nResources.ts")
+    en = read("frontend/src/i18n/en.ts")
+    ru = read("frontend/src/i18n/ru.ts")
+
+    assert line_count(Path("frontend/src/i18n.ts")) <= 40
+    assert line_count(Path("frontend/src/i18nResources.ts")) <= 10
+    assert "initReactI18next" in runtime
+    assert "resources" in runtime
+    assert "export const resources" in resources
+    assert "import { en }" in resources
+    assert "import { ru }" in resources
+    assert "icpRadar" in en
+    assert "icpRadar" in ru
+
+
+def test_icp_radar_css_is_owned_by_feature_module() -> None:
+    global_css_path = Path("frontend/src/styles.css")
+    feature_css_path = Path("frontend/src/features/icp-radar/icpRadar.css")
+    entrypoint = read("frontend/src/features/icp-radar/ICPRadarScreen.tsx")
+    global_css = global_css_path.read_text(encoding="utf-8")
+    feature_css = feature_css_path.read_text(encoding="utf-8")
+
+    assert feature_css_path.exists()
+    assert line_count(global_css_path) <= 1700
+    assert "import './icpRadar.css';" in entrypoint
+    assert ".icp-radar-screen" in feature_css
+    assert ".icp-radar-list-row" in feature_css
+    assert ".icp-radar-list-row" not in global_css
+    assert ".icp-settings-grid" not in global_css

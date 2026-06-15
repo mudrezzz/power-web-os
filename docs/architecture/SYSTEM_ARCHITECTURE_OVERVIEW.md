@@ -60,6 +60,25 @@ UI / API
 
 Domain logic must not depend on transport, database, UI, or vendor APIs.
 
+## Frontend Module Boundaries
+
+The React frontend follows the same boundary rule as the Python domain: a screen should not become a god object. Once a product area contains its own state model, adapters, tables, previews, settings, and review controls, it must move into `frontend/src/features/<feature>/`.
+
+`frontend/src/screens/ICPRadarScreen.tsx` is now a thin wrapper. The ICP Radar feature owns:
+
+- screen orchestration and local navigation state;
+- fixture and live artifact adapters;
+- canonical shortlist, preview, and detail views;
+- C1-C20 signal evidence and validation review;
+- block-editable radar settings;
+- localStorage overlays and score normalization helpers.
+
+The Settings editor is lazy-loaded so the default catalog/shortlist path does not pull the whole editor into the initial JavaScript chunk. Contract tests guard this boundary and fail if ICP Radar collapses back into one monolithic screen file.
+
+ICP Radar CSS is owned by `frontend/src/features/icp-radar/icpRadar.css`, while `frontend/src/styles.css` remains the app shell and shared primitive stylesheet. Runtime i18n initialization is separated from EN/RU resource modules. ICP Radar model helpers are also split by role: constants/types, validation scoring, radar metadata, live-radar helpers, and settings definition helpers.
+
+The canonical ICP Radar UI is split by interaction surface: fixture/live shortlist modules own table scan and inline preview, fixture/live detail modules own tabbed evidence review, settings modules own block-level editing, and the feature entrypoint owns only screen-level state and orchestration.
+
 ## Main Data Flow
 
 Target ICP Radar flow:

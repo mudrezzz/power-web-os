@@ -1167,6 +1167,88 @@ Status:
   - Expanded rows show sources, origin, trust/check policy, evidence facts, cross-validation, and requirement evaluation.
   - Review actions are local and do not mutate generated artifacts.
 
+### Slice 0.6.3.5: ICP Radar frontend feature decomposition
+
+- Status: `Done`
+- Goal: Refactor the ICP Radar frontend from a monolithic screen file into a maintainable feature module without changing user-visible behavior.
+- User value: Future radar UX changes can be made predictably without reintroducing inconsistent layouts or a 4,000+ line screen file.
+- Scope:
+  - Replace `frontend/src/screens/ICPRadarScreen.tsx` with a thin wrapper.
+  - Move ICP Radar implementation into `frontend/src/features/icp-radar/`.
+  - Split candidate table/detail, live candidate views, criteria evidence review, settings, settings fields, header editor, shared detail primitives, and model helpers.
+  - Lazy-load the heavy Settings editor so the default catalog/shortlist path does not pull it into the first bundle.
+  - Split i18n runtime initialization from the large resources dictionary.
+  - Add architecture contract tests for screen thinness, feature module boundaries, settings lazy loading, and i18n split.
+  - Add ADR and docs for frontend feature boundaries and comment expectations.
+- Out of scope:
+  - Visual redesign.
+  - Backend/schema changes.
+- Tests:
+  - `npm --prefix ./frontend run build`
+  - `python -m pytest`
+- Docs:
+  - Added `Frontend Feature Module Boundaries` ADR.
+  - Updated architecture overview and developer guide.
+- Acceptance criteria:
+  - `frontend/src/screens/ICPRadarScreen.tsx` remains a thin wrapper.
+  - `frontend/src/features/icp-radar/ICPRadarScreen.tsx` does not inline Settings, criteria breakdown, or large detail components.
+  - Settings is lazy-loaded as a separate frontend chunk.
+  - Contract tests guard the new structure.
+
+### Slice 0.6.3.6: Frontend CSS, i18n, and model boundary modularization
+
+- Status: `Done`
+- Goal: Finish the frontend maintainability cleanup by separating feature CSS, i18n resources, and ICP Radar model helpers without breaking the design-system token order or visual smoke flows.
+- User value: Developers can edit styles and translations for one product area without scanning thousands of unrelated lines.
+- Scope:
+  - Split `frontend/src/styles.css` into app shell/shared primitives and feature-scoped CSS files.
+  - Preserve `ui-design-system/colors_and_type.css` as the first token import.
+  - Split `frontend/src/i18nResources.ts` into language or feature resource modules while preserving EN/RU parity checks.
+  - Split ICP Radar model helpers into typed boundaries for model constants, validation scoring, live-radar helpers, radar metadata/status helpers, and settings definition helpers.
+  - Add tests that enforce token import order, feature CSS ownership, model boundaries, and i18n resource coverage.
+  - Run visual smoke after CSS movement.
+- Out of scope:
+  - New product behavior.
+  - UI redesign.
+  - Backend changes.
+- Tests:
+  - `npm --prefix ./frontend run build`
+  - `python -m pytest`
+  - `npm --prefix ./frontend run settings:toggle-smoke`
+  - `npm --prefix ./frontend run visual:smoke`
+- Docs:
+  - Updated frontend architecture/developer documentation and feature-boundary ADR.
+- Acceptance criteria:
+  - ICP Radar CSS lives in `frontend/src/features/icp-radar/icpRadar.css`.
+  - Runtime i18n initialization stays small and imports language resource modules.
+  - `frontend/src/features/icp-radar/model.tsx` is a barrel over focused model modules.
+  - Contract tests guard feature CSS ownership, i18n split, lazy Settings, and model boundaries.
+
+### Slice 0.6.3.7: ICP Radar component granularity and commentary pass
+
+- Status: `Done`
+- Goal: Finish the refactor-hardening pass by reducing the remaining large ICP Radar component files and adding targeted comments around non-obvious data adaptation paths.
+- User value: New developers can safely change candidate views, live views, and settings blocks without reading 700-900 line files.
+- Scope:
+  - Split `candidateViews.tsx`, `liveCandidateViews.tsx`, and `settings.tsx` where they still mix table, preview, detail, and block-editor responsibilities.
+  - Keep public imports stable through feature barrels where useful.
+  - Add concise module and complex-block comments for adapters, review-state transitions, and table-preview-detail invariants.
+  - Add architecture tests for maximum feature-component file size and required module-boundary comments.
+- Out of scope:
+  - Product behavior changes.
+  - Visual redesign.
+  - Backend/schema changes.
+- Tests:
+  - `npm --prefix ./frontend run build`
+  - `python -m pytest`
+  - `npm --prefix ./frontend run settings:toggle-smoke`
+- Docs:
+  - Updated feature-boundary ADR and developer/architecture documentation.
+- Acceptance criteria:
+  - `candidateViews.tsx`, `liveCandidateViews.tsx`, and `model.tsx` are stable barrel modules.
+  - Fixture table, fixture preview, fixture detail, live table, live detail, and settings blocks live in separate modules.
+  - Architecture tests enforce file-size boundaries and required module-boundary comments.
+
 ### Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web
 
 - Status: `Backlog`
@@ -1955,6 +2037,21 @@ Status:
   - Extended live qualification results with source usage, source origin, trust/check policy, evidence findings, cross-validation, requirement evaluation, final assessment, and review-decision fields.
   - Replaced raw Q1/Q2 candidate detail rows with a table-first qualification review surface.
   - Added local approve/reject/correct actions for qualification assessment, plus backend and frontend contract coverage.
+- `Slice 0.6.3.5: ICP Radar frontend feature decomposition`
+  - Replaced the 4,000+ line ICP Radar screen with a thin screen wrapper plus a feature module under `frontend/src/features/icp-radar/`.
+  - Split candidate views, live candidate views, criteria breakdown, settings, settings fields, header editor, detail primitives, and model helpers.
+  - Lazy-loaded Settings into a separate frontend chunk and split i18n runtime initialization from the resource dictionary.
+  - Added frontend architecture contract tests and documented the module boundary in ADR/developer/architecture docs.
+- `Slice 0.6.3.6: Frontend CSS, i18n, and model boundary modularization`
+  - Moved ICP Radar CSS into `frontend/src/features/icp-radar/icpRadar.css` while preserving design-system token import order.
+  - Split i18n runtime initialization from EN/RU resource modules.
+  - Split ICP Radar model helpers into focused model files for constants/types, validation scoring, radar metadata, live helpers, and settings definition helpers.
+  - Expanded architecture and frontend contract tests to guard CSS ownership, i18n runtime/resource separation, Settings lazy loading, and model barrel boundaries.
+- `Slice 0.6.3.7: ICP Radar component granularity and commentary pass`
+  - Split remaining large ICP Radar view modules into fixture shortlist, fixture preview, fixture detail, live shortlist, live detail, settings block, settings search, qualification, monitoring, signals, scoring, and validation modules.
+  - Kept public `candidateViews.tsx`, `liveCandidateViews.tsx`, and `model.tsx` as small barrel modules for stable imports.
+  - Added module-boundary comments around non-obvious scan/preview/detail/settings responsibilities.
+  - Added architecture tests for component file-size limits, barrel boundaries, and required module comments.
 
 ## Blocked Items
 

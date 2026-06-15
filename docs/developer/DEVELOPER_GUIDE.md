@@ -38,6 +38,55 @@ docs/                  Architecture, ADRs, user and contributor docs
 .external/             Local research/vendor checkouts, not committed
 ```
 
+## Frontend Feature Structure
+
+Large product screens must be split into feature modules. A file under `frontend/src/screens/` can stay as the route/shell compatibility wrapper, but feature implementation should live under `frontend/src/features/<feature>/`.
+
+Current ICP Radar structure:
+
+```text
+frontend/src/screens/ICPRadarScreen.tsx          Thin wrapper
+frontend/src/features/icp-radar/ICPRadarScreen.tsx
+frontend/src/features/icp-radar/icpRadar.css
+frontend/src/features/icp-radar/model.tsx        Barrel over focused model modules
+frontend/src/features/icp-radar/modelTypes.ts
+frontend/src/features/icp-radar/validationModel.ts
+frontend/src/features/icp-radar/radarMetaModel.ts
+frontend/src/features/icp-radar/liveModel.ts
+frontend/src/features/icp-radar/settingsModel.ts
+frontend/src/features/icp-radar/candidateViews.tsx   Barrel for fixture candidate views
+frontend/src/features/icp-radar/fixtureShortlist.tsx
+frontend/src/features/icp-radar/fixturePreview.tsx
+frontend/src/features/icp-radar/fixtureDetail.tsx
+frontend/src/features/icp-radar/liveCandidateViews.tsx  Barrel for live candidate views
+frontend/src/features/icp-radar/liveShortlist.tsx
+frontend/src/features/icp-radar/liveDetail.tsx
+frontend/src/features/icp-radar/criteriaBreakdown.tsx
+frontend/src/features/icp-radar/settings.tsx
+frontend/src/features/icp-radar/settingsBlocks.tsx
+frontend/src/features/icp-radar/settingsSearch.tsx
+frontend/src/features/icp-radar/settingsQualification.tsx
+frontend/src/features/icp-radar/settingsMonitoring.tsx
+frontend/src/features/icp-radar/settingsSignals.tsx
+frontend/src/features/icp-radar/settingsScoring.tsx
+frontend/src/features/icp-radar/settingsValidation.tsx
+frontend/src/features/icp-radar/settingsFields.tsx
+frontend/src/features/icp-radar/settingsHeader.tsx
+frontend/src/features/icp-radar/detailPrimitives.tsx
+```
+
+Rules:
+
+- Keep route/screen wrappers thin once a screen grows beyond a simple view.
+- Keep model/normalization/scoring helpers separate from JSX-heavy view components.
+- Keep feature-specific CSS next to the feature module; leave `frontend/src/styles.css` for app shell and shared primitives.
+- Keep expensive or rarely used panels, such as ICP Radar Settings, behind `React.lazy` and `Suspense`.
+- Add short module-boundary comments and comments for non-obvious data shaping, storage migration, scoring, or UX invariants.
+- Do not add comments that repeat obvious JSX.
+- Run `python -m pytest` after feature-structure changes; `tests/test_frontend_architecture_contract.py` guards the ICP Radar decomposition, model barrel boundaries, feature CSS ownership, lazy Settings loading, and i18n runtime/resource split.
+
+When adding ICP Radar UI, prefer the existing module boundary instead of adding new logic to `ICPRadarScreen.tsx`: shortlist/table changes go to `fixtureShortlist.tsx` or `liveShortlist.tsx`, preview-only changes go to `fixturePreview.tsx`, detail/review changes go to `fixtureDetail.tsx` or `liveDetail.tsx`, and settings block changes go to the relevant `settings*` module.
+
 ## Domain Baseline
 
 The current Python package contains:
@@ -327,11 +376,13 @@ Current structure:
 ```text
 frontend/src/App.tsx                  App state and artifact loading
 frontend/src/components/              Token-based UI primitives
-frontend/src/i18n.ts                  EN/RU UI resources and locale initialization
+frontend/src/features/                Feature modules with owned screens, models, and CSS
+frontend/src/i18n.ts                  Locale initialization
+frontend/src/i18n/                    EN/RU UI resource modules
 frontend/src/demoLocalization.ts      Presentation-layer localization for deterministic demo data
 frontend/src/layout/                  Power Web OS shell, sidebar, top bar
 frontend/src/screens/                 Product screens and planned placeholders
-frontend/src/styles.css               Design-system-based app styling
+frontend/src/styles.css               App shell and shared primitive styling
 ```
 
 Rules:
@@ -342,7 +393,7 @@ Rules:
 - Follow the frontend workspace UX ADR family, starting with `2026-06-12-frontend-workspace-ux-principles.md`, for bounded SPA behavior, table-first dense data, sticky identity, evidence-first drilldown, explicit settings state, local draft boundaries, i18n, responsive constraints, and the canonical ICP Radar UX contract.
 - Use `lucide-react` for icons.
 - Keep UI copy sentence case, with uppercase only for mono eyebrow labels.
-- Add visible UI strings through `frontend/src/i18n.ts` and keep English/Russian resources synchronized.
+- Add visible UI strings through `frontend/src/i18n/en.ts` and `frontend/src/i18n/ru.ts`; keep English/Russian resources synchronized.
 - Keep the app shell viewport-bounded; `body` should not be the normal scroll container for product screens.
 - Put scrolling inside workspace panes and dense table/card wrappers.
 - Use `min-width: 0`, wrapping, ellipsis, or owned horizontal scroll so text never overlaps neighboring columns.

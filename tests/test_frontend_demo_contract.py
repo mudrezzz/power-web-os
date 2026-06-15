@@ -1,5 +1,28 @@
-import re
+﻿import re
 from pathlib import Path
+
+
+def read_text(path: str) -> str:
+    return Path(path).read_text(encoding="utf-8")
+
+
+def i18n_text() -> str:
+    i18n_files = [
+        Path("frontend/src/i18n.ts"),
+        Path("frontend/src/i18nResources.ts"),
+        *sorted(Path("frontend/src/i18n").glob("*.ts")),
+    ]
+    return "\n".join(path.read_text(encoding="utf-8") for path in i18n_files)
+
+
+def icp_radar_feature_text() -> str:
+    feature_dir = Path("frontend/src/features/icp-radar")
+    return "\n".join(path.read_text(encoding="utf-8") for path in sorted(feature_dir.glob("*.ts*")))
+
+
+def css_text() -> str:
+    css_files = [Path("frontend/src/styles.css"), *sorted(Path("frontend/src/features").glob("**/*.css"))]
+    return "\n".join(path.read_text(encoding="utf-8") for path in css_files)
 
 
 def test_frontend_imports_design_system_tokens() -> None:
@@ -10,7 +33,7 @@ def test_frontend_imports_design_system_tokens() -> None:
 
 
 def test_frontend_i18n_resources_cover_supported_locales() -> None:
-    i18n = Path("frontend/src/i18n.ts").read_text(encoding="utf-8")
+    i18n = i18n_text()
     package_json = Path("frontend/package.json").read_text(encoding="utf-8")
 
     assert "supportedLocales = ['en', 'ru']" in i18n
@@ -124,7 +147,7 @@ def test_account_map_screen_replaces_planned_placeholder() -> None:
     planned_screen = Path("frontend/src/screens/PlannedScreen.tsx").read_text(encoding="utf-8")
     account_map_screen = Path("frontend/src/screens/AccountMapScreen.tsx").read_text(encoding="utf-8")
     types = Path("frontend/src/types.ts").read_text(encoding="utf-8")
-    css = Path("frontend/src/styles.css").read_text(encoding="utf-8")
+    css = css_text()
 
     assert "AccountMapScreen" in app
     assert "activeScreen === 'map'" in app
@@ -149,7 +172,7 @@ def test_playbook_screen_replaces_planned_placeholder() -> None:
     planned_screen = Path("frontend/src/screens/PlannedScreen.tsx").read_text(encoding="utf-8")
     playbook_screen = Path("frontend/src/screens/PlaybookScreen.tsx").read_text(encoding="utf-8")
     types = Path("frontend/src/types.ts").read_text(encoding="utf-8")
-    i18n = Path("frontend/src/i18n.ts").read_text(encoding="utf-8")
+    i18n = i18n_text()
 
     assert "PlaybookScreen" in app
     assert "activeScreen === 'playbook'" in app
@@ -189,7 +212,7 @@ def test_frontend_shell_uses_design_system_prototype_structure() -> None:
 
 
 def test_frontend_shell_uses_bounded_spa_frame_css() -> None:
-    css = Path("frontend/src/styles.css").read_text(encoding="utf-8")
+    css = css_text()
 
     for selector in ["html,", "body,", "#root", ".app-shell", ".sidebar", ".workspace", ".workspace-body"]:
         assert selector in css
@@ -201,7 +224,7 @@ def test_frontend_shell_uses_bounded_spa_frame_css() -> None:
 
 
 def test_accounts_screen_contains_overflow_safe_table_rules() -> None:
-    css = Path("frontend/src/styles.css").read_text(encoding="utf-8")
+    css = css_text()
 
     assert ".accounts-screen .card" in css
     assert "overflow-x: auto" in css
@@ -221,10 +244,10 @@ def test_app_loads_account_radar_and_selected_access_plan_artifacts() -> None:
 def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     app = Path("frontend/src/App.tsx").read_text(encoding="utf-8")
     shell = Path("frontend/src/layout/AppShell.tsx").read_text(encoding="utf-8")
-    screen = Path("frontend/src/screens/ICPRadarScreen.tsx").read_text(encoding="utf-8")
+    screen = icp_radar_feature_text()
     types = Path("frontend/src/types.ts").read_text(encoding="utf-8")
-    i18n = Path("frontend/src/i18n.ts").read_text(encoding="utf-8")
-    css = Path("frontend/src/styles.css").read_text(encoding="utf-8")
+    i18n = i18n_text()
+    css = css_text()
 
     assert "useState<ScreenId>('icp_radar')" in app
     assert "/demo/icp_radars.json" in app
@@ -685,9 +708,9 @@ def test_frontend_public_artifact_is_available_for_vite() -> None:
 def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
     catalog = Path("frontend/public/demo/icp_radars.json").read_text(encoding="utf-8")
     app = Path("frontend/src/App.tsx").read_text(encoding="utf-8")
-    screen = Path("frontend/src/screens/ICPRadarScreen.tsx").read_text(encoding="utf-8")
+    screen = icp_radar_feature_text()
     types = Path("frontend/src/types.ts").read_text(encoding="utf-8")
-    i18n = Path("frontend/src/i18n.ts").read_text(encoding="utf-8")
+    i18n = i18n_text()
 
     assert "toir-quick-live" in catalog
     assert "/demo/live_mini_icp_radar_run.json" in catalog
