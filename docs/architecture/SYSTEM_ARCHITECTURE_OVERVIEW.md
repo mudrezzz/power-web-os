@@ -66,18 +66,20 @@ The React frontend follows the same boundary rule as the Python domain: a screen
 
 `frontend/src/screens/ICPRadarScreen.tsx` is now a thin wrapper. The ICP Radar feature owns:
 
-- screen orchestration and local navigation state;
-- fixture and live artifact adapters;
+- screen orchestration through a small feature entrypoint;
+- application hooks for local navigation state, draft overlays, signal validation, and qualification review;
+- fixture, live, and empty radar adapters;
+- canonical radar and candidate view-model contracts;
 - canonical shortlist, preview, and detail views;
 - C1-C20 signal evidence and validation review;
 - block-editable radar settings;
-- localStorage overlays and score normalization helpers.
+- pure domain helpers for score normalization, status/tone mapping, and review decisions.
 
 The Settings editor is lazy-loaded so the default catalog/shortlist path does not pull the whole editor into the initial JavaScript chunk. Contract tests guard this boundary and fail if ICP Radar collapses back into one monolithic screen file.
 
 ICP Radar CSS is owned by `frontend/src/features/icp-radar/icpRadar.css`, while `frontend/src/styles.css` remains the app shell and shared primitive stylesheet. Runtime i18n initialization is separated from EN/RU resource modules. ICP Radar model helpers are also split by role: constants/types, validation scoring, radar metadata, live-radar helpers, and settings definition helpers.
 
-The canonical ICP Radar UI is split by interaction surface: fixture/live shortlist modules own table scan and inline preview, fixture/live detail modules own tabbed evidence review, settings modules own block-level editing, and the feature entrypoint owns only screen-level state and orchestration.
+The canonical ICP Radar UI is split by interaction surface: fixture/live shortlist modules own table scan and inline preview, fixture/live detail modules own tabbed evidence review, settings modules own block-level editing, and the feature entrypoint only assembles the current application state into the right surface. React stays functional; OOP principles are applied through module ownership, typed contracts, adapters, hooks, and pure domain services rather than class-component inheritance.
 
 ## Main Data Flow
 

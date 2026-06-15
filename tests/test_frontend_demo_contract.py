@@ -17,7 +17,7 @@ def i18n_text() -> str:
 
 def icp_radar_feature_text() -> str:
     feature_dir = Path("frontend/src/features/icp-radar")
-    return "\n".join(path.read_text(encoding="utf-8") for path in sorted(feature_dir.glob("*.ts*")))
+    return "\n".join(path.read_text(encoding="utf-8") for path in sorted(feature_dir.rglob("*.ts*")))
 
 
 def css_text() -> str:

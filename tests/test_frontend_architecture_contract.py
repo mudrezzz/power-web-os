@@ -19,6 +19,7 @@ def test_icp_radar_screen_is_feature_backed_thin_wrapper() -> None:
 
 def test_icp_radar_feature_is_decomposed_by_responsibility() -> None:
     feature_dir = Path("frontend/src/features/icp-radar")
+    expected_directories = {"adapters", "application", "components", "domain"}
     expected_tsx_modules = {
         "ICPRadarScreen.tsx",
         "candidateViews.tsx",
@@ -51,9 +52,11 @@ def test_icp_radar_feature_is_decomposed_by_responsibility() -> None:
     }
 
     module_names = {path.name for path in feature_dir.glob("*.ts*")}
+    directory_names = {path.name for path in feature_dir.iterdir() if path.is_dir()}
+    assert expected_directories.issubset(directory_names)
     assert expected_tsx_modules.issubset(module_names)
     assert expected_model_modules.issubset(module_names)
-    assert line_count(feature_dir / "ICPRadarScreen.tsx") <= 800
+    assert line_count(feature_dir / "ICPRadarScreen.tsx") <= 250
     assert line_count(feature_dir / "candidateViews.tsx") <= 10
     assert line_count(feature_dir / "liveCandidateViews.tsx") <= 10
     assert line_count(feature_dir / "settings.tsx") <= 250
@@ -75,6 +78,66 @@ def test_icp_radar_feature_is_decomposed_by_responsibility() -> None:
         "function FixtureRadarCandidateDetailView",
     ]:
         assert component_name not in entrypoint
+    for forbidden_boundary in [
+        "window.localStorage",
+        "toir-quick-live",
+        "selectedLiveRunArtifact",
+        "selectedRadarArtifact",
+        "buildValidatedCandidateScore",
+        "validationForCandidate",
+    ]:
+        assert forbidden_boundary not in entrypoint
+
+
+def test_icp_radar_has_application_and_adapter_boundaries() -> None:
+    feature_dir = Path("frontend/src/features/icp-radar")
+    adapters = {
+        "catalogAdapter.ts": [
+            "radarToViewModel",
+            "mergeCatalogWithOverrides",
+        ],
+        "fixtureRadarAdapter.ts": [
+            "fixtureRadarToViewModel",
+            "fixtureCandidateToViewModel",
+        ],
+        "liveRadarAdapter.ts": [
+            "liveRadarToViewModel",
+            "liveCandidateToViewModel",
+        ],
+        "viewModels.ts": [
+            "RadarViewModel",
+            "RadarCandidateViewModel",
+        ],
+    }
+    hooks = {
+        "useRadarWorkspace.ts": [
+            "useRadarNavigation",
+            "useRadarConfigOverrides",
+            "useSignalValidationOverlay",
+            "useQualificationReviewOverlay",
+        ],
+        "useRadarConfigOverrides.ts": ["radarConfigStorageKey", "window.localStorage"],
+        "useSignalValidationOverlay.ts": ["signalValidationStorageKey", "window.localStorage"],
+        "useQualificationReviewOverlay.ts": ["qualificationReviewStorageKey", "window.localStorage"],
+    }
+
+    for file_name, expected_symbols in adapters.items():
+        text = read(str(feature_dir / "adapters" / file_name))
+        for symbol in expected_symbols:
+            assert symbol in text
+
+    for file_name, expected_symbols in hooks.items():
+        text = read(str(feature_dir / "application" / file_name))
+        for symbol in expected_symbols:
+            assert symbol in text
+
+
+def test_icp_radar_presentation_components_do_not_own_storage() -> None:
+    component_dir = Path("frontend/src/features/icp-radar/components")
+    for component in component_dir.glob("*.tsx"):
+        text = component.read_text(encoding="utf-8")
+        assert "window.localStorage" not in text
+        assert "StorageKey" not in text
 
 
 def test_icp_radar_component_barrels_stay_small() -> None:

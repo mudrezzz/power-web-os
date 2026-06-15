@@ -1249,6 +1249,60 @@ Status:
   - Fixture table, fixture preview, fixture detail, live table, live detail, and settings blocks live in separate modules.
   - Architecture tests enforce file-size boundaries and required module-boundary comments.
 
+### Slice 0.6.3.8: ICP Radar application boundary and adapter cleanup
+
+- Status: `Done`
+- Goal: Move ICP Radar from component-level decomposition to explicit application boundaries with hooks, adapters, and domain helpers.
+- User value: Engineers can add or change radar data sources without pushing storage, scoring, and artifact-branching logic back into the screen component.
+- Scope:
+  - Add `domain/`, `adapters/`, `application/`, and `components/` boundaries inside the ICP Radar feature.
+  - Introduce canonical `RadarViewModel` and `RadarCandidateViewModel` adapters for fixture, live, and empty radar states.
+  - Move navigation state, localStorage overlays, settings draft actions, and review actions into application hooks.
+  - Move catalog and radar detail header presentation into feature components.
+  - Keep React functional; apply OOP principles through module ownership, contracts, adapters, hooks, and pure domain functions.
+- Out of scope:
+  - Backend artifact changes.
+  - Visual redesign.
+  - CSS decomposition beyond import-path preservation.
+  - New product behavior.
+- Tests:
+  - `npm --prefix ./frontend run build`
+  - `python -m pytest`
+  - `npm --prefix ./frontend run settings:toggle-smoke`
+  - `npm --prefix ./frontend run visual:smoke`
+- Docs:
+  - Updated frontend architecture/developer documentation and feature-boundary ADR.
+- Acceptance criteria:
+  - `frontend/src/features/icp-radar/ICPRadarScreen.tsx` stays below 250 lines.
+  - Screen orchestration no longer owns localStorage, scoring rules, or raw fixture/live mapping.
+  - Architecture tests guard application/adapters/domain/components boundaries.
+  - Fixture and live radars keep the same table-preview-detail UX.
+
+### Slice 0.6.3.9: ICP Radar CSS decomposition
+
+- Status: `Backlog`
+- Goal: Split the large ICP Radar feature stylesheet into readable style modules without changing UI behavior.
+- User value: Engineers can adjust table, preview, detail, settings, and catalog styling without searching through a multi-thousand-line CSS file.
+- Scope:
+  - Keep one feature CSS entrypoint for imports.
+  - Split styling by surface: catalog/header, shortlist/table, preview, detail tabs, settings, and responsive rules.
+  - Preserve design-system token usage and current visual smoke output.
+  - Add architecture tests for CSS module ownership and maximum file sizes.
+- Out of scope:
+  - Visual redesign.
+  - New responsive behavior.
+  - Component or domain refactor.
+- Tests:
+  - `npm --prefix ./frontend run build`
+  - `python -m pytest`
+  - `npm --prefix ./frontend run visual:smoke`
+- Docs:
+  - Update frontend architecture/developer docs if CSS ownership rules change.
+- Acceptance criteria:
+  - `icpRadar.css` becomes an import entrypoint or stays small enough to scan.
+  - No ICP Radar selectors move back to global `styles.css`.
+  - Visual smoke confirms no layout regression.
+
 ### Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web
 
 - Status: `Backlog`
@@ -2052,6 +2106,12 @@ Status:
   - Kept public `candidateViews.tsx`, `liveCandidateViews.tsx`, and `model.tsx` as small barrel modules for stable imports.
   - Added module-boundary comments around non-obvious scan/preview/detail/settings responsibilities.
   - Added architecture tests for component file-size limits, barrel boundaries, and required module comments.
+- `Slice 0.6.3.8: ICP Radar application boundary and adapter cleanup`
+  - Added explicit `domain`, `adapters`, `application`, and `components` boundaries inside the ICP Radar feature.
+  - Moved radar navigation, local demo overlays, settings draft actions, and review actions into application hooks.
+  - Added fixture/live/empty radar adapters and canonical view-model contracts for future radar source types.
+  - Moved catalog and radar detail header presentation out of the feature entrypoint.
+  - Tightened architecture tests so screen orchestration cannot re-own storage, scoring, or provider-specific mapping.
 
 ## Blocked Items
 
@@ -2068,4 +2128,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`.
+Implement `Slice 0.6.3.9: ICP Radar CSS decomposition`, then return to `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`.

@@ -13,7 +13,11 @@ Complex frontend product areas must live as feature modules under `frontend/src/
 
 For ICP Radar, the public screen in `frontend/src/screens/ICPRadarScreen.tsx` is a thin compatibility wrapper. The implementation lives in `frontend/src/features/icp-radar/` and is split by responsibility:
 
-- `ICPRadarScreen.tsx`: feature orchestration, data loading state, screen-level navigation state.
+- `ICPRadarScreen.tsx`: thin feature coordinator, data loading state, and current surface selection.
+- `domain/`: pure score, validation, qualification review, status, and metadata helper modules.
+- `adapters/`: fixture/live/empty radar adapters that map raw artifacts into canonical radar and candidate view models.
+- `application/`: hooks that own screen navigation, browser-local overlays, settings draft actions, and review actions.
+- `components/`: presentation-only catalog and selected-radar header components.
 - `model.tsx`: a barrel that keeps the public feature import stable while focused model modules own artifact normalization, local overlay loading, scoring helpers, generated IDs, and status mapping.
 - `modelTypes.ts`: feature-local view-state types, storage keys, and signal-code constants.
 - `validationModel.ts`: signal validation overlay loading, effective score calculation, and validation status helpers.
@@ -44,9 +48,15 @@ Heavy settings UI is lazy-loaded from the feature entrypoint so the default shor
 
 ICP Radar CSS is owned by the feature module in `icpRadar.css`. Global `styles.css` remains responsible for the app shell and shared primitives. Runtime i18n initialization stays in `frontend/src/i18n.ts`; large EN/RU resources live in dedicated resource modules.
 
+React remains functional-component based. The target architecture applies OOP principles through explicit module ownership, typed contracts, adapters, hooks, and pure services. Class components and inheritance-heavy UI hierarchies are not the preferred style.
+
 ## Rules
 
 - Screen files in `frontend/src/screens/` should be thin wrappers once a feature becomes large.
+- Feature entrypoints should remain thin coordinators; they should not own localStorage, scoring rules, or provider-specific artifact branching.
+- New data-source variants should enter through adapters and canonical view models, not through new visual paradigms or screen branches.
+- Application hooks own browser-local workflow state and mutations.
+- Presentation components must not read or write `window.localStorage`.
 - A feature entrypoint must not define the feature's large table/detail/settings subcomponents inline.
 - Domain/view-model helpers should not import React UI primitives unless they are explicitly presentation helpers.
 - Model barrels are acceptable as stable import boundaries, but implementation logic should live in responsibility-specific modules.
