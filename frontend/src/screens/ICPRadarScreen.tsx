@@ -1169,10 +1169,10 @@ function LiveRadarCandidateDetailView({
         {activeTab === 'overview' && (
           <Card>
             <div className="icp-score-grid">
-              <ScoreBox label={t('icpRadar.total')} value={liveTotalScore(candidate)} />
-              <ScoreBox label={t('icpRadar.fit')} value={candidate.score.fit_score} />
-              <ScoreBox label={t('icpRadar.intent')} value={candidate.score.intent_score} />
-              <ScoreBox label={t('icpRadar.live.sources')} value={candidate.evidence_refs.length} />
+              <ScoreBox label={t('icpRadar.total')} value={scoreWithMax(liveTotalScore(candidate), liveTotalScoreMax(candidate))} />
+              <ScoreBox label={t('icpRadar.fit')} value={scoreWithMax(candidate.score.fit_score, liveFitScoreMax(candidate))} />
+              <ScoreBox label={t('icpRadar.intent')} value={scoreWithMax(candidate.score.intent_score, liveIntentScoreMax(candidate))} />
+              <ScoreBox label={t('icpRadar.live.sources')} value={scoreWithMax(candidate.evidence_refs.length, artifact.sources.length)} />
             </div>
             <section className="icp-detail-section">
               <Eyebrow>{t('icpRadar.canonicalDetail.mainInsight')}</Eyebrow>
@@ -2507,10 +2507,10 @@ function CandidateScoreGrid({ candidate, validatedScore }: { candidate: ICPRadar
   const delta = validatedScore.effective_score.total_score - validatedScore.original_score.total_score;
   return (
     <div className="icp-score-grid">
-      <ScoreBox label={t('icpRadar.fit')} value={validatedScore.effective_score.fit_score} />
-      <ScoreBox label={t('icpRadar.intent')} value={validatedScore.effective_score.intent_score} />
-      <ScoreBox label={t('icpRadar.trigger')} value={validatedScore.effective_score.trigger_score} />
-      <ScoreBox delta={delta} label={t('icpRadar.total')} value={validatedScore.effective_score.total_score} />
+      <ScoreBox label={t('icpRadar.fit')} value={scoreWithMax(validatedScore.effective_score.fit_score, 15)} />
+      <ScoreBox label={t('icpRadar.intent')} value={scoreWithMax(validatedScore.effective_score.intent_score, 33)} />
+      <ScoreBox label={t('icpRadar.trigger')} value={scoreWithMax(validatedScore.effective_score.trigger_score, 12)} />
+      <ScoreBox delta={delta} label={t('icpRadar.total')} value={scoreWithMax(validatedScore.effective_score.total_score, 60)} />
     </div>
   );
 }
@@ -2591,7 +2591,7 @@ function SourceUrlList({ candidate }: { candidate: ICPRadarCandidate }) {
   );
 }
 
-function ScoreBox({ delta = 0, label, value }: { delta?: number; label: string; value: number }) {
+function ScoreBox({ delta = 0, label, value }: { delta?: number; label: string; value: number | string }) {
   return (
     <div className="icp-score-box">
       <Mono>{label}</Mono>
@@ -3360,6 +3360,22 @@ function radarOperationalStatus(status: string): RadarOperationalStatus {
 
 function liveTotalScore(candidate: LiveRadarCandidate): number {
   return candidate.score.fit_score + candidate.score.intent_score;
+}
+
+function liveFitScoreMax(candidate: LiveRadarCandidate): number {
+  return Math.max(candidate.qualification.length, candidate.score.fit_score);
+}
+
+function liveIntentScoreMax(candidate: LiveRadarCandidate): number {
+  return Math.max(candidate.signals.length * 2, candidate.score.intent_score);
+}
+
+function liveTotalScoreMax(candidate: LiveRadarCandidate): number {
+  return liveFitScoreMax(candidate) + liveIntentScoreMax(candidate);
+}
+
+function scoreWithMax(score: number, maxScore: number): string {
+  return `${score} / ${Math.max(score, maxScore)}`;
 }
 
 function cadenceKey(cadence: string) {

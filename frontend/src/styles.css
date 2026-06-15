@@ -1030,7 +1030,7 @@ button {
 
 .icp-radar-table {
   display: grid;
-  min-width: calc(var(--s-20) * 15);
+  min-width: calc(var(--s-20) * 13);
 }
 
 .icp-radar-table-head,
@@ -1389,17 +1389,8 @@ button {
   white-space: nowrap;
 }
 
-.icp-radar-table-live .icp-radar-table-head,
-.icp-radar-table-live .icp-candidate-row {
-  grid-template-columns:
-    minmax(calc(var(--s-20) * 3), calc(var(--s-20) * 4))
-    minmax(var(--s-12), var(--s-16))
-    var(--s-16)
-    var(--s-16)
-    var(--s-16)
-    var(--s-16)
-    var(--s-16)
-    minmax(calc(var(--s-20) + var(--s-6)), 0.8fr);
+.icp-radar-table-live {
+  min-width: calc(var(--s-20) * 13);
 }
 
 .live-radar-fact-list,
@@ -2217,6 +2208,10 @@ button {
   min-width: 0;
 }
 
+.icp-score-grid + .icp-detail-section {
+  margin-top: var(--s-4);
+}
+
 .icp-detail-section > .eyebrow,
 .icp-preview-section > .eyebrow {
   align-self: start;
@@ -2274,6 +2269,26 @@ button {
   grid-template-columns: var(--s-10) minmax(0, 1fr) var(--s-8);
   padding: var(--s-2);
   border-bottom: 1px solid var(--border-faint);
+}
+
+.icp-candidate-preview .criterion-row {
+  grid-template-columns: var(--s-10) minmax(0, 1fr) minmax(var(--s-16), max-content);
+  column-gap: var(--s-4);
+  align-items: center;
+}
+
+.icp-candidate-preview .criterion-row > span {
+  padding-inline-end: var(--s-3);
+}
+
+.icp-candidate-preview .criterion-row > :last-child {
+  justify-self: end;
+}
+
+.icp-candidate-preview .criterion-row .badge {
+  max-width: calc(var(--s-20) * 2);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .criteria-list-compact {

@@ -182,7 +182,7 @@ async function captureLiveRadarFlow(page, viewportName) {
 }
 
 async function returnToRadarCatalogIfNeeded(page) {
-  const backToShortlist = page.getByRole('button', { name: 'Back to shortlist' });
+  const backToShortlist = page.getByRole('button', { name: /Back to (found accounts|shortlist)/ });
   if (await backToShortlist.count()) {
     await backToShortlist.first().click();
   }

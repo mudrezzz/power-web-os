@@ -533,6 +533,11 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".icp-radar-run-mode" in css
     assert ".icp-radar-header-meta-row" in css
     assert ".icp-radar-table-live" in css
+    assert ".icp-radar-table-live .icp-radar-table-head" not in css
+    assert ".icp-radar-table-live .icp-candidate-row" not in css
+    assert ".icp-candidate-preview .criterion-row" in css
+    assert "grid-template-columns: var(--s-10) minmax(0, 1fr) minmax(var(--s-16), max-content)" in css
+    assert ".icp-score-grid + .icp-detail-section" in css
     assert "--s-14" not in css
     assert ".icp-candidate-detail-tabs" in css
     assert ".icp-candidate-detail-panel" in css
@@ -660,6 +665,10 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "Уверенность",
     ]:
         assert ru_label in i18n
+    assert "shortlistTab: 'Found accounts'" in i18n
+    assert "shortlistTab: 'Найденные аккаунты'" in i18n
+    assert "backToTable: 'Back to found accounts'" in i18n
+    assert "backToTable: 'К найденным аккаунтам'" in i18n
 
 
 def test_frontend_public_artifact_is_available_for_vite() -> None:

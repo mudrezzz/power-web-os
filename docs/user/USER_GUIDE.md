@@ -42,7 +42,7 @@ Open the Vite URL printed by the frontend command. The demo opens in a bounded P
 
 - ICP Radar catalog with multiple configured radars;
 - experimental `ТОиР Quick Live Radar`, which shows only real provider-backed findings from `frontend/public/demo/live_mini_icp_radar_run.json`;
-- selected-radar `Shortlist` and editable local-demo `Settings` modes;
+- selected-radar `Found accounts` and editable local-demo `Settings` modes;
 
 - sidebar navigation for `ICP Radar`, `Accounts`, `Account Map`, `Access Plans`, `Signals`, and `Playbook`;
 - profile and navigation frame that stays visible while workspace content scrolls inside the app;
@@ -78,7 +78,7 @@ The language switcher localizes UI chrome plus visible deterministic demo data s
 
 ### ICP Radar catalog and shortlist
 
-The `ICP Radar` screen now starts with a list-first catalog of configured radars. Each row represents a configured ICP Radar with aligned columns for status, owner, cadence, last run, run mode, candidate count, needs-review count, and accepted count. Use `Create radar` to add a browser-local demo radar, or open `ТОиР / SIBUR` to inspect the active fixture-backed radar. Its `Shortlist` tab contains the current ranked table, and its `Settings` tab edits the radar definition by block: radar header, global search base, account qualification rules, monitoring, intent signals, scoring model, and validation.
+The `ICP Radar` screen now starts with a list-first catalog of configured radars. Each row represents a configured ICP Radar with aligned columns for status, owner, cadence, last run, run mode, candidate count, needs-review count, and accepted count. Use `Create radar` to add a browser-local demo radar, or open `ТОиР / SIBUR` to inspect the active fixture-backed radar. Its `Found accounts` tab contains the current ranked table, and its `Settings` tab edits the radar definition by block: radar header, global search base, account qualification rules, monitoring, intent signals, scoring model, and validation.
 
 Settings are intentionally business-facing:
 
@@ -93,7 +93,7 @@ Settings are intentionally business-facing:
 - Scoring uses only `Fit / Соответствие`, `Intent / Интент`, and `Tier / Уровень`. Presets cover arithmetic mean, weighted average, maximum signal, capped sum, and custom formula.
 - Custom formula mode is the only place where generated rule IDs and signal codes matter.
 
-The catalog also includes `ТОиР Quick Live Radar`. This is the first live experimental radar. It is launched from the CLI, not from the UI. Before a successful run, its `Shortlist` tab shows an empty state and the command to generate `live_mini_icp_radar_run.json`. After a successful run, the radar is reviewed through the same canonical table-first flow as `ТОиР / SIBUR`: candidates stay in the same sticky-column shortlist, row click opens the same four-block preview, and `Open details` opens the same tabbed in-shell detail view. Runtime/provider metadata is available in the candidate `Journal` tab, not on the main shortlist. Live findings always require human review and do not flow into `Accounts` automatically.
+The catalog also includes `ТОиР Quick Live Radar`. This is the first live experimental radar. It is launched from the CLI, not from the UI. Before a successful run, its `Found accounts` tab shows an empty state and the command to generate `live_mini_icp_radar_run.json`. After a successful run, the radar is reviewed through the same canonical table-first flow as `ТОиР / SIBUR`: candidates stay in the same sticky-column shortlist, row click opens the same four-block preview, and `Open details` opens the same tabbed in-shell detail view. Runtime/provider metadata is available in the candidate `Journal` tab, not on the main shortlist. Live findings always require human review and do not flow into `Accounts` automatically.
 
 Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. The main surface is a wide table: the company column stays fixed while score, tier, evidence, and criteria-related columns can scroll horizontally inside the table. Click a candidate row to open a bounded inline preview with the main signal, short recommendation, top evidence refs, and top criteria. Open the candidate detail view when you need the full C1-C20 signal breakdown, source refs, and local signal validation controls. Take-into-work is still a planned follow-up slice.
 
@@ -127,7 +127,7 @@ Open `Playbook` to see how the customer's rules shape the plan. The screen shows
 
 The current ICP Radar UI is table-first:
 
-- The workspace opens with a list-first radar catalog; select a radar row to enter its `Shortlist` and `Settings` tabs.
+- The workspace opens with a list-first radar catalog; select a radar row to enter its `Found accounts` and `Settings` tabs.
 - `Settings` is edited by block. The radar header owns name/description/status editing and lifecycle actions; each content block has its own `Edit`, `Save`, and `Discard`, and saved edits are stored only in browser local demo state and labelled as `Local draft`.
 - Switches are used for active/inactive and boolean source policies. Disabled switches are informational and should not mutate local demo state.
 - You can create a radar, edit an existing radar, save a draft, discard unsaved changes, duplicate a radar, reset one radar back to the generated artifact, or reset all demo changes.
