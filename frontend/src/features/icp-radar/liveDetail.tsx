@@ -362,6 +362,44 @@ function LiveQualificationReviewRow({
         </Badge>
       </summary>
       <div className="qualification-review-details">
+        <section className="qualification-review-evaluation">
+          <div>
+            <Eyebrow>{t('icpRadar.live.requirementEvaluation')}</Eyebrow>
+            <dl className="qualification-evaluation-list">
+              <div>
+                <dt>{t('icpRadar.live.requirementEvaluationFields.requirement')}</dt>
+                <dd>{t(`icpRadar.live.requirementLevel.${requirementEvaluation.requirementLevel}`)}</dd>
+              </div>
+              <div>
+                <dt>{t('icpRadar.live.requirementEvaluationFields.found')}</dt>
+                <dd>{t(`icpRadar.live.evidenceStrength.${requirementEvaluation.evidenceStrength}`)}</dd>
+              </div>
+              <div>
+                <dt>{t('icpRadar.live.requirementEvaluationFields.conclusion')}</dt>
+                <dd>{t(`icpRadar.live.assessment.${effectiveAssessment}`)}</dd>
+              </div>
+              <div>
+                <dt>{t('icpRadar.live.requirementEvaluationFields.confidence')}</dt>
+                <dd>{t(`icpRadar.live.confidence.${requirementEvaluation.confidence}`)}</dd>
+              </div>
+              <div>
+                <dt>{t('icpRadar.live.requirementEvaluationFields.crossValidation')}</dt>
+                <dd>
+                  <Badge tone={qualificationCrossValidationTone(item.cross_validation?.status)}>
+                    {t(`icpRadar.live.crossValidationStatus.${item.cross_validation?.status ?? 'not_required'}`)}
+                  </Badge>
+                </dd>
+              </div>
+              <div>
+                <dt>{t('icpRadar.live.requirementEvaluationFields.action')}</dt>
+                <dd>{t(`icpRadar.live.requirementAction.${requirementEvaluation.recommendedAction}`)}</dd>
+              </div>
+            </dl>
+            <p>{t(`icpRadar.live.crossValidationCopy.${item.cross_validation?.status ?? 'not_required'}`)}</p>
+            <p>{item.requirement_evaluation?.explanation || item.rationale}</p>
+          </div>
+        </section>
+
         <section>
           <Eyebrow>{t('icpRadar.live.evidence')}</Eyebrow>
           <p>{item.rationale}</p>
@@ -398,44 +436,6 @@ function LiveQualificationReviewRow({
             )) : (
               <p>{t('icpRadar.live.noQualificationEvidence')}</p>
             )}
-          </div>
-        </section>
-
-        <section className="qualification-review-evaluation">
-          <div>
-            <Eyebrow>{t('icpRadar.live.requirementEvaluation')}</Eyebrow>
-            <dl className="qualification-evaluation-list">
-              <div>
-                <dt>{t('icpRadar.live.requirementEvaluationFields.requirement')}</dt>
-                <dd>{t(`icpRadar.live.requirementLevel.${requirementEvaluation.requirementLevel}`)}</dd>
-              </div>
-              <div>
-                <dt>{t('icpRadar.live.requirementEvaluationFields.found')}</dt>
-                <dd>{t(`icpRadar.live.evidenceStrength.${requirementEvaluation.evidenceStrength}`)}</dd>
-              </div>
-              <div>
-                <dt>{t('icpRadar.live.requirementEvaluationFields.conclusion')}</dt>
-                <dd>{t(`icpRadar.live.assessment.${effectiveAssessment}`)}</dd>
-              </div>
-              <div>
-                <dt>{t('icpRadar.live.requirementEvaluationFields.confidence')}</dt>
-                <dd>{t(`icpRadar.live.confidence.${requirementEvaluation.confidence}`)}</dd>
-              </div>
-              <div>
-                <dt>{t('icpRadar.live.requirementEvaluationFields.crossValidation')}</dt>
-                <dd>
-                  <Badge tone={qualificationCrossValidationTone(item.cross_validation?.status)}>
-                    {t(`icpRadar.live.crossValidationStatus.${item.cross_validation?.status ?? 'not_required'}`)}
-                  </Badge>
-                </dd>
-              </div>
-              <div>
-                <dt>{t('icpRadar.live.requirementEvaluationFields.action')}</dt>
-                <dd>{t(`icpRadar.live.requirementAction.${requirementEvaluation.recommendedAction}`)}</dd>
-              </div>
-            </dl>
-            <p>{t(`icpRadar.live.crossValidationCopy.${item.cross_validation?.status ?? 'not_required'}`)}</p>
-            <p>{item.requirement_evaluation?.explanation || item.rationale}</p>
           </div>
         </section>
 

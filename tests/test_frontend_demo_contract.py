@@ -772,6 +772,7 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
     assert "qualification-source-table" not in screen
     assert "icpRadar.live.sourcesUsed" not in screen
     assert "item.cross_validation?.notes" not in screen
+    assert screen.index('className="qualification-review-evaluation"') < screen.index("qualification-finding-list")
     assert "excerpt?: string" in types
     assert "excerpt_type?: 'quote' | 'paraphrase' | 'not_available'" in types
     for i18n_key in [

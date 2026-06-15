@@ -7,12 +7,7 @@
   }
 
   .qualification-review-details {
-    grid-template-columns: minmax(0, 1fr);
     padding-left: var(--s-3);
-  }
-
-  .qualification-review-evaluation {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 
