@@ -3,10 +3,11 @@
 @media (max-width: 1200px) {
   .qualification-review-head,
   .qualification-review-row summary {
-    grid-template-columns: var(--s-10) minmax(220px, 1fr) var(--s-18) minmax(130px, 0.7fr) minmax(90px, 0.5fr) minmax(120px, 0.6fr) minmax(120px, 0.6fr) minmax(120px, 0.6fr);
+    grid-template-columns: var(--s-10) minmax(220px, 1fr) var(--s-18) minmax(130px, 0.7fr) minmax(90px, 0.5fr) minmax(120px, 0.6fr) minmax(120px, 0.6fr);
   }
 
   .qualification-review-details {
+    grid-template-columns: minmax(0, 1fr);
     padding-left: var(--s-3);
   }
 

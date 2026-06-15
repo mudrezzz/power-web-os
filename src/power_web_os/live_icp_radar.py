@@ -64,6 +64,8 @@ class QualificationSourceUsage(BaseModel):
 class QualificationEvidenceFinding(BaseModel):
     source_ref: str
     fact: str
+    excerpt: str = ""
+    excerpt_type: Literal["quote", "paraphrase", "not_available"] = "not_available"
     why_it_matches_rule: str
     evidence_strength: Literal["strong", "medium", "weak"] = "weak"
     contradicts_rule: bool = False
@@ -404,6 +406,8 @@ def build_openrouter_request(
                                 {
                                     "source_ref": "source id",
                                     "fact": "what exactly was found",
+                                    "excerpt": "short source excerpt or paraphrased fragment, not a long quote",
+                                    "excerpt_type": "quote|paraphrase|not_available",
                                     "why_it_matches_rule": "why this fact satisfies or fails the rule",
                                     "evidence_strength": "strong|medium|weak",
                                     "contradicts_rule": False,
@@ -428,7 +432,7 @@ def build_openrouter_request(
         "rules": [
             "Do not invent candidates without source evidence.",
             "If evidence is weak, mark it weak/unclear and add a review flag.",
-            "For each qualification item, explain used sources, exact facts, and why they match the rule.",
+            "For each qualification item, explain used sources, exact facts, a short reviewable excerpt or paraphrase, and why they match the rule.",
             "Do not include secrets, request headers, or raw tool dumps.",
         ],
     }
@@ -901,6 +905,8 @@ def _qualification_evidence_findings(
             findings.append(QualificationEvidenceFinding(
                 source_ref=source_ref,
                 fact=str(item.get("fact") or item.get("quote_or_fact") or sources_by_ref[source_ref].snippet),
+                excerpt=str(item.get("excerpt") or item.get("quote") or item.get("snippet") or ""),
+                excerpt_type=_excerpt_type(item),
                 why_it_matches_rule=str(item.get("why_it_matches_rule") or rationale),
                 evidence_strength=_evidence_strength(status),
                 contradicts_rule=bool(item.get("contradicts_rule", status == "rejected")),
@@ -911,6 +917,8 @@ def _qualification_evidence_findings(
         QualificationEvidenceFinding(
             source_ref=ref,
             fact=sources_by_ref[ref].snippet,
+            excerpt="",
+            excerpt_type="not_available",
             why_it_matches_rule=rationale,
             evidence_strength=_evidence_strength(status),
             contradicts_rule=status == "rejected",
@@ -918,6 +926,19 @@ def _qualification_evidence_findings(
         for ref in evidence_refs
         if ref in sources_by_ref
     ]
+
+
+def _excerpt_type(item: dict[str, Any]) -> Literal["quote", "paraphrase", "not_available"]:
+    value = str(item.get("excerpt_type") or "")
+    if value == "quote":
+        return "quote"
+    if value == "paraphrase":
+        return "paraphrase"
+    if value == "not_available":
+        return "not_available"
+    if item.get("excerpt") or item.get("quote") or item.get("snippet"):
+        return "paraphrase"
+    return "not_available"
 
 
 def _evidence_strength(status: QualificationStatus) -> Literal["strong", "medium", "weak"]:

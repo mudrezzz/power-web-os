@@ -271,7 +271,7 @@
 .qualification-review-head,
 .qualification-review-row summary {
   display: grid;
-  grid-template-columns: var(--s-12) minmax(220px, 1.3fr) var(--s-20) minmax(140px, 0.6fr) minmax(100px, 0.5fr) minmax(140px, 0.6fr) minmax(130px, 0.5fr) minmax(130px, 0.5fr);
+  grid-template-columns: var(--s-12) minmax(240px, 1.4fr) var(--s-20) minmax(130px, 0.55fr) minmax(100px, 0.45fr) minmax(140px, 0.6fr) minmax(130px, 0.55fr);
   align-items: center;
   gap: var(--s-3);
   min-width: 0;
@@ -311,8 +311,16 @@
   text-overflow: ellipsis;
 }
 
+.qualification-review-row summary .badge {
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .qualification-review-details {
   display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
   gap: var(--s-4);
   padding: 0 var(--s-3) var(--s-4) calc(var(--s-12) + var(--s-6));
 }
@@ -321,15 +329,13 @@
   min-width: 0;
 }
 
-.qualification-finding-list,
-.qualification-source-table {
+.qualification-finding-list {
   display: grid;
   gap: var(--s-2);
 }
 
 .qualification-finding {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--s-2);
   min-width: 0;
   padding: var(--s-3);
@@ -340,61 +346,55 @@
 
 .qualification-finding div,
 .qualification-finding p,
-.qualification-source-row span {
+.qualification-finding span {
   min-width: 0;
 }
 
-.qualification-finding strong,
-.qualification-source-row strong,
-.qualification-source-row small {
-  overflow-wrap: anywhere;
-}
-
-.qualification-finding p {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: var(--fg2);
-}
-
-.qualification-source-head,
-.qualification-source-row {
+.qualification-finding-source {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(130px, 0.4fr) minmax(150px, 0.5fr) minmax(120px, 0.4fr);
+  grid-template-columns: var(--s-16) minmax(0, 1fr) auto auto;
   gap: var(--s-3);
   align-items: center;
-  min-width: 0;
 }
 
-.qualification-source-head {
-  color: var(--fg3);
-  font: var(--mono-sm);
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.qualification-source-row {
-  padding: var(--s-3);
-  border: 1px solid var(--border-faint);
-  border-radius: var(--r-md);
-}
-
-.qualification-source-row span:first-child {
+.qualification-finding-source span {
   display: grid;
   gap: var(--s-1);
 }
 
-.qualification-source-row small {
+.qualification-finding-source small {
+  color: var(--fg2);
+}
+
+.qualification-finding strong,
+.qualification-finding small {
+  overflow-wrap: anywhere;
+}
+
+.qualification-finding-body {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.qualification-finding-body span {
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.qualification-finding-body p {
+  margin: var(--s-1) 0 0;
   color: var(--fg2);
 }
 
 .qualification-review-evaluation {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s-3);
 }
 
 .qualification-review-evaluation > div,
 .qualification-review-panel {
+  display: grid;
+  gap: var(--s-3);
   min-width: 0;
   padding: var(--s-3);
   background: var(--surface-2);
@@ -405,6 +405,71 @@
 .qualification-review-panel {
   display: grid;
   gap: var(--s-3);
+  grid-column: 1 / -1;
+}
+
+.qualification-evaluation-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-2);
+  margin: 0;
+}
+
+.qualification-evaluation-list div {
+  min-width: 0;
+}
+
+.qualification-evaluation-list dt {
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.qualification-evaluation-list dd {
+  margin: var(--s-1) 0 0;
+}
+
+.qualification-review-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.qualification-review-choice {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--s-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+}
+
+.qualification-review-choice button {
+  min-height: var(--s-7);
+  padding: var(--s-1) var(--s-3);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--fg2);
+  cursor: pointer;
+  font: var(--label);
+}
+
+.qualification-review-choice button.active {
+  background: var(--cobalt-50);
+  color: var(--cobalt-700);
+}
+
+.qualification-review-panel textarea {
+  width: 100%;
+  min-height: calc(var(--s-20) * 1.2);
+  resize: vertical;
+}
+
+.qualification-review-error {
+  color: var(--blocker);
+  font: var(--meta);
 }
 
 .qualification-review-actions {

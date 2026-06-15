@@ -1332,6 +1332,58 @@ Status:
   - Contract tests guard the README and boundary-comment expectations.
   - No user-visible UI behavior changes.
 
+### Slice 0.6.3.11: Qualification detail UX and requirement evaluation cleanup
+
+- Status: `Done`
+- Goal: Make the live ICP Radar candidate qualification tab readable, evidence-backed, localized, and reviewable.
+- User value: A reviewer can understand why a candidate passed each qualification rule, which sources were used, how reliable they are, and can approve, reject, or correct the local qualification decision.
+- Scope:
+  - Keep the collapsed qualification table scan-first by removing requirement strictness from the row and moving it into the expanded detail.
+  - Render source ref, source title, origin, trust/check policy, and evidence usage as separate fields.
+  - Localize cross-validation and requirement-fit copy instead of showing raw provider text.
+  - Add a requirement-fit view model that ties rule strictness, evidence strength, final assessment, confidence, and recommended human action together.
+  - Replace the raw review form with a segmented review panel and full-width comment field.
+- Out of scope:
+  - Backend live workflow changes.
+  - Generated artifact schema changes.
+  - Durable backend audit or persistence.
+- Tests:
+  - `npm --prefix ./frontend run build`
+  - `python -m pytest`
+  - `npm --prefix ./frontend run visual:smoke`
+- Docs:
+  - Updated user/developer docs and ICP Radar feature README.
+- Acceptance criteria:
+  - No qualification badges or source fields overflow their containers.
+  - Cross-validation and requirement-fit sections use EN/RU i18n labels.
+  - Reject/correct qualification decisions require a comment; approve can use the default local comment.
+
+### Slice 0.6.3.12: Qualification evidence cards and integrated requirement fit
+
+- Status: `Done`
+- Goal: Remove duplicate qualification evidence/source sections and make expanded qualification rows read as one evidence-backed decision chain.
+- User value: A reviewer sees what was found, where it came from, what fragment supports it, why it matches the rule, and how that affects the final qualification decision without scanning duplicate blocks.
+- Scope:
+  - Replace separate expanded `Evidence` and `Sources used` blocks with evidence cards that include source ref, source name, origin, trust/check policy, fact, excerpt/fallback, match rationale, and evidence strength.
+  - Integrate cross-validation status into the `Requirement fit` block.
+  - Add optional `excerpt` / `excerpt_type` to qualification evidence findings while keeping old artifacts compatible.
+  - Update live workflow prompt/normalizer to preserve short reviewable excerpts when returned.
+- Out of scope:
+  - Live provider changes.
+  - Ranking/scoring changes.
+  - Backend persistence for review decisions.
+- Tests:
+  - `npm --prefix ./frontend run build`
+  - `python -m pytest`
+  - `npm --prefix ./frontend run visual:smoke`
+- Docs:
+  - Updated user/developer docs, qualification ADR, and ICP Radar feature README.
+- Acceptance criteria:
+  - Expanded qualification rows do not duplicate source lists.
+  - Evidence cards remain readable at laptop widths.
+  - Cross-validation appears inside requirement fit.
+  - Existing live artifacts without excerpts still render controlled fallback copy.
+
 ### Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web
 
 - Status: `Backlog`
@@ -2147,6 +2199,14 @@ Status:
 - `Slice 0.6.3.10: Frontend documentation and onboarding comments`
   - Added `frontend/src/features/icp-radar/README.md` with ownership map, data flow, and a guide for adding radar types through adapters.
   - Added boundary comments and architecture tests so onboarding documentation remains present and useful.
+- `Slice 0.6.3.11: Qualification detail UX and requirement evaluation cleanup`
+  - Cleaned up the live candidate qualification tab so collapsed rows stay scan-first and requirement fit moves into expanded detail.
+  - Separated source refs, source names, source origin, trust/check policy, evidence findings, cross-validation, and human review controls.
+  - Added localized requirement-fit and cross-validation copy plus contract tests for the new review panel.
+- `Slice 0.6.3.12: Qualification evidence cards and integrated requirement fit`
+  - Merged qualification evidence and source usage into self-contained evidence cards with optional excerpts.
+  - Moved cross-validation into requirement-fit summary so expanded rows read as one evidence-backed decision chain.
+  - Kept old live artifacts compatible through no-excerpt fallback copy.
 
 ## Blocked Items
 

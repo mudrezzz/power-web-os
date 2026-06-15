@@ -170,6 +170,39 @@ export function qualificationCrossValidationTone(status?: string) {
   return 'neutral';
 }
 
+export type QualificationRequirementEvaluationView = {
+  requirementLevel: 'required' | 'recommended';
+  evidenceStrength: 'strong' | 'weak' | 'none';
+  confidence: 'high' | 'medium' | 'low' | 'unknown';
+  recommendedAction: 'none' | 'review' | 'reject';
+};
+
+export function qualificationRequirementEvaluationView(
+  item: LiveRadarQualificationResult,
+): QualificationRequirementEvaluationView {
+  const evidenceStrength = item.evidence_findings?.some((finding) => finding.evidence_strength === 'strong')
+    ? 'strong'
+    : item.evidence_findings?.length
+      ? 'weak'
+      : 'none';
+  const assessment = item.final_assessment || qualificationStatusToAssessment(item.status);
+  const confidence = item.confidence === 'high' || item.confidence === 'medium' || item.confidence === 'low'
+    ? item.confidence
+    : 'unknown';
+  const recommendedAction = assessment === 'does_not_match'
+    ? 'reject'
+    : assessment === 'partially_matches' || confidence !== 'high'
+      ? 'review'
+      : 'none';
+
+  return {
+    requirementLevel: item.requirement_level === 'recommended' ? 'recommended' : 'required',
+    evidenceStrength,
+    confidence,
+    recommendedAction,
+  };
+}
+
 export function qualificationOperatorLabel(operator: string) {
   if (operator === 'AND_NOT') {
     return 'AND NOT';

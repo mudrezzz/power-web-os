@@ -473,6 +473,8 @@ export type QualificationSourceUsage = {
 export type QualificationEvidenceFinding = {
   source_ref: string;
   fact: string;
+  excerpt?: string;
+  excerpt_type?: 'quote' | 'paraphrase' | 'not_available';
   why_it_matches_rule: string;
   evidence_strength: 'strong' | 'medium' | 'weak';
   contradicts_rule: boolean;

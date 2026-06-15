@@ -16,13 +16,13 @@ Every provider-backed ICP Radar candidate must expose qualification results thro
 - requirement level: required or recommended;
 - source usages with source origin: global base, local rule source, or additional system-found source;
 - trust/check policy: trusted, cross-checked, or HITL required;
-- evidence findings: fact, source ref, why it matches or contradicts the rule, and evidence strength;
+- evidence findings: fact, source ref, short excerpt or explicit no-excerpt marker, why it matches or contradicts the rule, and evidence strength;
 - cross-validation status;
 - requirement evaluation;
 - final assessment: matches, partially matches, does not match, or unknown;
 - optional human review decision with comment.
 
-The UI must render qualification as a table-first review surface. Rows start compact, expand to show evidence and sources, and provide local review actions: approve, reject, or correct with a comment. The generated artifact remains immutable; human review is stored in local demo state until backend persistence exists.
+The UI must render qualification as a table-first review surface. Rows start compact, expand to show evidence cards that combine source, excerpt, fact, and match rationale, and provide local review actions: approve, reject, or correct with a comment. Cross-validation is part of the requirement-fit summary, not a separate standalone block. The generated artifact remains immutable; human review is stored in local demo state until backend persistence exists.
 
 ## Consequences
 

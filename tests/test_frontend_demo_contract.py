@@ -749,17 +749,49 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
         "requirement_evaluation",
         "onQualificationReviewChange",
         "icpRadar.live.qualificationColumns.operator",
-        "icpRadar.live.review.approve",
-        "icpRadar.live.review.reject",
-        "icpRadar.live.review.correct",
+        "icpRadar.live.crossValidationCopy",
+        "icpRadar.live.requirementEvaluationFields.crossValidation",
+        "icpRadar.live.evidenceCard.noExcerpt",
+        "icpRadar.live.excerptType.${card.excerptType}",
+        "qualificationEvidenceCardViews",
+        "qualificationRequirementEvaluationView",
+        "qualification-evaluation-list",
+        "qualification-finding-source",
+        "qualification-finding-body",
+        "qualification-review-choice",
+        "requiresComment = reviewAction !== 'approved'",
+        "disabled={!canSaveReview}",
+        "icpRadar.live.review.actions.${status}",
+        "icpRadar.live.review.save",
+        "icpRadar.live.review.commentRequired",
     ]:
         assert screen_token in screen
+    qualification_header = screen.split('<div className="qualification-review-head">', 1)[1].split("</div>", 1)[0]
+    assert "qualificationColumns.requirement" not in qualification_header
+    assert "icpRadar.settings.requirement." not in screen
+    assert "qualification-source-table" not in screen
+    assert "icpRadar.live.sourcesUsed" not in screen
+    assert "item.cross_validation?.notes" not in screen
+    assert "excerpt?: string" in types
+    assert "excerpt_type?: 'quote' | 'paraphrase' | 'not_available'" in types
     for i18n_key in [
         "qualificationColumns",
         "sourceOrigin",
         "trustPolicy",
         "crossValidationStatus",
+        "crossValidationCopy",
+        "evidenceCard",
+        "excerptType",
+        "requirementLevel",
+        "requirementEvaluationFields",
+        "crossValidation",
+        "requirementAction",
         "reviewStatus",
+        "actions",
+        "approved",
+        "rejected",
+        "corrected",
         "correctedAssessment",
+        "commentRequired",
     ]:
         assert i18n_key in i18n

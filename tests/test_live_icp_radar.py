@@ -44,6 +44,17 @@ def recorded_provider_payload() -> dict[str, object]:
                         "confidence": "high",
                         "rationale": "Источник относит компанию к группе СИБУР.",
                         "evidence_refs": ["src_1"],
+                        "evidence_findings": [
+                            {
+                                "source_ref": "src_1",
+                                "fact": "Source states the candidate belongs to the SIBUR group.",
+                                "excerpt": "production asset of the SIBUR group",
+                                "excerpt_type": "quote",
+                                "why_it_matches_rule": "The excerpt supports group affiliation.",
+                                "evidence_strength": "strong",
+                                "contradicts_rule": False,
+                            }
+                        ],
                     },
                     {
                         "criterion_code": "Q2",
@@ -173,7 +184,11 @@ def test_recorded_response_normalizes_sources_candidates_and_scores() -> None:
     assert qualification["source_usages"][0]["source_origin"] == "additional"
     assert qualification["source_usages"][0]["trust_policy"] == "trusted"
     assert qualification["evidence_findings"][0]["source_ref"] == "src_1"
+    assert qualification["evidence_findings"][0]["excerpt_type"] == "quote"
+    assert qualification["evidence_findings"][0]["excerpt"]
     assert qualification["requirement_evaluation"]["satisfied"] is True
+    fallback_qualification = artifact["candidates"][0]["qualification"][1]
+    assert fallback_qualification["evidence_findings"][0]["excerpt_type"] == "not_available"
     assert artifact["contract_validation"] == []
 
 

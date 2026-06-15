@@ -55,7 +55,12 @@ but they must never mutate generated JSON.
    visual paradigm, side panel, or provider-specific shortlist column set.
 5. Put runtime/provider metadata into the candidate `Journal` tab, not above the
    shortlist table.
-6. Add focused tests for the adapter and architecture boundary before changing
+6. Map qualification rows into the shared review contract before rendering:
+   source refs, source origin, trust/check policy, evidence, requirement fit,
+   optional excerpt, and local approve/reject/correct decisions are domain
+   view-model concerns, not ad hoc JSX fields. Expanded qualification rows use
+   evidence cards; the full source inventory belongs in the `Sources` tab.
+7. Add focused tests for the adapter and architecture boundary before changing
    UI behavior.
 
 ## Where Code Should Not Go

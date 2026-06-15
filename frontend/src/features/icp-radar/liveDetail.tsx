@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, ChevronRight, ExternalLink, Radar, RotateCcw, Save, ShieldCheck, X } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ExternalLink, Radar, RotateCcw, Save, ShieldCheck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../../components/primitives';
@@ -17,7 +17,6 @@ import {
   type CandidateDetailTab,
   type QualificationReviewOverlay,
   effectiveQualificationAssessment,
-  fallbackQualificationSourceUsages,
   liveFitScoreMax,
   liveIntentScoreMax,
   liveRuntimeKey,
@@ -27,7 +26,9 @@ import {
   qualificationAssessmentTone,
   qualificationCrossValidationTone,
   qualificationDecisionTone,
+  qualificationEvidenceCardViews,
   qualificationOperatorLabel,
+  qualificationRequirementEvaluationView,
   qualificationReviewKey,
   qualificationRuleId,
   qualificationRuleText,
@@ -276,7 +277,6 @@ function LiveQualificationReviewTable({
         <span>{t('icpRadar.live.qualificationColumns.assessment')}</span>
         <span>{t('icpRadar.live.qualificationColumns.sources')}</span>
         <span>{t('icpRadar.live.qualificationColumns.crossValidation')}</span>
-        <span>{t('icpRadar.live.qualificationColumns.requirement')}</span>
         <span>{t('icpRadar.live.qualificationColumns.decision')}</span>
       </div>
       {candidate.qualification.map((item) => {
@@ -321,15 +321,19 @@ function LiveQualificationReviewRow({
   const { t } = useTranslation();
   const ruleId = qualificationRuleId(item);
   const [comment, setComment] = useState(decision?.comment ?? '');
+  const [reviewAction, setReviewAction] = useState<QualificationReviewDecision['status']>(decision?.status ?? 'approved');
   const [correctedAssessment, setCorrectedAssessment] = useState<QualificationAssessmentStatus>(
     decision?.corrected_assessment ?? effectiveQualificationAssessment(item, decision),
   );
   const effectiveAssessment = effectiveQualificationAssessment(item, decision);
+  const requirementEvaluation = qualificationRequirementEvaluationView(item);
   const sourceCount = item.source_usages?.length || item.evidence_refs.length;
-  const canSaveCommentAction = comment.trim().length > 0;
+  const requiresComment = reviewAction !== 'approved';
+  const canSaveReview = !requiresComment || comment.trim().length > 0;
+  const evidenceCards = qualificationEvidenceCardViews(item, sourcesByRef);
 
   function saveDecision(status: QualificationReviewDecision['status'], assessment: QualificationAssessmentStatus | null) {
-    if (status !== 'approved' && !canSaveCommentAction) {
+    if (status !== 'approved' && !comment.trim()) {
       return;
     }
     onQualificationReviewChange(radarId, candidate.candidate_id, ruleId, {
@@ -353,9 +357,6 @@ function LiveQualificationReviewRow({
         <Badge tone={qualificationCrossValidationTone(item.cross_validation?.status)}>
           {t(`icpRadar.live.crossValidationStatus.${item.cross_validation?.status ?? 'not_required'}`)}
         </Badge>
-        <Badge tone={(item.requirement_level ?? 'required') === 'required' ? 'unsurfaced' : 'neutral'}>
-          {t(`icpRadar.settings.requirement.${item.requirement_level ?? 'required'}`)}
-        </Badge>
         <Badge tone={decision ? qualificationDecisionTone(decision.status) : 'neutral'}>
           {decision ? t(`icpRadar.live.reviewStatus.${decision.status}`) : t('icpRadar.live.reviewStatus.unreviewed')}
         </Badge>
@@ -365,15 +366,33 @@ function LiveQualificationReviewRow({
           <Eyebrow>{t('icpRadar.live.evidence')}</Eyebrow>
           <p>{item.rationale}</p>
           <div className="qualification-finding-list">
-            {item.evidence_findings?.length ? item.evidence_findings.map((finding) => (
-              <article className="qualification-finding" key={`${finding.source_ref}-${finding.fact}`}>
-                <div>
-                  <Mono>{finding.source_ref}</Mono>
-                  <strong>{finding.fact}</strong>
+            {evidenceCards.length ? evidenceCards.map((card) => (
+              <article className="qualification-finding" key={`${card.sourceRef}-${card.fact}`}>
+                <header className="qualification-finding-source">
+                  <Mono>{card.sourceRef}</Mono>
+                  <span>
+                    <strong>{card.sourceName}</strong>
+                    <small>{card.sourceUrl || card.sourceRef}</small>
+                  </span>
+                  <Badge tone="neutral">{t(`icpRadar.live.sourceOrigin.${card.sourceOrigin}`)}</Badge>
+                  <Badge tone={qualificationTrustTone(card.trustPolicy)}>{t(`icpRadar.live.trustPolicy.${card.trustPolicy}`)}</Badge>
+                </header>
+                <div className="qualification-finding-body">
+                  <div>
+                    <span>{t('icpRadar.live.evidenceCard.fact')}</span>
+                    <p>{card.fact}</p>
+                  </div>
+                  <div>
+                    <span>{t(`icpRadar.live.excerptType.${card.excerptType}`)}</span>
+                    <p>{card.excerpt || t('icpRadar.live.evidenceCard.noExcerpt')}</p>
+                  </div>
+                  <div>
+                    <span>{t('icpRadar.live.evidenceCard.why')}</span>
+                    <p>{card.whyItMatchesRule}</p>
+                  </div>
                 </div>
-                <p>{finding.why_it_matches_rule}</p>
-                <Badge tone={finding.contradicts_rule ? 'blocker' : 'neutral'}>
-                  {t(`icpRadar.live.evidenceStrength.${finding.evidence_strength}`)}
+                <Badge tone={card.contradictsRule ? 'blocker' : 'neutral'}>
+                  {t(`icpRadar.live.evidenceStrength.${card.evidenceStrength}`)}
                 </Badge>
               </article>
             )) : (
@@ -382,71 +401,99 @@ function LiveQualificationReviewRow({
           </div>
         </section>
 
-        <section>
-          <Eyebrow>{t('icpRadar.live.sourcesUsed')}</Eyebrow>
-          <div className="qualification-source-table">
-            <div className="qualification-source-head">
-              <span>{t('icpRadar.live.sourceColumns.name')}</span>
-              <span>{t('icpRadar.live.sourceColumns.origin')}</span>
-              <span>{t('icpRadar.live.sourceColumns.trust')}</span>
-              <span>{t('icpRadar.live.sourceColumns.usage')}</span>
-            </div>
-            {(item.source_usages?.length ? item.source_usages : fallbackQualificationSourceUsages(item, sourcesByRef)).map((usage) => (
-              <div className="qualification-source-row" key={`${usage.source_ref}-${usage.used_for}`}>
-                <span>
-                  <strong>{usage.source_name}</strong>
-                  <small>{usage.url || usage.source_ref}</small>
-                </span>
-                <Badge tone="neutral">{t(`icpRadar.live.sourceOrigin.${usage.source_origin}`)}</Badge>
-                <Badge tone={qualificationTrustTone(usage.trust_policy)}>{t(`icpRadar.live.trustPolicy.${usage.trust_policy}`)}</Badge>
-                <span>{usage.used_for}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
         <section className="qualification-review-evaluation">
           <div>
-            <Eyebrow>{t('icpRadar.live.crossValidation')}</Eyebrow>
-            <p>{item.cross_validation?.notes || t('icpRadar.live.crossValidationEmpty')}</p>
-          </div>
-          <div>
             <Eyebrow>{t('icpRadar.live.requirementEvaluation')}</Eyebrow>
+            <dl className="qualification-evaluation-list">
+              <div>
+                <dt>{t('icpRadar.live.requirementEvaluationFields.requirement')}</dt>
+                <dd>{t(`icpRadar.live.requirementLevel.${requirementEvaluation.requirementLevel}`)}</dd>
+              </div>
+              <div>
+                <dt>{t('icpRadar.live.requirementEvaluationFields.found')}</dt>
+                <dd>{t(`icpRadar.live.evidenceStrength.${requirementEvaluation.evidenceStrength}`)}</dd>
+              </div>
+              <div>
+                <dt>{t('icpRadar.live.requirementEvaluationFields.conclusion')}</dt>
+                <dd>{t(`icpRadar.live.assessment.${effectiveAssessment}`)}</dd>
+              </div>
+              <div>
+                <dt>{t('icpRadar.live.requirementEvaluationFields.confidence')}</dt>
+                <dd>{t(`icpRadar.live.confidence.${requirementEvaluation.confidence}`)}</dd>
+              </div>
+              <div>
+                <dt>{t('icpRadar.live.requirementEvaluationFields.crossValidation')}</dt>
+                <dd>
+                  <Badge tone={qualificationCrossValidationTone(item.cross_validation?.status)}>
+                    {t(`icpRadar.live.crossValidationStatus.${item.cross_validation?.status ?? 'not_required'}`)}
+                  </Badge>
+                </dd>
+              </div>
+              <div>
+                <dt>{t('icpRadar.live.requirementEvaluationFields.action')}</dt>
+                <dd>{t(`icpRadar.live.requirementAction.${requirementEvaluation.recommendedAction}`)}</dd>
+              </div>
+            </dl>
+            <p>{t(`icpRadar.live.crossValidationCopy.${item.cross_validation?.status ?? 'not_required'}`)}</p>
             <p>{item.requirement_evaluation?.explanation || item.rationale}</p>
           </div>
         </section>
 
         <section className="qualification-review-panel">
-          <Eyebrow>{t('icpRadar.live.humanReview')}</Eyebrow>
+          <div className="qualification-review-panel-head">
+            <Eyebrow>{t('icpRadar.live.humanReview')}</Eyebrow>
+            <Badge tone={decision ? qualificationDecisionTone(decision.status) : 'neutral'}>
+              {decision ? t(`icpRadar.live.reviewStatus.${decision.status}`) : t('icpRadar.live.reviewStatus.unreviewed')}
+            </Badge>
+          </div>
+          <div className="qualification-review-choice" role="group" aria-label={t('icpRadar.live.review.actionLabel')}>
+            {(['approved', 'rejected', 'corrected'] as QualificationReviewDecision['status'][]).map((status) => (
+              <button
+                className={reviewAction === status ? 'active' : ''}
+                key={status}
+                onClick={() => setReviewAction(status)}
+                type="button"
+              >
+                {t(`icpRadar.live.review.actions.${status}`)}
+              </button>
+            ))}
+          </div>
+          {reviewAction === 'corrected' && (
+            <label className="field">
+              <span>{t('icpRadar.live.review.correctedAssessment')}</span>
+              <select
+                onChange={(event) => setCorrectedAssessment(event.target.value as QualificationAssessmentStatus)}
+                value={correctedAssessment}
+              >
+                {(['matches', 'partially_matches', 'does_not_match'] as QualificationAssessmentStatus[]).map((value) => (
+                  <option key={value} value={value}>{t(`icpRadar.live.assessment.${value}`)}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="field field-full">
-            <span>{t('icpRadar.live.review.comment')}</span>
+            <span>{t('icpRadar.live.review.comment')}{requiresComment ? ` ${t('icpRadar.live.review.requiredMark')}` : ''}</span>
             <textarea
               onChange={(event) => setComment(event.target.value)}
               placeholder={t('icpRadar.live.review.commentPlaceholder')}
-              rows={3}
+              rows={4}
               value={comment}
             />
           </label>
-          <label className="field">
-            <span>{t('icpRadar.live.review.correctedAssessment')}</span>
-            <select
-              onChange={(event) => setCorrectedAssessment(event.target.value as QualificationAssessmentStatus)}
-              value={correctedAssessment}
-            >
-              {(['matches', 'partially_matches', 'does_not_match'] as QualificationAssessmentStatus[]).map((value) => (
-                <option key={value} value={value}>{t(`icpRadar.live.assessment.${value}`)}</option>
-              ))}
-            </select>
-          </label>
+          {requiresComment && !comment.trim() && (
+            <small className="qualification-review-error">{t('icpRadar.live.review.commentRequired')}</small>
+          )}
           <div className="qualification-review-actions">
-            <Button icon={<Check aria-hidden="true" />} variant="default" onClick={() => saveDecision('approved', null)}>
-              {t('icpRadar.live.review.approve')}
-            </Button>
-            <Button disabled={!canSaveCommentAction} icon={<X aria-hidden="true" />} variant="default" onClick={() => saveDecision('rejected', 'does_not_match')}>
-              {t('icpRadar.live.review.reject')}
-            </Button>
-            <Button disabled={!canSaveCommentAction} icon={<Save aria-hidden="true" />} variant="default" onClick={() => saveDecision('corrected', correctedAssessment)}>
-              {t('icpRadar.live.review.correct')}
+            <Button
+              disabled={!canSaveReview}
+              icon={<Save aria-hidden="true" />}
+              variant="default"
+              onClick={() => saveDecision(
+                reviewAction,
+                reviewAction === 'approved' ? null : reviewAction === 'rejected' ? 'does_not_match' : correctedAssessment,
+              )}
+            >
+              {t('icpRadar.live.review.save')}
             </Button>
             {decision && (
               <Button icon={<RotateCcw aria-hidden="true" />} variant="quiet" onClick={() => onQualificationReviewChange(radarId, candidate.candidate_id, ruleId, null)}>
