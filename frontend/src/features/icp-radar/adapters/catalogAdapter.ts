@@ -10,6 +10,7 @@ import { fixtureRadarToViewModel } from './fixtureRadarAdapter';
 import { liveRadarToViewModel } from './liveRadarAdapter';
 import type { RadarViewModel } from './viewModels';
 
+// Catalog mapping is the only place that decides which raw artifact adapter owns a radar.
 export function mergeCatalogWithOverrides(
   catalog: ICPRadarCatalogArtifact | null,
   overrides: Record<string, RadarConfigOverride>,
@@ -40,4 +41,3 @@ export function radarToViewModel(
     tabs: ['shortlist', 'settings'],
   };
 }
-

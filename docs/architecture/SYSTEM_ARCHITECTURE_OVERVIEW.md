@@ -81,6 +81,8 @@ ICP Radar CSS is owned by `frontend/src/features/icp-radar/icpRadar.css` as a sm
 
 The canonical ICP Radar UI is split by interaction surface: fixture/live shortlist modules own table scan and inline preview, fixture/live detail modules own tabbed evidence review, settings modules own block-level editing, and the feature entrypoint only assembles the current application state into the right surface. React stays functional; OOP principles are applied through module ownership, typed contracts, adapters, hooks, and pure domain services rather than class-component inheritance.
 
+The local feature onboarding guide at `frontend/src/features/icp-radar/README.md` is the first stop for ICP Radar frontend work. It documents the data flow from raw artifacts through adapters and canonical view models into application hooks and UI surfaces, plus the checklist for adding a new radar type without creating a new screen-specific UX.
+
 ## Main Data Flow
 
 Target ICP Radar flow:

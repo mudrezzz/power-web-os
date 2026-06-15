@@ -27,6 +27,7 @@ import { useSignalValidationOverlay } from './useSignalValidationOverlay';
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
+// The workspace hook composes adapters, navigation, and local overlays for the feature entrypoint.
 export function useRadarWorkspace({
   artifact,
   catalog,

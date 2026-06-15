@@ -46,6 +46,7 @@ Current ICP Radar structure:
 
 ```text
 frontend/src/screens/ICPRadarScreen.tsx          Thin wrapper
+frontend/src/features/icp-radar/README.md        Feature onboarding, data flow, and new-radar checklist
 frontend/src/features/icp-radar/ICPRadarScreen.tsx   Thin feature coordinator
 frontend/src/features/icp-radar/icpRadar.css     CSS entrypoint importing feature style modules
 frontend/src/features/icp-radar/styles/          CSS modules by ICP Radar UI surface
@@ -82,6 +83,7 @@ frontend/src/features/icp-radar/detailPrimitives.tsx
 
 Rules:
 
+- Start ICP Radar frontend changes from `frontend/src/features/icp-radar/README.md`; it documents the data flow, ownership map, and checklist for adding radar types without creating new UI paradigms.
 - Keep route/screen wrappers thin once a screen grows beyond a simple view.
 - Keep the feature entrypoint thin; it should not own localStorage, raw fixture/live mapping, or score calculation.
 - Put new radar source types behind an adapter that emits the canonical radar/candidate view model.

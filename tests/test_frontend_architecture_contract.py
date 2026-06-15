@@ -132,6 +132,36 @@ def test_icp_radar_has_application_and_adapter_boundaries() -> None:
             assert symbol in text
 
 
+def test_icp_radar_feature_has_local_onboarding_readme() -> None:
+    readme = read("frontend/src/features/icp-radar/README.md")
+
+    for expected in [
+        "RadarViewModel",
+        "RadarCandidateViewModel",
+        "How To Add A New Radar Type",
+        "flowchart TD",
+        "No `window.localStorage` in presentation components.",
+        "No ICP Radar selectors in global `frontend/src/styles.css`.",
+    ]:
+        assert expected in readme
+
+
+def test_icp_radar_boundary_modules_have_ownership_comments() -> None:
+    comment_expectations = {
+        "adapters/viewModels.ts": "Canonical view models are the boundary",
+        "adapters/catalogAdapter.ts": "raw artifact adapter owns a radar",
+        "adapters/fixtureRadarAdapter.ts": "Fixture artifacts are normalized here",
+        "adapters/liveRadarAdapter.ts": "provider metadata goes to journal rows",
+        "application/useRadarWorkspace.ts": "composes adapters, navigation, and local overlays",
+        "application/useRadarConfigOverrides.ts": "demo persistence boundary",
+        "application/useSignalValidationOverlay.ts": "never mutate generated demo artifacts",
+        "application/useQualificationReviewOverlay.ts": "mirror signal validation",
+    }
+
+    for relative_path, expected_comment in comment_expectations.items():
+        assert expected_comment in read(f"frontend/src/features/icp-radar/{relative_path}")
+
+
 def test_icp_radar_presentation_components_do_not_own_storage() -> None:
     component_dir = Path("frontend/src/features/icp-radar/components")
     for component in component_dir.glob("*.tsx"):

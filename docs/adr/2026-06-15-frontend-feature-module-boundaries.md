@@ -64,6 +64,7 @@ React remains functional-component based. The target architecture applies OOP pr
 - Large feature CSS must be split by UI surface. For ICP Radar, catalog, shortlist, preview, detail, settings, criteria review, and responsive rules have separate style modules imported by `icpRadar.css`.
 - Runtime initialization files should stay small; resource dictionaries should be isolated and directly testable.
 - Add comments at module boundaries and before non-obvious data-shaping logic; avoid comments that restate JSX.
+- Large feature modules with adapters, application hooks, domain helpers, and style modules should include a local `README.md` that explains ownership, data flow, and the supported extension path.
 - Contract tests must guard the decomposition so future changes do not collapse the module back into one screen file.
 - Resource files may be large, but runtime init files should remain small and focused.
 

@@ -2,6 +2,7 @@ import type { RadarDetailTab } from '../modelTypes';
 
 export type RadarSourceKind = 'fixture' | 'live' | 'empty';
 
+// Canonical view models are the boundary between raw radar artifacts and UI surfaces.
 export type RadarViewModel = {
   id: string;
   name: string;
@@ -31,4 +32,3 @@ export type RadarCandidateViewModel = {
   sourceRows: Array<{ id: string; label: string; url: string | null }>;
   journalRows: Array<{ label: string; value: string }>;
 };
-

@@ -1304,6 +1304,34 @@ Status:
   - No ICP Radar selectors move back to global `styles.css`.
   - Visual smoke confirms no layout regression.
 
+### Slice 0.6.3.10: Frontend documentation and onboarding comments
+
+- Status: `Done`
+- Goal: Add feature-local onboarding documentation and targeted boundary comments for the decomposed ICP Radar frontend.
+- User value: Engineers can safely extend ICP Radar without rediscovering the adapter/application/domain boundaries or creating radar-specific UI forks.
+- Scope:
+  - Add `frontend/src/features/icp-radar/README.md` with ownership map, Mermaid data flow, extension guide, and change checklist.
+  - Add short module-level comments to key adapter/application boundary files.
+  - Add architecture contract tests for the README and required ownership comments.
+  - Update developer, architecture, and ADR documentation.
+- Out of scope:
+  - Product behavior changes.
+  - Backend artifact changes.
+  - CSS or visual changes.
+  - Wiki screenshot updates.
+- Tests:
+  - `python -m pytest tests/test_frontend_architecture_contract.py`
+  - `python -m pytest`
+  - `npm --prefix ./frontend run build`
+- Docs:
+  - Updated `docs/developer/DEVELOPER_GUIDE.md`.
+  - Updated `docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md`.
+  - Updated `docs/adr/2026-06-15-frontend-feature-module-boundaries.md`.
+- Acceptance criteria:
+  - ICP Radar has a local README explaining how to add a new radar type through adapters and canonical view models.
+  - Contract tests guard the README and boundary-comment expectations.
+  - No user-visible UI behavior changes.
+
 ### Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web
 
 - Status: `Backlog`
@@ -2113,6 +2141,12 @@ Status:
   - Added fixture/live/empty radar adapters and canonical view-model contracts for future radar source types.
   - Moved catalog and radar detail header presentation out of the feature entrypoint.
   - Tightened architecture tests so screen orchestration cannot re-own storage, scoring, or provider-specific mapping.
+- `Slice 0.6.3.9: ICP Radar CSS decomposition`
+  - Split ICP Radar feature CSS into surface-owned modules under `frontend/src/features/icp-radar/styles/`.
+  - Kept `icpRadar.css` as a small import entrypoint and added architecture tests for CSS ownership.
+- `Slice 0.6.3.10: Frontend documentation and onboarding comments`
+  - Added `frontend/src/features/icp-radar/README.md` with ownership map, data flow, and a guide for adding radar types through adapters.
+  - Added boundary comments and architecture tests so onboarding documentation remains present and useful.
 
 ## Blocked Items
 
