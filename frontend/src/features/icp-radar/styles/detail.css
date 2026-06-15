@@ -1,0 +1,415 @@
+﻿/* ICP Radar detail owns candidate detail shell, tabs, qualification evidence, sources, and journal layouts. */
+
+.icp-detail-breadcrumbs {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--s-2);
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.icp-detail-breadcrumbs svg {
+  width: var(--s-4);
+  height: var(--s-4);
+  flex-shrink: 0;
+}
+
+.icp-detail-breadcrumbs strong {
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icp-detail-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 18;
+  display: grid;
+  gap: var(--s-3);
+  margin: 0 calc(var(--s-6) * -1) var(--s-5);
+  padding: var(--s-3) var(--s-6);
+  border-bottom: 1px solid var(--border);
+  background: var(--paper);
+  box-shadow: var(--shadow-xs);
+}
+
+.icp-detail-header {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: var(--s-3) var(--s-4);
+}
+
+.icp-detail-header h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icp-detail-header p {
+  display: none;
+}
+
+.icp-detail-header .section-icon {
+  width: calc(var(--s-8) + var(--s-1));
+  height: calc(var(--s-8) + var(--s-1));
+}
+
+.icp-candidate-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: var(--s-5);
+}
+
+.icp-candidate-detail-grid .card:last-child {
+  grid-column: 1 / -1;
+}
+
+.icp-empty-shortlist {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-4);
+}
+
+.icp-empty-shortlist h2 {
+  margin: var(--s-1) 0;
+  font: var(--h3);
+}
+
+.icp-empty-shortlist p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.live-radar-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--s-4);
+}
+
+.live-radar-summary h2 {
+  margin: var(--s-1) 0;
+  font: var(--h3);
+}
+
+.live-radar-summary p,
+.live-radar-fact small,
+.live-radar-source-list small {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.live-radar-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  margin: 0;
+}
+
+.live-radar-metadata div {
+  display: inline-flex;
+  align-items: baseline;
+  max-width: calc(var(--s-20) * 4);
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.live-radar-metadata dt {
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.live-radar-metadata dd {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icp-radar-table-live {
+  min-width: calc(var(--s-20) * 13);
+}
+
+.live-radar-fact-list,
+.live-radar-source-list {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.live-radar-fact,
+.live-radar-source-list a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: inherit;
+  text-decoration: none;
+}
+
+.live-radar-source-list a {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.live-radar-fact strong,
+.live-radar-fact small,
+.live-radar-source-list strong,
+.live-radar-source-list small {
+  display: block;
+  min-width: 0;
+}
+
+.live-radar-score {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.live-radar-empty code {
+  display: inline-flex;
+  max-width: 100%;
+  margin-top: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  overflow-x: auto;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--fg2);
+}
+
+.icp-candidate-detail-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  padding: 0 var(--s-2) var(--s-2);
+  background: var(--bg);
+}
+
+.icp-candidate-detail-panel {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.canonical-detail-table,
+.canonical-journal-list {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+}
+
+.canonical-detail-record,
+.canonical-journal-row {
+  min-width: 0;
+  border-bottom: 1px solid var(--border-faint);
+  background: var(--surface);
+}
+
+.canonical-detail-record:last-child,
+.canonical-journal-row:last-child {
+  border-bottom: none;
+}
+
+.canonical-detail-record summary {
+  display: grid;
+  grid-template-columns: var(--s-12) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+  padding: var(--s-3);
+  cursor: pointer;
+}
+
+.canonical-detail-record summary strong,
+.canonical-detail-record summary span,
+.canonical-journal-row strong,
+.canonical-journal-row small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.canonical-detail-record > p,
+.canonical-detail-record > span {
+  display: grid;
+  gap: var(--s-3);
+  padding: 0 var(--s-3) var(--s-3) calc(var(--s-12) + var(--s-6));
+}
+
+.canonical-detail-record p,
+.canonical-journal-row small {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.canonical-journal-row {
+  display: grid;
+  grid-template-columns: var(--s-16) minmax(0, 1fr);
+  gap: var(--s-2) var(--s-3);
+  padding: var(--s-3);
+}
+
+.canonical-journal-row small {
+  grid-column: 2;
+}
+
+.qualification-review-table {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+}
+
+.qualification-review-head,
+.qualification-review-row summary {
+  display: grid;
+  grid-template-columns: var(--s-12) minmax(220px, 1.3fr) var(--s-20) minmax(140px, 0.6fr) minmax(100px, 0.5fr) minmax(140px, 0.6fr) minmax(130px, 0.5fr) minmax(130px, 0.5fr);
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.qualification-review-head {
+  padding: var(--s-3);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-faint);
+  color: var(--fg3);
+  font: var(--mono-sm);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.qualification-review-row {
+  min-width: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.qualification-review-row:last-child {
+  border-bottom: none;
+}
+
+.qualification-review-row summary {
+  padding: var(--s-3);
+  cursor: pointer;
+}
+
+.qualification-review-row summary > * {
+  min-width: 0;
+}
+
+.qualification-review-row summary strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qualification-review-details {
+  display: grid;
+  gap: var(--s-4);
+  padding: 0 var(--s-3) var(--s-4) calc(var(--s-12) + var(--s-6));
+}
+
+.qualification-review-details section {
+  min-width: 0;
+}
+
+.qualification-finding-list,
+.qualification-source-table {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.qualification-finding {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+}
+
+.qualification-finding div,
+.qualification-finding p,
+.qualification-source-row span {
+  min-width: 0;
+}
+
+.qualification-finding strong,
+.qualification-source-row strong,
+.qualification-source-row small {
+  overflow-wrap: anywhere;
+}
+
+.qualification-finding p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--fg2);
+}
+
+.qualification-source-head,
+.qualification-source-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(130px, 0.4fr) minmax(150px, 0.5fr) minmax(120px, 0.4fr);
+  gap: var(--s-3);
+  align-items: center;
+  min-width: 0;
+}
+
+.qualification-source-head {
+  color: var(--fg3);
+  font: var(--mono-sm);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.qualification-source-row {
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+}
+
+.qualification-source-row span:first-child {
+  display: grid;
+  gap: var(--s-1);
+}
+
+.qualification-source-row small {
+  color: var(--fg2);
+}
+
+.qualification-review-evaluation {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+.qualification-review-evaluation > div,
+.qualification-review-panel {
+  min-width: 0;
+  padding: var(--s-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+}
+
+.qualification-review-panel {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.qualification-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+

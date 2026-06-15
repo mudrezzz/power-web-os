@@ -1280,7 +1280,7 @@ Status:
 
 ### Slice 0.6.3.9: ICP Radar CSS decomposition
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Split the large ICP Radar feature stylesheet into readable style modules without changing UI behavior.
 - User value: Engineers can adjust table, preview, detail, settings, and catalog styling without searching through a multi-thousand-line CSS file.
 - Scope:
@@ -1295,9 +1295,10 @@ Status:
 - Tests:
   - `npm --prefix ./frontend run build`
   - `python -m pytest`
+  - `npm --prefix ./frontend run settings:toggle-smoke`
   - `npm --prefix ./frontend run visual:smoke`
 - Docs:
-  - Update frontend architecture/developer docs if CSS ownership rules change.
+  - Updated frontend architecture/developer docs and feature-boundary ADR for CSS module ownership.
 - Acceptance criteria:
   - `icpRadar.css` becomes an import entrypoint or stays small enough to scan.
   - No ICP Radar selectors move back to global `styles.css`.
@@ -2128,4 +2129,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.6.3.9: ICP Radar CSS decomposition`, then return to `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`.
+Implement `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`.

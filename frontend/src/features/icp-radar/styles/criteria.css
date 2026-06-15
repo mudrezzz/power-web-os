@@ -1,0 +1,520 @@
+﻿/* ICP Radar criteria owns candidate criteria evidence tables, filters, review controls, and score adjustment forms. */
+
+.icp-detail-section {
+  display: grid;
+  align-content: start;
+  align-items: start;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.icp-score-grid + .icp-detail-section {
+  margin-top: var(--s-4);
+}
+
+.icp-detail-section > .eyebrow,
+.icp-preview-section > .eyebrow {
+  align-self: start;
+  justify-self: start;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--fg2);
+}
+
+.icp-definition-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+}
+
+.icp-definition-list div {
+  min-width: 0;
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.icp-definition-list dt {
+  color: var(--fg2);
+  font: var(--mono-sm);
+}
+
+.icp-definition-list dd {
+  margin: var(--s-1) 0 0;
+  overflow: hidden;
+  color: var(--ink);
+  font: var(--body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icp-evidence-list,
+.criteria-list {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.icp-evidence-list a {
+  padding: var(--s-2);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.criterion-row {
+  display: grid;
+  grid-template-columns: var(--s-10) minmax(0, 1fr) var(--s-8);
+  padding: var(--s-2);
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.icp-candidate-preview .criterion-row {
+  grid-template-columns: var(--s-10) minmax(0, 1fr) minmax(var(--s-16), max-content);
+  column-gap: var(--s-4);
+  align-items: center;
+}
+
+.icp-candidate-preview .criterion-row > span {
+  padding-inline-end: var(--s-3);
+}
+
+.icp-candidate-preview .criterion-row > :last-child {
+  justify-self: end;
+}
+
+.icp-candidate-preview .criterion-row .badge {
+  max-width: calc(var(--s-20) * 2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.criteria-list-compact {
+  max-height: none;
+  overflow: visible;
+}
+
+.criterion-row:last-child {
+  border-bottom: none;
+}
+
+.criteria-evidence-list {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.criterion-evidence-card {
+  display: grid;
+  gap: var(--s-3);
+  min-width: 0;
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.criterion-evidence-header {
+  display: grid;
+  grid-template-columns: var(--s-10) minmax(0, 1fr) minmax(calc(var(--s-20) * 2), auto);
+  align-items: start;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.criterion-evidence-header > div {
+  min-width: 0;
+}
+
+.criterion-evidence-header strong,
+.criterion-evidence-header small,
+.criterion-fact strong,
+.criterion-fact small {
+  display: block;
+}
+
+.criterion-evidence-header strong,
+.criterion-fact strong {
+  color: var(--ink);
+  font: var(--label);
+}
+
+.criterion-evidence-header small,
+.criterion-fact small,
+.criterion-empty-note {
+  color: var(--fg2);
+  font: var(--body-sm);
+}
+
+.criterion-evidence-score {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  gap: var(--s-2);
+}
+
+.criterion-evidence-body {
+  display: grid;
+  gap: var(--s-3);
+  min-width: 0;
+  padding-left: calc(var(--s-10) + var(--s-3));
+}
+
+.criterion-evidence-body section {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.criterion-evidence-body .eyebrow {
+  justify-self: start;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--fg2);
+}
+
+.criterion-evidence-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-2);
+}
+
+.criterion-evidence-meta span {
+  display: grid;
+  gap: var(--s-1);
+  min-width: 0;
+  padding: var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.criterion-evidence-meta strong {
+  overflow: hidden;
+  color: var(--ink);
+  font: var(--body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.criterion-fact-list {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.criterion-fact {
+  display: grid;
+  grid-template-columns: var(--s-5) minmax(0, 1fr);
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-2);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.criterion-fact svg {
+  width: var(--s-4);
+  height: var(--s-4);
+  color: var(--ally);
+}
+
+.criterion-fact a {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: var(--s-2);
+  gap: var(--s-1);
+  color: var(--link);
+  text-decoration: none;
+}
+
+.criterion-fact a svg {
+  color: var(--link);
+}
+
+.criterion-empty-note {
+  margin: 0;
+  padding: var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.criteria-review-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: var(--s-3);
+}
+
+.criteria-review-control,
+.criteria-sort-field {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--s-2);
+}
+
+.criteria-review-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+}
+
+.criteria-chip {
+  min-height: calc(var(--s-6) + var(--s-1));
+  padding: 0 var(--s-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--fg2);
+  cursor: pointer;
+  font: var(--meta);
+}
+
+.criteria-chip:hover {
+  background: var(--surface-2);
+}
+
+.criteria-chip-active {
+  border-color: var(--cobalt-200);
+  background: var(--cobalt-50);
+  color: var(--cobalt-700);
+}
+
+.criteria-sort-field {
+  flex-shrink: 0;
+  min-height: calc(var(--s-8) + var(--s-1));
+  padding: 0 var(--s-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--fg2);
+  font: var(--meta);
+}
+
+.criteria-sort-field svg {
+  width: var(--s-4);
+  height: var(--s-4);
+}
+
+.criteria-sort-field select,
+.criterion-review-form select,
+.criterion-review-form textarea {
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  outline: none;
+}
+
+.criteria-review-table {
+  display: grid;
+  min-width: 0;
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.criteria-review-head,
+.criteria-review-row {
+  display: grid;
+  grid-template-columns:
+    var(--s-10)
+    minmax(calc(var(--s-20) * 3), 1fr)
+    minmax(var(--s-12), 0.45fr)
+    minmax(calc(var(--s-20) + var(--s-8)), 0.9fr)
+    minmax(var(--s-20), 0.7fr)
+    minmax(var(--s-12), 0.4fr)
+    minmax(var(--s-20), 0.7fr)
+    var(--s-8);
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.criteria-review-head {
+  padding: var(--s-2) var(--s-3);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--fg3);
+  font: var(--mono-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.criteria-action-head {
+  width: var(--s-8);
+}
+
+.criteria-review-record {
+  display: grid;
+  min-width: 0;
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.criteria-review-record:last-child {
+  border-bottom: none;
+}
+
+.criteria-review-row {
+  width: 100%;
+  min-width: 0;
+  padding: var(--s-3);
+  border: none;
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+}
+
+.criteria-review-row:hover,
+.criteria-review-record-expanded .criteria-review-row {
+  background: var(--surface-2);
+}
+
+.criteria-review-row > span,
+.criteria-review-head > span,
+.criteria-review-name {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.criteria-review-name strong,
+.criteria-review-name small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.criteria-review-name strong {
+  color: var(--ink);
+  font: var(--label);
+}
+
+.criteria-review-name small {
+  color: var(--fg2);
+  font: var(--meta);
+}
+
+.criteria-score-inline,
+.criterion-detail-topline,
+.criterion-review-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.criterion-evidence-detail {
+  display: grid;
+  gap: var(--s-4);
+  min-width: 0;
+  padding: var(--s-4) var(--s-5);
+  background: var(--surface-2);
+}
+
+.criterion-evidence-detail section {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.criterion-evidence-detail .eyebrow,
+.criterion-review-panel .eyebrow {
+  justify-self: start;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--fg2);
+}
+
+.criterion-detail-topline {
+  flex-wrap: wrap;
+}
+
+.criterion-origin-note {
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.criterion-review-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+  gap: var(--s-4);
+  min-width: 0;
+  padding: var(--s-4);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.criterion-review-panel p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.criterion-review-form {
+  display: grid;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.criterion-review-form label {
+  display: grid;
+  gap: var(--s-1);
+  color: var(--fg2);
+  font: var(--meta);
+}
+
+.criterion-review-form select {
+  width: var(--s-16);
+  min-height: calc(var(--s-8) + var(--s-1));
+  padding: 0 var(--s-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.criterion-review-form textarea {
+  width: 100%;
+  min-height: calc(var(--s-20) + var(--s-5));
+  resize: vertical;
+  padding: var(--s-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.criterion-evidence-ref-picker {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-2);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+}
+
+.criterion-evidence-ref-picker legend {
+  padding: 0 var(--s-1);
+  color: var(--fg2);
+  font: var(--meta);
+}
+
+.criterion-evidence-ref-picker label {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--s-2);
+}
+
+.criterion-evidence-ref-picker .mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.criterion-review-actions {
+  flex-wrap: wrap;
+}
+

@@ -205,14 +205,38 @@ def test_i18n_runtime_is_separate_from_large_resource_dictionary() -> None:
 def test_icp_radar_css_is_owned_by_feature_module() -> None:
     global_css_path = Path("frontend/src/styles.css")
     feature_css_path = Path("frontend/src/features/icp-radar/icpRadar.css")
+    feature_styles_dir = Path("frontend/src/features/icp-radar/styles")
     entrypoint = read("frontend/src/features/icp-radar/ICPRadarScreen.tsx")
     global_css = global_css_path.read_text(encoding="utf-8")
-    feature_css = feature_css_path.read_text(encoding="utf-8")
+    feature_css = feature_css_path.read_text(encoding="utf-8").lstrip("\ufeff")
+    expected_style_modules = [
+        "base.css",
+        "catalog.css",
+        "shortlist.css",
+        "preview.css",
+        "detail.css",
+        "settings.css",
+        "settings-editors.css",
+        "criteria.css",
+        "responsive.css",
+    ]
 
     assert feature_css_path.exists()
+    assert feature_styles_dir.exists()
     assert line_count(global_css_path) <= 1700
+    assert line_count(feature_css_path) <= 20
     assert "import './icpRadar.css';" in entrypoint
-    assert ".icp-radar-screen" in feature_css
-    assert ".icp-radar-list-row" in feature_css
+    assert feature_css.splitlines() == [
+        f"@import './styles/{module_name}';" for module_name in expected_style_modules
+    ]
+    for module_name in expected_style_modules:
+        module_path = feature_styles_dir / module_name
+        assert module_path.exists()
+        assert line_count(module_path) <= 650
+
+    assert ".icp-radar-screen" in read(str(feature_styles_dir / "base.css"))
+    assert ".icp-radar-list-row" in read(str(feature_styles_dir / "catalog.css"))
+    assert "@media" not in read(str(feature_styles_dir / "settings.css"))
+    assert "@media" in read(str(feature_styles_dir / "responsive.css"))
     assert ".icp-radar-list-row" not in global_css
     assert ".icp-settings-grid" not in global_css

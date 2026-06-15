@@ -1,0 +1,78 @@
+﻿/* ICP Radar preview owns the bounded inline candidate preview and its four-block summary layout. */
+
+.icp-candidate-preview {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  display: block;
+  width: 100cqw;
+  max-width: 100cqw;
+  max-height: min(calc(100dvh - var(--s-20)), calc(var(--s-20) * 8));
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.icp-preview-body {
+  display: grid;
+  gap: var(--s-4);
+  min-width: 0;
+  padding: var(--s-5);
+}
+
+.icp-preview-heading,
+.icp-preview-actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.icp-preview-heading {
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.icp-preview-heading strong {
+  display: block;
+  overflow: hidden;
+  color: var(--ink);
+  font: var(--label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icp-preview-actions {
+  justify-content: flex-start;
+}
+
+.icp-preview-main,
+.icp-preview-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--s-20) * 3), 1fr));
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.icp-preview-section,
+.icp-detail-card {
+  display: grid;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.icp-preview-section {
+  align-content: start;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.icp-preview-main small {
+  display: block;
+  margin-top: var(--s-2);
+  font: var(--meta);
+}
+

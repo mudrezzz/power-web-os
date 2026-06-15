@@ -1,0 +1,60 @@
+﻿/* ICP Radar responsive owns small-desktop and mobile overrides for all feature surfaces. */
+
+@media (max-width: 1200px) {
+  .qualification-review-head,
+  .qualification-review-row summary {
+    grid-template-columns: var(--s-10) minmax(220px, 1fr) var(--s-18) minmax(130px, 0.7fr) minmax(90px, 0.5fr) minmax(120px, 0.6fr) minmax(120px, 0.6fr) minmax(120px, 0.6fr);
+  }
+
+  .qualification-review-details {
+    padding-left: var(--s-3);
+  }
+
+  .qualification-review-evaluation {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 72rem) {
+  .icp-settings-grid,
+  .icp-settings-edit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .icp-radar-list-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .icp-settings-grid .card:nth-child(5),
+  .icp-settings-grid .card:nth-child(6),
+  .icp-settings-edit-grid .card:nth-child(5),
+  .icp-settings-edit-grid .card:nth-child(6) {
+    grid-column: auto;
+  }
+
+  .icp-settings-formula-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .icp-radar-list-action {
+    justify-content: space-between;
+  }
+
+  .icp-settings-toolbar {
+    flex-direction: column;
+  }
+
+  .icp-editor-actions {
+    justify-content: flex-start;
+  }
+
+  .icp-candidate-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .icp-score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+

@@ -1,0 +1,203 @@
+﻿/* ICP Radar shortlist owns candidate tables, sticky identity columns, row states, and table actions. */
+
+.icp-radar-selected-shell {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.icp-radar-header-main {
+  min-width: 0;
+}
+
+.icp-radar-header-actions {
+  align-self: start;
+  justify-self: end;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.icp-radar-header-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: var(--s-2);
+  min-width: 0;
+  color: var(--fg3);
+  font: var(--body-sm);
+}
+
+.icp-radar-header-meta-row .toggle-field {
+  min-height: var(--s-6);
+}
+
+.icp-radar-tabs {
+  justify-content: flex-start;
+}
+
+.icp-radar-table-wrap {
+  container-type: inline-size;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.icp-radar-table {
+  display: grid;
+  min-width: calc(var(--s-20) * 13);
+}
+
+.icp-radar-table-head,
+.icp-candidate-row {
+  display: grid;
+  grid-template-columns:
+    minmax(calc(var(--s-20) * 3), calc(var(--s-20) * 4))
+    minmax(calc(var(--s-20) + var(--s-8)), 1fr)
+    minmax(var(--s-12), 0.45fr)
+    minmax(var(--s-12), 0.45fr)
+    minmax(var(--s-12), 0.45fr)
+    minmax(var(--s-16), 0.6fr)
+    minmax(var(--s-16), 0.55fr)
+    minmax(calc(var(--s-20) + var(--s-10)), 0.9fr);
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.icp-radar-table-head > span,
+.icp-candidate-row > span {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.icp-sticky-cell {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.icp-radar-table-head .icp-sticky-cell {
+  z-index: 4;
+  background: var(--surface);
+}
+
+.icp-radar-table-head {
+  padding: 0 0 var(--s-3);
+  border-bottom: 1px solid var(--border);
+  color: var(--fg3);
+  font: var(--mono-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.icp-candidate-record {
+  display: grid;
+}
+
+.icp-candidate-row {
+  width: 100%;
+  padding: var(--s-3) 0;
+  border: none;
+  border-bottom: 1px solid var(--border-faint);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.icp-candidate-row:hover,
+.icp-candidate-row-selected {
+  background: var(--surface-2);
+}
+
+.icp-candidate-row:hover .icp-sticky-cell,
+.icp-candidate-row-selected .icp-sticky-cell {
+  background: var(--surface-2);
+}
+
+.icp-candidate-row-selected > .mono,
+.icp-candidate-row-selected .score-cell .mono {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.icp-candidate-row-selected .score-cell .mono {
+  color: var(--cobalt-700);
+}
+
+.icp-company-cell,
+.score-cell,
+.row-action,
+.icp-evidence-list a,
+.criterion-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--s-2);
+}
+
+.icp-company-cell > span:last-child,
+.icp-evidence-list span,
+.criterion-row span {
+  min-width: 0;
+}
+
+.icp-company-cell strong,
+.icp-company-cell small,
+.icp-evidence-list strong,
+.icp-evidence-list small,
+.criterion-row strong,
+.criterion-row small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icp-company-cell strong,
+.criterion-row strong,
+.icp-evidence-list strong {
+  color: var(--ink);
+  font: var(--label);
+}
+
+.icp-company-cell small,
+.criterion-row small,
+.icp-evidence-list small {
+  font: var(--meta);
+}
+
+.score-cell {
+  gap: var(--s-2);
+}
+
+.row-action {
+  justify-content: space-between;
+}
+
+.planned-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: calc(var(--s-7) + var(--s-1));
+  padding: 0 var(--s-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--fg4);
+  font: var(--meta);
+  white-space: nowrap;
+}
+
+.row-action svg,
+.icp-evidence-list svg {
+  width: var(--s-4);
+  height: var(--s-4);
+  flex-shrink: 0;
+  color: var(--fg3);
+}
+

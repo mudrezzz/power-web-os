@@ -1,0 +1,311 @@
+﻿/* ICP Radar settings owns block-editable configuration layout and read/edit section shells. */
+
+.icp-settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-5);
+}
+
+.icp-settings-grid .card:nth-child(5),
+.icp-settings-grid .card:nth-child(6) {
+  grid-column: 1 / -1;
+}
+
+.icp-settings-section {
+  display: grid;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.icp-settings-section > .icp-detail-section p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.icp-settings-formula-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--s-20) * 3)), 1fr));
+  gap: var(--s-2);
+}
+
+.icp-settings-formula-grid div {
+  display: grid;
+  gap: var(--s-1);
+  min-width: 0;
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.icp-settings-formula-grid strong {
+  overflow: hidden;
+  color: var(--ink);
+  font: var(--body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icp-settings-thresholds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.icp-settings-list {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding-left: var(--s-5);
+  color: var(--fg2);
+  font: var(--body-sm);
+}
+
+.icp-settings-stack {
+  display: grid;
+  gap: var(--s-5);
+  min-width: 0;
+}
+
+.icp-settings-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.icp-settings-toolbar-editing {
+  align-items: stretch;
+}
+
+.icp-settings-toolbar h2 {
+  margin: var(--s-1) 0;
+  font: var(--h3);
+}
+
+.icp-settings-toolbar p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.icp-settings-header-copy,
+.icp-settings-header-editor {
+  display: grid;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.icp-settings-header-editor {
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.icp-settings-title-row,
+.icp-settings-header-meta,
+.icp-section-toolbar,
+.simple-rule-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.icp-settings-header-meta {
+  color: var(--fg3);
+}
+
+.icp-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.icp-editor-errors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-4);
+}
+
+.icp-editor-errors span {
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--blocker-tint);
+  color: var(--blocker);
+  font: var(--meta);
+}
+
+.icp-settings-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-5);
+  min-width: 0;
+}
+
+.icp-settings-edit-grid .card:nth-child(5),
+.icp-settings-edit-grid .card:nth-child(6) {
+  grid-column: 1 / -1;
+}
+
+.icp-editor-field {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.icp-editor-field input,
+.icp-editor-field select,
+.icp-editor-field textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font: var(--body-sm);
+}
+
+.icp-editor-field input,
+.icp-editor-field select {
+  min-height: calc(var(--s-8) + var(--s-1));
+  padding: 0 var(--s-3);
+}
+
+.icp-editor-field textarea {
+  min-height: calc(var(--s-20) + var(--s-5));
+  padding: var(--s-3);
+  resize: vertical;
+}
+
+.icp-editor-checkbox {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.icp-editor-checkbox input {
+  width: var(--s-4);
+  min-height: var(--s-4);
+}
+
+.icp-editor-field input:focus,
+.icp-editor-field select:focus,
+.icp-editor-field textarea:focus {
+  border-color: var(--cobalt);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.icp-readonly-field {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.icp-readonly-field span {
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.toggle-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  min-height: calc(var(--s-8) + var(--s-1));
+  color: var(--ink);
+  cursor: pointer;
+  font: var(--body-sm);
+}
+
+.toggle-field input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.toggle-field > span {
+  flex: 0 0 var(--s-10);
+  position: relative;
+  width: var(--s-10);
+  height: var(--s-6);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+}
+
+.toggle-field > span::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: var(--s-1);
+  width: var(--s-4);
+  height: var(--s-4);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-50%);
+  transition: transform 120ms ease;
+}
+
+.toggle-field input:checked + span {
+  border-color: var(--cobalt-200);
+  background: var(--cobalt-100);
+}
+
+.toggle-field input:checked + span::after {
+  transform: translate(var(--s-4), -50%);
+}
+
+.toggle-field input:disabled + span {
+  opacity: 0.72;
+}
+
+.toggle-field input:focus-visible + span {
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.toggle-field-disabled {
+  cursor: default;
+}
+
+.toggle-field strong {
+  min-width: 0;
+  font: var(--body-sm);
+  overflow-wrap: anywhere;
+}
+
+.duration-field {
+  display: grid;
+  grid-template-columns: minmax(var(--s-20), 0.7fr) minmax(calc(var(--s-20) * 1.2), 1fr);
+  gap: var(--s-2);
+  align-items: end;
+  min-width: 0;
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.duration-field > span {
+  grid-column: 1 / -1;
+}
+
+.icp-threshold-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--s-20) * 2), 1fr));
+  gap: var(--s-3);
+}
+

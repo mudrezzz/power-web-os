@@ -1,0 +1,54 @@
+﻿/* ICP Radar base owns feature shell, shared headers, tabs, and cross-surface primitives. */
+
+.icp-radar-screen {
+  display: grid;
+  max-width: none;
+  gap: var(--s-5);
+  overflow-x: hidden;
+}
+
+.icp-radar-screen > .card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.icp-detail-screen {
+  padding-top: 0;
+  overflow: visible;
+}
+
+.icp-radar-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.icp-radar-header h1 {
+  margin: var(--s-1) 0;
+  font: var(--h2);
+}
+
+.icp-radar-header p,
+.icp-detail-card p,
+.icp-preview-main p,
+.icp-preview-main small,
+.criteria-list small,
+.icp-evidence-list small {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.icp-profile-meta {
+  display: flex;
+  max-width: calc(var(--s-20) * 5);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-2);
+}
+

@@ -46,7 +46,7 @@ For ICP Radar, the public screen in `frontend/src/screens/ICPRadarScreen.tsx` is
 
 Heavy settings UI is lazy-loaded from the feature entrypoint so the default shortlist/catalog path does not pull the whole editor into the first application bundle.
 
-ICP Radar CSS is owned by the feature module in `icpRadar.css`. Global `styles.css` remains responsible for the app shell and shared primitives. Runtime i18n initialization stays in `frontend/src/i18n.ts`; large EN/RU resources live in dedicated resource modules.
+ICP Radar CSS is owned by the feature module through `icpRadar.css` as a small import entrypoint plus surface-specific files in `frontend/src/features/icp-radar/styles/`. Global `styles.css` remains responsible for the app shell and shared primitives. Runtime i18n initialization stays in `frontend/src/i18n.ts`; large EN/RU resources live in dedicated resource modules.
 
 React remains functional-component based. The target architecture applies OOP principles through explicit module ownership, typed contracts, adapters, hooks, and pure services. Class components and inheritance-heavy UI hierarchies are not the preferred style.
 
@@ -61,6 +61,7 @@ React remains functional-component based. The target architecture applies OOP pr
 - Domain/view-model helpers should not import React UI primitives unless they are explicitly presentation helpers.
 - Model barrels are acceptable as stable import boundaries, but implementation logic should live in responsibility-specific modules.
 - Feature-specific selectors should live with the feature CSS, not in the global stylesheet.
+- Large feature CSS must be split by UI surface. For ICP Radar, catalog, shortlist, preview, detail, settings, criteria review, and responsive rules have separate style modules imported by `icpRadar.css`.
 - Runtime initialization files should stay small; resource dictionaries should be isolated and directly testable.
 - Add comments at module boundaries and before non-obvious data-shaping logic; avoid comments that restate JSX.
 - Contract tests must guard the decomposition so future changes do not collapse the module back into one screen file.

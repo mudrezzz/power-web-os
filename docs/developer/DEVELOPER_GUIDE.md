@@ -47,7 +47,8 @@ Current ICP Radar structure:
 ```text
 frontend/src/screens/ICPRadarScreen.tsx          Thin wrapper
 frontend/src/features/icp-radar/ICPRadarScreen.tsx   Thin feature coordinator
-frontend/src/features/icp-radar/icpRadar.css
+frontend/src/features/icp-radar/icpRadar.css     CSS entrypoint importing feature style modules
+frontend/src/features/icp-radar/styles/          CSS modules by ICP Radar UI surface
 frontend/src/features/icp-radar/domain/         Pure score, status, validation, qualification helpers
 frontend/src/features/icp-radar/adapters/       Raw artifacts -> canonical radar/candidate view models
 frontend/src/features/icp-radar/application/    Hooks for navigation, overlays, drafts, and actions
@@ -87,10 +88,11 @@ Rules:
 - Put browser-local state in application hooks, not in presentation components.
 - Keep model/normalization/scoring helpers separate from JSX-heavy view components.
 - Keep feature-specific CSS next to the feature module; leave `frontend/src/styles.css` for app shell and shared primitives.
+- Keep large feature CSS split by surface. ICP Radar styles use `icpRadar.css` only as an import entrypoint, with catalog, shortlist, preview, detail, settings, criteria, and responsive rules in `frontend/src/features/icp-radar/styles/`.
 - Keep expensive or rarely used panels, such as ICP Radar Settings, behind `React.lazy` and `Suspense`.
 - Add short module-boundary comments and comments for non-obvious data shaping, storage migration, scoring, or UX invariants.
 - Do not add comments that repeat obvious JSX.
-- Run `python -m pytest` after feature-structure changes; `tests/test_frontend_architecture_contract.py` guards the ICP Radar decomposition, application/adapters/domain/components boundaries, model barrel boundaries, feature CSS ownership, lazy Settings loading, and i18n runtime/resource split.
+- Run `python -m pytest` after feature-structure changes; `tests/test_frontend_architecture_contract.py` guards the ICP Radar decomposition, application/adapters/domain/components boundaries, model barrel boundaries, feature CSS module ownership, lazy Settings loading, and i18n runtime/resource split.
 
 When adding ICP Radar UI, prefer the existing module boundary instead of adding new logic to `ICPRadarScreen.tsx`: source-specific artifact mapping goes to `adapters/`, browser-local workflows go to `application/`, domain decisions go to `domain/`, shortlist/table changes go to `fixtureShortlist.tsx` or `liveShortlist.tsx`, preview-only changes go to `fixturePreview.tsx`, detail/review changes go to `fixtureDetail.tsx` or `liveDetail.tsx`, and settings block changes go to the relevant `settings*` module.
 

@@ -88,8 +88,11 @@ try {
 }
 
 async function openFirstRadarSettings(page) {
+  await page.locator('.icp-radar-list-row').first().waitFor({ state: 'visible' });
   await page.locator('.icp-radar-list-row').first().click();
+  await page.locator('.icp-radar-tabs button').nth(1).waitFor({ state: 'visible' });
   await page.locator('.icp-radar-tabs button').nth(1).click();
+  await page.locator('.icp-settings-section').first().waitFor({ state: 'visible' });
 }
 
 async function toggleGlobalSearchAndPersist(page) {
