@@ -23,6 +23,12 @@ except Exception:  # pragma: no cover - normal path for base install.
 
 QualificationStatus = Literal["confirmed", "weak", "unknown", "rejected"]
 SignalStatus = Literal["observed", "not_observed", "unclear"]
+QualificationAssessment = Literal["matches", "partially_matches", "does_not_match", "unknown"]
+QualificationOperator = Literal["AND", "OR", "AND_NOT", "OR_NOT"]
+QualificationRequirement = Literal["required", "recommended"]
+QualificationSourceOrigin = Literal["global", "local", "additional"]
+QualificationTrustPolicy = Literal["trusted", "cross_checked", "hitl_required"]
+QualificationCrossValidationStatus = Literal["passed", "weak", "failed", "not_required"]
 
 
 class RadarSearchQuery(BaseModel):
@@ -46,6 +52,43 @@ class RadarSourceEvidence(BaseModel):
     source_type: str = "web"
 
 
+class QualificationSourceUsage(BaseModel):
+    source_ref: str
+    source_name: str
+    source_origin: QualificationSourceOrigin = "additional"
+    trust_policy: QualificationTrustPolicy = "hitl_required"
+    used_for: str = "verification"
+    url: str = ""
+
+
+class QualificationEvidenceFinding(BaseModel):
+    source_ref: str
+    fact: str
+    why_it_matches_rule: str
+    evidence_strength: Literal["strong", "medium", "weak"] = "weak"
+    contradicts_rule: bool = False
+
+
+class QualificationCrossValidation(BaseModel):
+    required: bool = False
+    status: QualificationCrossValidationStatus = "not_required"
+    source_count: int = 0
+    notes: str = ""
+
+
+class QualificationRequirementEvaluation(BaseModel):
+    requirement_level: QualificationRequirement
+    satisfied: bool | None = None
+    explanation: str = ""
+
+
+class QualificationReviewDecision(BaseModel):
+    status: Literal["approved", "rejected", "corrected"]
+    corrected_assessment: QualificationAssessment | None = None
+    comment: str
+    reviewed_at: str
+
+
 class LiveRadarQualificationResult(BaseModel):
     criterion_code: str
     criterion: str
@@ -53,6 +96,23 @@ class LiveRadarQualificationResult(BaseModel):
     confidence: str = "low"
     rationale: str
     evidence_refs: list[str] = Field(default_factory=list)
+    rule_id: str
+    rule_text_snapshot: str
+    operator: QualificationOperator = "AND"
+    requirement_level: QualificationRequirement = "required"
+    confidence_policy: QualificationTrustPolicy = "hitl_required"
+    source_usages: list[QualificationSourceUsage] = Field(default_factory=list)
+    evidence_findings: list[QualificationEvidenceFinding] = Field(default_factory=list)
+    cross_validation: QualificationCrossValidation = Field(default_factory=QualificationCrossValidation)
+    requirement_evaluation: QualificationRequirementEvaluation
+    final_assessment: QualificationAssessment = "unknown"
+    review_decision: QualificationReviewDecision | None = None
+
+
+class QualificationContractIssue(BaseModel):
+    severity: Literal["error", "warning"]
+    path: str
+    message: str
 
 
 class LiveRadarSignalResult(BaseModel):
@@ -90,12 +150,13 @@ class WebSearchProviderResult(BaseModel):
 
 class LiveRadarRunArtifact(BaseModel):
     artifact_type: Literal["icp_radar_live_run"] = "icp_radar_live_run"
-    artifact_version: Literal["0.6.3.1"] = "0.6.3.1"
+    artifact_version: Literal["0.6.3.4"] = "0.6.3.4"
     radar: dict[str, Any]
     run_metadata: dict[str, Any]
     search_plan: dict[str, Any]
     sources: list[dict[str, Any]]
     candidates: list[dict[str, Any]]
+    contract_validation: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class LiveICPRadarRunState(BaseModel):
@@ -224,11 +285,17 @@ def build_live_mini_radar_definition() -> dict[str, Any]:
                 "code": "Q1",
                 "label": "Компания входит в группу СИБУР",
                 "rule": "Найти подтверждение, что юридическое лицо или площадка относится к группе СИБУР.",
+                "operator": "AND",
+                "requirement_level": "required",
+                "cross_validation_required": False,
             },
             {
                 "code": "Q2",
                 "label": "Промышленный или нефтехимический производственный актив",
                 "rule": "Найти признаки промышленного, нефтехимического или производственного актива, а не только сервисной структуры.",
+                "operator": "AND",
+                "requirement_level": "required",
+                "cross_validation_required": False,
             },
         ],
         "intent_signals": [
@@ -288,7 +355,7 @@ def build_live_mini_radar_search_plan_artifact() -> dict[str, Any]:
     plan = build_live_mini_radar_search_plan(radar)
     return {
         "artifact_type": "icp_radar_live_search_plan",
-        "artifact_version": "0.6.3.1",
+        "artifact_version": "0.6.3.4",
         "radar": radar,
         "search_plan": plan.model_dump(),
         "workflow_metadata": {
@@ -327,10 +394,21 @@ def build_openrouter_request(
                     "qualification": [
                         {
                             "criterion_code": "Q1 or Q2",
+                            "operator": "AND|OR|AND_NOT|OR_NOT",
+                            "requirement_level": "required|recommended",
                             "status": "confirmed|weak|unknown|rejected",
                             "confidence": "high|medium|low",
                             "rationale": "why this status",
                             "evidence_refs": ["source ids"],
+                            "evidence_findings": [
+                                {
+                                    "source_ref": "source id",
+                                    "fact": "what exactly was found",
+                                    "why_it_matches_rule": "why this fact satisfies or fails the rule",
+                                    "evidence_strength": "strong|medium|weak",
+                                    "contradicts_rule": False,
+                                }
+                            ],
                         }
                     ],
                     "signals": [
@@ -350,6 +428,7 @@ def build_openrouter_request(
         "rules": [
             "Do not invent candidates without source evidence.",
             "If evidence is weak, mark it weak/unclear and add a review flag.",
+            "For each qualification item, explain used sources, exact facts, and why they match the rule.",
             "Do not include secrets, request headers, or raw tool dumps.",
         ],
     }
@@ -555,7 +634,7 @@ class _FallbackLiveICPRadarRunWorkflow:
         provider_result = self._provider.run_search_plan(radar=radar, search_plan=plan)
         sources = _dedupe_sources(provider_result.sources)
         candidates = _rank_candidates([
-            normalize_live_candidate(item, radar=radar)
+            normalize_live_candidate(item, radar=radar, sources=sources)
             for item in provider_result.candidate_observations
         ])
         metadata = self._runtime_metadata(
@@ -573,6 +652,14 @@ class _FallbackLiveICPRadarRunWorkflow:
             search_plan=plan.model_dump(),
             sources=[item.model_dump() for item in sources],
             candidates=[item.model_dump() for item in candidates],
+            contract_validation=[
+                issue.model_dump()
+                for issue in validate_live_radar_qualification_contract(
+                    candidates=candidates,
+                    sources=sources,
+                    radar=radar,
+                )
+            ],
         )
         return state.model_copy(
             update={
@@ -648,9 +735,14 @@ else:
     LiveICPRadarRunWorkflow = _FallbackLiveICPRadarRunWorkflow
 
 
-def normalize_live_candidate(payload: dict[str, Any], *, radar: dict[str, Any]) -> LiveRadarCandidate:
+def normalize_live_candidate(
+    payload: dict[str, Any],
+    *,
+    radar: dict[str, Any],
+    sources: list[RadarSourceEvidence] | None = None,
+) -> LiveRadarCandidate:
     legal_name = str(payload.get("legal_name") or payload.get("name") or "Unknown candidate").strip()
-    qualification = _normalize_qualification(payload.get("qualification", []), radar)
+    qualification = _normalize_qualification(payload.get("qualification", []), radar, sources=sources or [])
     signals = _normalize_signals(payload.get("signals", []), radar)
     fit_score = sum(1 for item in qualification if item.status == "confirmed")
     intent_score = sum(item.score for item in signals if item.status == "observed")
@@ -678,25 +770,225 @@ def normalize_live_candidate(payload: dict[str, Any], *, radar: dict[str, Any]) 
     )
 
 
-def _normalize_qualification(payload: Any, radar: dict[str, Any]) -> list[LiveRadarQualificationResult]:
+def _normalize_qualification(
+    payload: Any,
+    radar: dict[str, Any],
+    *,
+    sources: list[RadarSourceEvidence],
+) -> list[LiveRadarQualificationResult]:
     by_code = {
         str(item.get("criterion_code", item.get("code", ""))): item
         for item in payload
         if isinstance(item, dict)
     } if isinstance(payload, list) else {}
+    sources_by_ref = {source.evidence_ref: source for source in sources}
     results = []
     for criterion in radar["qualification_criteria"]:
         raw = by_code.get(criterion["code"], {})
         status = _normalize_choice(str(raw.get("status", "unknown")), {"confirmed", "weak", "unknown", "rejected"}, "unknown")
+        evidence_refs = [
+            str(ref)
+            for ref in raw.get("evidence_refs", [])
+            if str(ref) in sources_by_ref
+        ]
+        operator = _normalize_choice(str(raw.get("operator") or criterion.get("operator") or "AND"), {"AND", "OR", "AND_NOT", "OR_NOT"}, "AND")
+        requirement_level = _normalize_choice(
+            str(raw.get("requirement_level") or criterion.get("requirement_level") or "required"),
+            {"required", "recommended"},
+            "required",
+        )
+        final_assessment = _qualification_status_to_assessment(status)
+        confidence = str(raw.get("confidence", "low"))
+        confidence_policy = _confidence_to_policy(confidence, evidence_refs=evidence_refs)
+        cross_validation_required = bool(raw.get("cross_validation_required", criterion.get("cross_validation_required", False)))
+        source_usages = _qualification_source_usages(evidence_refs=evidence_refs, sources_by_ref=sources_by_ref, policy=confidence_policy)
+        evidence_findings = _qualification_evidence_findings(
+            raw=raw,
+            evidence_refs=evidence_refs,
+            sources_by_ref=sources_by_ref,
+            status=status,
+            rationale=str(raw.get("rationale") or raw.get("summary") or "No qualification evidence found."),
+        )
+        cross_validation = _qualification_cross_validation(
+            required=cross_validation_required,
+            evidence_refs=evidence_refs,
+            final_assessment=final_assessment,
+        )
+        requirement_evaluation = _qualification_requirement_evaluation(
+            requirement_level=requirement_level,  # type: ignore[arg-type]
+            final_assessment=final_assessment,
+            rationale=str(raw.get("rationale") or raw.get("summary") or "No qualification evidence found."),
+        )
         results.append(LiveRadarQualificationResult(
             criterion_code=criterion["code"],
             criterion=criterion["label"],
             status=status,  # type: ignore[arg-type]
-            confidence=str(raw.get("confidence", "low")),
+            confidence=confidence,
             rationale=str(raw.get("rationale") or raw.get("summary") or "No qualification evidence found."),
-            evidence_refs=[str(ref) for ref in raw.get("evidence_refs", [])],
+            evidence_refs=evidence_refs,
+            rule_id=str(raw.get("rule_id") or criterion["code"]),
+            rule_text_snapshot=str(raw.get("rule_text_snapshot") or raw.get("criterion") or criterion["label"]),
+            operator=operator,  # type: ignore[arg-type]
+            requirement_level=requirement_level,  # type: ignore[arg-type]
+            confidence_policy=confidence_policy,
+            source_usages=source_usages,
+            evidence_findings=evidence_findings,
+            cross_validation=cross_validation,
+            requirement_evaluation=requirement_evaluation,
+            final_assessment=final_assessment,
+            review_decision=None,
         ))
     return results
+
+
+def _qualification_status_to_assessment(status: QualificationStatus) -> QualificationAssessment:
+    if status == "confirmed":
+        return "matches"
+    if status == "weak":
+        return "partially_matches"
+    if status == "rejected":
+        return "does_not_match"
+    return "unknown"
+
+
+def _confidence_to_policy(confidence: str, *, evidence_refs: list[str]) -> QualificationTrustPolicy:
+    if confidence == "high" and len(evidence_refs) > 1:
+        return "cross_checked"
+    if confidence == "high" and evidence_refs:
+        return "trusted"
+    return "hitl_required"
+
+
+def _qualification_source_usages(
+    *,
+    evidence_refs: list[str],
+    sources_by_ref: dict[str, RadarSourceEvidence],
+    policy: QualificationTrustPolicy,
+) -> list[QualificationSourceUsage]:
+    usages = []
+    for ref in evidence_refs:
+        source = sources_by_ref.get(ref)
+        if source is None:
+            continue
+        usages.append(QualificationSourceUsage(
+            source_ref=ref,
+            source_name=source.title,
+            source_origin="additional",
+            trust_policy=policy,
+            used_for="verification",
+            url=source.url,
+        ))
+    return usages
+
+
+def _qualification_evidence_findings(
+    *,
+    raw: dict[str, Any],
+    evidence_refs: list[str],
+    sources_by_ref: dict[str, RadarSourceEvidence],
+    status: QualificationStatus,
+    rationale: str,
+) -> list[QualificationEvidenceFinding]:
+    raw_findings = raw.get("evidence_findings")
+    if isinstance(raw_findings, list):
+        findings = []
+        for item in raw_findings:
+            if not isinstance(item, dict):
+                continue
+            source_ref = str(item.get("source_ref") or item.get("evidence_ref") or "")
+            if source_ref not in evidence_refs:
+                continue
+            findings.append(QualificationEvidenceFinding(
+                source_ref=source_ref,
+                fact=str(item.get("fact") or item.get("quote_or_fact") or sources_by_ref[source_ref].snippet),
+                why_it_matches_rule=str(item.get("why_it_matches_rule") or rationale),
+                evidence_strength=_evidence_strength(status),
+                contradicts_rule=bool(item.get("contradicts_rule", status == "rejected")),
+            ))
+        if findings:
+            return findings
+    return [
+        QualificationEvidenceFinding(
+            source_ref=ref,
+            fact=sources_by_ref[ref].snippet,
+            why_it_matches_rule=rationale,
+            evidence_strength=_evidence_strength(status),
+            contradicts_rule=status == "rejected",
+        )
+        for ref in evidence_refs
+        if ref in sources_by_ref
+    ]
+
+
+def _evidence_strength(status: QualificationStatus) -> Literal["strong", "medium", "weak"]:
+    if status == "confirmed":
+        return "strong"
+    if status == "weak":
+        return "medium"
+    return "weak"
+
+
+def _qualification_cross_validation(
+    *,
+    required: bool,
+    evidence_refs: list[str],
+    final_assessment: QualificationAssessment,
+) -> QualificationCrossValidation:
+    if not required:
+        return QualificationCrossValidation(required=False, status="not_required", source_count=len(evidence_refs), notes="Cross-validation is not required for this rule.")
+    if len(evidence_refs) > 1 and final_assessment in {"matches", "partially_matches"}:
+        return QualificationCrossValidation(required=True, status="passed", source_count=len(evidence_refs), notes="Multiple sources support the rule.")
+    if evidence_refs:
+        return QualificationCrossValidation(required=True, status="weak", source_count=len(evidence_refs), notes="Only one source supports the rule; human review is recommended.")
+    return QualificationCrossValidation(required=True, status="failed", source_count=0, notes="No source evidence was found for required cross-validation.")
+
+
+def _qualification_requirement_evaluation(
+    *,
+    requirement_level: QualificationRequirement,
+    final_assessment: QualificationAssessment,
+    rationale: str,
+) -> QualificationRequirementEvaluation:
+    satisfied = final_assessment == "matches" or (requirement_level == "recommended" and final_assessment == "partially_matches")
+    if final_assessment == "unknown":
+        satisfied_value: bool | None = None
+    else:
+        satisfied_value = satisfied
+    return QualificationRequirementEvaluation(
+        requirement_level=requirement_level,
+        satisfied=satisfied_value,
+        explanation=rationale,
+    )
+
+
+def validate_live_radar_qualification_contract(
+    *,
+    candidates: list[LiveRadarCandidate],
+    sources: list[RadarSourceEvidence],
+    radar: dict[str, Any],
+) -> list[QualificationContractIssue]:
+    issues: list[QualificationContractIssue] = []
+    rule_codes = {str(item.get("code")) for item in radar.get("qualification_criteria", [])}
+    source_refs = {source.evidence_ref for source in sources}
+    for candidate_index, candidate in enumerate(candidates):
+        candidate_path = f"candidates[{candidate_index}]"
+        result_codes = {item.criterion_code for item in candidate.qualification}
+        missing = sorted(rule_codes - result_codes)
+        extra = sorted(result_codes - rule_codes)
+        for code in missing:
+            issues.append(QualificationContractIssue(severity="error", path=f"{candidate_path}.qualification.{code}", message="Qualification result is missing for radar rule."))
+        for code in extra:
+            issues.append(QualificationContractIssue(severity="error", path=f"{candidate_path}.qualification.{code}", message="Qualification result references an unknown radar rule."))
+        for item in candidate.qualification:
+            item_path = f"{candidate_path}.qualification.{item.criterion_code}"
+            for ref in item.evidence_refs:
+                if ref not in source_refs:
+                    issues.append(QualificationContractIssue(severity="error", path=f"{item_path}.evidence_refs", message=f"Evidence ref {ref} is not present in sources."))
+            if item.requirement_level == "required" and item.final_assessment in {"does_not_match", "unknown"}:
+                issues.append(QualificationContractIssue(severity="warning", path=item_path, message="Required qualification rule is not satisfied and needs human review."))
+            if item.cross_validation.required and item.cross_validation.status != "passed":
+                issues.append(QualificationContractIssue(severity="warning", path=f"{item_path}.cross_validation", message="Cross-validation requirement is not fully satisfied."))
+    return issues
 
 
 def _normalize_signals(payload: Any, radar: dict[str, Any]) -> list[LiveRadarSignalResult]:

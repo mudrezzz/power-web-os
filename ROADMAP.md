@@ -1139,6 +1139,34 @@ Status:
   - Live runtime metadata appears only under `Journal`.
   - New radar sources must integrate via adapters into the canonical UX.
 
+### Slice 0.6.3.4: Qualification evidence and review contract
+
+- Status: `Done`
+- Goal: Make account qualification results explainable and reviewable at the same level as intent signals.
+- User value: A user can inspect why a live radar candidate passed each qualification rule, which sources were used, how trustworthy they are, and correct the final assessment with a comment.
+- Scope:
+  - Extend live qualification results with rule snapshot, operator, requirement level, source usages, source origin, trust/check policy, evidence findings, cross-validation, requirement evaluation, final assessment, and optional review decision.
+  - Keep old live qualification fields compatible while enriching provider output in the backend normalizer.
+  - Add contract validation for rule/result/source consistency.
+  - Replace the raw Q1/Q2 candidate detail list with a table-first qualification review surface.
+  - Add browser-local approve/reject/correct actions for qualification results.
+  - Add ADR and docs for the qualification evidence/review contract.
+- Out of scope:
+  - Backend persistence for qualification review decisions.
+  - Re-running live search from the UI.
+  - Take-into-work behavior.
+- Tests:
+  - Backend tests for live artifact version and qualification evidence contract.
+  - Frontend contract tests for qualification review types, UI table, review actions, and i18n keys.
+  - `npm --prefix ./frontend run build`
+- Docs:
+  - Added `Qualification Evidence And Review Contract` ADR.
+  - Updated architecture, developer, user, and demo docs.
+- Acceptance criteria:
+  - Candidate qualification rows are no longer raw labels.
+  - Expanded rows show sources, origin, trust/check policy, evidence facts, cross-validation, and requirement evaluation.
+  - Review actions are local and do not mutate generated artifacts.
+
 ### Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web
 
 - Status: `Backlog`
@@ -1923,6 +1951,10 @@ Status:
   - Mapped fixture-backed and live radars into the same canonical shortlist columns, four-block preview, and tabbed detail view.
   - Removed provider/runtime metadata from the live shortlist and moved it into the candidate `Journal` tab.
   - Added frontend contract coverage for canonical columns, preview sections, status mapping, detail tabs, and journal-only runtime metadata.
+- `Slice 0.6.3.4: Qualification evidence and review contract`
+  - Extended live qualification results with source usage, source origin, trust/check policy, evidence findings, cross-validation, requirement evaluation, final assessment, and review-decision fields.
+  - Replaced raw Q1/Q2 candidate detail rows with a table-first qualification review surface.
+  - Added local approve/reject/correct actions for qualification assessment, plus backend and frontend contract coverage.
 
 ## Blocked Items
 

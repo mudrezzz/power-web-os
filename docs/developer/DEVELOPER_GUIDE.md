@@ -209,6 +209,8 @@ Live artifacts must never contain API keys, authorization headers, bearer tokens
 
 Frontend rendering for live radar results must go through the canonical ICP Radar UX contract. Treat `icp_radar_live_run` as a different data adapter, not as permission to create a separate live-only grid, side panel, table column set, preview, or detail surface. Runtime provider metadata belongs in the candidate `Journal` tab.
 
+Candidate qualification results must use the shared qualification evidence contract before they reach the UI. Provider output can be sparse, but the backend normalizer must shape each Q-rule result into rule snapshot, operator, requirement level, source usages, source origin, trust/check policy, evidence findings, cross-validation, requirement evaluation, final assessment, and optional review decision. The candidate detail qualification tab renders that contract as a table-first review surface with expandable rows and browser-local approve/reject/correct decisions. Do not render provider-specific raw Q1/Q2 rows directly.
+
 Expected future domain objects:
 
 ```text

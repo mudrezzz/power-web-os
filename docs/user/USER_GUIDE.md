@@ -145,6 +145,7 @@ The current ICP Radar UI is table-first:
 - Score and tier values stay in the table row; the expanded row strengthens those existing values instead of repeating them in the preview.
 - Full candidate work opens in a separate candidate detail view with breadcrumbs back to `ICP Radar`.
 - The detail view keeps a compact candidate header sticky and uses tabs: overview, qualification, signals, sources, and journal.
+- The qualification tab is a review table, not a raw Q1/Q2 list. Each row shows the rule, operator, final assessment, source count, cross-validation, requirement strictness, and local review decision. Expand a row to see used sources, source origin, trust/check policy, evidence facts, why each fact matches the rule, requirement evaluation, and local approve/reject/correct controls with a comment.
 - Runtime/provider/model/query/source-count fields for live runs are shown in the `Journal` tab together with structured trace and review flags.
 - The C1-C20 breakdown is now a signal validation table sourced from the same `intent_signals` dictionary used in radar Settings.
 - Use filters to focus on all, needs review, confirmed, corrected, rejected, or stale signals, and sort by score, validation status, or confidence.

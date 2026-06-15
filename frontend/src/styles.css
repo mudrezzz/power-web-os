@@ -1518,6 +1518,174 @@ button {
   grid-column: 2;
 }
 
+.qualification-review-table {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+}
+
+.qualification-review-head,
+.qualification-review-row summary {
+  display: grid;
+  grid-template-columns: var(--s-12) minmax(220px, 1.3fr) var(--s-20) minmax(140px, 0.6fr) minmax(100px, 0.5fr) minmax(140px, 0.6fr) minmax(130px, 0.5fr) minmax(130px, 0.5fr);
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.qualification-review-head {
+  padding: var(--s-3);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-faint);
+  color: var(--fg3);
+  font: var(--mono-sm);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.qualification-review-row {
+  min-width: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.qualification-review-row:last-child {
+  border-bottom: none;
+}
+
+.qualification-review-row summary {
+  padding: var(--s-3);
+  cursor: pointer;
+}
+
+.qualification-review-row summary > * {
+  min-width: 0;
+}
+
+.qualification-review-row summary strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qualification-review-details {
+  display: grid;
+  gap: var(--s-4);
+  padding: 0 var(--s-3) var(--s-4) calc(var(--s-12) + var(--s-6));
+}
+
+.qualification-review-details section {
+  min-width: 0;
+}
+
+.qualification-finding-list,
+.qualification-source-table {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.qualification-finding {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+}
+
+.qualification-finding div,
+.qualification-finding p,
+.qualification-source-row span {
+  min-width: 0;
+}
+
+.qualification-finding strong,
+.qualification-source-row strong,
+.qualification-source-row small {
+  overflow-wrap: anywhere;
+}
+
+.qualification-finding p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--fg2);
+}
+
+.qualification-source-head,
+.qualification-source-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(130px, 0.4fr) minmax(150px, 0.5fr) minmax(120px, 0.4fr);
+  gap: var(--s-3);
+  align-items: center;
+  min-width: 0;
+}
+
+.qualification-source-head {
+  color: var(--fg3);
+  font: var(--mono-sm);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.qualification-source-row {
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+}
+
+.qualification-source-row span:first-child {
+  display: grid;
+  gap: var(--s-1);
+}
+
+.qualification-source-row small {
+  color: var(--fg2);
+}
+
+.qualification-review-evaluation {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+.qualification-review-evaluation > div,
+.qualification-review-panel {
+  min-width: 0;
+  padding: var(--s-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+}
+
+.qualification-review-panel {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.qualification-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+@media (max-width: 1200px) {
+  .qualification-review-head,
+  .qualification-review-row summary {
+    grid-template-columns: var(--s-10) minmax(220px, 1fr) var(--s-18) minmax(130px, 0.7fr) minmax(90px, 0.5fr) minmax(120px, 0.6fr) minmax(120px, 0.6fr) minmax(120px, 0.6fr);
+  }
+
+  .qualification-review-details {
+    padding-left: var(--s-3);
+  }
+
+  .qualification-review-evaluation {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .icp-settings-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

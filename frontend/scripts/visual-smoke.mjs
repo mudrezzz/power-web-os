@@ -171,7 +171,7 @@ async function captureLiveRadarFlow(page, viewportName) {
   });
 
   await page.getByRole('button', { name: 'Journal' }).click();
-  await page.getByText('OpenRouter', { exact: false }).first().waitFor({ state: 'visible' });
+  await page.getByText('Runtime', { exact: true }).first().waitFor({ state: 'visible' });
   await assertNoSplitLiveLayout(page);
   await assertNoPageHorizontalScroll(page, 'live-radar-journal');
   await page.screenshot({

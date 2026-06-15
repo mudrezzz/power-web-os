@@ -150,6 +150,8 @@ The first realistic demo ICP profile uses `demo/fixtures/icp_radar/sibur_icp_pas
 
 The first live ICP Radar path is intentionally separate from the stable XLSX fixture. `ТОиР Quick Live Radar` uses a small definition with two qualification rules and three intent signals, runs from the CLI, and writes a separate `icp_radar_live_run` artifact only when a provider returns usable evidence. The live workflow is `LiveICPRadarRunWorkflow`, which follows the same optional `langgraph-dai` `BaseWorkflow` pattern as other workflows and delegates search to a provider-neutral `WebSearchProvider`. `OpenRouterWebSearchProvider` is the first implementation; `RecordedWebSearchProvider` supports tests. OpenRouter is therefore the first provider, not the domain boundary. Live outputs are reviewable artifacts, not accepted accounts, and the system must not fabricate candidates when provider evidence is missing.
 
+Live qualification results use a richer review contract than the radar settings rule definition. Each candidate-level qualification result carries the rule snapshot, operator, requirement level, source usages, source origin, trust/check policy, evidence findings, cross-validation status, requirement evaluation, final assessment, and optional human review decision. The backend normalizer may enrich simpler provider output into this contract, but the frontend must not render raw Q1/Q2 labels without evidence, source, trust, and final-assessment context.
+
 The current criterion evidence contract is deliberately explicit:
 
 - `supported`: curated synthetic demo facts exist for this candidate and criterion;

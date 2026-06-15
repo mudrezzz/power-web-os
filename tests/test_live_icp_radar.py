@@ -157,7 +157,7 @@ def test_recorded_response_normalizes_sources_candidates_and_scores() -> None:
     )
 
     assert artifact["artifact_type"] == "icp_radar_live_run"
-    assert artifact["artifact_version"] == "0.6.3.1"
+    assert artifact["artifact_version"] == "0.6.3.4"
     assert artifact["radar"]["radar_id"] == "toir-quick-live"
     assert artifact["run_metadata"]["runtime"] == "recorded"
     assert len(artifact["sources"]) == 1
@@ -166,6 +166,15 @@ def test_recorded_response_normalizes_sources_candidates_and_scores() -> None:
     assert artifact["candidates"][0]["score"]["intent_score"] == 3
     assert artifact["candidates"][0]["score"]["tier"] == "Tier 1"
     assert "signal_requires_human_review" in artifact["candidates"][0]["review_flags"]
+    qualification = artifact["candidates"][0]["qualification"][0]
+    assert qualification["operator"] == "AND"
+    assert qualification["requirement_level"] == "required"
+    assert qualification["final_assessment"] == "matches"
+    assert qualification["source_usages"][0]["source_origin"] == "additional"
+    assert qualification["source_usages"][0]["trust_policy"] == "trusted"
+    assert qualification["evidence_findings"][0]["source_ref"] == "src_1"
+    assert qualification["requirement_evaluation"]["satisfied"] is True
+    assert artifact["contract_validation"] == []
 
 
 def test_openrouter_response_parser_handles_json_content_and_annotations() -> None:

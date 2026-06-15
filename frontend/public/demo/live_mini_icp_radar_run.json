@@ -1,6 +1,6 @@
 {
   "artifact_type": "icp_radar_live_run",
-  "artifact_version": "0.6.3.1",
+  "artifact_version": "0.6.3.4",
   "radar": {
     "radar_id": "toir-quick-live",
     "name": "ТОиР Quick Live Radar",
@@ -9,12 +9,18 @@
       {
         "code": "Q1",
         "label": "Компания входит в группу СИБУР",
-        "rule": "Найти подтверждение, что юридическое лицо или площадка относится к группе СИБУР."
+        "rule": "Найти подтверждение, что юридическое лицо или площадка относится к группе СИБУР.",
+        "operator": "AND",
+        "requirement_level": "required",
+        "cross_validation_required": false
       },
       {
         "code": "Q2",
         "label": "Промышленный или нефтехимический производственный актив",
-        "rule": "Найти признаки промышленного, нефтехимического или производственного актива, а не только сервисной структуры."
+        "rule": "Найти признаки промышленного, нефтехимического или производственного актива, а не только сервисной структуры.",
+        "operator": "AND",
+        "requirement_level": "required",
+        "cross_validation_required": false
       }
     ],
     "intent_signals": [
@@ -44,7 +50,7 @@
   },
   "run_metadata": {
     "workflow_name": "LiveICPRadarRunWorkflow",
-    "runtime": "openrouter_live",
+    "runtime": "recorded",
     "framework_available": true,
     "runtime_mode": "langgraph_dai",
     "node_name": "shape_artifact",
@@ -55,7 +61,7 @@
     "query_count": 3,
     "source_count": 9,
     "candidate_count": 2,
-    "run_at": "2026-06-14T18:17:28+00:00"
+    "run_at": "2026-06-15T11:28:23+00:00"
   },
   "search_plan": {
     "radar_id": "toir-quick-live",
@@ -181,7 +187,59 @@
           "evidence_refs": [
             "src2",
             "src4"
-          ]
+          ],
+          "rule_id": "Q1",
+          "rule_text_snapshot": "Компания входит в группу СИБУР",
+          "operator": "AND",
+          "requirement_level": "required",
+          "confidence_policy": "cross_checked",
+          "source_usages": [
+            {
+              "source_ref": "src2",
+              "source_name": "СИБУР реализовал масштабную программу цифровых ремонтов газоперерабатывающих заводов в Западной Сибири",
+              "source_origin": "additional",
+              "trust_policy": "cross_checked",
+              "used_for": "verification",
+              "url": "https://energyland.info/news-show-tek-neftegaz-275978"
+            },
+            {
+              "source_ref": "src4",
+              "source_name": "СИБУР модернизирует газопереработку: уникальное отечественное оборудование повышает надежность, эффективность и экологичность производства",
+              "source_origin": "additional",
+              "trust_policy": "cross_checked",
+              "used_for": "verification",
+              "url": "https://www.sibur.ru/SiburTumenGaz/press-center/sibur-moderniziruet-gazopererabotku-unikalnoe-otechestvennoe-oborudovanie-povyshaet-nadezhnost-effek/"
+            }
+          ],
+          "evidence_findings": [
+            {
+              "source_ref": "src2",
+              "fact": "В Западной Сибири на предприятиях «СибурТюменьГаза» прошли масштабные ремонты с применением цифровой платформы «Горизонт», что повысило надежность и безопасность, работы проведены на 29 из 34 установок.",
+              "why_it_matches_rule": "Является дочерним предприятием СИБУР, подтверждено официальными источниками.",
+              "evidence_strength": "strong",
+              "contradicts_rule": false
+            },
+            {
+              "source_ref": "src4",
+              "fact": "Проекты модернизации газоперерабатывающих мощностей СИБУРа с применением уникального отечественного оборудования, направленные на повышение надежности, эффективности и снижение выбросов.",
+              "why_it_matches_rule": "Является дочерним предприятием СИБУР, подтверждено официальными источниками.",
+              "evidence_strength": "strong",
+              "contradicts_rule": false
+            }
+          ],
+          "cross_validation": {
+            "required": false,
+            "status": "not_required",
+            "source_count": 2,
+            "notes": "Cross-validation is not required for this rule."
+          },
+          "requirement_evaluation": {
+            "requirement_level": "required",
+            "satisfied": true,
+            "explanation": "Является дочерним предприятием СИБУР, подтверждено официальными источниками."
+          },
+          "final_assessment": "matches",
+          "review_decision": null
         },
         {
           "criterion_code": "Q2",
@@ -192,7 +250,59 @@
           "evidence_refs": [
             "src2",
             "src4"
-          ]
+          ],
+          "rule_id": "Q2",
+          "rule_text_snapshot": "Промышленный или нефтехимический производственный актив",
+          "operator": "AND",
+          "requirement_level": "required",
+          "confidence_policy": "cross_checked",
+          "source_usages": [
+            {
+              "source_ref": "src2",
+              "source_name": "СИБУР реализовал масштабную программу цифровых ремонтов газоперерабатывающих заводов в Западной Сибири",
+              "source_origin": "additional",
+              "trust_policy": "cross_checked",
+              "used_for": "verification",
+              "url": "https://energyland.info/news-show-tek-neftegaz-275978"
+            },
+            {
+              "source_ref": "src4",
+              "source_name": "СИБУР модернизирует газопереработку: уникальное отечественное оборудование повышает надежность, эффективность и экологичность производства",
+              "source_origin": "additional",
+              "trust_policy": "cross_checked",
+              "used_for": "verification",
+              "url": "https://www.sibur.ru/SiburTumenGaz/press-center/sibur-moderniziruet-gazopererabotku-unikalnoe-otechestvennoe-oborudovanie-povyshaet-nadezhnost-effek/"
+            }
+          ],
+          "evidence_findings": [
+            {
+              "source_ref": "src2",
+              "fact": "В Западной Сибири на предприятиях «СибурТюменьГаза» прошли масштабные ремонты с применением цифровой платформы «Горизонт», что повысило надежность и безопасность, работы проведены на 29 из 34 установок.",
+              "why_it_matches_rule": "Газоперерабатывающие заводы являются промышленными производственными активами.",
+              "evidence_strength": "strong",
+              "contradicts_rule": false
+            },
+            {
+              "source_ref": "src4",
+              "fact": "Проекты модернизации газоперерабатывающих мощностей СИБУРа с применением уникального отечественного оборудования, направленные на повышение надежности, эффективности и снижение выбросов.",
+              "why_it_matches_rule": "Газоперерабатывающие заводы являются промышленными производственными активами.",
+              "evidence_strength": "strong",
+              "contradicts_rule": false
+            }
+          ],
+          "cross_validation": {
+            "required": false,
+            "status": "not_required",
+            "source_count": 2,
+            "notes": "Cross-validation is not required for this rule."
+          },
+          "requirement_evaluation": {
+            "requirement_level": "required",
+            "satisfied": true,
+            "explanation": "Газоперерабатывающие заводы являются промышленными производственными активами."
+          },
+          "final_assessment": "matches",
+          "review_decision": null
         }
       ],
       "signals": [
@@ -255,7 +365,59 @@
           "evidence_refs": [
             "src1",
             "src3"
-          ]
+          ],
+          "rule_id": "Q1",
+          "rule_text_snapshot": "Компания входит в группу СИБУР",
+          "operator": "AND",
+          "requirement_level": "required",
+          "confidence_policy": "cross_checked",
+          "source_usages": [
+            {
+              "source_ref": "src1",
+              "source_name": "СИБУР увеличил межремонтный интервал и повысил надежность ключевых производств НКНХ",
+              "source_origin": "additional",
+              "trust_policy": "cross_checked",
+              "used_for": "verification",
+              "url": "https://kazanfirst.ru/news/na-klyuchevyh-proizvodstvah-nizhnekamskneftehima-povysheny-mezhremontnyj-interval-i-nadyozhnost"
+            },
+            {
+              "source_ref": "src3",
+              "source_name": "СИБУР завершает модернизацию ремонтно-механического завода в Нижнекамске",
+              "source_origin": "additional",
+              "trust_policy": "cross_checked",
+              "used_for": "verification",
+              "url": "https://energybase.ru/news/companies/sibur-zaversaet-modernizaciu-remontno-mehaniceskogo-zavoda-v-niznekamske-2026-02-17"
+            }
+          ],
+          "evidence_findings": [
+            {
+              "source_ref": "src1",
+              "fact": "Плановые капитальные ремонты на «Нижнекамскнефтехиме» завершены, межремонтный интервал увеличен до 2 лет на заводе бутилового каучука и установке этилена, применена цифровая платформа «Горизонт» для планирования ремонтов.",
+              "why_it_matches_rule": "Подтверждено принадлежность к группе СИБУР через официальные источники и упоминания в новостях.",
+              "evidence_strength": "strong",
+              "contradicts_rule": false
+            },
+            {
+              "source_ref": "src3",
+              "fact": "Модернизация ремонтно-механического завода «Нижнекамскнефтехима» с инвестициями более 10 млрд руб., повышение скорости обработки деталей до 40 раз, создание центра компетенций для нефтехимических производств.",
+              "why_it_matches_rule": "Подтверждено принадлежность к группе СИБУР через официальные источники и упоминания в новостях.",
+              "evidence_strength": "strong",
+              "contradicts_rule": false
+            }
+          ],
+          "cross_validation": {
+            "required": false,
+            "status": "not_required",
+            "source_count": 2,
+            "notes": "Cross-validation is not required for this rule."
+          },
+          "requirement_evaluation": {
+            "requirement_level": "required",
+            "satisfied": true,
+            "explanation": "Подтверждено принадлежность к группе СИБУР через официальные источники и упоминания в новостях."
+          },
+          "final_assessment": "matches",
+          "review_decision": null
         },
         {
           "criterion_code": "Q2",
@@ -266,7 +428,59 @@
           "evidence_refs": [
             "src1",
             "src3"
-          ]
+          ],
+          "rule_id": "Q2",
+          "rule_text_snapshot": "Промышленный или нефтехимический производственный актив",
+          "operator": "AND",
+          "requirement_level": "required",
+          "confidence_policy": "cross_checked",
+          "source_usages": [
+            {
+              "source_ref": "src1",
+              "source_name": "СИБУР увеличил межремонтный интервал и повысил надежность ключевых производств НКНХ",
+              "source_origin": "additional",
+              "trust_policy": "cross_checked",
+              "used_for": "verification",
+              "url": "https://kazanfirst.ru/news/na-klyuchevyh-proizvodstvah-nizhnekamskneftehima-povysheny-mezhremontnyj-interval-i-nadyozhnost"
+            },
+            {
+              "source_ref": "src3",
+              "source_name": "СИБУР завершает модернизацию ремонтно-механического завода в Нижнекамске",
+              "source_origin": "additional",
+              "trust_policy": "cross_checked",
+              "used_for": "verification",
+              "url": "https://energybase.ru/news/companies/sibur-zaversaet-modernizaciu-remontno-mehaniceskogo-zavoda-v-niznekamske-2026-02-17"
+            }
+          ],
+          "evidence_findings": [
+            {
+              "source_ref": "src1",
+              "fact": "Плановые капитальные ремонты на «Нижнекамскнефтехиме» завершены, межремонтный интервал увеличен до 2 лет на заводе бутилового каучука и установке этилена, применена цифровая платформа «Горизонт» для планирования ремонтов.",
+              "why_it_matches_rule": "Предприятие является промышленным нефтехимическим активом с производственными мощностями и заводами.",
+              "evidence_strength": "strong",
+              "contradicts_rule": false
+            },
+            {
+              "source_ref": "src3",
+              "fact": "Модернизация ремонтно-механического завода «Нижнекамскнефтехима» с инвестициями более 10 млрд руб., повышение скорости обработки деталей до 40 раз, создание центра компетенций для нефтехимических производств.",
+              "why_it_matches_rule": "Предприятие является промышленным нефтехимическим активом с производственными мощностями и заводами.",
+              "evidence_strength": "strong",
+              "contradicts_rule": false
+            }
+          ],
+          "cross_validation": {
+            "required": false,
+            "status": "not_required",
+            "source_count": 2,
+            "notes": "Cross-validation is not required for this rule."
+          },
+          "requirement_evaluation": {
+            "requirement_level": "required",
+            "satisfied": true,
+            "explanation": "Предприятие является промышленным нефтехимическим активом с производственными мощностями и заводами."
+          },
+          "final_assessment": "matches",
+          "review_decision": null
         }
       ],
       "signals": [
@@ -319,5 +533,6 @@
         "src4"
       ]
     }
-  ]
+  ],
+  "contract_validation": []
 }

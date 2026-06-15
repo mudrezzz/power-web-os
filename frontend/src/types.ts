@@ -455,6 +455,49 @@ export type LiveRadarSourceEvidence = {
   source_type: string;
 };
 
+export type QualificationAssessmentStatus = 'matches' | 'partially_matches' | 'does_not_match' | 'unknown';
+export type QualificationOperator = 'AND' | 'OR' | 'AND_NOT' | 'OR_NOT';
+export type QualificationRequirementLevel = 'required' | 'recommended';
+export type QualificationSourceOrigin = 'global' | 'local' | 'additional';
+export type QualificationTrustPolicy = 'trusted' | 'cross_checked' | 'hitl_required';
+
+export type QualificationSourceUsage = {
+  source_ref: string;
+  source_name: string;
+  source_origin: QualificationSourceOrigin;
+  trust_policy: QualificationTrustPolicy;
+  used_for: string;
+  url: string;
+};
+
+export type QualificationEvidenceFinding = {
+  source_ref: string;
+  fact: string;
+  why_it_matches_rule: string;
+  evidence_strength: 'strong' | 'medium' | 'weak';
+  contradicts_rule: boolean;
+};
+
+export type QualificationCrossValidation = {
+  required: boolean;
+  status: 'passed' | 'weak' | 'failed' | 'not_required';
+  source_count: number;
+  notes: string;
+};
+
+export type QualificationRequirementEvaluation = {
+  requirement_level: QualificationRequirementLevel;
+  satisfied: boolean | null;
+  explanation: string;
+};
+
+export type QualificationReviewDecision = {
+  status: 'approved' | 'rejected' | 'corrected';
+  corrected_assessment: QualificationAssessmentStatus | null;
+  comment: string;
+  reviewed_at: string;
+};
+
 export type LiveRadarQualificationResult = {
   criterion_code: string;
   criterion: string;
@@ -462,6 +505,17 @@ export type LiveRadarQualificationResult = {
   confidence: string;
   rationale: string;
   evidence_refs: string[];
+  rule_id: string;
+  rule_text_snapshot: string;
+  operator: QualificationOperator;
+  requirement_level: QualificationRequirementLevel;
+  confidence_policy: QualificationTrustPolicy;
+  source_usages: QualificationSourceUsage[];
+  evidence_findings: QualificationEvidenceFinding[];
+  cross_validation: QualificationCrossValidation;
+  requirement_evaluation: QualificationRequirementEvaluation;
+  final_assessment: QualificationAssessmentStatus;
+  review_decision: QualificationReviewDecision | null;
 };
 
 export type LiveRadarSignalResult = {
@@ -491,7 +545,7 @@ export type LiveRadarCandidate = {
 
 export type LiveICPRadarRunArtifact = {
   artifact_type: 'icp_radar_live_run';
-  artifact_version: '0.6.3.1';
+  artifact_version: '0.6.3.1' | '0.6.3.4';
   radar: {
     radar_id: string;
     name: string;
@@ -526,6 +580,7 @@ export type LiveICPRadarRunArtifact = {
   };
   sources: LiveRadarSourceEvidence[];
   candidates: LiveRadarCandidate[];
+  contract_validation?: Array<{ severity: 'error' | 'warning'; path: string; message: string }>;
 };
 
 export type ICPRadarCatalogItem = {

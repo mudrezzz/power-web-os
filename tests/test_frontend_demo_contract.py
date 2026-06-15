@@ -489,14 +489,14 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "icpRadar.settings.aiSuggest",
         "icpRadar.deleteRadar",
         "icpRadar.settings.intentSignals",
-        "icpRadar.settings.qualificationRules",
-        "icpRadar.settings.globalSearch",
-        "icpRadar.live.emptyTitle",
-        "icpRadar.live.runtimeOpenRouter",
-        "icpRadar.live.qualificationStatus",
-        "icpRadar.live.signalStatus",
-        "criteria",
-        "editingPlanned",
+            "icpRadar.settings.qualificationRules",
+            "icpRadar.settings.globalSearch",
+            "icpRadar.live.emptyTitle",
+            "icpRadar.live.runtimeOpenRouter",
+            "icpRadar.live.assessment",
+            "icpRadar.live.signalStatus",
+            "criteria",
+            "editingPlanned",
     ]:
         assert label_key in screen or label_key in i18n
 
@@ -687,6 +687,7 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
     app = Path("frontend/src/App.tsx").read_text(encoding="utf-8")
     screen = Path("frontend/src/screens/ICPRadarScreen.tsx").read_text(encoding="utf-8")
     types = Path("frontend/src/types.ts").read_text(encoding="utf-8")
+    i18n = Path("frontend/src/i18n.ts").read_text(encoding="utf-8")
 
     assert "toir-quick-live" in catalog
     assert "/demo/live_mini_icp_radar_run.json" in catalog
@@ -707,3 +708,35 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
     assert "live-radar-detail" not in screen
     assert "fetch(" not in screen
     assert "LiveICPRadarRunArtifact" in types
+    for type_name in [
+        "QualificationSourceUsage",
+        "QualificationEvidenceFinding",
+        "QualificationCrossValidation",
+        "QualificationRequirementEvaluation",
+        "QualificationReviewDecision",
+    ]:
+        assert type_name in types
+    for screen_token in [
+        "qualificationReviewStorageKey",
+        "LiveQualificationReviewTable",
+        "qualification-review-table",
+        "source_usages",
+        "evidence_findings",
+        "cross_validation",
+        "requirement_evaluation",
+        "onQualificationReviewChange",
+        "icpRadar.live.qualificationColumns.operator",
+        "icpRadar.live.review.approve",
+        "icpRadar.live.review.reject",
+        "icpRadar.live.review.correct",
+    ]:
+        assert screen_token in screen
+    for i18n_key in [
+        "qualificationColumns",
+        "sourceOrigin",
+        "trustPolicy",
+        "crossValidationStatus",
+        "reviewStatus",
+        "correctedAssessment",
+    ]:
+        assert i18n_key in i18n

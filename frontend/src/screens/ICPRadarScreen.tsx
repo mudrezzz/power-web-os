@@ -48,6 +48,9 @@ import type {
   SignalValidationDecision,
   SignalValidationOverlay,
   SignalValidationStatus,
+  QualificationAssessmentStatus,
+  QualificationReviewDecision,
+  QualificationSourceUsage,
   SourceDefinition,
   SourcePolicy,
   ValidatedCandidateScore,
@@ -56,9 +59,11 @@ import type {
 type RadarDetailTab = 'shortlist' | 'settings';
 type CandidateDetailTab = 'overview' | 'qualification' | 'signals' | 'sources' | 'journal';
 type RadarOperationalStatus = 'draft' | 'active' | 'stopped';
+type QualificationReviewOverlay = Record<string, QualificationReviewDecision>;
 
 const radarConfigStorageKey = 'power-web-os-icp-radar-config-overrides';
 const signalValidationStorageKey = 'power-web-os-icp-radar-signal-validation';
+const qualificationReviewStorageKey = 'power-web-os-icp-radar-qualification-review';
 const signalCodes = Array.from({ length: 20 }, (_, index) => `C${index + 1}`);
 const fitSignalCodes = ['C13', 'C14', 'C15', 'C16', 'C17'];
 const intentSignalCodes = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C18', 'C19'];
@@ -84,6 +89,7 @@ export function ICPRadarScreen({
   const [detailLiveCandidateId, setDetailLiveCandidateId] = useState<string | null>(null);
   const [candidateDetailTab, setCandidateDetailTab] = useState<CandidateDetailTab>('overview');
   const [signalValidation, setSignalValidation] = useState<SignalValidationOverlay>(() => loadSignalValidationOverlay());
+  const [qualificationReview, setQualificationReview] = useState<QualificationReviewOverlay>(() => loadQualificationReviewOverlay());
   const [radarOverrides, setRadarOverrides] = useState<Record<string, RadarConfigOverride>>(() => loadRadarConfigOverrides());
   const mergedRadars = useMemo(() => mergeRadarCatalog(catalog, radarOverrides), [catalog, radarOverrides]);
   const selectedRadar = mergedRadars.find((item) => item.radar_id === selectedRadarId) ?? null;
@@ -118,6 +124,14 @@ export function ICPRadarScreen({
     }
     window.localStorage.removeItem(signalValidationStorageKey);
   }, [signalValidation]);
+
+  useEffect(() => {
+    if (Object.keys(qualificationReview).length) {
+      window.localStorage.setItem(qualificationReviewStorageKey, JSON.stringify(qualificationReview));
+      return;
+    }
+    window.localStorage.removeItem(qualificationReviewStorageKey);
+  }, [qualificationReview]);
 
   useEffect(() => {
     if (!selectedRadar) {
@@ -257,6 +271,24 @@ export function ICPRadarScreen({
     }));
   }
 
+  function saveQualificationReviewDecision(
+    radarId: string,
+    candidateId: string,
+    ruleId: string,
+    decision: QualificationReviewDecision | null,
+  ) {
+    const key = qualificationReviewKey(radarId, candidateId, ruleId);
+    setQualificationReview((current) => {
+      const next = { ...current };
+      if (decision) {
+        next[key] = decision;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
+  }
+
   function resetCandidateSignalValidation(radarId: string, accountId: string) {
     setSignalValidation((current) => Object.fromEntries(
       Object.entries(current).filter(([, decision]) => (
@@ -350,7 +382,10 @@ export function ICPRadarScreen({
         artifact={selectedLiveRunArtifact}
         candidate={detailLiveCandidate}
         onBack={() => setDetailLiveCandidateId(null)}
+        onQualificationReviewChange={saveQualificationReviewDecision}
         onTabChange={setCandidateDetailTab}
+        qualificationReview={qualificationReview}
+        radarId={selectedRadar.radar_id}
         radarName={selectedRadar.name}
       />
     );
@@ -1082,9 +1117,11 @@ function LiveRadarCandidatePreview({
                 <div className="criterion-row" key={item.criterion_code}>
                   <Mono>{item.criterion_code}</Mono>
                   <span>
-                    <strong>{item.criterion}</strong>
+                    <strong>{qualificationRuleText(item)}</strong>
                   </span>
-                  <Badge tone={liveQualificationTone(item.status)}>{t(`icpRadar.live.qualificationStatus.${item.status}`)}</Badge>
+                  <Badge tone={qualificationAssessmentTone(item.final_assessment || qualificationStatusToAssessment(item.status))}>
+                    {t(`icpRadar.live.assessment.${item.final_assessment || qualificationStatusToAssessment(item.status)}`)}
+                  </Badge>
                 </div>
               ))}
             </div>
@@ -1120,14 +1157,25 @@ function LiveRadarCandidateDetailView({
   artifact,
   candidate,
   onBack,
+  onQualificationReviewChange,
   onTabChange,
+  qualificationReview,
+  radarId,
   radarName,
 }: {
   activeTab: CandidateDetailTab;
   artifact: LiveICPRadarRunArtifact;
   candidate: LiveRadarCandidate;
   onBack: () => void;
+  onQualificationReviewChange: (
+    radarId: string,
+    candidateId: string,
+    ruleId: string,
+    decision: QualificationReviewDecision | null,
+  ) => void;
   onTabChange: (tab: CandidateDetailTab) => void;
+  qualificationReview: QualificationReviewOverlay;
+  radarId: string;
   radarName: string;
 }) {
   const { t } = useTranslation();
@@ -1212,23 +1260,13 @@ function LiveRadarCandidateDetailView({
           <Card>
             <section className="icp-detail-section">
               <Eyebrow>{t('icpRadar.live.qualification')}</Eyebrow>
-              <div className="canonical-detail-table">
-                {candidate.qualification.map((item) => (
-                  <details className="canonical-detail-record" key={item.criterion_code}>
-                    <summary>
-                      <Mono>{item.criterion_code}</Mono>
-                      <strong>{item.criterion}</strong>
-                      <Badge tone={liveQualificationTone(item.status)}>
-                        {t(`icpRadar.live.qualificationStatus.${item.status}`)}
-                      </Badge>
-                    </summary>
-                    <span>
-                      <p>{item.rationale}</p>
-                      <LiveEvidenceList refs={item.evidence_refs} sourcesByRef={sourcesByRef} compact />
-                    </span>
-                  </details>
-                ))}
-              </div>
+              <LiveQualificationReviewTable
+                candidate={candidate}
+                onQualificationReviewChange={onQualificationReviewChange}
+                qualificationReview={qualificationReview}
+                radarId={radarId}
+                sourcesByRef={sourcesByRef}
+              />
             </section>
           </Card>
         )}
@@ -1321,6 +1359,218 @@ function LiveRadarCandidateDetailView({
         )}
       </div>
     </section>
+  );
+}
+
+function LiveQualificationReviewTable({
+  candidate,
+  onQualificationReviewChange,
+  qualificationReview,
+  radarId,
+  sourcesByRef,
+}: {
+  candidate: LiveRadarCandidate;
+  onQualificationReviewChange: (
+    radarId: string,
+    candidateId: string,
+    ruleId: string,
+    decision: QualificationReviewDecision | null,
+  ) => void;
+  qualificationReview: QualificationReviewOverlay;
+  radarId: string;
+  sourcesByRef: Map<string, LiveRadarSourceEvidence>;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="qualification-review-table">
+      <div className="qualification-review-head">
+        <span>{t('icpRadar.live.qualificationColumns.code')}</span>
+        <span>{t('icpRadar.live.qualificationColumns.rule')}</span>
+        <span>{t('icpRadar.live.qualificationColumns.operator')}</span>
+        <span>{t('icpRadar.live.qualificationColumns.assessment')}</span>
+        <span>{t('icpRadar.live.qualificationColumns.sources')}</span>
+        <span>{t('icpRadar.live.qualificationColumns.crossValidation')}</span>
+        <span>{t('icpRadar.live.qualificationColumns.requirement')}</span>
+        <span>{t('icpRadar.live.qualificationColumns.decision')}</span>
+      </div>
+      {candidate.qualification.map((item) => {
+        const ruleId = qualificationRuleId(item);
+        const decision = qualificationReview[qualificationReviewKey(radarId, candidate.candidate_id, ruleId)] ?? item.review_decision ?? null;
+        return (
+          <LiveQualificationReviewRow
+            candidate={candidate}
+            decision={decision}
+            item={item}
+            key={ruleId}
+            onQualificationReviewChange={onQualificationReviewChange}
+            radarId={radarId}
+            sourcesByRef={sourcesByRef}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function LiveQualificationReviewRow({
+  candidate,
+  decision,
+  item,
+  onQualificationReviewChange,
+  radarId,
+  sourcesByRef,
+}: {
+  candidate: LiveRadarCandidate;
+  decision: QualificationReviewDecision | null;
+  item: LiveRadarQualificationResult;
+  onQualificationReviewChange: (
+    radarId: string,
+    candidateId: string,
+    ruleId: string,
+    decision: QualificationReviewDecision | null,
+  ) => void;
+  radarId: string;
+  sourcesByRef: Map<string, LiveRadarSourceEvidence>;
+}) {
+  const { t } = useTranslation();
+  const ruleId = qualificationRuleId(item);
+  const [comment, setComment] = useState(decision?.comment ?? '');
+  const [correctedAssessment, setCorrectedAssessment] = useState<QualificationAssessmentStatus>(
+    decision?.corrected_assessment ?? effectiveQualificationAssessment(item, decision),
+  );
+  const effectiveAssessment = effectiveQualificationAssessment(item, decision);
+  const sourceCount = item.source_usages?.length || item.evidence_refs.length;
+  const canSaveCommentAction = comment.trim().length > 0;
+
+  function saveDecision(status: QualificationReviewDecision['status'], assessment: QualificationAssessmentStatus | null) {
+    if (status !== 'approved' && !canSaveCommentAction) {
+      return;
+    }
+    onQualificationReviewChange(radarId, candidate.candidate_id, ruleId, {
+      status,
+      corrected_assessment: assessment,
+      comment: status === 'approved' ? (comment.trim() || t('icpRadar.live.review.approvedDefaultComment')) : comment.trim(),
+      reviewed_at: new Date().toISOString(),
+    });
+  }
+
+  return (
+    <details className="qualification-review-row">
+      <summary>
+        <Mono>{item.criterion_code}</Mono>
+        <strong>{qualificationRuleText(item)}</strong>
+        <Mono>{qualificationOperatorLabel(item.operator)}</Mono>
+        <Badge tone={qualificationAssessmentTone(effectiveAssessment)}>
+          {t(`icpRadar.live.assessment.${effectiveAssessment}`)}
+        </Badge>
+        <span>{t('icpRadar.live.sourceCount', { count: sourceCount })}</span>
+        <Badge tone={qualificationCrossValidationTone(item.cross_validation?.status)}>
+          {t(`icpRadar.live.crossValidationStatus.${item.cross_validation?.status ?? 'not_required'}`)}
+        </Badge>
+        <Badge tone={(item.requirement_level ?? 'required') === 'required' ? 'unsurfaced' : 'neutral'}>
+          {t(`icpRadar.settings.requirement.${item.requirement_level ?? 'required'}`)}
+        </Badge>
+        <Badge tone={decision ? qualificationDecisionTone(decision.status) : 'neutral'}>
+          {decision ? t(`icpRadar.live.reviewStatus.${decision.status}`) : t('icpRadar.live.reviewStatus.unreviewed')}
+        </Badge>
+      </summary>
+      <div className="qualification-review-details">
+        <section>
+          <Eyebrow>{t('icpRadar.live.evidence')}</Eyebrow>
+          <p>{item.rationale}</p>
+          <div className="qualification-finding-list">
+            {item.evidence_findings?.length ? item.evidence_findings.map((finding) => (
+              <article className="qualification-finding" key={`${finding.source_ref}-${finding.fact}`}>
+                <div>
+                  <Mono>{finding.source_ref}</Mono>
+                  <strong>{finding.fact}</strong>
+                </div>
+                <p>{finding.why_it_matches_rule}</p>
+                <Badge tone={finding.contradicts_rule ? 'blocker' : 'neutral'}>
+                  {t(`icpRadar.live.evidenceStrength.${finding.evidence_strength}`)}
+                </Badge>
+              </article>
+            )) : (
+              <p>{t('icpRadar.live.noQualificationEvidence')}</p>
+            )}
+          </div>
+        </section>
+
+        <section>
+          <Eyebrow>{t('icpRadar.live.sourcesUsed')}</Eyebrow>
+          <div className="qualification-source-table">
+            <div className="qualification-source-head">
+              <span>{t('icpRadar.live.sourceColumns.name')}</span>
+              <span>{t('icpRadar.live.sourceColumns.origin')}</span>
+              <span>{t('icpRadar.live.sourceColumns.trust')}</span>
+              <span>{t('icpRadar.live.sourceColumns.usage')}</span>
+            </div>
+            {(item.source_usages?.length ? item.source_usages : fallbackQualificationSourceUsages(item, sourcesByRef)).map((usage) => (
+              <div className="qualification-source-row" key={`${usage.source_ref}-${usage.used_for}`}>
+                <span>
+                  <strong>{usage.source_name}</strong>
+                  <small>{usage.url || usage.source_ref}</small>
+                </span>
+                <Badge tone="neutral">{t(`icpRadar.live.sourceOrigin.${usage.source_origin}`)}</Badge>
+                <Badge tone={qualificationTrustTone(usage.trust_policy)}>{t(`icpRadar.live.trustPolicy.${usage.trust_policy}`)}</Badge>
+                <span>{usage.used_for}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="qualification-review-evaluation">
+          <div>
+            <Eyebrow>{t('icpRadar.live.crossValidation')}</Eyebrow>
+            <p>{item.cross_validation?.notes || t('icpRadar.live.crossValidationEmpty')}</p>
+          </div>
+          <div>
+            <Eyebrow>{t('icpRadar.live.requirementEvaluation')}</Eyebrow>
+            <p>{item.requirement_evaluation?.explanation || item.rationale}</p>
+          </div>
+        </section>
+
+        <section className="qualification-review-panel">
+          <Eyebrow>{t('icpRadar.live.humanReview')}</Eyebrow>
+          <label className="field field-full">
+            <span>{t('icpRadar.live.review.comment')}</span>
+            <textarea
+              onChange={(event) => setComment(event.target.value)}
+              placeholder={t('icpRadar.live.review.commentPlaceholder')}
+              rows={3}
+              value={comment}
+            />
+          </label>
+          <label className="field">
+            <span>{t('icpRadar.live.review.correctedAssessment')}</span>
+            <select
+              onChange={(event) => setCorrectedAssessment(event.target.value as QualificationAssessmentStatus)}
+              value={correctedAssessment}
+            >
+              {(['matches', 'partially_matches', 'does_not_match'] as QualificationAssessmentStatus[]).map((value) => (
+                <option key={value} value={value}>{t(`icpRadar.live.assessment.${value}`)}</option>
+              ))}
+            </select>
+          </label>
+          <div className="qualification-review-actions">
+            <Button icon={<Check aria-hidden="true" />} variant="default" onClick={() => saveDecision('approved', null)}>
+              {t('icpRadar.live.review.approve')}
+            </Button>
+            <Button disabled={!canSaveCommentAction} icon={<X aria-hidden="true" />} variant="default" onClick={() => saveDecision('rejected', 'does_not_match')}>
+              {t('icpRadar.live.review.reject')}
+            </Button>
+            <Button disabled={!canSaveCommentAction} icon={<Save aria-hidden="true" />} variant="default" onClick={() => saveDecision('corrected', correctedAssessment)}>
+              {t('icpRadar.live.review.correct')}
+            </Button>
+            {decision && (
+              <Button icon={<RotateCcw aria-hidden="true" />} variant="quiet" onClick={() => onQualificationReviewChange(radarId, candidate.candidate_id, ruleId, null)}>
+                {t('icpRadar.live.review.reset')}
+              </Button>
+            )}
+          </div>
+        </section>
+      </div>
+    </details>
   );
 }
 
@@ -3151,6 +3401,48 @@ function loadSignalValidationOverlay(): SignalValidationOverlay {
   }
 }
 
+function loadQualificationReviewOverlay(): QualificationReviewOverlay {
+  try {
+    const raw = window.localStorage.getItem(qualificationReviewStorageKey);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .map(([key, value]) => [key, normalizeQualificationReviewDecision(value)])
+        .filter((entry): entry is [string, QualificationReviewDecision] => entry[1] !== null),
+    );
+  } catch {
+    window.localStorage.removeItem(qualificationReviewStorageKey);
+    return {};
+  }
+}
+
+function normalizeQualificationReviewDecision(value: unknown): QualificationReviewDecision | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const item = value as Partial<QualificationReviewDecision>;
+  if (item.status !== 'approved' && item.status !== 'rejected' && item.status !== 'corrected') {
+    return null;
+  }
+  const corrected = isQualificationAssessment(item.corrected_assessment) ? item.corrected_assessment : null;
+  return {
+    status: item.status,
+    corrected_assessment: corrected,
+    comment: String(item.comment ?? ''),
+    reviewed_at: String(item.reviewed_at ?? ''),
+  };
+}
+
+function isQualificationAssessment(value: unknown): value is QualificationAssessmentStatus {
+  return value === 'matches'
+    || value === 'partially_matches'
+    || value === 'does_not_match'
+    || value === 'unknown';
+}
+
 function normalizeSignalValidationDecision(value: unknown): SignalValidationDecision | null {
   if (!value || typeof value !== 'object') {
     return null;
@@ -3438,6 +3730,117 @@ function liveQualificationTone(status: LiveRadarQualificationResult['status']) {
     return 'unsurfaced';
   }
   return 'neutral';
+}
+
+function qualificationRuleId(item: LiveRadarQualificationResult) {
+  return item.rule_id || item.criterion_code;
+}
+
+function qualificationRuleText(item: LiveRadarQualificationResult) {
+  return item.rule_text_snapshot || item.criterion || item.criterion_code;
+}
+
+function effectiveQualificationAssessment(
+  item: LiveRadarQualificationResult,
+  decision: QualificationReviewDecision | null,
+): QualificationAssessmentStatus {
+  if (decision?.status === 'approved') {
+    return item.final_assessment || qualificationStatusToAssessment(item.status);
+  }
+  if (decision?.status === 'rejected') {
+    return 'does_not_match';
+  }
+  if (decision?.status === 'corrected' && decision.corrected_assessment) {
+    return decision.corrected_assessment;
+  }
+  return item.final_assessment || qualificationStatusToAssessment(item.status);
+}
+
+function qualificationStatusToAssessment(status: LiveRadarQualificationResult['status']): QualificationAssessmentStatus {
+  if (status === 'confirmed') {
+    return 'matches';
+  }
+  if (status === 'weak') {
+    return 'partially_matches';
+  }
+  if (status === 'rejected') {
+    return 'does_not_match';
+  }
+  return 'unknown';
+}
+
+function qualificationAssessmentTone(status: QualificationAssessmentStatus) {
+  if (status === 'matches') {
+    return 'ally';
+  }
+  if (status === 'does_not_match') {
+    return 'blocker';
+  }
+  if (status === 'partially_matches') {
+    return 'unsurfaced';
+  }
+  return 'neutral';
+}
+
+function qualificationDecisionTone(status: QualificationReviewDecision['status']) {
+  if (status === 'approved') {
+    return 'ally';
+  }
+  if (status === 'rejected') {
+    return 'blocker';
+  }
+  return 'unsurfaced';
+}
+
+function qualificationTrustTone(status: string) {
+  if (status === 'trusted' || status === 'cross_checked') {
+    return 'ally';
+  }
+  return 'unsurfaced';
+}
+
+function qualificationCrossValidationTone(status?: string) {
+  if (status === 'passed') {
+    return 'ally';
+  }
+  if (status === 'failed') {
+    return 'blocker';
+  }
+  if (status === 'weak') {
+    return 'unsurfaced';
+  }
+  return 'neutral';
+}
+
+function qualificationOperatorLabel(operator: string) {
+  if (operator === 'AND_NOT') {
+    return 'AND NOT';
+  }
+  if (operator === 'OR_NOT') {
+    return 'OR NOT';
+  }
+  return operator || 'AND';
+}
+
+function fallbackQualificationSourceUsages(
+  item: LiveRadarQualificationResult,
+  sourcesByRef: Map<string, LiveRadarSourceEvidence>,
+): QualificationSourceUsage[] {
+  return item.evidence_refs
+    .map((ref) => sourcesByRef.get(ref))
+    .filter((source): source is LiveRadarSourceEvidence => Boolean(source))
+    .map((source) => ({
+      source_ref: source.evidence_ref,
+      source_name: source.title,
+      source_origin: 'additional',
+      trust_policy: item.confidence === 'high' ? 'trusted' : 'hitl_required',
+      used_for: 'verification',
+      url: source.url,
+    }));
+}
+
+function qualificationReviewKey(radarId: string, candidateId: string, ruleId: string) {
+  return `${radarId}:${candidateId}:${ruleId}`;
 }
 
 function liveSignalTone(status: LiveRadarSignalResult['status']) {
