@@ -1393,11 +1393,12 @@ button {
 .icp-radar-table-live .icp-candidate-row {
   grid-template-columns:
     minmax(calc(var(--s-20) * 3), calc(var(--s-20) * 4))
-    var(--s-12)
-    var(--s-12)
-    calc(var(--s-20) + var(--s-4))
+    minmax(var(--s-12), var(--s-16))
     var(--s-16)
-    calc(var(--s-20) + var(--s-8))
+    var(--s-16)
+    var(--s-16)
+    var(--s-16)
+    var(--s-16)
     minmax(calc(var(--s-20) + var(--s-6)), 0.8fr);
 }
 
@@ -1447,6 +1448,83 @@ button {
   border-radius: var(--r-md);
   background: var(--surface-2);
   color: var(--fg2);
+}
+
+.icp-candidate-detail-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  padding: 0 var(--s-2) var(--s-2);
+  background: var(--bg);
+}
+
+.icp-candidate-detail-panel {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.canonical-detail-table,
+.canonical-journal-list {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+}
+
+.canonical-detail-record,
+.canonical-journal-row {
+  min-width: 0;
+  border-bottom: 1px solid var(--border-faint);
+  background: var(--surface);
+}
+
+.canonical-detail-record:last-child,
+.canonical-journal-row:last-child {
+  border-bottom: none;
+}
+
+.canonical-detail-record summary {
+  display: grid;
+  grid-template-columns: var(--s-12) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+  padding: var(--s-3);
+  cursor: pointer;
+}
+
+.canonical-detail-record summary strong,
+.canonical-detail-record summary span,
+.canonical-journal-row strong,
+.canonical-journal-row small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.canonical-detail-record > p,
+.canonical-detail-record > span {
+  display: grid;
+  gap: var(--s-3);
+  padding: 0 var(--s-3) var(--s-3) calc(var(--s-12) + var(--s-6));
+}
+
+.canonical-detail-record p,
+.canonical-journal-row small {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.canonical-journal-row {
+  display: grid;
+  grid-template-columns: var(--s-16) minmax(0, 1fr);
+  gap: var(--s-2) var(--s-3);
+  padding: var(--s-3);
+}
+
+.canonical-journal-row small {
+  grid-column: 2;
 }
 
 .icp-settings-grid {

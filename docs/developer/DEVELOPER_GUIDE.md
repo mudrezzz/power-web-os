@@ -207,7 +207,7 @@ frontend/public/demo/live_mini_icp_radar_run.json
 
 Live artifacts must never contain API keys, authorization headers, bearer tokens, or raw provider dumps. Model-supplied URLs are filtered by HTTP reachability before they can support candidates. If OpenRouter rejects the credentials or no usable sources are returned, the frontend should show the live radar empty state rather than fabricated candidates.
 
-Frontend rendering for live radar results must go through the same ICP Radar table-first shortlist pattern as fixture-backed radars. Treat `icp_radar_live_run` as a different data adapter, not as permission to create a separate live-only grid, side panel, or standalone detail surface.
+Frontend rendering for live radar results must go through the canonical ICP Radar UX contract. Treat `icp_radar_live_run` as a different data adapter, not as permission to create a separate live-only grid, side panel, table column set, preview, or detail surface. Runtime provider metadata belongs in the candidate `Journal` tab.
 
 Expected future domain objects:
 
@@ -337,7 +337,7 @@ Rules:
 - Import `ui-design-system/colors_and_type.css`.
 - Use `ui-design-system/app-prototype/AppShell.jsx` for product shell structure.
 - Use the relevant `ui-design-system/app-prototype/*Screen.jsx` file before implementing a screen.
-- Follow the frontend workspace UX ADR family, starting with `2026-06-12-frontend-workspace-ux-principles.md`, for bounded SPA behavior, table-first dense data, sticky identity, evidence-first drilldown, explicit settings state, local draft boundaries, i18n, and responsive constraints.
+- Follow the frontend workspace UX ADR family, starting with `2026-06-12-frontend-workspace-ux-principles.md`, for bounded SPA behavior, table-first dense data, sticky identity, evidence-first drilldown, explicit settings state, local draft boundaries, i18n, responsive constraints, and the canonical ICP Radar UX contract.
 - Use `lucide-react` for icons.
 - Keep UI copy sentence case, with uppercase only for mono eyebrow labels.
 - Add visible UI strings through `frontend/src/i18n.ts` and keep English/Russian resources synchronized.
@@ -365,11 +365,14 @@ Rules:
   - full candidate evidence/criteria work belongs on a separate candidate detail screen with breadcrumbs back to `ICP Radar`;
   - the candidate detail view keeps a compact sticky header so account identity remains visible while criteria scroll.
 - Apply that same table-preview-detail pattern to every ICP Radar shortlist source, including live/provider-backed radars:
-  - live run metadata may appear as a compact summary above the table;
-  - live candidates still scan in the same wide table with sticky identity;
-  - live preview expands inline and stays bounded;
-  - live detail opens as a separate in-shell detail view with breadcrumbs and sticky header;
-  - do not add provider-specific split grids or always-visible side detail panels.
+  - map each source into a canonical radar/candidate view model before rendering;
+  - use the canonical shortlist columns: company, total, fit, intent, trigger, tier, evidence, action;
+  - unsupported score slots render as `—`, not as a changed table shape;
+  - preview always has four blocks: summary, tier, qualification, signals;
+  - preview never renders source lists or runtime/provider metadata;
+  - detail always uses tabs: overview, qualification, signals, sources, journal;
+  - runtime provider metadata, queries, warnings, and structured trace render only in the journal tab;
+  - do not add provider-specific split grids, custom shortlist columns, custom previews, or always-visible side detail panels.
 - Treat candidate signal validation as table-first inside the detail view:
   - C1-C20 initially render as compact rows, not fully expanded evidence cards;
   - filter by signal validation status before drilling into detail;

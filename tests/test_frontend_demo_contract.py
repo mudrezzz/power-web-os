@@ -288,7 +288,6 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "EmptyShortlist",
         "shortlistTab",
         "settingsTab",
-        "readOnly",
         "radarOverrides",
         "power-web-os-icp-radar-config-overrides",
         "power-web-os-icp-radar-signal-validation",
@@ -308,15 +307,19 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "LiveRadarShortlistTable",
         "LiveRadarCandidatePreview",
         "LiveRadarCandidateDetailView",
+        "CandidateDetailTabs",
+        "FixtureRadarCandidateDetailView",
+        "canonicalPreview",
+        "canonicalDetail",
         "expandedLiveCandidateId",
         "detailLiveCandidateId",
-        "toir-quick-live",
-        "python -m power_web_os.demo run-live-mini-icp-radar --live",
-        "icpRadar.live.emptyTitle",
-        "icpRadar.live.runEyebrow",
-        "icpRadar.live.qualification",
-        "icpRadar.live.signals",
-        "icpRadar.live.evidence",
+        "CandidateDetailTab",
+            "toir-quick-live",
+            "python -m power_web_os.demo run-live-mini-icp-radar --live",
+            "icpRadar.live.emptyTitle",
+            "icpRadar.live.qualification",
+            "icpRadar.live.signals",
+            "icpRadar.live.evidence",
     ]:
         assert contract_value in screen
 
@@ -335,6 +338,7 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         assert table_first_value in screen or table_first_value in i18n
 
     assert "icp-radar-detail" not in screen
+    assert "t('icpRadar.readOnly')" not in screen
     assert "position: sticky" in css
     assert ".icp-sticky-cell" in css
     assert ".icp-candidate-preview" in css
@@ -455,8 +459,8 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "icpRadar.trigger",
         "icpRadar.total",
         "icpRadar.columns.tier",
-        "icpRadar.evidence",
         "icpRadar.criteria",
+        "icpRadar.canonicalDetail.sources",
         "icpRadar.previewEyebrow",
         "icpRadar.openDetails",
         "icpRadar.backToTable",
@@ -489,7 +493,6 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "icpRadar.settings.globalSearch",
         "icpRadar.live.emptyTitle",
         "icpRadar.live.runtimeOpenRouter",
-        "icpRadar.live.reviewRequired",
         "icpRadar.live.qualificationStatus",
         "icpRadar.live.signalStatus",
         "criteria",
@@ -530,11 +533,18 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".icp-radar-run-mode" in css
     assert ".icp-radar-header-meta-row" in css
     assert ".icp-radar-table-live" in css
+    assert "--s-14" not in css
+    assert ".icp-candidate-detail-tabs" in css
+    assert ".icp-candidate-detail-panel" in css
+    assert ".canonical-detail-table" in css
+    assert ".canonical-journal-list" in css
     assert ".live-radar-source-list" in css
     assert ".live-radar-layout" not in css
     assert ".live-radar-grid" not in css
     assert ".live-radar-table" not in css
     assert ".live-radar-detail" not in css
+    assert "live-radar-summary" not in screen
+    assert "live-radar-metadata" not in screen
     assert "LiveMiniRadarShortlist" not in screen
     assert "LiveRadarCandidateDetail(" not in screen
     assert ".icp-radar-header-badges" not in css
@@ -577,11 +587,68 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
 
     visual_smoke = Path("frontend/scripts/visual-smoke.mjs").read_text(encoding="utf-8")
     assert "live_mini_icp_radar_run.json" in visual_smoke
+    assert "captureFixtureRadarFlow" in visual_smoke
+    assert "icp-radar-preview" in visual_smoke
+    assert "icp-radar-detail" in visual_smoke
     assert "captureLiveRadarFlow" in visual_smoke
     assert "live-icp-radar-preview" in visual_smoke
     assert "live-icp-radar-detail" in visual_smoke
+    assert "live-icp-radar-journal" in visual_smoke
+    assert "Journal" in visual_smoke
     assert "assertNoSplitLiveLayout" in visual_smoke
     assert "assertNoPageHorizontalScroll" in visual_smoke
+
+    for canonical_key in [
+        "icpRadar.canonicalPreview.summary",
+        "icpRadar.canonicalPreview.tier",
+        "icpRadar.canonicalPreview.qualification",
+        "icpRadar.canonicalPreview.signals",
+        "icpRadar.radarStatus.draft",
+        "icpRadar.radarStatus.active",
+        "icpRadar.radarStatus.stopped",
+    ]:
+        assert canonical_key in screen or canonical_key in i18n
+    assert "icpRadar.canonicalDetail.tabs.${tab}" in screen
+    assert "const tabs: CandidateDetailTab[] = ['overview', 'qualification', 'signals', 'sources', 'journal']" in screen
+    for tab_label in [
+        "overview: 'Overview'",
+        "qualification: 'Qualification'",
+        "signals: 'Signals'",
+        "sources: 'Sources'",
+        "journal: 'Journal'",
+        "overview: 'Основная информация'",
+        "qualification: 'Квалификация'",
+        "signals: 'Сигналы'",
+        "sources: 'Источники'",
+        "journal: 'Журнал'",
+    ]:
+        assert tab_label in i18n
+
+    live_table_segment = screen.split("function LiveRadarShortlistTable", 1)[1].split("function LiveRadarCandidatePreview", 1)[0]
+    for column_key in [
+        "icpRadar.columns.company",
+        "icpRadar.columns.total",
+        "icpRadar.columns.fit",
+        "icpRadar.columns.intent",
+        "icpRadar.columns.trigger",
+        "icpRadar.columns.tier",
+        "icpRadar.columns.evidence",
+        "icpRadar.columns.action",
+    ]:
+        assert column_key in live_table_segment
+    assert "icpRadar.live.columns" not in live_table_segment
+
+    live_preview_segment = screen.split("function LiveRadarCandidatePreview", 1)[1].split("function LiveRadarCandidateDetailView", 1)[0]
+    assert "LiveEvidenceList" not in live_preview_segment
+    assert "icpRadar.live.reviewRequired" not in live_preview_segment
+    assert "candidate.qualification.slice(0, 5)" in live_preview_segment
+    assert "candidate.signals.slice(0, 5)" in live_preview_segment
+
+    live_detail_segment = screen.split("function LiveRadarCandidateDetailView", 1)[1].split("function LiveEvidenceList", 1)[0]
+    assert "CandidateDetailTabs" in live_detail_segment
+    assert "activeTab === 'journal'" in live_detail_segment
+    assert "artifact.run_metadata.model" in live_detail_segment
+    assert "artifact.run_metadata.query_count" in live_detail_segment
 
     for ru_label in [
         "Соответствие",

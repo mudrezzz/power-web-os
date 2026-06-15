@@ -54,6 +54,8 @@ import type {
 } from '../types';
 
 type RadarDetailTab = 'shortlist' | 'settings';
+type CandidateDetailTab = 'overview' | 'qualification' | 'signals' | 'sources' | 'journal';
+type RadarOperationalStatus = 'draft' | 'active' | 'stopped';
 
 const radarConfigStorageKey = 'power-web-os-icp-radar-config-overrides';
 const signalValidationStorageKey = 'power-web-os-icp-radar-signal-validation';
@@ -80,6 +82,7 @@ export function ICPRadarScreen({
   const [detailCandidateId, setDetailCandidateId] = useState<string | null>(null);
   const [expandedLiveCandidateId, setExpandedLiveCandidateId] = useState<string | null>(null);
   const [detailLiveCandidateId, setDetailLiveCandidateId] = useState<string | null>(null);
+  const [candidateDetailTab, setCandidateDetailTab] = useState<CandidateDetailTab>('overview');
   const [signalValidation, setSignalValidation] = useState<SignalValidationOverlay>(() => loadSignalValidationOverlay());
   const [radarOverrides, setRadarOverrides] = useState<Record<string, RadarConfigOverride>>(() => loadRadarConfigOverrides());
   const mergedRadars = useMemo(() => mergeRadarCatalog(catalog, radarOverrides), [catalog, radarOverrides]);
@@ -132,6 +135,7 @@ export function ICPRadarScreen({
   useEffect(() => {
     if (detailCandidateId || detailLiveCandidateId) {
       document.querySelector('.workspace-body')?.scrollTo({ top: 0 });
+      setCandidateDetailTab('overview');
     }
   }, [detailCandidateId, detailLiveCandidateId]);
 
@@ -322,97 +326,31 @@ export function ICPRadarScreen({
 
   if (detailCandidate && selectedRadarArtifact && detailValidatedScore) {
     return (
-      <section className="screen icp-radar-screen icp-detail-screen" aria-label={t('icpRadar.aria')}>
-        <div className="icp-detail-sticky-header">
-          <div className="icp-detail-breadcrumbs" aria-label={t('icpRadar.breadcrumbs')}>
-            <Button icon={<ArrowLeft aria-hidden="true" />} variant="quiet" onClick={() => setDetailCandidateId(null)}>
-              {t('icpRadar.backToTable')}
-            </Button>
-            <span>{t('icpRadar.aria')}</span>
-            <ChevronRight aria-hidden="true" />
-            <span>{selectedRadar.name}</span>
-            <ChevronRight aria-hidden="true" />
-            <strong>{detailCandidate.legal_name}</strong>
-          </div>
-
-          <header className="icp-radar-header icp-detail-header">
-            <span className="section-icon">
-              <Target aria-hidden="true" />
-            </span>
-            <div>
-              <Eyebrow>{t('icpRadar.detailEyebrow')}</Eyebrow>
-              <h1>{detailCandidate.legal_name}</h1>
-              <p>{detailCandidate.main_signal}</p>
-            </div>
-            <div className="icp-profile-meta">
-              <Badge tone={detailValidatedScore.effective_score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{detailValidatedScore.effective_score.tier}</Badge>
-              <Mono>#{detailCandidate.rank}</Mono>
-            </div>
-          </header>
-        </div>
-
-        <div className="icp-candidate-detail-grid">
-          <Card>
-            <div className="icp-detail-card">
-              <CandidateScoreGrid candidate={detailCandidate} validatedScore={detailValidatedScore} />
-              <CompanyContext candidate={detailCandidate} />
-              <section className="icp-detail-section">
-                <Eyebrow>{t('icpRadar.signalSummary')}</Eyebrow>
-                <p>{detailCandidate.signal_summary || detailCandidate.comment}</p>
-              </section>
-              <section className="icp-detail-section">
-                <Eyebrow>{t('icpRadar.signalValidation')}</Eyebrow>
-                <ValidationSummary score={detailValidatedScore} />
-                <Button
-                  icon={<RotateCcw aria-hidden="true" />}
-                  variant="default"
-                  onClick={() => resetCandidateSignalValidation(selectedRadar.radar_id, detailCandidate.account_id)}
-                >
-                  {t('icpRadar.resetLocalValidation')}
-                </Button>
-              </section>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="icp-detail-card">
-              <section className="icp-detail-section">
-                <Eyebrow>{t('icpRadar.evidence')}</Eyebrow>
-                <EvidenceList candidate={detailCandidate} sourcesById={sourcesById} />
-              </section>
-              <section className="icp-detail-section">
-                <Eyebrow>{t('icpRadar.sourceUrls')}</Eyebrow>
-                <SourceUrlList candidate={detailCandidate} />
-              </section>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="icp-detail-card">
-              <section className="icp-detail-section">
-                <Eyebrow>{t('icpRadar.criteria')}</Eyebrow>
-                <CriteriaBreakdown
-                  artifact={selectedRadarArtifact}
-                  candidate={detailCandidate}
-                  radarId={selectedRadar.radar_id}
-                  signalValidation={signalValidation}
-                  validatedScore={detailValidatedScore}
-                  onDecisionChange={saveSignalValidationDecision}
-                />
-              </section>
-            </div>
-          </Card>
-        </div>
-      </section>
+      <FixtureRadarCandidateDetailView
+        activeTab={candidateDetailTab}
+        artifact={selectedRadarArtifact}
+        candidate={detailCandidate}
+        onBack={() => setDetailCandidateId(null)}
+        onDecisionChange={saveSignalValidationDecision}
+        onResetValidation={() => resetCandidateSignalValidation(selectedRadar.radar_id, detailCandidate.account_id)}
+        onTabChange={setCandidateDetailTab}
+        radarId={selectedRadar.radar_id}
+        radarName={selectedRadar.name}
+        signalValidation={signalValidation}
+        sourcesById={sourcesById}
+        validatedScore={detailValidatedScore}
+      />
     );
   }
 
   if (detailLiveCandidate && selectedLiveRunArtifact && selectedRadar) {
     return (
       <LiveRadarCandidateDetailView
+        activeTab={candidateDetailTab}
         artifact={selectedLiveRunArtifact}
         candidate={detailLiveCandidate}
         onBack={() => setDetailLiveCandidateId(null)}
+        onTabChange={setCandidateDetailTab}
         radarName={selectedRadar.name}
       />
     );
@@ -462,7 +400,6 @@ export function ICPRadarScreen({
           onToggleCandidate={(candidateId) => setExpandedCandidateId(
             expandedCandidateId === candidateId ? null : candidateId,
           )}
-          sourcesById={sourcesById}
           radarId={selectedRadar.radar_id}
           signalValidation={signalValidation}
         />
@@ -630,7 +567,7 @@ function RadarDetailHeader({
       : t('icpRadar.emptyShortlistSummary', { product: radar.profile.product })
   );
   const editingHeader = activeTab === 'settings' && editingBlock === 'overview';
-  const effectiveHeaderStatus = headerDraft.metadata.status || radar.status;
+  const effectiveHeaderStatus = radarOperationalStatus(headerDraft.metadata.status || radar.status);
   const statusTone = effectiveHeaderStatus === 'active' ? 'ally' : 'neutral';
   return (
     <div className="icp-radar-selected-shell">
@@ -657,9 +594,6 @@ function RadarDetailHeader({
               <div className="icp-radar-header-meta-row">
                 <Badge tone={statusTone}>{t(radarStatusKey(effectiveHeaderStatus))}</Badge>
                 {isLocalDraft && <Badge tone="unsurfaced">{t('icpRadar.localDraft')}</Badge>}
-                <Badge tone={overrideType ? 'unsurfaced' : 'neutral'}>
-                  {overrideType ? t('icpRadar.localDraft') : t('icpRadar.readOnly')}
-                </Badge>
                 {dirty && <Badge tone="unsurfaced">{t('icpRadar.unsavedChanges')}</Badge>}
                 <span>{t('icpRadar.cardFields.owner')}: {headerDraft.metadata.owner || radar.owner}</span>
               </div>
@@ -729,7 +663,6 @@ function CandidateTable({
   onToggleCandidate,
   radarId,
   signalValidation,
-  sourcesById,
 }: {
   artifact: ICPRadarArtifact;
   expandedCandidateId: string | null;
@@ -737,7 +670,6 @@ function CandidateTable({
   onToggleCandidate: (candidateId: string) => void;
   radarId: string;
   signalValidation: SignalValidationOverlay;
-  sourcesById: Map<string, SourceDefinition>;
 }) {
   const { t } = useTranslation();
   const candidates = useMemo(() => validatedCandidatesForArtifact(artifact, radarId, signalValidation), [artifact, radarId, signalValidation]);
@@ -797,7 +729,6 @@ function CandidateTable({
                     artifact={artifact}
                     candidate={candidate}
                     onOpenDetails={() => onOpenDetails(candidate.account_id)}
-                    sourcesById={sourcesById}
                   />
                 )}
               </div>
@@ -836,6 +767,164 @@ function EmptyShortlist({
   );
 }
 
+function FixtureRadarCandidateDetailView({
+  activeTab,
+  artifact,
+  candidate,
+  onBack,
+  onDecisionChange,
+  onResetValidation,
+  onTabChange,
+  radarId,
+  radarName,
+  signalValidation,
+  sourcesById,
+  validatedScore,
+}: {
+  activeTab: CandidateDetailTab;
+  artifact: ICPRadarArtifact;
+  candidate: ICPRadarCandidate;
+  onBack: () => void;
+  onDecisionChange: (decision: SignalValidationDecision) => void;
+  onResetValidation: () => void;
+  onTabChange: (tab: CandidateDetailTab) => void;
+  radarId: string;
+  radarName: string;
+  signalValidation: SignalValidationOverlay;
+  sourcesById: Map<string, SourceDefinition>;
+  validatedScore: ValidatedCandidateScore;
+}) {
+  const { t } = useTranslation();
+  return (
+    <section className="screen icp-radar-screen icp-detail-screen" aria-label={t('icpRadar.aria')}>
+      <div className="icp-detail-sticky-header">
+        <div className="icp-detail-breadcrumbs" aria-label={t('icpRadar.breadcrumbs')}>
+          <Button icon={<ArrowLeft aria-hidden="true" />} variant="quiet" onClick={onBack}>
+            {t('icpRadar.backToTable')}
+          </Button>
+          <span>{t('icpRadar.aria')}</span>
+          <ChevronRight aria-hidden="true" />
+          <span>{radarName}</span>
+          <ChevronRight aria-hidden="true" />
+          <strong>{candidate.legal_name}</strong>
+        </div>
+
+        <header className="icp-radar-header icp-detail-header">
+          <span className="section-icon">
+            <Target aria-hidden="true" />
+          </span>
+          <div>
+            <Eyebrow>{t('icpRadar.detailEyebrow')}</Eyebrow>
+            <h1>{candidate.legal_name}</h1>
+            <p>{candidate.main_signal}</p>
+          </div>
+          <div className="icp-profile-meta">
+            <Badge tone={validatedScore.effective_score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{validatedScore.effective_score.tier}</Badge>
+            <Mono>{t('icpRadar.total')} {validatedScore.effective_score.total_score}</Mono>
+          </div>
+        </header>
+        <CandidateDetailTabs activeTab={activeTab} onTabChange={onTabChange} />
+      </div>
+
+      <div className="icp-candidate-detail-panel">
+        {activeTab === 'overview' && (
+          <Card>
+            <CandidateScoreGrid candidate={candidate} validatedScore={validatedScore} />
+            <CompanyContext candidate={candidate} />
+            <section className="icp-detail-section">
+              <Eyebrow>{t('icpRadar.canonicalDetail.mainInsight')}</Eyebrow>
+              <p>{candidate.signal_summary || candidate.comment || candidate.main_signal}</p>
+            </section>
+            <section className="icp-detail-section">
+              <Eyebrow>{t('icpRadar.signalValidation')}</Eyebrow>
+              <ValidationSummary score={validatedScore} />
+              <Button icon={<RotateCcw aria-hidden="true" />} variant="default" onClick={onResetValidation}>
+                {t('icpRadar.resetLocalValidation')}
+              </Button>
+            </section>
+          </Card>
+        )}
+
+        {activeTab === 'qualification' && (
+          <Card>
+            <section className="icp-detail-section">
+              <Eyebrow>{t('icpRadar.canonicalDetail.qualification')}</Eyebrow>
+              <div className="canonical-detail-table">
+                {topCriteriaByCodes(artifact, candidate, fitSignalCodes, 10).map(({ criterion, value }) => (
+                  <details className="canonical-detail-record" key={criterion.code}>
+                    <summary>
+                      <Mono>{criterion.code}</Mono>
+                      <strong>{criterion.name}</strong>
+                      <Mono>{value}</Mono>
+                    </summary>
+                    <p>{criterion.description}</p>
+                    {candidate.criteria_evidence[criterion.code]?.facts.slice(0, 3).map((fact) => (
+                      <div className="canonical-journal-row" key={`${criterion.code}-${fact.evidence_ref}`}>
+                        <Mono>{fact.evidence_ref}</Mono>
+                        <strong>{fact.fact}</strong>
+                        <small>{fact.why_it_matters}</small>
+                      </div>
+                    ))}
+                  </details>
+                ))}
+              </div>
+            </section>
+          </Card>
+        )}
+
+        {activeTab === 'signals' && (
+          <Card>
+            <section className="icp-detail-section">
+              <Eyebrow>{t('icpRadar.canonicalDetail.signals')}</Eyebrow>
+              <CriteriaBreakdown
+                artifact={artifact}
+                candidate={candidate}
+                radarId={radarId}
+                signalValidation={signalValidation}
+                validatedScore={validatedScore}
+                onDecisionChange={onDecisionChange}
+              />
+            </section>
+          </Card>
+        )}
+
+        {activeTab === 'sources' && (
+          <Card>
+            <section className="icp-detail-section">
+              <Eyebrow>{t('icpRadar.canonicalDetail.sources')}</Eyebrow>
+              <EvidenceList candidate={candidate} sourcesById={sourcesById} />
+              <SourceUrlList candidate={candidate} />
+            </section>
+          </Card>
+        )}
+
+        {activeTab === 'journal' && (
+          <Card>
+            <section className="icp-detail-section">
+              <Eyebrow>{t('icpRadar.canonicalDetail.journal')}</Eyebrow>
+              <dl className="icp-definition-list">
+                <div>
+                  <dt>{t('icpRadar.live.runtime')}</dt>
+                  <dd>{artifact.workflow_metadata.workflow_name}</dd>
+                </div>
+                <div>
+                  <dt>{t('icpRadar.live.sources')}</dt>
+                  <dd>{artifact.workflow_metadata.source_count}</dd>
+                </div>
+                <div>
+                  <dt>{t('icpRadar.criteria')}</dt>
+                  <dd>{artifact.workflow_metadata.criteria_count}</dd>
+                </div>
+              </dl>
+              <p>{t('icpRadar.canonicalDetail.fixtureJournalCopy')}</p>
+            </section>
+          </Card>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function LiveRadarShortlistTable({
   artifact,
   expandedCandidateId,
@@ -850,9 +939,6 @@ function LiveRadarShortlistTable({
   onToggleCandidate: (candidateId: string) => void;
 }) {
   const { t } = useTranslation();
-  const sourcesByRef = useMemo(() => {
-    return new Map((artifact?.sources ?? []).map((source) => [source.evidence_ref, source]));
-  }, [artifact]);
 
   if (!artifact) {
     return (
@@ -877,23 +963,6 @@ function LiveRadarShortlistTable({
 
   return (
     <>
-      <Card>
-        <div className="live-radar-summary">
-          <div>
-            <Eyebrow>{t('icpRadar.live.runEyebrow')}</Eyebrow>
-            <h2>{artifact.radar.name}</h2>
-            <p>{artifact.radar.description}</p>
-          </div>
-          <dl className="live-radar-metadata">
-            <Metric label={t('icpRadar.live.runtime')} value={t(liveRuntimeKey(artifact.run_metadata.runtime))} />
-            <Metric label={t('icpRadar.live.model')} value={artifact.run_metadata.model ?? t('icpRadar.unknown')} />
-            <Metric label={t('icpRadar.live.webMode')} value={artifact.run_metadata.web_mode ?? t('icpRadar.unknown')} />
-            <Metric label={t('icpRadar.live.queries')} value={String(artifact.run_metadata.query_count)} />
-            <Metric label={t('icpRadar.live.sources')} value={String(artifact.sources.length)} />
-          </dl>
-        </div>
-      </Card>
-
       {artifact.candidates.length === 0 ? (
         <Card>
           <div className="icp-empty-shortlist">
@@ -912,12 +981,13 @@ function LiveRadarShortlistTable({
           <div className="icp-radar-table-wrap" aria-label={t('icpRadar.live.tableAria')}>
             <div className="icp-radar-table icp-radar-table-live">
               <div className="icp-radar-table-head">
-                <span className="icp-sticky-cell">{t('icpRadar.live.columns.company')}</span>
-                <span>{t('icpRadar.live.columns.fit')}</span>
-                <span>{t('icpRadar.live.columns.intent')}</span>
-                <span>{t('icpRadar.live.columns.tier')}</span>
-                <span>{t('icpRadar.live.columns.evidence')}</span>
-                <span>{t('icpRadar.live.columns.review')}</span>
+                <span className="icp-sticky-cell">{t('icpRadar.columns.company')}</span>
+                <span>{t('icpRadar.columns.total')}</span>
+                <span>{t('icpRadar.columns.fit')}</span>
+                <span>{t('icpRadar.columns.intent')}</span>
+                <span>{t('icpRadar.columns.trigger')}</span>
+                <span>{t('icpRadar.columns.tier')}</span>
+                <span>{t('icpRadar.columns.evidence')}</span>
                 <span>{t('icpRadar.columns.action')}</span>
               </div>
               {artifact.candidates.map((candidate, index) => {
@@ -937,15 +1007,21 @@ function LiveRadarShortlistTable({
                           <small>{candidate.description || t('icpRadar.live.noDescription')}</small>
                         </span>
                       </span>
+                      <span className="score-cell">
+                        <span className="score-track">
+                          <span className="score-fill" style={{ width: `${Math.min(100, liveTotalScore(candidate) * 10)}%` }} />
+                        </span>
+                        <Mono>{liveTotalScore(candidate)}</Mono>
+                      </span>
                       <Mono>{candidate.score.fit_score}</Mono>
                       <Mono>{candidate.score.intent_score}</Mono>
+                      <Mono>{t('icpRadar.notAvailable')}</Mono>
                       <span>
                         <Badge tone={candidate.score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{candidate.score.tier}</Badge>
                       </span>
                       <Mono>{candidate.evidence_refs.length}</Mono>
-                      <span>{candidate.review_flags.length ? t('icpRadar.live.needsReview') : t('accounts.ready')}</span>
                       <span className="row-action">
-                        <span className="planned-action">{t('icpRadar.live.reviewRequiredShort')}</span>
+                        <span className="planned-action">{t('icpRadar.takeIntoWorkPlanned')}</span>
                         {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
                       </span>
                     </button>
@@ -953,7 +1029,6 @@ function LiveRadarShortlistTable({
                       <LiveRadarCandidatePreview
                         candidate={candidate}
                         onOpenDetails={() => onOpenDetails(candidate.candidate_id)}
-                        sourcesByRef={sourcesByRef}
                       />
                     )}
                   </div>
@@ -970,11 +1045,9 @@ function LiveRadarShortlistTable({
 function LiveRadarCandidatePreview({
   candidate,
   onOpenDetails,
-  sourcesByRef,
 }: {
   candidate: LiveRadarCandidate;
   onOpenDetails: () => void;
-  sourcesByRef: Map<string, LiveRadarSourceEvidence>;
 }) {
   const { t } = useTranslation();
   const topSignals = candidate.signals.filter((item) => item.status !== 'not_observed').slice(0, 5);
@@ -986,36 +1059,38 @@ function LiveRadarCandidatePreview({
             <Eyebrow>{t('icpRadar.previewEyebrow')}</Eyebrow>
             <strong>{candidate.legal_name}</strong>
           </div>
-          <Badge tone="unsurfaced">{t('icpRadar.live.reviewRequired')}</Badge>
         </header>
         <div className="icp-preview-main">
           <section className="icp-preview-section">
-            <Eyebrow>{t('icpRadar.live.summary')}</Eyebrow>
+            <Eyebrow>{t('icpRadar.canonicalPreview.summary')}</Eyebrow>
             <p>{candidate.description || t('icpRadar.live.noDescription')}</p>
           </section>
           <section className="icp-preview-section">
-            <Eyebrow>{t('icpRadar.live.qualification')}</Eyebrow>
+            <Eyebrow>{t('icpRadar.canonicalPreview.tier')}</Eyebrow>
+            <p>{t('icpRadar.live.tierExplanation', {
+              fit: candidate.score.fit_score,
+              intent: candidate.score.intent_score,
+              tier: candidate.score.tier,
+            })}</p>
+          </section>
+        </div>
+        <div className="icp-preview-lists">
+          <section className="icp-preview-section">
+            <Eyebrow>{t('icpRadar.canonicalPreview.qualification')}</Eyebrow>
             <div className="criteria-list criteria-list-compact">
-              {candidate.qualification.slice(0, 3).map((item) => (
+              {candidate.qualification.slice(0, 5).map((item) => (
                 <div className="criterion-row" key={item.criterion_code}>
                   <Mono>{item.criterion_code}</Mono>
                   <span>
                     <strong>{item.criterion}</strong>
-                    <small>{item.rationale}</small>
                   </span>
                   <Badge tone={liveQualificationTone(item.status)}>{t(`icpRadar.live.qualificationStatus.${item.status}`)}</Badge>
                 </div>
               ))}
             </div>
           </section>
-        </div>
-        <div className="icp-preview-lists">
           <section className="icp-preview-section">
-            <Eyebrow>{t('icpRadar.live.evidence')}</Eyebrow>
-            <LiveEvidenceList refs={candidate.evidence_refs.slice(0, 5)} sourcesByRef={sourcesByRef} compact />
-          </section>
-          <section className="icp-preview-section">
-            <Eyebrow>{t('icpRadar.live.signals')}</Eyebrow>
+            <Eyebrow>{t('icpRadar.canonicalPreview.signals')}</Eyebrow>
             <div className="criteria-list criteria-list-compact">
               {(topSignals.length ? topSignals : candidate.signals.slice(0, 5)).map((item) => (
                 <div className="criterion-row" key={item.signal_code}>
@@ -1041,18 +1116,23 @@ function LiveRadarCandidatePreview({
 }
 
 function LiveRadarCandidateDetailView({
+  activeTab,
   artifact,
   candidate,
   onBack,
+  onTabChange,
   radarName,
 }: {
+  activeTab: CandidateDetailTab;
   artifact: LiveICPRadarRunArtifact;
   candidate: LiveRadarCandidate;
   onBack: () => void;
+  onTabChange: (tab: CandidateDetailTab) => void;
   radarName: string;
 }) {
   const { t } = useTranslation();
   const sourcesByRef = useMemo(() => new Map(artifact.sources.map((source) => [source.evidence_ref, source])), [artifact.sources]);
+  const usedSources = candidate.evidence_refs.map((ref) => sourcesByRef.get(ref)).filter((source): source is LiveRadarSourceEvidence => Boolean(source));
   return (
     <section className="screen icp-radar-screen icp-detail-screen" aria-label={t('icpRadar.aria')}>
       <div className="icp-detail-sticky-header">
@@ -1078,21 +1158,122 @@ function LiveRadarCandidateDetailView({
           </div>
           <div className="icp-profile-meta">
             <Badge tone={candidate.score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{candidate.score.tier}</Badge>
-            <Badge tone="unsurfaced">{t('icpRadar.live.reviewRequired')}</Badge>
+            <Mono>{t('icpRadar.fit')} {candidate.score.fit_score}</Mono>
+            <Mono>{t('icpRadar.intent')} {candidate.score.intent_score}</Mono>
           </div>
         </header>
+        <CandidateDetailTabs activeTab={activeTab} onTabChange={onTabChange} />
       </div>
 
-      <div className="icp-candidate-detail-grid">
-        <Card>
-          <div className="icp-detail-card">
+      <div className="icp-candidate-detail-panel">
+        {activeTab === 'overview' && (
+          <Card>
             <div className="icp-score-grid">
+              <ScoreBox label={t('icpRadar.total')} value={liveTotalScore(candidate)} />
               <ScoreBox label={t('icpRadar.fit')} value={candidate.score.fit_score} />
               <ScoreBox label={t('icpRadar.intent')} value={candidate.score.intent_score} />
               <ScoreBox label={t('icpRadar.live.sources')} value={candidate.evidence_refs.length} />
             </div>
             <section className="icp-detail-section">
-              <Eyebrow>{t('icpRadar.live.runEyebrow')}</Eyebrow>
+              <Eyebrow>{t('icpRadar.canonicalDetail.mainInsight')}</Eyebrow>
+              <p>{candidate.description || t('icpRadar.live.noDescription')}</p>
+            </section>
+            <section className="icp-detail-section">
+              <Eyebrow>{t('icpRadar.companyContext')}</Eyebrow>
+              <dl className="icp-definition-list">
+                <div>
+                  <dt>{t('icpRadar.canonicalDetail.legalName')}</dt>
+                  <dd>{candidate.legal_name}</dd>
+                </div>
+                <div>
+                  <dt>{t('icpRadar.inn')}</dt>
+                  <dd>{t('icpRadar.unknown')}</dd>
+                </div>
+                <div>
+                  <dt>{t('icpRadar.revenue')}</dt>
+                  <dd>{t('icpRadar.unknown')}</dd>
+                </div>
+                <div>
+                  <dt>{t('icpRadar.canonicalDetail.affiliation')}</dt>
+                  <dd>{candidate.qualification.find((item) => item.criterion_code === 'Q1')?.status === 'confirmed'
+                    ? t('icpRadar.live.siburAffiliation')
+                    : t('icpRadar.unknown')}</dd>
+                </div>
+                <div>
+                  <dt>{t('icpRadar.canonicalDetail.foundAt')}</dt>
+                  <dd>{artifact.run_metadata.run_at}</dd>
+                </div>
+              </dl>
+            </section>
+          </Card>
+        )}
+
+        {activeTab === 'qualification' && (
+          <Card>
+            <section className="icp-detail-section">
+              <Eyebrow>{t('icpRadar.live.qualification')}</Eyebrow>
+              <div className="canonical-detail-table">
+                {candidate.qualification.map((item) => (
+                  <details className="canonical-detail-record" key={item.criterion_code}>
+                    <summary>
+                      <Mono>{item.criterion_code}</Mono>
+                      <strong>{item.criterion}</strong>
+                      <Badge tone={liveQualificationTone(item.status)}>
+                        {t(`icpRadar.live.qualificationStatus.${item.status}`)}
+                      </Badge>
+                    </summary>
+                    <span>
+                      <p>{item.rationale}</p>
+                      <LiveEvidenceList refs={item.evidence_refs} sourcesByRef={sourcesByRef} compact />
+                    </span>
+                  </details>
+                ))}
+              </div>
+            </section>
+          </Card>
+        )}
+
+        {activeTab === 'signals' && (
+          <Card>
+            <section className="icp-detail-section">
+              <Eyebrow>{t('icpRadar.live.signals')}</Eyebrow>
+              <div className="canonical-detail-table">
+                {candidate.signals.map((item) => (
+                  <details className="canonical-detail-record" key={item.signal_code}>
+                    <summary>
+                      <Mono>{item.signal_code}</Mono>
+                      <strong>{item.signal}</strong>
+                      <span className="live-radar-score">
+                        <Mono>{item.score}</Mono>
+                        <Badge tone={liveSignalTone(item.status)}>
+                          {t(`icpRadar.live.signalStatus.${item.status}`)}
+                        </Badge>
+                      </span>
+                    </summary>
+                    <span>
+                      <p>{item.summary}</p>
+                      <LiveEvidenceList refs={item.evidence_refs} sourcesByRef={sourcesByRef} compact />
+                    </span>
+                  </details>
+                ))}
+              </div>
+            </section>
+          </Card>
+        )}
+
+        {activeTab === 'sources' && (
+          <Card>
+            <section className="icp-detail-section">
+              <Eyebrow>{t('icpRadar.live.evidence')}</Eyebrow>
+              <LiveSourceSummary sources={usedSources} />
+            </section>
+          </Card>
+        )}
+
+        {activeTab === 'journal' && (
+          <Card>
+            <section className="icp-detail-section">
+              <Eyebrow>{t('icpRadar.canonicalDetail.journal')}</Eyebrow>
               <dl className="icp-definition-list">
                 <div>
                   <dt>{t('icpRadar.live.runtime')}</dt>
@@ -1106,76 +1287,38 @@ function LiveRadarCandidateDetailView({
                   <dt>{t('icpRadar.live.webMode')}</dt>
                   <dd>{artifact.run_metadata.web_mode ?? t('icpRadar.unknown')}</dd>
                 </div>
+                <div>
+                  <dt>{t('icpRadar.live.queries')}</dt>
+                  <dd>{artifact.run_metadata.query_count}</dd>
+                </div>
+                <div>
+                  <dt>{t('icpRadar.live.sources')}</dt>
+                  <dd>{artifact.run_metadata.source_count}</dd>
+                </div>
+                <div>
+                  <dt>{t('icpRadar.canonicalDetail.runAt')}</dt>
+                  <dd>{artifact.run_metadata.run_at}</dd>
+                </div>
               </dl>
-            </section>
-            {candidate.review_flags.length > 0 && (
-              <section className="icp-detail-section">
-                <Eyebrow>{t('icpRadar.live.reviewFlags')}</Eyebrow>
+              <div className="canonical-journal-list">
+                {artifact.search_plan.queries.map((query) => (
+                  <div className="canonical-journal-row" key={query.query_id}>
+                    <Mono>{query.query_id}</Mono>
+                    <strong>{query.query}</strong>
+                    <small>{query.purpose}</small>
+                  </div>
+                ))}
+              </div>
+              {candidate.review_flags.length > 0 && (
                 <div className="badge-list">
                   {candidate.review_flags.map((flag) => (
                     <Badge key={flag} tone="unsurfaced">{flag}</Badge>
                   ))}
                 </div>
-              </section>
-            )}
-          </div>
-        </Card>
-
-        <Card>
-          <div className="icp-detail-card">
-            <section className="icp-detail-section">
-              <Eyebrow>{t('icpRadar.live.qualification')}</Eyebrow>
-              <div className="live-radar-fact-list">
-                {candidate.qualification.map((item) => (
-                  <div className="live-radar-fact" key={item.criterion_code}>
-                    <span>
-                      <Mono>{item.criterion_code}</Mono>
-                      <strong>{item.criterion}</strong>
-                      <small>{item.rationale}</small>
-                    </span>
-                    <Badge tone={liveQualificationTone(item.status)}>
-                      {t(`icpRadar.live.qualificationStatus.${item.status}`)}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+              )}
             </section>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="icp-detail-card">
-            <section className="icp-detail-section">
-              <Eyebrow>{t('icpRadar.live.signals')}</Eyebrow>
-              <div className="live-radar-fact-list">
-                {candidate.signals.map((item) => (
-                  <div className="live-radar-fact" key={item.signal_code}>
-                    <span>
-                      <Mono>{item.signal_code}</Mono>
-                      <strong>{item.signal}</strong>
-                      <small>{item.summary}</small>
-                    </span>
-                    <span className="live-radar-score">
-                      <Mono>{item.score}</Mono>
-                      <Badge tone={liveSignalTone(item.status)}>
-                        {t(`icpRadar.live.signalStatus.${item.status}`)}
-                      </Badge>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="icp-detail-card">
-            <section className="icp-detail-section">
-              <Eyebrow>{t('icpRadar.live.evidence')}</Eyebrow>
-              <LiveEvidenceList refs={candidate.evidence_refs} sourcesByRef={sourcesByRef} />
-            </section>
-          </div>
-        </Card>
+          </Card>
+        )}
       </div>
     </section>
   );
@@ -1205,6 +1348,42 @@ function LiveEvidenceList({
           </a>
         );
       })}
+    </div>
+  );
+}
+
+function LiveSourceSummary({ sources }: { sources: LiveRadarSourceEvidence[] }) {
+  const { t } = useTranslation();
+  if (!sources.length) {
+    return <p>{t('icpRadar.unknown')}</p>;
+  }
+  return (
+    <div className="source-table-wrap">
+      <table className="source-table">
+        <thead>
+          <tr>
+            <th>{t('icpRadar.settings.sourceNumber')}</th>
+            <th>{t('icpRadar.settings.sourceLabel')}</th>
+            <th>{t('icpRadar.settings.sourceType')}</th>
+            <th>{t('icpRadar.settings.sourceReference')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sources.map((source, index) => (
+            <tr key={source.evidence_ref}>
+              <td><Mono>{index + 1}</Mono></td>
+              <td>
+                <strong>{source.title}</strong>
+                <small>{source.snippet}</small>
+              </td>
+              <td>{source.source_type}</td>
+              <td>
+                <a href={source.url} rel="noreferrer" target="_blank">{source.url}</a>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -2227,19 +2406,43 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function CandidateDetailTabs({ activeTab, onTabChange }: { activeTab: CandidateDetailTab; onTabChange: (tab: CandidateDetailTab) => void }) {
+  const { t } = useTranslation();
+  const tabs: CandidateDetailTab[] = ['overview', 'qualification', 'signals', 'sources', 'journal'];
+  return (
+    <div className="icp-candidate-detail-tabs" aria-label={t('icpRadar.canonicalDetail.tabsAria')}>
+      {tabs.map((tab) => (
+        <button
+          aria-pressed={activeTab === tab}
+          className={`criteria-chip${activeTab === tab ? ' criteria-chip-active' : ''}`}
+          key={tab}
+          type="button"
+          onClick={() => onTabChange(tab)}
+        >
+          {t(`icpRadar.canonicalDetail.tabs.${tab}`)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function CandidatePreview({
   artifact,
   candidate,
   onOpenDetails,
-  sourcesById,
 }: {
   artifact: ICPRadarArtifact;
   candidate: ICPRadarCandidate;
   onOpenDetails: () => void;
-  sourcesById: Map<string, SourceDefinition>;
 }) {
   const { t } = useTranslation();
-  const criteria = topCriteria(artifact, candidate, 5);
+  const qualificationRows = topCriteriaByCodes(artifact, candidate, fitSignalCodes, 5);
+  const signalRows = topCriteriaByCodes(
+    artifact,
+    candidate,
+    [...intentSignalCodes, ...triggerSignalCodes],
+    5,
+  );
   return (
     <div className="icp-candidate-preview">
       <div className="icp-preview-body">
@@ -2251,23 +2454,33 @@ function CandidatePreview({
         </header>
         <div className="icp-preview-main">
           <section className="icp-preview-section">
-            <Eyebrow>{t('icpRadar.mainSignal')}</Eyebrow>
+            <Eyebrow>{t('icpRadar.canonicalPreview.summary')}</Eyebrow>
             <p>{candidate.main_signal}</p>
           </section>
           <section className="icp-preview-section">
-            <Eyebrow>{t('icpRadar.signalSummary')}</Eyebrow>
+            <Eyebrow>{t('icpRadar.canonicalPreview.tier')}</Eyebrow>
             <p>{candidate.comment || candidate.signal_summary}</p>
           </section>
         </div>
         <div className="icp-preview-lists">
           <section className="icp-preview-section">
-            <Eyebrow>{t('icpRadar.evidence')}</Eyebrow>
-            <EvidenceList candidate={candidate} sourcesById={sourcesById} compact />
+            <Eyebrow>{t('icpRadar.canonicalPreview.qualification')}</Eyebrow>
+            <div className="criteria-list criteria-list-compact">
+              {(qualificationRows.length ? qualificationRows : topCriteria(artifact, candidate, 5)).map(({ criterion, value }) => (
+                <div className="criterion-row" key={criterion.code}>
+                  <Mono>{criterion.code}</Mono>
+                  <span>
+                    <strong>{criterion.name}</strong>
+                  </span>
+                  <Mono>{value}</Mono>
+                </div>
+              ))}
+            </div>
           </section>
           <section className="icp-preview-section">
-            <Eyebrow>{t('icpRadar.topCriteria')}</Eyebrow>
+            <Eyebrow>{t('icpRadar.canonicalPreview.signals')}</Eyebrow>
             <div className="criteria-list criteria-list-compact">
-              {criteria.map(({ criterion, value }) => (
+              {(signalRows.length ? signalRows : topCriteria(artifact, candidate, 5)).map(({ criterion, value }) => (
                 <div className="criterion-row" key={criterion.code}>
                   <Mono>{criterion.code}</Mono>
                   <span>
@@ -2429,6 +2642,13 @@ function topCriteria(artifact: ICPRadarArtifact, candidate: ICPRadarCandidate, c
     }))
     .filter((item): item is { criterion: IntentSignalDefinition; value: number } => item.value > 0)
     .sort((left, right) => right.value - left.value || left.criterion.code.localeCompare(right.criterion.code))
+    .slice(0, count);
+}
+
+function topCriteriaByCodes(artifact: ICPRadarArtifact, candidate: ICPRadarCandidate, codes: string[], count: number) {
+  const codeSet = new Set(codes);
+  return topCriteria(artifact, candidate, artifact.radar.definition.intent_signals.length)
+    .filter((item) => codeSet.has(item.criterion.code))
     .slice(0, count);
 }
 
@@ -3104,8 +3324,14 @@ function validationRank(status: SignalValidationStatus) {
 }
 
 function radarStatusKey(status: string) {
+  if (status === 'draft') {
+    return 'icpRadar.radarStatus.draft';
+  }
   if (status === 'active') {
     return 'icpRadar.radarStatus.active';
+  }
+  if (status === 'stopped') {
+    return 'icpRadar.radarStatus.stopped';
   }
   if (status === 'configured') {
     return 'icpRadar.radarStatus.configured';
@@ -3120,6 +3346,20 @@ function radarStatusKey(status: string) {
     return 'icpRadar.radarStatus.modifiedLocally';
   }
   return 'icpRadar.radarStatus.unknown';
+}
+
+function radarOperationalStatus(status: string): RadarOperationalStatus {
+  if (status === 'active') {
+    return 'active';
+  }
+  if (status === 'stopped') {
+    return 'stopped';
+  }
+  return 'draft';
+}
+
+function liveTotalScore(candidate: LiveRadarCandidate): number {
+  return candidate.score.fit_score + candidate.score.intent_score;
 }
 
 function cadenceKey(cadence: string) {

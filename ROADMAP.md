@@ -1105,6 +1105,40 @@ Status:
   - `Open details` opens a separate in-shell detail view.
   - No standalone live side panel remains.
 
+### Slice 0.6.3.3: Canonical Radar UX contract and live radar detail alignment
+
+- Status: `Done`
+- Goal: Freeze a canonical ICP Radar UX contract and align `ТОиР Quick Live Radar` with the same attribute and visual model as fixture-backed radars.
+- User value: A user reviews fixture and live radar candidates through one predictable pattern instead of learning different headers, columns, previews, and detail screens per data source.
+- Scope:
+  - Add a canonical radar/candidate view-model boundary in the frontend.
+  - Map fixture-backed and live radar artifacts into shared shortlist, preview, and detail components.
+  - Remove `Только просмотр` from the radar header and keep header status to `Черновик / Активен / Остановлен`.
+  - Use canonical shortlist columns for every radar: company, total, fit, intent, trigger, tier, evidence, action.
+  - Keep live runtime/provider/model/source metadata out of the shortlist and render it only in the candidate `Journal` tab.
+  - Standardize inline preview to four blocks: summary, tier, qualification, signals.
+  - Standardize candidate detail tabs: overview, qualification, signals, sources, journal.
+  - Add ADR and contract tests so future radar sources cannot introduce provider-specific scan/detail layouts.
+- Out of scope:
+  - Backend schema changes.
+  - Live provider changes.
+  - UI run button.
+  - Take-into-work behavior.
+- Tests:
+  - Frontend contract tests for canonical columns, preview sections, status mapping, tabbed detail, journal-only runtime metadata, and no standalone live layout.
+  - Visual smoke covers fixture and live radar preview/detail flows.
+  - `python -m pytest`
+  - `npm --prefix ./frontend run build`
+  - `npm --prefix ./frontend run settings:toggle-smoke`
+  - `npm --prefix ./frontend run visual:smoke`
+- Docs:
+  - Added `Canonical ICP Radar UX Contract` ADR.
+  - Updated table-first UX ADR, live radar ADR, developer guide, user guide, and demo README.
+- Acceptance criteria:
+  - Fixture and live radars use the same shortlist columns and preview block model.
+  - Live runtime metadata appears only under `Journal`.
+  - New radar sources must integrate via adapters into the canonical UX.
+
 ### Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web
 
 - Status: `Backlog`
@@ -1883,8 +1917,12 @@ Status:
 - `Slice 0.6.3.2: Align Live ICP Radar UX with table-first shortlist pattern`
   - Reworked `ТОиР Quick Live Radar` to use the same wide table, sticky identity column, inline preview, and in-shell detail view as fixture-backed ICP Radars.
   - Removed the live-only split/grid/detail visual pattern.
-  - Kept live runtime metadata as a compact context block above the shared shortlist table.
   - Updated ADRs, developer docs, user docs, demo docs, frontend contract tests, and visual smoke coverage for provider-backed shortlist UX.
+- `Slice 0.6.3.3: Canonical Radar UX contract and live radar detail alignment`
+  - Added a canonical ICP Radar UX contract and ADR.
+  - Mapped fixture-backed and live radars into the same canonical shortlist columns, four-block preview, and tabbed detail view.
+  - Removed provider/runtime metadata from the live shortlist and moved it into the candidate `Journal` tab.
+  - Added frontend contract coverage for canonical columns, preview sections, status mapping, detail tabs, and journal-only runtime metadata.
 
 ## Blocked Items
 

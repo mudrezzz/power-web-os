@@ -93,7 +93,7 @@ Settings are intentionally business-facing:
 - Scoring uses only `Fit / Соответствие`, `Intent / Интент`, and `Tier / Уровень`. Presets cover arithmetic mean, weighted average, maximum signal, capped sum, and custom formula.
 - Custom formula mode is the only place where generated rule IDs and signal codes matter.
 
-The catalog also includes `ТОиР Quick Live Radar`. This is the first live experimental radar. It is launched from the CLI, not from the UI. Before a successful run, its `Shortlist` tab shows an empty state and the command to generate `live_mini_icp_radar_run.json`. After a successful run, the radar is reviewed through the same table-first flow as `ТОиР / SIBUR`: run metadata appears above the table, candidates stay in a wide sticky-column shortlist, row click opens a bounded preview, and `Open details` opens the full in-shell evidence view. Live findings always require human review and do not flow into `Accounts` automatically.
+The catalog also includes `ТОиР Quick Live Radar`. This is the first live experimental radar. It is launched from the CLI, not from the UI. Before a successful run, its `Shortlist` tab shows an empty state and the command to generate `live_mini_icp_radar_run.json`. After a successful run, the radar is reviewed through the same canonical table-first flow as `ТОиР / SIBUR`: candidates stay in the same sticky-column shortlist, row click opens the same four-block preview, and `Open details` opens the same tabbed in-shell detail view. Runtime/provider metadata is available in the candidate `Journal` tab, not on the main shortlist. Live findings always require human review and do not flow into `Accounts` automatically.
 
 Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. The main surface is a wide table: the company column stays fixed while score, tier, evidence, and criteria-related columns can scroll horizontally inside the table. Click a candidate row to open a bounded inline preview with the main signal, short recommendation, top evidence refs, and top criteria. Open the candidate detail view when you need the full C1-C20 signal breakdown, source refs, and local signal validation controls. Take-into-work is still a planned follow-up slice.
 
@@ -136,14 +136,16 @@ The current ICP Radar UI is table-first:
 - Sources are structured entities with type, label, reference, and trust policy: trusted, cross-check, or HITL required. The shared source base is a numbered bounded table.
 - Intent signals have detection rules and a separate global fixed `0/1/2` scoring rubric block. Fit and intent scoring use presets; tier thresholds classify the result.
 - The active `ТОиР / SIBUR` shortlist opens as a broad ranked account table.
-- The live `ТОиР Quick Live Radar` uses the same broad table, inline preview, and detail view. Only the data source differs: it shows what the OpenRouter-backed workflow found in the live run artifact.
+- The live `ТОиР Quick Live Radar` uses the same broad table, inline preview, and tabbed detail view. Only the data source differs: it shows what the OpenRouter-backed workflow found in the live run artifact.
 - The first account/company column stays fixed while the user scrolls horizontally across score, evidence, and criteria columns.
 - Clicking a candidate expands a compact preview directly under that row.
+- Every ICP Radar preview uses the same four blocks: summary, tier explanation, qualification, and signals. Qualification and signal blocks are capped at five rows each; sources and runtime metadata stay out of preview.
 - The inline preview is anchored to the visible workspace rather than to the horizontally scrolled table columns. It uses a responsive layout, has one bounded scroll area for the whole preview, and shows only the top evidence refs and top criteria.
 - The preview action sits below the context blocks so laptop screens keep the content readable without a separate left rail.
 - Score and tier values stay in the table row; the expanded row strengthens those existing values instead of repeating them in the preview.
-- Full candidate work opens in a separate read-only candidate detail view with breadcrumbs back to `ICP Radar`.
-- The detail view keeps a compact candidate header sticky while the user scrolls through profile, source refs, evidence list, score explanation, and the full C1-C20 criteria breakdown.
+- Full candidate work opens in a separate candidate detail view with breadcrumbs back to `ICP Radar`.
+- The detail view keeps a compact candidate header sticky and uses tabs: overview, qualification, signals, sources, and journal.
+- Runtime/provider/model/query/source-count fields for live runs are shown in the `Journal` tab together with structured trace and review flags.
 - The C1-C20 breakdown is now a signal validation table sourced from the same `intent_signals` dictionary used in radar Settings.
 - Use filters to focus on all, needs review, confirmed, corrected, rejected, or stale signals, and sort by score, validation status, or confidence.
 - Click a signal row to inspect rationale, source refs, facts, original score, effective score, and validation state.

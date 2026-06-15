@@ -72,6 +72,8 @@ try {
       });
     }
 
+    await captureFixtureRadarFlow(page, viewport.name);
+
     if (existsSync(liveRadarArtifactPath)) {
       await captureLiveRadarFlow(page, viewport.name);
     }
@@ -110,10 +112,36 @@ async function assertNotBlank(page, screenName) {
   }
 }
 
+async function captureFixtureRadarFlow(page, viewportName) {
+  await page.getByRole('button', { name: 'ICP Radar', exact: true }).click();
+  await page.getByText('ТОиР / SIBUR', { exact: false }).first().click();
+  await page.locator('.icp-radar-table .icp-candidate-row').first().waitFor({ state: 'visible' });
+  await assertNoPageHorizontalScroll(page, 'fixture-radar-table');
+
+  await page.locator('.icp-radar-table .icp-candidate-row').first().click();
+  await page.locator('.icp-candidate-preview').first().waitFor({ state: 'visible' });
+  await assertNoPageHorizontalScroll(page, 'fixture-radar-preview');
+  await page.screenshot({
+    animations: 'disabled',
+    fullPage: false,
+    path: path.join(outputRoot, `icp-radar-preview-${viewportName}.png`),
+  });
+
+  await page.locator('.icp-candidate-preview').first().getByRole('button', { name: 'Open details' }).click();
+  await page.locator('.icp-detail-sticky-header').waitFor({ state: 'visible' });
+  await assertNoPageHorizontalScroll(page, 'fixture-radar-detail');
+  await page.screenshot({
+    animations: 'disabled',
+    fullPage: false,
+    path: path.join(outputRoot, `icp-radar-detail-${viewportName}.png`),
+  });
+}
+
 async function captureLiveRadarFlow(page, viewportName) {
   await page.getByRole('button', { name: 'ICP Radar', exact: true }).click();
+  await returnToRadarCatalogIfNeeded(page);
   await page.getByText('Quick Live', { exact: false }).first().click();
-  await page.getByText('Live AI run', { exact: false }).first().waitFor({ state: 'visible' });
+  await page.locator('.icp-radar-table-live .icp-candidate-row').first().waitFor({ state: 'visible' });
   await assertNoSplitLiveLayout(page);
   await assertNoPageHorizontalScroll(page, 'live-radar-table');
   await page.screenshot({
@@ -141,6 +169,27 @@ async function captureLiveRadarFlow(page, viewportName) {
     fullPage: false,
     path: path.join(outputRoot, `live-icp-radar-detail-${viewportName}.png`),
   });
+
+  await page.getByRole('button', { name: 'Journal' }).click();
+  await page.getByText('OpenRouter', { exact: false }).first().waitFor({ state: 'visible' });
+  await assertNoSplitLiveLayout(page);
+  await assertNoPageHorizontalScroll(page, 'live-radar-journal');
+  await page.screenshot({
+    animations: 'disabled',
+    fullPage: false,
+    path: path.join(outputRoot, `live-icp-radar-journal-${viewportName}.png`),
+  });
+}
+
+async function returnToRadarCatalogIfNeeded(page) {
+  const backToShortlist = page.getByRole('button', { name: 'Back to shortlist' });
+  if (await backToShortlist.count()) {
+    await backToShortlist.first().click();
+  }
+  const backToCatalog = page.getByRole('button', { name: 'Back to radar catalog' });
+  if (await backToCatalog.count()) {
+    await backToCatalog.first().click();
+  }
 }
 
 async function assertNoSplitLiveLayout(page) {

@@ -22,17 +22,20 @@ Dense operational data should start table-first.
 - Horizontal overflow belongs to the table or board wrapper, not to the browser page or whole workspace.
 - The first identity column should stay sticky where horizontal comparison would otherwise hide the object being reviewed.
 - Tables must use `min-width: 0`, explicit column policies, wrapping/ellipsis, and owned overflow so text never overlaps adjacent columns.
-- Inline previews must stay bounded and short. For ICP Radar previews the accepted baseline is:
-  - main signal;
-  - short recommendation/comment;
-  - top-5 evidence refs;
-  - top-5 criteria.
+- Inline previews must stay bounded and short. For ICP Radar previews the accepted canonical baseline is exactly four blocks:
+  - summary;
+  - tier explanation;
+  - top-5 qualification rows;
+  - top-5 signal rows.
 - Inline previews in horizontally scrollable tables must not inherit the table's horizontal scroll position. Table columns may scroll, but the expanded preview content should stay anchored to the visible workspace and use its own responsive layout.
 - Inline preview actions should sit after the preview content, not in a separate left rail that consumes scan width on laptop screens.
 - Do not create nested vertical scrolls inside expanded previews. Prefer one scroll owner for the whole expanded block.
 - Do not duplicate score/tier blocks inside previews when those values already exist in the row. Emphasize the existing row values when expanded.
 - All ICP Radar shortlist surfaces must use the same table -> inline preview -> in-shell detail interaction model, including live/provider-backed radars.
-- Provider or data-source differences are handled by data adapters, not by introducing a separate visual paradigm. A live radar may add compact run metadata, but that metadata does not replace the shortlist table pattern.
+- Provider or data-source differences are handled by data adapters, not by introducing a separate visual paradigm.
+- All ICP Radar shortlists use the same canonical columns: company, total, fit, intent, trigger, tier, evidence, action. Unsupported score slots render as an explicit empty value instead of changing the column model.
+- Candidate detail uses tabs: overview, qualification, signals, sources, journal.
+- Runtime metadata, provider/model details, search plan, warnings, and structured model trace belong in the journal tab, not above the shortlist table.
 
 ## Consequences
 

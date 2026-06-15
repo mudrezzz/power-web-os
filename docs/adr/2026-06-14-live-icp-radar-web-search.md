@@ -32,7 +32,7 @@ Live run output is a reviewable artifact, not accepted account state. The workfl
 
 Model-supplied URLs are not enough to establish evidence. Source URLs must be filtered before they can support candidates, and artifacts must not include API keys, authorization headers, bearer tokens, or raw provider dumps.
 
-Live findings are rendered inside the standard ICP Radar review UX. The live radar uses the same table-first shortlist, sticky identity column, bounded inline preview, and in-shell detail view as fixture-backed radars. Runtime metadata is a compact context block above the table, not a separate product surface or always-visible side detail panel.
+Live findings are rendered inside the standard ICP Radar review UX. The live radar uses the same table-first shortlist, sticky identity column, bounded inline preview, and tabbed in-shell detail view as fixture-backed radars. Runtime metadata belongs to the candidate detail `journal` tab and must not become a second shortlist header, a separate product surface, or an always-visible side detail panel.
 
 ## Consequences
 

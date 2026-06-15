@@ -35,6 +35,36 @@ SCREENSHOT_WALKTHROUGH = [
         screenshot_1280="icp-radar-1280x720.png",
     ),
     ScreenshotWalkthroughItem(
+        screen_id="icp-radar-preview",
+        title="ICP Radar candidate preview",
+        description=(
+            "The expanded shortlist row uses the canonical four-block preview: summary, tier "
+            "explanation, qualification, and signals."
+        ),
+        screenshot_1366="icp-radar-preview-1366x768.png",
+        screenshot_1280="icp-radar-preview-1280x720.png",
+    ),
+    ScreenshotWalkthroughItem(
+        screen_id="icp-radar-detail",
+        title="ICP Radar candidate detail",
+        description=(
+            "Full candidate review opens in the same in-shell tabbed detail view with overview, "
+            "qualification, signals, sources, and journal tabs."
+        ),
+        screenshot_1366="icp-radar-detail-1366x768.png",
+        screenshot_1280="icp-radar-detail-1280x720.png",
+    ),
+    ScreenshotWalkthroughItem(
+        screen_id="live-icp-radar-journal",
+        title="Live ICP Radar journal",
+        description=(
+            "Provider runtime metadata, model, search plan, and review flags are kept in the "
+            "Journal tab rather than on the shortlist screen."
+        ),
+        screenshot_1366="live-icp-radar-journal-1366x768.png",
+        screenshot_1280="live-icp-radar-journal-1280x720.png",
+    ),
+    ScreenshotWalkthroughItem(
         screen_id="accounts",
         title="Accounts portfolio",
         description=(
