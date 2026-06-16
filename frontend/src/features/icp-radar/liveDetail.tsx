@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight, ExternalLink, Radar, RotateCcw, Save, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ExternalLink, Radar, RotateCcw, Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../../components/primitives';
@@ -6,13 +6,14 @@ import type {
   LiveICPRadarRunArtifact,
   LiveRadarCandidate,
   LiveRadarQualificationResult,
-  LiveRadarSignalResult,
   LiveRadarSourceEvidence,
   QualificationAssessmentStatus,
   QualificationReviewDecision,
-  QualificationSourceUsage,
+  SignalValidationDecision,
+  SignalValidationOverlay,
 } from '../../types';
 import { CandidateDetailTabs, Metric, ScoreBox } from './detailPrimitives';
+import { LiveSignalReviewTable } from './liveSignalReview';
 import {
   type CandidateDetailTab,
   type QualificationReviewOverlay,
@@ -20,7 +21,6 @@ import {
   liveFitScoreMax,
   liveIntentScoreMax,
   liveRuntimeKey,
-  liveSignalTone,
   liveTotalScore,
   liveTotalScoreMax,
   qualificationAssessmentTone,
@@ -45,10 +45,13 @@ export function LiveRadarCandidateDetailView({
   candidate,
   onBack,
   onQualificationReviewChange,
+  onSignalDecisionChange,
+  onSignalDecisionReset,
   onTabChange,
   qualificationReview,
   radarId,
   radarName,
+  signalValidation,
 }: {
   activeTab: CandidateDetailTab;
   artifact: LiveICPRadarRunArtifact;
@@ -60,10 +63,13 @@ export function LiveRadarCandidateDetailView({
     ruleId: string,
     decision: QualificationReviewDecision | null,
   ) => void;
+  onSignalDecisionChange: (decision: SignalValidationDecision) => void;
+  onSignalDecisionReset: (radarId: string, candidateId: string, signalCode: string) => void;
   onTabChange: (tab: CandidateDetailTab) => void;
   qualificationReview: QualificationReviewOverlay;
   radarId: string;
   radarName: string;
+  signalValidation: SignalValidationOverlay;
 }) {
   const { t } = useTranslation();
   const sourcesByRef = useMemo(() => new Map(artifact.sources.map((source) => [source.evidence_ref, source])), [artifact.sources]);
@@ -162,26 +168,14 @@ export function LiveRadarCandidateDetailView({
           <Card>
             <section className="icp-detail-section">
               <Eyebrow>{t('icpRadar.live.signals')}</Eyebrow>
-              <div className="canonical-detail-table">
-                {candidate.signals.map((item) => (
-                  <details className="canonical-detail-record" key={item.signal_code}>
-                    <summary>
-                      <Mono>{item.signal_code}</Mono>
-                      <strong>{item.signal}</strong>
-                      <span className="live-radar-score">
-                        <Mono>{item.score}</Mono>
-                        <Badge tone={liveSignalTone(item.status)}>
-                          {t(`icpRadar.live.signalStatus.${item.status}`)}
-                        </Badge>
-                      </span>
-                    </summary>
-                    <span>
-                      <p>{item.summary}</p>
-                      <LiveEvidenceList refs={item.evidence_refs} sourcesByRef={sourcesByRef} compact />
-                    </span>
-                  </details>
-                ))}
-              </div>
+              <LiveSignalReviewTable
+                candidate={candidate}
+                onSignalDecisionChange={onSignalDecisionChange}
+                onSignalDecisionReset={onSignalDecisionReset}
+                radarId={radarId}
+                signalValidation={signalValidation}
+                sourcesByRef={sourcesByRef}
+              />
             </section>
           </Card>
         )}
@@ -504,34 +498,6 @@ function LiveQualificationReviewRow({
         </section>
       </div>
     </details>
-  );
-}
-
-function LiveEvidenceList({
-  compact = false,
-  refs,
-  sourcesByRef,
-}: {
-  compact?: boolean;
-  refs: string[];
-  sourcesByRef: Map<string, LiveRadarSourceEvidence>;
-}) {
-  return (
-    <div className={`live-radar-source-list${compact ? ' icp-evidence-list-compact' : ''}`}>
-      {refs.map((ref) => {
-        const source = sourcesByRef.get(ref);
-        return (
-          <a href={source?.url ?? '#'} key={ref} rel="noreferrer" target="_blank">
-            <ShieldCheck aria-hidden="true" />
-            <span>
-              <strong>{source?.title ?? ref}</strong>
-              <small>{source?.snippet ?? ref}</small>
-            </span>
-            {source?.url && <ExternalLink aria-hidden="true" />}
-          </a>
-        );
-      })}
-    </div>
   );
 }
 

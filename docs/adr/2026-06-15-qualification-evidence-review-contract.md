@@ -24,9 +24,12 @@ Every provider-backed ICP Radar candidate must expose qualification results thro
 
 The UI must render qualification as a table-first review surface. Rows start compact, expand to show evidence cards that combine source, excerpt, fact, and match rationale, and provide local review actions: approve, reject, or correct with a comment. Cross-validation is part of the requirement-fit summary, not a separate standalone block. The generated artifact remains immutable; human review is stored in local demo state until backend persistence exists.
 
+Intent signals use the same evidence-card review pattern, but the reviewed outcome is the signal score rather than the qualification fit assessment. Expanded signal rows must start with a score-evaluation summary, then show source-linked evidence cards, then the human review panel. Signal evidence cards include source ref/title, source origin, trust/check policy, found fact, optional excerpt or explicit no-excerpt marker, why the fact is a signal, and why the score applies.
+
 ## Consequences
 
 - Live LLM/search workflows may return a simpler shape, but the backend normalizer must enrich it into this contract before writing artifacts.
 - Candidate detail screens may not show raw Q1/Q2 rows without source, trust, cross-validation, evidence, and final-assessment context.
+- Candidate detail screens may not show live signal rows as only a summary and source list. They must show score evaluation and source-linked evidence cards before review actions.
 - New radar providers must adapt their findings into the same qualification contract before entering the canonical ICP Radar UX.
 - The model must not expose hidden chain-of-thought. It may expose structured evidence, rationale, and review flags.

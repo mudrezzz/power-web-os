@@ -125,6 +125,29 @@ class LiveRadarSignalResult(BaseModel):
     confidence: str = "low"
     summary: str
     evidence_refs: list[str] = Field(default_factory=list)
+    source_usages: list[QualificationSourceUsage] = Field(default_factory=list)
+    evidence_findings: list["SignalEvidenceFinding"] = Field(default_factory=list)
+    cross_validation: QualificationCrossValidation = Field(default_factory=QualificationCrossValidation)
+    score_evaluation: "SignalScoreEvaluation | None" = None
+
+
+class SignalEvidenceFinding(BaseModel):
+    source_ref: str
+    fact: str
+    excerpt: str = ""
+    excerpt_type: Literal["quote", "paraphrase", "not_available"] = "not_available"
+    why_it_matches_signal: str
+    why_score_applies: str
+    evidence_strength: Literal["strong", "medium", "weak"] = "weak"
+    contradicts_signal: bool = False
+
+
+class SignalScoreEvaluation(BaseModel):
+    scale: str = "0-2"
+    applied_score: int = Field(default=0, ge=0, le=2)
+    max_score: int = 2
+    rule_snapshot: str
+    explanation: str
 
 
 class LiveRadarScore(BaseModel):
@@ -423,6 +446,25 @@ def build_openrouter_request(
                             "confidence": "high|medium|low",
                             "summary": "short signal summary",
                             "evidence_refs": ["source ids"],
+                            "evidence_findings": [
+                                {
+                                    "source_ref": "source id",
+                                    "fact": "what exactly was found",
+                                    "excerpt": "short source excerpt or paraphrased fragment, not a long quote",
+                                    "excerpt_type": "quote|paraphrase|not_available",
+                                    "why_it_matches_signal": "why this fact is an intent signal",
+                                    "why_score_applies": "why score 0, 1, or 2 applies",
+                                    "evidence_strength": "strong|medium|weak",
+                                    "contradicts_signal": False,
+                                }
+                            ],
+                            "score_evaluation": {
+                                "scale": "0-2",
+                                "applied_score": 0,
+                                "max_score": 2,
+                                "rule_snapshot": "rubric rule used for the score",
+                                "explanation": "short score rationale",
+                            },
                         }
                     ],
                     "review_flags": ["why human review is needed"],
@@ -433,6 +475,7 @@ def build_openrouter_request(
             "Do not invent candidates without source evidence.",
             "If evidence is weak, mark it weak/unclear and add a review flag.",
             "For each qualification item, explain used sources, exact facts, a short reviewable excerpt or paraphrase, and why they match the rule.",
+            "For each signal, explain source-linked facts, a short reviewable excerpt or paraphrase, why it matches the signal, and why the 0-2 score applies.",
             "Do not include secrets, request headers, or raw tool dumps.",
         ],
     }
@@ -747,7 +790,7 @@ def normalize_live_candidate(
 ) -> LiveRadarCandidate:
     legal_name = str(payload.get("legal_name") or payload.get("name") or "Unknown candidate").strip()
     qualification = _normalize_qualification(payload.get("qualification", []), radar, sources=sources or [])
-    signals = _normalize_signals(payload.get("signals", []), radar)
+    signals = _normalize_signals(payload.get("signals", []), radar, sources=sources or [])
     fit_score = sum(1 for item in qualification if item.status == "confirmed")
     intent_score = sum(item.score for item in signals if item.status == "observed")
     tier = "Tier 1" if fit_score == 2 and intent_score >= 3 else "Tier 2" if fit_score >= 1 and intent_score >= 1 else "Monitor"
@@ -1012,12 +1055,18 @@ def validate_live_radar_qualification_contract(
     return issues
 
 
-def _normalize_signals(payload: Any, radar: dict[str, Any]) -> list[LiveRadarSignalResult]:
+def _normalize_signals(
+    payload: Any,
+    radar: dict[str, Any],
+    *,
+    sources: list[RadarSourceEvidence],
+) -> list[LiveRadarSignalResult]:
     by_code = {
         str(item.get("signal_code", item.get("code", ""))): item
         for item in payload
         if isinstance(item, dict)
     } if isinstance(payload, list) else {}
+    sources_by_ref = {source.evidence_ref: source for source in sources}
     results = []
     for signal in radar["intent_signals"]:
         raw = by_code.get(signal["code"], {})
@@ -1029,16 +1078,150 @@ def _normalize_signals(payload: Any, radar: dict[str, Any]) -> list[LiveRadarSig
             score = 0
         if status != "observed":
             score = 0
+        evidence_refs = [
+            str(ref)
+            for ref in raw.get("evidence_refs", [])
+            if str(ref) in sources_by_ref
+        ]
+        confidence = str(raw.get("confidence", "low"))
+        summary = str(raw.get("summary") or "No signal evidence found.")
+        source_policy = _confidence_to_policy(confidence, evidence_refs=evidence_refs)
+        source_usages = _qualification_source_usages(
+            evidence_refs=evidence_refs,
+            sources_by_ref=sources_by_ref,
+            policy=source_policy,
+        )
+        evidence_findings = _signal_evidence_findings(
+            raw=raw,
+            evidence_refs=evidence_refs,
+            sources_by_ref=sources_by_ref,
+            status=status,  # type: ignore[arg-type]
+            score=score,
+            summary=summary,
+        )
+        cross_validation = _qualification_cross_validation(
+            required=source_policy == "cross_checked",
+            evidence_refs=evidence_refs,
+            final_assessment="matches" if status == "observed" else "unknown",
+        )
+        score_evaluation = _signal_score_evaluation(
+            raw=raw,
+            score=score,
+            status=status,  # type: ignore[arg-type]
+            summary=summary,
+        )
         results.append(LiveRadarSignalResult(
             signal_code=signal["code"],
             signal=signal["label"],
             status=status,  # type: ignore[arg-type]
             score=score,
-            confidence=str(raw.get("confidence", "low")),
-            summary=str(raw.get("summary") or "No signal evidence found."),
-            evidence_refs=[str(ref) for ref in raw.get("evidence_refs", [])],
+            confidence=confidence,
+            summary=summary,
+            evidence_refs=evidence_refs,
+            source_usages=source_usages,
+            evidence_findings=evidence_findings,
+            cross_validation=cross_validation,
+            score_evaluation=score_evaluation,
         ))
     return results
+
+
+def _signal_evidence_findings(
+    *,
+    raw: dict[str, Any],
+    evidence_refs: list[str],
+    sources_by_ref: dict[str, RadarSourceEvidence],
+    status: SignalStatus,
+    score: int,
+    summary: str,
+) -> list[SignalEvidenceFinding]:
+    raw_findings = raw.get("evidence_findings")
+    if isinstance(raw_findings, list):
+        findings = []
+        for item in raw_findings:
+            if not isinstance(item, dict):
+                continue
+            source_ref = str(item.get("source_ref") or item.get("evidence_ref") or "")
+            if source_ref not in evidence_refs:
+                continue
+            source = sources_by_ref[source_ref]
+            findings.append(SignalEvidenceFinding(
+                source_ref=source_ref,
+                fact=str(item.get("fact") or item.get("quote_or_fact") or source.snippet),
+                excerpt=str(item.get("excerpt") or item.get("quote") or item.get("snippet") or ""),
+                excerpt_type=_excerpt_type(item),
+                why_it_matches_signal=str(item.get("why_it_matches_signal") or item.get("why_it_matches_rule") or summary),
+                why_score_applies=str(item.get("why_score_applies") or _signal_score_rationale(score=score, status=status, summary=summary)),
+                evidence_strength=_signal_evidence_strength(status=status, score=score),
+                contradicts_signal=bool(item.get("contradicts_signal", status == "not_observed")),
+            ))
+        if findings:
+            return findings
+    return [
+        SignalEvidenceFinding(
+            source_ref=ref,
+            fact=sources_by_ref[ref].snippet,
+            excerpt="",
+            excerpt_type="not_available",
+            why_it_matches_signal=summary,
+            why_score_applies=_signal_score_rationale(score=score, status=status, summary=summary),
+            evidence_strength=_signal_evidence_strength(status=status, score=score),
+            contradicts_signal=status == "not_observed",
+        )
+        for ref in evidence_refs
+        if ref in sources_by_ref
+    ]
+
+
+def _signal_score_evaluation(
+    *,
+    raw: dict[str, Any],
+    score: int,
+    status: SignalStatus,
+    summary: str,
+) -> SignalScoreEvaluation:
+    raw_evaluation = raw.get("score_evaluation")
+    if isinstance(raw_evaluation, dict):
+        try:
+            applied_score = max(0, min(2, int(raw_evaluation.get("applied_score", score))))
+        except (TypeError, ValueError):
+            applied_score = score
+        return SignalScoreEvaluation(
+            scale=str(raw_evaluation.get("scale") or "0-2"),
+            applied_score=applied_score,
+            max_score=2,
+            rule_snapshot=str(raw_evaluation.get("rule_snapshot") or _signal_score_rule(score)),
+            explanation=str(raw_evaluation.get("explanation") or _signal_score_rationale(score=score, status=status, summary=summary)),
+        )
+    return SignalScoreEvaluation(
+        scale="0-2",
+        applied_score=score,
+        max_score=2,
+        rule_snapshot=_signal_score_rule(score),
+        explanation=_signal_score_rationale(score=score, status=status, summary=summary),
+    )
+
+
+def _signal_score_rule(score: int) -> str:
+    if score >= 2:
+        return "Score 2 applies when the signal is directly supported by relevant source evidence."
+    if score == 1:
+        return "Score 1 applies when the signal is weak, indirect, or requires human review."
+    return "Score 0 applies when the signal is not observed or not source-backed."
+
+
+def _signal_score_rationale(*, score: int, status: SignalStatus, summary: str) -> str:
+    if status != "observed":
+        return "The signal does not currently contribute to intent score because it is not observed or remains unclear."
+    return f"Score {score} is based on the observed signal summary: {summary}"
+
+
+def _signal_evidence_strength(*, status: SignalStatus, score: int) -> Literal["strong", "medium", "weak"]:
+    if status == "observed" and score >= 2:
+        return "strong"
+    if status == "observed":
+        return "medium"
+    return "weak"
 
 
 def _rank_candidates(candidates: list[LiveRadarCandidate]) -> list[LiveRadarCandidate]:

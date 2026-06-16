@@ -72,6 +72,25 @@ def recorded_provider_payload() -> dict[str, object]:
                         "confidence": "medium",
                         "summary": "Есть ремонтная и reliability-повестка.",
                         "evidence_refs": ["src_1"],
+                        "evidence_findings": [
+                            {
+                                "source_ref": "src_1",
+                                "fact": "Source mentions repair and reliability agenda.",
+                                "excerpt": "repair and reliability agenda",
+                                "excerpt_type": "quote",
+                                "why_it_matches_signal": "Repair and reliability wording matches S1.",
+                                "why_score_applies": "The observation is relevant but not a direct TOIR platform purchase.",
+                                "evidence_strength": "medium",
+                                "contradicts_signal": False,
+                            }
+                        ],
+                        "score_evaluation": {
+                            "scale": "0-2",
+                            "applied_score": 1,
+                            "max_score": 2,
+                            "rule_snapshot": "1: weak or indirect source-backed signal.",
+                            "explanation": "Repair/reliability context supports a weak intent score.",
+                        },
                     },
                     {
                         "signal_code": "S2",
@@ -189,6 +208,15 @@ def test_recorded_response_normalizes_sources_candidates_and_scores() -> None:
     assert qualification["requirement_evaluation"]["satisfied"] is True
     fallback_qualification = artifact["candidates"][0]["qualification"][1]
     assert fallback_qualification["evidence_findings"][0]["excerpt_type"] == "not_available"
+    signal = artifact["candidates"][0]["signals"][0]
+    assert signal["source_usages"][0]["source_ref"] == "src_1"
+    assert signal["evidence_findings"][0]["source_ref"] == "src_1"
+    assert signal["evidence_findings"][0]["excerpt_type"] == "quote"
+    assert signal["evidence_findings"][0]["why_score_applies"]
+    assert signal["score_evaluation"]["applied_score"] == 1
+    fallback_signal = artifact["candidates"][0]["signals"][1]
+    assert fallback_signal["evidence_findings"][0]["excerpt_type"] == "not_available"
+    assert fallback_signal["score_evaluation"]["scale"] == "0-2"
     assert artifact["contract_validation"] == []
 
 

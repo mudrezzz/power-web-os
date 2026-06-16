@@ -737,6 +737,8 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
         "QualificationCrossValidation",
         "QualificationRequirementEvaluation",
         "QualificationReviewDecision",
+        "SignalEvidenceFinding",
+        "SignalScoreEvaluation",
     ]:
         assert type_name in types
     for screen_token in [
@@ -764,6 +766,19 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
         "icpRadar.live.review.actions.${status}",
         "icpRadar.live.review.save",
         "icpRadar.live.review.commentRequired",
+        "LiveSignalReviewTable",
+        "signal-review-table",
+        "signalScoreEvaluationView",
+        "signalEvidenceCardViews",
+        "icpRadar.live.signalScoreEvaluation",
+        "icpRadar.live.signalColumns.originalScore",
+        "icpRadar.live.signalEvaluationFields.crossValidation",
+        "icpRadar.live.signalEvidenceCard.whyScore",
+        "icpRadar.live.signalReview.actions.${status}",
+        "requiresComment = reviewAction !== 'confirmed'",
+        "reviewAction === 'corrected'",
+        "onSignalDecisionChange",
+        "onSignalDecisionReset",
     ]:
         assert screen_token in screen
     qualification_header = screen.split('<div className="qualification-review-head">', 1)[1].split("</div>", 1)[0]
@@ -773,10 +788,19 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
     assert "icpRadar.live.sourcesUsed" not in screen
     assert "item.cross_validation?.notes" not in screen
     assert screen.index('className="qualification-review-evaluation"') < screen.index("qualification-finding-list")
+    assert "LiveEvidenceList refs={item.evidence_refs}" not in screen
+    assert screen.index('className="signal-review-evaluation"') < screen.index("signal-finding-list")
     assert "excerpt?: string" in types
     assert "excerpt_type?: 'quote' | 'paraphrase' | 'not_available'" in types
+    assert "why_it_matches_signal" in types
+    assert "why_score_applies" in types
     for i18n_key in [
         "qualificationColumns",
+        "signalColumns",
+        "signalScoreEvaluation",
+        "signalEvaluationFields",
+        "signalEvidenceCard",
+        "signalReview",
         "sourceOrigin",
         "trustPolicy",
         "crossValidationStatus",

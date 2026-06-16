@@ -30,10 +30,18 @@ export function useSignalValidationOverlay() {
     ));
   }
 
+  function resetSignalValidationDecision(radarId: string, accountId: string, signalCode: string) {
+    setSignalValidation((current) => {
+      const next = { ...current };
+      delete next[signalValidationKey(radarId, accountId, signalCode)];
+      return next;
+    });
+  }
+
   return {
     signalValidation,
     saveSignalValidationDecision,
     resetCandidateSignalValidation,
+    resetSignalValidationDecision,
   };
 }
-

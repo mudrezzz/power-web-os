@@ -60,7 +60,11 @@ but they must never mutate generated JSON.
    optional excerpt, and local approve/reject/correct decisions are domain
    view-model concerns, not ad hoc JSX fields. Expanded qualification rows use
    evidence cards; the full source inventory belongs in the `Sources` tab.
-7. Add focused tests for the adapter and architecture boundary before changing
+7. Map live signal rows into score-evaluation plus evidence-card view models
+   before rendering. Expanded signal rows must show score evaluation, source
+   linked evidence cards, and local signal review; do not render provider output
+   as a raw summary plus source list.
+8. Add focused tests for the adapter and architecture boundary before changing
    UI behavior.
 
 ## Where Code Should Not Go

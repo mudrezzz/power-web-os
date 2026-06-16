@@ -85,10 +85,13 @@ export function ICPRadarScreen({
         candidate={workspace.detailLiveCandidate}
         onBack={() => navigation.setDetailLiveCandidateId(null)}
         onQualificationReviewChange={workspace.saveQualificationReviewDecision}
+        onSignalDecisionChange={workspace.saveSignalValidationDecision}
+        onSignalDecisionReset={workspace.resetSignalValidationDecision}
         onTabChange={navigation.setCandidateDetailTab}
         qualificationReview={workspace.qualificationReview}
         radarId={workspace.selectedRadar.radar_id}
         radarName={workspace.selectedRadar.name}
+        signalValidation={workspace.signalValidation}
       />
     );
   }

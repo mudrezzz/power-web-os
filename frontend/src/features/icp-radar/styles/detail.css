@@ -260,7 +260,8 @@
   grid-column: 2;
 }
 
-.qualification-review-table {
+.qualification-review-table,
+.signal-review-table {
   display: grid;
   min-width: 0;
   overflow: hidden;
@@ -269,12 +270,23 @@
 }
 
 .qualification-review-head,
-.qualification-review-row summary {
+.qualification-review-row summary,
+.signal-review-head,
+.signal-review-row summary {
   display: grid;
-  grid-template-columns: var(--s-12) minmax(240px, 1.4fr) var(--s-20) minmax(130px, 0.55fr) minmax(100px, 0.45fr) minmax(140px, 0.6fr) minmax(130px, 0.55fr);
   align-items: center;
   gap: var(--s-3);
   min-width: 0;
+}
+
+.qualification-review-head,
+.qualification-review-row summary {
+  grid-template-columns: var(--s-12) minmax(240px, 1.4fr) var(--s-20) minmax(130px, 0.55fr) minmax(100px, 0.45fr) minmax(140px, 0.6fr) minmax(130px, 0.55fr);
+}
+
+.signal-review-head,
+.signal-review-row summary {
+  grid-template-columns: var(--s-12) minmax(240px, 1.35fr) minmax(84px, 0.38fr) minmax(92px, 0.42fr) minmax(118px, 0.5fr) minmax(96px, 0.38fr) minmax(136px, 0.58fr) minmax(136px, 0.58fr);
 }
 
 .qualification-review-head {
@@ -287,45 +299,75 @@
   text-transform: uppercase;
 }
 
-.qualification-review-row {
+.signal-review-head {
+  padding: var(--s-3);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-faint);
+  color: var(--fg3);
+  font: var(--mono-sm);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.qualification-review-row,
+.signal-review-row {
   min-width: 0;
   background: var(--surface);
   border-bottom: 1px solid var(--border-faint);
 }
 
-.qualification-review-row:last-child {
+.qualification-review-row:last-child,
+.signal-review-row:last-child {
   border-bottom: none;
 }
 
-.qualification-review-row summary {
+.qualification-review-row summary,
+.signal-review-row summary {
   padding: var(--s-3);
   cursor: pointer;
 }
 
-.qualification-review-row summary > * {
+.qualification-review-row summary > *,
+.signal-review-row summary > * {
   min-width: 0;
 }
 
-.qualification-review-row summary strong {
+.qualification-review-row summary strong,
+.signal-review-row summary strong {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.qualification-review-row summary .badge {
+.qualification-review-row summary .badge,
+.signal-review-row summary .badge {
   width: fit-content;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.qualification-review-details {
+.qualification-review-details,
+.signal-review-details {
   display: grid;
   gap: var(--s-4);
   padding: 0 var(--s-3) var(--s-4) calc(var(--s-12) + var(--s-6));
 }
 
-.qualification-review-details section {
+.qualification-review-details section,
+.signal-review-details section {
   min-width: 0;
+}
+
+.signal-score-current {
+  display: inline-flex;
+  align-items: baseline;
+  min-width: 0;
+  gap: var(--s-1);
+}
+
+.signal-score-current small {
+  color: var(--fg3);
+  font: var(--mono-sm);
 }
 
 .qualification-finding-list {
@@ -385,12 +427,14 @@
   color: var(--fg2);
 }
 
-.qualification-review-evaluation {
+.qualification-review-evaluation,
+.signal-review-evaluation {
   display: grid;
   gap: var(--s-3);
 }
 
 .qualification-review-evaluation > div,
+.signal-review-evaluation,
 .qualification-review-panel {
   display: grid;
   gap: var(--s-3);
@@ -474,5 +518,11 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-2);
+}
+
+.signal-correction-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
 }
 

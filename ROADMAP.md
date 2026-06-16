@@ -1384,6 +1384,31 @@ Status:
   - Cross-validation appears inside requirement fit.
   - Existing live artifacts without excerpts still render controlled fallback copy.
 
+### Slice 0.6.3.13: Signal evidence cards and score evaluation cleanup
+
+- Status: `Done`
+- Goal: Apply the same evidence-card and review-panel standard to live candidate intent signals.
+- User value: A reviewer can understand each signal as a chain: signal definition, found fact, source, excerpt/fallback, why it matches, why the score applies, confidence, and the human decision.
+- Scope:
+  - Replace the minimal expanded signal view with `Signal score evaluation`, evidence cards, and a human review panel.
+  - Add optional signal `source_usages`, `evidence_findings`, `cross_validation`, and `score_evaluation` fields while keeping old artifacts compatible.
+  - Update the live workflow prompt/normalizer to preserve signal excerpts and score rationale when provider output includes them.
+  - Reuse the existing browser-local signal validation overlay for confirm/reject/stale/correct decisions.
+- Out of scope:
+  - Ranking formula changes beyond existing effective-score validation semantics.
+  - UI run button, scheduler, persistence, or provider changes.
+  - Full source inventory inside expanded signal rows; it remains in the `Sources` tab.
+- Tests:
+  - `npm --prefix ./frontend run build`
+  - `python -m pytest`
+  - `npm --prefix ./frontend run visual:smoke`
+- Docs:
+  - Updated user/developer docs, qualification/evidence ADR, and ICP Radar feature README.
+- Acceptance criteria:
+  - Expanded signal rows start with score evaluation and then evidence cards.
+  - Signal evidence cards separate source ref/title, excerpt/fallback, why-signal, and why-score text.
+  - Reject/stale/correct signal decisions require comments; confirm can use a default local comment.
+
 ### Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web
 
 - Status: `Backlog`
@@ -2207,6 +2232,11 @@ Status:
   - Merged qualification evidence and source usage into self-contained evidence cards with optional excerpts.
   - Moved cross-validation into requirement-fit summary so expanded rows read as one evidence-backed decision chain.
   - Kept old live artifacts compatible through no-excerpt fallback copy.
+- `Slice 0.6.3.13: Signal evidence cards and score evaluation cleanup`
+  - Replaced the minimal live signal expanded view with a score-evaluation summary, evidence cards, and a review panel.
+  - Added optional live signal evidence fields for source usages, source-linked facts, excerpts, cross-validation, and score rationale.
+  - Reused the browser-local signal validation overlay for confirm, reject, stale, and correction decisions.
+  - Kept old live artifacts compatible through fallback signal evidence cards.
 
 ## Blocked Items
 

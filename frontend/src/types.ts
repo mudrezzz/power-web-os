@@ -520,6 +520,25 @@ export type LiveRadarQualificationResult = {
   review_decision: QualificationReviewDecision | null;
 };
 
+export type SignalEvidenceFinding = {
+  source_ref: string;
+  fact: string;
+  excerpt?: string;
+  excerpt_type?: 'quote' | 'paraphrase' | 'not_available';
+  why_it_matches_signal: string;
+  why_score_applies: string;
+  evidence_strength: 'strong' | 'medium' | 'weak';
+  contradicts_signal: boolean;
+};
+
+export type SignalScoreEvaluation = {
+  scale: string;
+  applied_score: number;
+  max_score: number;
+  rule_snapshot: string;
+  explanation: string;
+};
+
 export type LiveRadarSignalResult = {
   signal_code: string;
   signal: string;
@@ -528,6 +547,10 @@ export type LiveRadarSignalResult = {
   confidence: string;
   summary: string;
   evidence_refs: string[];
+  source_usages?: QualificationSourceUsage[];
+  evidence_findings?: SignalEvidenceFinding[];
+  cross_validation?: QualificationCrossValidation;
+  score_evaluation?: SignalScoreEvaluation | null;
 };
 
 export type LiveRadarCandidate = {

@@ -41,7 +41,12 @@ export function useRadarWorkspace({
 }) {
   const navigation = useRadarNavigation();
   const { radarOverrides, setRadarOverrides } = useRadarConfigOverrides();
-  const { signalValidation, saveSignalValidationDecision, resetCandidateSignalValidation } = useSignalValidationOverlay();
+  const {
+    signalValidation,
+    saveSignalValidationDecision,
+    resetCandidateSignalValidation,
+    resetSignalValidationDecision,
+  } = useSignalValidationOverlay();
   const { qualificationReview, saveQualificationReviewDecision } = useQualificationReviewOverlay();
   const [settingsDraft, setSettingsDraft] = useState<EditableRadarDefinitionDraft | null>(null);
   const [savedSettingsDraftSnapshot, setSavedSettingsDraftSnapshot] = useState('');
@@ -225,6 +230,7 @@ export function useRadarWorkspace({
     saveSignalValidationDecision,
     saveQualificationReviewDecision,
     resetCandidateSignalValidation,
+    resetSignalValidationDecision,
     createRadar,
     deleteRadar,
     resetRadarToArtifact,
