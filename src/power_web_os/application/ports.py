@@ -1,0 +1,72 @@
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Protocol
+
+from power_web_os.application.radar_records import (
+    RadarDefinitionRecord,
+    RadarRecord,
+    RadarRunRecord,
+    RadarRunStatus,
+)
+
+
+class RadarRepository(Protocol):
+    """Application port for persisted Radar catalog entries."""
+
+    def upsert(self, record: RadarRecord) -> RadarRecord: ...
+
+    def get(self, radar_id: str) -> RadarRecord | None: ...
+
+    def list(self) -> tuple[RadarRecord, ...]: ...
+
+
+class RadarDefinitionRepository(Protocol):
+    """Application port for versioned Radar definitions."""
+
+    def upsert(self, record: RadarDefinitionRecord) -> RadarDefinitionRecord: ...
+
+    def get_active(self, radar_id: str) -> RadarDefinitionRecord | None: ...
+
+    def list_for_radar(self, radar_id: str) -> tuple[RadarDefinitionRecord, ...]: ...
+
+
+class RadarRunRepository(Protocol):
+    """Application port for durable long-running Radar execution state."""
+
+    def create(self, record: RadarRunRecord) -> RadarRunRecord: ...
+
+    def get(self, run_id: str) -> RadarRunRecord | None: ...
+
+    def find_by_idempotency_key(self, idempotency_key: str) -> RadarRunRecord | None: ...
+
+    def list_for_radar(self, radar_id: str) -> tuple[RadarRunRecord, ...]: ...
+
+    def update_status(
+        self,
+        run_id: str,
+        status: RadarRunStatus,
+        *,
+        started_at: datetime | None = None,
+        completed_at: datetime | None = None,
+        error_message: str | None = None,
+        error_metadata: dict[str, object] | None = None,
+    ) -> RadarRunRecord: ...
+
+
+class JobQueue(Protocol):
+    """Application port for future async execution adapters."""
+
+    def enqueue_radar_run(self, run: RadarRunRecord) -> None: ...
+
+
+class RadarRunExecutor(Protocol):
+    """Application port for executing an already persisted Radar run."""
+
+    def execute(self, run_id: str) -> RadarRunRecord: ...
+
+
+class RadarRunScheduler(Protocol):
+    """Application port for scheduling Radar runs without owning execution."""
+
+    def schedule_due_runs(self, *, now: datetime) -> tuple[RadarRunRecord, ...]: ...

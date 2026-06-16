@@ -49,6 +49,13 @@ API_FORBIDDEN_SNIPPETS = {
     "accountradar",
 }
 
+APPLICATION_FORBIDDEN_IMPORT_PREFIXES = {
+    "alembic",
+    "sqlalchemy",
+    "fastapi",
+    "uvicorn",
+}
+
 JOB_FORBIDDEN_SNIPPETS = {
     "sqlalchemy",
     "session.execute",
@@ -145,6 +152,23 @@ def test_api_modules_do_not_own_persistence_queries_or_domain_scoring() -> None:
     assert violations == {}
 
 
+def test_application_modules_depend_on_ports_not_persistence_adapters() -> None:
+    application_dir = BACKEND_ROOT / "application"
+    if not application_dir.exists():
+        return
+
+    violations: dict[str, list[str]] = {}
+    for path in sorted(application_dir.rglob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        found = sorted(imported_roots(path) & APPLICATION_FORBIDDEN_IMPORT_PREFIXES)
+        if "power_web_os.persistence" in text:
+            found.append("power_web_os.persistence")
+        if found:
+            violations[path.as_posix()] = found
+
+    assert violations == {}
+
+
 def test_persistence_modules_do_not_import_fastapi() -> None:
     persistence_dir = BACKEND_ROOT / "persistence"
     if not persistence_dir.exists():
@@ -176,4 +200,3 @@ def test_job_modules_are_thin_application_entrypoints() -> None:
             violations[path.as_posix()] = found
 
     assert violations == {}
-

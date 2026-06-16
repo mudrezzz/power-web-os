@@ -7,6 +7,7 @@ python -m pip install -e ".[dev]"
 python -m pytest
 python -m power_web_os.demo generate-icp-radar
 python -m power_web_os.demo generate-icp-radar-catalog
+python -m power_web_os.demo seed-radar-db
 python -m power_web_os.demo generate-account-radar
 npm install --prefix ./frontend
 npm --prefix ./frontend run dev
@@ -26,6 +27,18 @@ http://127.0.0.1:8000/health
 http://127.0.0.1:8000/api/health
 http://127.0.0.1:8000/docs
 ```
+
+Run Radar persistence migrations and seed the current demo catalog:
+
+```bash
+python -m alembic upgrade head
+python -m power_web_os.demo seed-radar-db
+```
+
+By default, local persistence uses `sqlite:///./demo/output/power_web_os.sqlite3`
+so the repository can be tested without a running database service. Set
+`POWER_WEB_OS_DATABASE_URL=postgresql+psycopg://user:password@host:5432/power_web_os`
+for PostgreSQL-backed development.
 
 Direct checkout demo without installing:
 
@@ -139,6 +152,34 @@ Validation:
 
 ```bash
 python -m pytest tests/test_backend_api.py
+```
+
+## Backend Persistence Foundation
+
+Radar persistence is split across application contracts and SQLAlchemy
+adapters:
+
+```text
+src/power_web_os/application/radar_records.py       Radar records and run status
+src/power_web_os/application/ports.py               Repository and async job ports
+src/power_web_os/application/radar_catalog_seed.py  Demo catalog -> records mapper
+src/power_web_os/persistence/models.py              SQLAlchemy table mappings
+src/power_web_os/persistence/repositories.py        SQLAlchemy repository adapters
+src/power_web_os/persistence/migrations/            Alembic migration environment
+```
+
+Rules:
+
+- Application modules define records, use-case ports, and payload mapping only.
+- SQLAlchemy imports, sessions, models, and queries stay inside `persistence`.
+- `radar_runs` is the durable source of truth for queued/running/waiting-human/completed/failed/cancelled state.
+- Celery/Redis can later implement `JobQueue`, but queue state must not replace `radar_runs`.
+- The seed command upserts current demo radars and active definitions; it does not execute live searches or create run records.
+
+Validation:
+
+```bash
+python -m pytest tests/test_radar_persistence.py
 ```
 
 ## Backend Architecture Guardrails

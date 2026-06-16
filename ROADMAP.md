@@ -1831,7 +1831,7 @@ Principles:
 
 ### Slice 0.7.1: Persistence foundation
 
-- Status: `Ready`
+- Status: `Done`
 - Goal: Add PostgreSQL-ready persistence boundaries for radars, definitions, and runs.
 - User value: ICP Radar state can begin moving from artifacts/localStorage toward durable backend records.
 - Scope:
@@ -1857,6 +1857,17 @@ Principles:
   - Domain/application code depends on repository contracts, not raw SQL.
   - Durable run records are ready for CLI/API/worker execution paths.
   - Generated JSON artifacts remain available as demo/export fallback.
+- Completed in this slice:
+  - Added SQLAlchemy/Alembic persistence foundation with `radars`, `radar_definitions`, and `radar_runs`.
+  - Added application records, repository ports, and async job ports without Celery/Redis runtime.
+  - Added SQLAlchemy repository adapters, DB settings/session lifecycle, and initial migration.
+  - Added deterministic `seed-radar-db` command for current demo radars and active definitions.
+  - Added SQLite-based repository and migration smoke tests plus application boundary checks.
+- Validation:
+  - `python -m pytest tests/test_radar_persistence.py`
+  - `python -m pytest tests/test_backend_architecture_contract.py`
+  - `python -m pytest tests/test_backend_api.py`
+  - `python -m pytest`
 
 ### Slice 0.7.1.1: Legacy Radar module decomposition follow-up
 
@@ -2484,6 +2495,10 @@ Principles:
   - Updated local agent skills so backend slices must check OOP boundaries, repository isolation, and architecture contract tests.
   - Added `tests/test_backend_architecture_contract.py` with layer import checks, module-size guardrails, and temporary legacy-large Radar module allowlist.
   - Added a follow-up backlog slice for decomposing `live_icp_radar.py`, `icp_radar.py`, `icp_radar_catalog.py`, and `icp_radar_xlsx.py` after persistence boundaries exist.
+- `Slice 0.7.1: Persistence foundation`
+  - Added SQLAlchemy/Alembic schema for `radars`, `radar_definitions`, and `radar_runs`.
+  - Added application records, repository ports, async job ports, and SQLAlchemy repository adapters.
+  - Added deterministic Radar catalog database seed command and SQLite migration/repository tests.
 
 ## Blocked Items
 
@@ -2499,4 +2514,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.1: Persistence foundation`, then return to `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`.
+Implement `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`.

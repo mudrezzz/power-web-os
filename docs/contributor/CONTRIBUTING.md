@@ -25,6 +25,7 @@ When backend boundaries change, also run:
 
 ```bash
 python -m pytest tests/test_backend_architecture_contract.py
+python -m pytest tests/test_radar_persistence.py
 ```
 
 Update documentation when changing architecture, setup, public behavior, demo behavior, or user-facing functionality.

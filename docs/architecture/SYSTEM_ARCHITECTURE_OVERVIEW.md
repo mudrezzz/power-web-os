@@ -27,6 +27,7 @@ The current baseline has:
 - deterministic Playbook Analysis selected-account read model;
 - `AccessPlanningWorkflow` with optional `langgraph-dai` integration and local fallback;
 - initial FastAPI backend boundary with health/OpenAPI contracts;
+- SQLAlchemy/Alembic persistence foundation for Radar catalog, Radar definitions, and durable Radar run state;
 - generated ICP Radar, Account Radar, and Access Plan artifacts;
 - React TypeScript Vite demo inside the Power Web OS workspace shell using `ui-design-system`;
 - pytest baseline and frontend build check.
@@ -79,15 +80,16 @@ Chosen stack:
 - `pgvector` later for evidence retrieval.
 - `langgraph-dai` for agent workflow orchestration.
 
-The first backend slice intentionally exposes only a health boundary. The next
-backend slices should add persistence in this order:
+The first backend slice exposed only a health boundary. The persistence
+foundation now adds DB settings, sessions, Alembic, and Radar catalog/run
+repositories behind application ports. Backend slices should continue in this
+order:
 
-1. database settings, SQLAlchemy sessions, Alembic, and radar/run tables;
-2. radar catalog API;
-3. live radar run persistence;
-4. qualification and signal human-review persistence;
-5. frontend API adapter with JSON fallback;
-6. run journal and evidence audit.
+1. radar catalog API;
+2. live radar run persistence;
+3. qualification and signal human-review persistence;
+4. frontend API adapter with JSON fallback;
+5. run journal and evidence audit.
 
 JSON artifacts remain useful as demo exports and offline fallback, but they are
 not the long-term source of truth. Browser `localStorage` overlays remain demo
@@ -100,6 +102,11 @@ Backend ownership boundaries:
 - Domain services own scoring, validation, review semantics, and evidence rules.
 - Repository interfaces isolate application/domain code from SQLAlchemy.
 - Infrastructure adapters own database, provider, and external API calls.
+
+The current persistence slice stores `radars`, `radar_definitions`, and
+`radar_runs`. Local regression uses SQLite for migration and repository smoke
+tests, while schema and runtime configuration remain PostgreSQL-ready through
+SQLAlchemy/Alembic and `POWER_WEB_OS_DATABASE_URL`.
 
 LLM/search outputs must be persisted as reviewable evidence and run records, not
 as authoritative final truth. Human review decisions are first-class product

@@ -24,6 +24,7 @@ The demo shows the current Power Web OS loop: a ТОиР/SIBUR-style ICP Radar f
 - A React TypeScript frontend using the committed design system.
 - A durable app shell with sidebar navigation, top bar account context, active `Accounts`, clickable `Access Plans`, working `Account Map`, working `Playbook`, and planned placeholders for future workspaces.
 - A bounded SPA frame with internal workspace scrolling and EN/RU switching for UI chrome plus visible deterministic demo data.
+- Optional local Radar persistence seed for the generated catalog and active definitions.
 
 ## How To Run
 
@@ -32,6 +33,8 @@ python -m pip install -e ".[dev]"
 python -m power_web_os.demo generate-icp-radar
 python -m power_web_os.demo generate-icp-radar-catalog
 python -m power_web_os.demo generate-account-radar
+python -m alembic upgrade head
+python -m power_web_os.demo seed-radar-db
 npm install --prefix ./frontend
 npm --prefix ./frontend run dev
 ```
@@ -72,6 +75,12 @@ python demo/run_demo.py generate-access-plan
 ## Expected Result
 
 The Python commands print and write JSON for the ICP Radar catalog, the active ICP Radar shortlist, and the ranked accepted-account portfolio. The portfolio output should include six ranked accounts and a matching generated Access Plan artifact for every account.
+
+The optional `seed-radar-db` command upserts the current ICP Radar catalog and
+active definitions into the local database. It uses
+`sqlite:///./demo/output/power_web_os.sqlite3` by default; set
+`POWER_WEB_OS_DATABASE_URL` for PostgreSQL-backed development after running
+Alembic migrations.
 
 The live mini radar command writes `demo/output/live_mini_icp_radar_run.json` and `frontend/public/demo/live_mini_icp_radar_run.json` only when OpenRouter returns usable evidence. It does not generate synthetic candidates. If the artifact is absent, the frontend shows the live radar empty state with the CLI command.
 
@@ -122,6 +131,7 @@ Signal validation is visible in the demo: users can confirm, correct, reject, or
 
 - The planner is deterministic.
 - ICP Radar signal validation is not backend-persisted yet.
+- Radar catalog and definition persistence exists, but the frontend still reads generated JSON artifacts.
 - `ТОиР Quick Live Radar` is CLI-only and experimental. It uses OpenRouter when credentials are valid, and it can legitimately return no candidates.
 - ICP Radar settings edits are browser-local demo drafts only; production persistence, schedule execution, live source setup, and shortlist recalculation are not implemented yet.
 - ICP Radar candidate detail is read-only.

@@ -161,11 +161,30 @@ def generate_icp_radar_catalog_artifact(
     output_path: Path,
     frontend_output_path: Path,
 ) -> dict[str, Any]:
-    active_radar_artifact = icp_radar_artifact_to_payload(load_icp_radar_workbook(input_path))
-    artifact = build_icp_radar_catalog(active_radar_artifact)
+    artifact = build_icp_radar_catalog_from_workbook(input_path)
     _write_json(output_path, artifact)
     _write_json(frontend_output_path, artifact)
     return artifact
+
+
+def build_icp_radar_catalog_from_workbook(input_path: Path) -> dict[str, Any]:
+    active_radar_artifact = icp_radar_artifact_to_payload(load_icp_radar_workbook(input_path))
+    return build_icp_radar_catalog(active_radar_artifact)
+
+
+def seed_icp_radar_catalog_database(*, input_path: Path, database_url: str | None = None) -> dict[str, Any]:
+    from power_web_os.persistence.config import DatabaseSettings
+    from power_web_os.persistence.engine import create_database_engine, create_session_factory, session_scope
+    from power_web_os.persistence.seed import seed_radar_catalog
+
+    settings = DatabaseSettings.from_env(database_url=database_url)
+    engine = create_database_engine(settings)
+    session_factory = create_session_factory(engine)
+    catalog = build_icp_radar_catalog_from_workbook(input_path)
+
+    with session_scope(session_factory) as session:
+        result = seed_radar_catalog(session, catalog)
+    return result.to_payload()
 
 
 def generate_live_mini_icp_radar_plan(
@@ -220,6 +239,7 @@ def main() -> None:
             "generate-account-radar",
             "generate-icp-radar",
             "generate-icp-radar-catalog",
+            "seed-radar-db",
             "run-live-mini-icp-radar",
         ),
     )
@@ -287,6 +307,7 @@ def main() -> None:
         type=Path,
         default=root / "demo" / "output" / "live_mini_icp_radar_search_plan.json",
     )
+    parser.add_argument("--database-url", default=None)
     parser.add_argument("--dry-run-plan", action="store_true")
     parser.add_argument("--live", action="store_true")
     args = parser.parse_args()
@@ -316,6 +337,11 @@ def main() -> None:
             input_path=args.icp_radar_input,
             output_path=args.icp_radar_catalog_output,
             frontend_output_path=args.frontend_icp_radar_catalog_output,
+        )
+    elif args.command == "seed-radar-db":
+        artifact = seed_icp_radar_catalog_database(
+            input_path=args.icp_radar_input,
+            database_url=args.database_url,
         )
     elif args.command == "run-live-mini-icp-radar":
         if args.dry_run_plan:

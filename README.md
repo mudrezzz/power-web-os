@@ -33,6 +33,7 @@ Slice 0.6 is implemented. The repository contains:
 - deterministic ICP Radar XLSX import for the ТОиР/SIBUR-style fixture;
 - experimental `ТОиР Quick Live Radar` CLI flow that runs a small provider-backed ICP Radar through OpenRouter web search when `.[agent]` and local credentials are available;
 - initial Python/FastAPI backend boundary with health and OpenAPI contracts;
+- SQLAlchemy/Alembic persistence foundation for Radar catalog, Radar definitions, and durable Radar run state;
 - backend architecture guardrails for API, application, domain, persistence, integrations, workflows, jobs, and long-running Radar execution;
 - browser-local editable ICP Radar definitions with structured sources, natural-language account qualification rules, intent signals, fit/intent/tier scoring presets, and validation;
 - realistic portfolio demo input, Account Radar artifact, and generated Access Plan artifacts;
@@ -42,7 +43,7 @@ Slice 0.6 is implemented. The repository contains:
 
 The current product direction is an ABM-oriented `ICP Radar` layer before Power Web work: configurable ICP profiles, account discovery, recurring signal monitoring, human validation of found signals, transparent scoring, and a `take into work` handoff into Power Web discovery. The first realistic fixture uses the ТОиР/SIBUR-style analysis workbook.
 
-The next recommended backend slice is `Slice 0.7.1: Persistence foundation`; after that, the product roadmap returns to `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`. `Slice 0.6.3` added browser-local ICP Radar signal validation: users can confirm, correct, reject, or mark C1-C20 signals stale, and the visible shortlist score/ranking updates without mutating generated artifacts.
+The next recommended product slice is `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`. `Slice 0.7.1` added the first backend persistence foundation, and `Slice 0.6.3` added browser-local ICP Radar signal validation: users can confirm, correct, reject, or mark C1-C20 signals stale, and the visible shortlist score/ranking updates without mutating generated artifacts.
 
 ## Quick Start
 
@@ -55,6 +56,15 @@ python -m power_web_os.demo generate-account-radar
 npm install --prefix ./frontend
 npm --prefix ./frontend run dev
 ```
+
+Optional local Radar persistence seed:
+
+```bash
+python -m alembic upgrade head
+python -m power_web_os.demo seed-radar-db
+```
+
+The default local database URL is `sqlite:///./demo/output/power_web_os.sqlite3`. Set `POWER_WEB_OS_DATABASE_URL=postgresql+psycopg://user:password@host:5432/power_web_os` for a PostgreSQL-backed environment.
 
 Without installing the package, run the checkout demo directly:
 
