@@ -32,6 +32,7 @@ Slice 0.6 is implemented. The repository contains:
 - deterministic Playbook Analysis read model with current and no-partner-motion route previews;
 - deterministic ICP Radar XLSX import for the ТОиР/SIBUR-style fixture;
 - experimental `ТОиР Quick Live Radar` CLI flow that runs a small provider-backed ICP Radar through OpenRouter web search when `.[agent]` and local credentials are available;
+- initial Python/FastAPI backend boundary with health and OpenAPI contracts;
 - browser-local editable ICP Radar definitions with structured sources, natural-language account qualification rules, intent signals, fit/intent/tier scoring presets, and validation;
 - realistic portfolio demo input, Account Radar artifact, and generated Access Plan artifacts;
 - React + TypeScript + Vite frontend demo inside a bounded Power Web OS workspace shell with ICP Radar, Accounts, Access Plans, Account Map, and Playbook screens;
@@ -40,7 +41,7 @@ Slice 0.6 is implemented. The repository contains:
 
 The current product direction is an ABM-oriented `ICP Radar` layer before Power Web work: configurable ICP profiles, account discovery, recurring signal monitoring, human validation of found signals, transparent scoring, and a `take into work` handoff into Power Web discovery. The first realistic fixture uses the ТОиР/SIBUR-style analysis workbook.
 
-The next recommended product slice is `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`. `Slice 0.6.3` added browser-local ICP Radar signal validation: users can confirm, correct, reject, or mark C1-C20 signals stale, and the visible shortlist score/ranking updates without mutating generated artifacts.
+The next recommended backend slice is `Slice 0.7.1: Persistence foundation`; after that, the product roadmap returns to `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`. `Slice 0.6.3` added browser-local ICP Radar signal validation: users can confirm, correct, reject, or mark C1-C20 signals stale, and the visible shortlist score/ranking updates without mutating generated artifacts.
 
 ## Quick Start
 
@@ -73,6 +74,14 @@ To install the required LangGraph document AI framework for agent workflow work:
 
 ```bash
 python -m pip install -e ".[agent,dev]"
+```
+
+To run the first local backend API boundary:
+
+```bash
+python -m pip install -e ".[api,dev]"
+power-web-os-api
+# Open http://127.0.0.1:8000/health or http://127.0.0.1:8000/docs
 ```
 
 Optional live mini ICP Radar run:

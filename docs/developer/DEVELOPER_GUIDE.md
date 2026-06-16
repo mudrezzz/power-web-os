@@ -12,6 +12,21 @@ npm install --prefix ./frontend
 npm --prefix ./frontend run dev
 ```
 
+Run the local backend API boundary:
+
+```bash
+python -m pip install -e ".[api,dev]"
+power-web-os-api
+```
+
+Useful local API URLs:
+
+```text
+http://127.0.0.1:8000/health
+http://127.0.0.1:8000/api/health
+http://127.0.0.1:8000/docs
+```
+
 Direct checkout demo without installing:
 
 ```bash
@@ -31,6 +46,7 @@ python -m pip install -e ".[agent,dev]"
 
 ```text
 src/power_web_os/      Product domain and application baseline
+src/power_web_os/api/  FastAPI backend boundary and API settings
 tests/                 Unit and smoke tests
 demo/                  Demo fixtures and run instructions
 frontend/              React TypeScript Vite demo app
@@ -97,6 +113,33 @@ Rules:
 - Run `python -m pytest` after feature-structure changes; `tests/test_frontend_architecture_contract.py` guards the ICP Radar decomposition, application/adapters/domain/components boundaries, model barrel boundaries, feature CSS module ownership, lazy Settings loading, and i18n runtime/resource split.
 
 When adding ICP Radar UI, prefer the existing module boundary instead of adding new logic to `ICPRadarScreen.tsx`: source-specific artifact mapping goes to `adapters/`, browser-local workflows go to `application/`, domain decisions go to `domain/`, shortlist/table changes go to `fixtureShortlist.tsx` or `liveShortlist.tsx`, preview-only changes go to `fixturePreview.tsx`, detail/review changes go to `fixtureDetail.tsx` or `liveDetail.tsx`, and settings block changes go to the relevant `settings*` module.
+
+## Backend API Baseline
+
+The first persistent backend boundary lives in `src/power_web_os/api/`.
+
+Current files:
+
+```text
+src/power_web_os/api/app.py        FastAPI app factory and health endpoints
+src/power_web_os/api/config.py     API settings boundary
+src/power_web_os/api/__main__.py   Local uvicorn runner for power-web-os-api
+```
+
+Rules:
+
+- Keep FastAPI routes thin: validate transport input, call application services, return DTOs.
+- Keep domain logic outside routes.
+- Keep database access behind repository interfaces once persistence is introduced.
+- Keep generated JSON artifacts as demo/export fallback, not long-term source of truth.
+- Do not import frontend/demo artifact readers into API routes as hidden persistence.
+- Use Pydantic DTOs for request/response contracts and keep OpenAPI stable.
+
+Validation:
+
+```bash
+python -m pytest tests/test_backend_api.py
+```
 
 ## Domain Baseline
 

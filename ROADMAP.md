@@ -1722,6 +1722,122 @@ Status:
 - Risks:
   - Run history can imply real scheduling; keep first version synthetic/read-only.
 
+## Backend Foundation Track
+
+The backend is developed in parallel with the product roadmap. The goal is not
+to rewrite the demo at once, but to move durable product state from generated
+JSON and browser-local overlays into a persistent API-backed application layer
+in small, testable slices.
+
+Principles:
+
+- Backend stack: Python, FastAPI, Pydantic, PostgreSQL, SQLAlchemy 2.x, Alembic.
+- JSON artifacts remain demo/export/read fallback, not the long-term source of truth.
+- LLM/search output is persisted as reviewable run evidence, not authoritative truth.
+- Human review decisions are first-class domain records.
+- Frontend data source differences are adapters; product UX must not branch by provider.
+- Domain logic stays independent from HTTP, database, UI, and provider APIs.
+
+### Slice 0.7.0: Backend API foundation
+
+- Status: `Done`
+- Goal: Add the first production-oriented HTTP boundary without changing current demo behavior.
+- User value: The project now has a real backend entrypoint that future persistence, run, and review APIs can grow from.
+- Scope:
+  - Add FastAPI application factory.
+  - Add stable `/health` and `/api/health` contracts.
+  - Add API settings boundary.
+  - Add local API run command through `power-web-os-api`.
+  - Add tests for health and OpenAPI contracts.
+- Out of scope:
+  - Database.
+  - Auth.
+  - Radar CRUD.
+  - Live run persistence.
+  - Frontend API migration.
+- Tests:
+  - `python -m pytest tests/test_backend_api.py`
+- Docs:
+  - Backend roadmap and stack documented in Roadmap, Architecture, ADR, README, and Developer Guide.
+- Acceptance criteria:
+  - API app imports without starting a server.
+  - Health endpoint returns service, version, environment, and ok status.
+  - OpenAPI is generated.
+  - Existing demo and artifact flows are unchanged.
+
+### Slice 0.7.1: Persistence foundation
+
+- Status: `Ready`
+- Goal: Add PostgreSQL-ready persistence boundaries for radars, definitions, and runs.
+- User value: ICP Radar state can begin moving from artifacts/localStorage toward durable backend records.
+- Scope:
+  - Add SQLAlchemy 2.x and Alembic.
+  - Add DB settings and session lifecycle.
+  - Add tables for `radars`, `radar_definitions`, and `radar_runs`.
+  - Add repository interfaces and Postgres-backed implementations.
+  - Add deterministic seed command for current demo radars.
+- Out of scope:
+  - Frontend API migration.
+  - Live run execution through API.
+  - Auth and multi-user tenancy.
+- Tests:
+  - Unit tests for repository interfaces.
+  - Migration smoke test.
+  - `python -m pytest`.
+- Acceptance criteria:
+  - Database schema is migration-managed.
+  - Domain/application code depends on repository contracts, not raw SQL.
+  - Generated JSON artifacts remain available as demo/export fallback.
+
+### Slice 0.7.2: Radar catalog API
+
+- Status: `Backlog`
+- Goal: Expose persisted radar catalog and selected radar definition through API contracts.
+- Scope:
+  - `GET /api/radars`.
+  - `GET /api/radars/{radar_id}`.
+  - `POST /api/radars`.
+  - `PATCH /api/radars/{radar_id}`.
+  - Contract tests and OpenAPI checks.
+- Acceptance criteria:
+  - Frontend can consume the API through an adapter while JSON remains fallback.
+
+### Slice 0.7.3: Live radar run persistence
+
+- Status: `Backlog`
+- Goal: Persist live mini radar runs and evidence instead of writing only JSON artifacts.
+- Scope:
+  - Store run metadata, search plan, candidates, qualification results, signal results, sources, evidence cards, and warnings.
+  - Keep OpenRouter and future providers behind the existing provider-neutral boundary.
+  - Export JSON artifacts from persisted run state for demo compatibility.
+
+### Slice 0.7.4: Human review persistence
+
+- Status: `Backlog`
+- Goal: Persist qualification and signal review decisions in backend state.
+- Scope:
+  - Store approve/reject/correct/stale decisions, comments, reviewer, timestamps, and effective score impact.
+  - Replace browser-local overlays for live radar review.
+  - Keep fixture/demo local fallback where useful.
+
+### Slice 0.7.5: Frontend API adapter
+
+- Status: `Backlog`
+- Goal: Add a frontend API data source that can replace JSON artifacts gradually.
+- Scope:
+  - Add typed API client.
+  - Add API-backed ICP Radar catalog adapter.
+  - Keep offline/demo JSON fallback explicit.
+
+### Slice 0.7.6: Run journal and evidence audit
+
+- Status: `Backlog`
+- Goal: Store and display structured workflow journal events from backend state.
+- Scope:
+  - Persist structured trace, provider metadata, queries, warnings, and source normalization notes.
+  - Show journal tab from backend data.
+  - Do not store or show hidden chain-of-thought.
+
 ### Slice 0.7: Human review queue loop
 
 - Status: `Backlog`
@@ -2253,4 +2369,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`.
+Implement `Slice 0.7.1: Persistence foundation`, then return to `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`.

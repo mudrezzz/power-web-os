@@ -26,6 +26,7 @@ The current baseline has:
 - deterministic Power Web Board selected-account read model;
 - deterministic Playbook Analysis selected-account read model;
 - `AccessPlanningWorkflow` with optional `langgraph-dai` integration and local fallback;
+- initial FastAPI backend boundary with health/OpenAPI contracts;
 - generated ICP Radar, Account Radar, and Access Plan artifacts;
 - React TypeScript Vite demo inside the Power Web OS workspace shell using `ui-design-system`;
 - pytest baseline and frontend build check.
@@ -59,6 +60,50 @@ UI / API
 ```
 
 Domain logic must not depend on transport, database, UI, or vendor APIs.
+
+## Backend API And Persistence Direction
+
+The backend is now a first-class architectural track, developed in parallel with
+the product roadmap. It should gradually move durable state out of generated
+JSON artifacts and browser-local overlays without stopping frontend/product
+learning loops.
+
+Chosen stack:
+
+- Python application backend.
+- FastAPI for HTTP and OpenAPI contracts.
+- Pydantic for transport and application DTOs.
+- PostgreSQL for durable product state.
+- SQLAlchemy 2.x for persistence mapping.
+- Alembic for migrations.
+- `pgvector` later for evidence retrieval.
+- `langgraph-dai` for agent workflow orchestration.
+
+The first backend slice intentionally exposes only a health boundary. The next
+backend slices should add persistence in this order:
+
+1. database settings, SQLAlchemy sessions, Alembic, and radar/run tables;
+2. radar catalog API;
+3. live radar run persistence;
+4. qualification and signal human-review persistence;
+5. frontend API adapter with JSON fallback;
+6. run journal and evidence audit.
+
+JSON artifacts remain useful as demo exports and offline fallback, but they are
+not the long-term source of truth. Browser `localStorage` overlays remain demo
+state until their corresponding backend records exist.
+
+Backend ownership boundaries:
+
+- HTTP routes validate requests and return DTOs.
+- Application services orchestrate use cases.
+- Domain services own scoring, validation, review semantics, and evidence rules.
+- Repository interfaces isolate application/domain code from SQLAlchemy.
+- Infrastructure adapters own database, provider, and external API calls.
+
+LLM/search outputs must be persisted as reviewable evidence and run records, not
+as authoritative final truth. Human review decisions are first-class product
+records that explain how scores and handoff eligibility changed.
 
 ## Frontend Module Boundaries
 
