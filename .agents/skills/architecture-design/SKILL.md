@@ -39,6 +39,33 @@ Use the following sources, in this order:
 7. Identify architectural risks.
 8. Record meaningful decisions as ADRs.
 
+## Backend architecture rules
+
+When the design touches backend, persistence, APIs, integrations, workflows, or
+jobs, explicitly define ownership for:
+
+- `api`: thin FastAPI routes, DTOs, dependency wiring.
+- `application`: use cases, transactions, ports, orchestration.
+- `domain`: business rules, scoring, validation, review semantics, handoff rules.
+- `persistence`: SQLAlchemy models, sessions, repository implementations.
+- `integrations`: provider, source, CRM, and external API adapters.
+- `workflows`: LangGraph workflow wrappers and workflow state.
+- `jobs`: worker and scheduler entrypoints.
+
+Backend decisions must preserve this dependency direction:
+
+```text
+API / CLI / workers / scheduler
+  -> application services
+    -> domain services + ports
+      -> persistence / integrations / job adapters
+```
+
+Do not design FastAPI routes, worker tasks, scheduler triggers, provider
+adapters, SQLAlchemy models, or workflow wrappers as owners of domain scoring,
+review semantics, or candidate state decisions. Record temporary exceptions and
+required architecture contract tests in `ROADMAP.md`.
+
 ## Required outputs
 
 Update or create:
@@ -90,6 +117,7 @@ Before finishing:
 
 - Architecture supports iterative slice delivery.
 - No component has unclear ownership.
+- Backend boundaries are explicit when backend work is involved.
 - Important trade-offs are documented.
 - `ROADMAP.md` reflects architectural work.
 - Follow-up tasks are small enough to implement as slices.

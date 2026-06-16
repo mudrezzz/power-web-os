@@ -1737,6 +1737,15 @@ Principles:
 - Human review decisions are first-class domain records.
 - Frontend data source differences are adapters; product UX must not branch by provider.
 - Domain logic stays independent from HTTP, database, UI, and provider APIs.
+- Backend growth must be guarded by architecture contracts, not only written guidance.
+- API routes, worker tasks, and scheduler triggers are entrypoints only; they call application services.
+- Application services own use cases and transactions; they do not contain provider-specific or HTTP-specific code.
+- Domain services own scoring, validation, review semantics, and handoff rules; they do not import FastAPI, SQLAlchemy, Celery, Redis, HTTP clients, or provider SDKs.
+- Repository interfaces are the application boundary; SQLAlchemy models and queries stay in persistence implementations.
+- Provider adapters return typed observations and evidence; they do not decide candidate state or final truth.
+- Workflow wrappers orchestrate and audit execution; they do not hide domain scoring, review, or persistence decisions.
+- Large backend modules require decomposition into domain, application, API, persistence, integrations, workflows, and jobs boundaries.
+- Long-running radar execution should use durable run state first, then an async worker adapter; Postgres remains the source of truth for run status and audit.
 
 ### Slice 0.7.0: Backend API foundation
 
@@ -1765,6 +1774,61 @@ Principles:
   - OpenAPI is generated.
   - Existing demo and artifact flows are unchanged.
 
+### Slice 0.7.0.1: Backend architecture guardrails
+
+- Status: `Done`
+- Goal: Prevent the backend from growing into large mixed-responsibility modules before persistence, jobs, and API contracts expand.
+- User value: Future backend work remains reviewable, explainable, and safe to extend while Radar functionality moves from demo artifacts into durable state.
+- Scope:
+  - Add a backend architecture ADR covering module boundaries, OOP/SRP rules, and async job direction.
+  - Update `docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md` with backend module ownership:
+    - `api`: thin FastAPI routes, DTOs, dependency wiring;
+    - `application`: use cases, transactions, orchestration;
+    - `domain`: business rules, scoring, validation, review semantics, handoff rules;
+    - `persistence`: SQLAlchemy models, sessions, repository implementations;
+    - `integrations`: provider/source/CRM adapters;
+    - `workflows`: LangGraph workflow wrappers and workflow state;
+    - `jobs`: worker and scheduler entrypoints.
+  - Update `.agents` skills so backend implementation work explicitly checks OOP boundaries, module ownership, repository isolation, and architecture contract tests.
+  - Update developer/contributor docs with backend extension rules.
+  - Add `tests/test_backend_architecture_contract.py` to guard:
+    - domain modules do not import FastAPI, SQLAlchemy, Celery, Redis, HTTP clients, or provider SDKs;
+    - API route modules do not own SQLAlchemy queries or domain scoring;
+    - persistence modules do not import FastAPI;
+    - job modules call application services instead of owning business logic;
+    - backend modules stay under agreed file-size thresholds unless explicitly allowlisted with a reason;
+    - existing large legacy modules are listed as decomposition follow-ups, not treated as the pattern for new code.
+- Out of scope:
+  - Moving all existing Python modules into the new folder structure.
+  - Adding SQLAlchemy/Alembic schema.
+  - Adding Celery/Redis runtime dependencies.
+  - Refactoring `live_icp_radar.py` completely.
+- Implementation notes:
+  - Treat this as governance hardening, similar to the ICP Radar frontend architecture contract.
+  - `live_icp_radar.py`, `icp_radar.py`, and `icp_radar_catalog.py` should be acknowledged as legacy-large modules with follow-up decomposition tasks.
+  - New backend work after this slice must use the documented boundary structure.
+  - The async decision should be explicit: durable run state and queue ports first; Celery/Redis as a production adapter later.
+- Tests:
+  - `python -m pytest tests/test_backend_architecture_contract.py`
+  - `python -m pytest tests/test_backend_api.py`
+  - `python -m pytest`
+- Docs:
+  - Update backend ADRs, architecture overview, developer guide, contributor guide, `.agents` skills, and `ROADMAP.md`.
+- Demo impact:
+  - No user-visible demo behavior changes.
+- Acceptance criteria:
+  - Backend module boundaries and OOP rules are documented in ADR and SAO.
+  - Agent skills include backend-specific governance checks.
+  - Architecture tests fail on obvious cross-layer imports or new backend god modules.
+  - `Slice 0.7.1` can start with clear persistence/application/domain boundaries.
+- Completed:
+  - Added backend boundary ADR and ADR index entry.
+  - Documented backend ownership, OOP/SRP rules, dependency direction, and async job direction in SAO and developer/contributor docs.
+  - Updated local agent skills with backend boundary checks.
+  - Added backend architecture contract tests with a temporary legacy-large module allowlist.
+- Risks:
+  - Overly strict tests can block practical incremental work; mitigate with focused rules and explicit temporary allowlists.
+
 ### Slice 0.7.1: Persistence foundation
 
 - Status: `Ready`
@@ -1776,18 +1840,44 @@ Principles:
   - Add tables for `radars`, `radar_definitions`, and `radar_runs`.
   - Add repository interfaces and Postgres-backed implementations.
   - Add deterministic seed command for current demo radars.
+  - Add durable run status fields that later async workers can update: queued/running/waiting_human/completed/failed/cancelled, timestamps, idempotency key, correlation id, and error metadata.
+  - Add application-level ports for `JobQueue`, `RadarRunExecutor`, and `RadarRunScheduler` without requiring Celery/Redis yet.
 - Out of scope:
   - Frontend API migration.
   - Live run execution through API.
+  - Production async worker runtime.
   - Auth and multi-user tenancy.
 - Tests:
   - Unit tests for repository interfaces.
   - Migration smoke test.
+  - Contract tests that application code depends on repositories/ports instead of SQLAlchemy details.
   - `python -m pytest`.
 - Acceptance criteria:
   - Database schema is migration-managed.
   - Domain/application code depends on repository contracts, not raw SQL.
+  - Durable run records are ready for CLI/API/worker execution paths.
   - Generated JSON artifacts remain available as demo/export fallback.
+
+### Slice 0.7.1.1: Legacy Radar module decomposition follow-up
+
+- Status: `Backlog`
+- Goal: Decompose legacy-large Radar modules after persistence/application boundaries are established.
+- User value: Engineers can extend live Radar, fixture import, catalog generation, and evidence normalization without reintroducing backend god modules.
+- Scope:
+  - Split `live_icp_radar.py` into provider, request/response normalization, candidate normalization, workflow, and artifact export modules.
+  - Split `icp_radar.py`, `icp_radar_catalog.py`, and `icp_radar_xlsx.py` only where ownership becomes clear after `Slice 0.7.1`.
+  - Remove modules from the backend architecture contract allowlist as they fall below the threshold.
+- Out of scope:
+  - Changing public artifact contracts.
+  - Adding new persistence schema beyond `Slice 0.7.1`.
+  - Adding Celery/Redis runtime.
+- Tests:
+  - `python -m pytest tests/test_backend_architecture_contract.py`
+  - Existing Radar tests affected by the decomposition.
+- Acceptance criteria:
+  - Decomposed modules follow application/domain/integration/workflow boundaries.
+  - Legacy allowlist shrinks or is removed.
+  - Existing demo artifacts remain compatible.
 
 ### Slice 0.7.2: Radar catalog API
 
@@ -1810,6 +1900,42 @@ Principles:
   - Store run metadata, search plan, candidates, qualification results, signal results, sources, evidence cards, and warnings.
   - Keep OpenRouter and future providers behind the existing provider-neutral boundary.
   - Export JSON artifacts from persisted run state for demo compatibility.
+
+### Slice 0.7.3.1: Async radar jobs and scheduler adapter
+
+- Status: `Backlog`
+- Goal: Add a production-oriented async execution adapter for long-running Radar jobs without moving source-of-truth state out of Postgres.
+- User value: Live and scheduled Radars can run in the background with durable status, retries, audit, and later UI progress instead of blocking API or CLI requests.
+- Scope:
+  - Add Celery worker integration with Redis as broker/result transport.
+  - Implement Celery-backed `JobQueue` adapter over the ports introduced in `Slice 0.7.1`.
+  - Keep worker tasks thin: load run context, call application service, update durable run state/events.
+  - Add scheduler adapter for recurring radar monitoring, initially disabled or local-only unless explicitly configured.
+  - Add retry, timeout, cancellation-ready status semantics, and idempotency checks.
+  - Document local worker commands and operational assumptions.
+- Out of scope:
+  - Full production deployment manifests.
+  - UI run control.
+  - Multi-tenant quotas.
+  - Replacing Postgres run state with Celery result backend.
+- Implementation notes:
+  - FastAPI `BackgroundTasks` is not sufficient for Radar jobs because runs are long, retryable, scheduled, and must survive process restarts.
+  - APScheduler alone is not enough as the execution queue, but may be used behind the scheduler adapter for local/dev cadence if needed.
+  - Postgres remains the authoritative run state and audit log; Redis/Celery are execution infrastructure.
+- Tests:
+  - Unit tests for queue adapter behavior with eager/in-memory Celery mode.
+  - Integration-style tests for run state transitions through the application service.
+  - `python -m pytest`.
+- Docs:
+  - Update architecture, developer guide, and operations notes with worker/scheduler commands and failure semantics.
+- Demo impact:
+  - No default demo behavior changes until API/UI run controls are added.
+- Acceptance criteria:
+  - A Radar run can be enqueued through a port and executed by a worker adapter.
+  - Durable `radar_runs` status changes are observable without trusting Celery result state.
+  - Worker code does not own domain scoring, provider normalization, or persistence queries directly.
+- Risks:
+  - Celery/Redis can add local setup friction; mitigate with inline/eager adapters for tests and default demo flows.
 
 ### Slice 0.7.4: Human review persistence
 
@@ -2353,6 +2479,11 @@ Principles:
   - Added optional live signal evidence fields for source usages, source-linked facts, excerpts, cross-validation, and score rationale.
   - Reused the browser-local signal validation overlay for confirm, reject, stale, and correction decisions.
   - Kept old live artifacts compatible through fallback signal evidence cards.
+- `Slice 0.7.0.1: Backend architecture guardrails`
+  - Added a backend boundary ADR and documented backend ownership in architecture, developer, and contributor docs.
+  - Updated local agent skills so backend slices must check OOP boundaries, repository isolation, and architecture contract tests.
+  - Added `tests/test_backend_architecture_contract.py` with layer import checks, module-size guardrails, and temporary legacy-large Radar module allowlist.
+  - Added a follow-up backlog slice for decomposing `live_icp_radar.py`, `icp_radar.py`, `icp_radar_catalog.py`, and `icp_radar_xlsx.py` after persistence boundaries exist.
 
 ## Blocked Items
 
@@ -2360,7 +2491,6 @@ None.
 
 ## Open Questions
 
-- What is the first durable persistence mechanism for signal validation decisions after the browser-local demo overlay: generated JSON artifact, lightweight local state file, SQLite, or production API?
 - Which CRM should be the first integration target: file export, HubSpot, Salesforce, Bitrix24, amoCRM, or another system?
 - Which Russian/CIS data source should be first: procurement, HH, company websites, news, CRM history, or a partner ecosystem file?
 - Should the first durable UI be static demo, lightweight local web app, or API-backed app after Slice 0.2?

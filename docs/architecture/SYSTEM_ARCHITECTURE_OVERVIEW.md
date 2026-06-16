@@ -105,6 +105,44 @@ LLM/search outputs must be persisted as reviewable evidence and run records, not
 as authoritative final truth. Human review decisions are first-class product
 records that explain how scores and handoff eligibility changed.
 
+Backend module ownership is guarded like the frontend feature boundary:
+
+| Backend boundary | Responsibility | Must not own |
+|---|---|---|
+| `api` | FastAPI app factory, routes, transport DTOs, dependency wiring | SQLAlchemy queries, scoring, provider calls, job execution |
+| `application` | Use cases, transactions, port interfaces, orchestration | FastAPI request handling, SQLAlchemy mapping details, provider SDK details |
+| `domain` | Business rules, scoring, validation, review semantics, handoff rules | FastAPI, SQLAlchemy, Celery, Redis, HTTP clients, provider SDKs |
+| `persistence` | SQLAlchemy models, sessions, migrations, repository implementations | FastAPI routes, domain decisions, provider calls |
+| `integrations` | OpenRouter/source/CRM adapters and typed external observations | Candidate state decisions, final truth, persistence transactions |
+| `workflows` | LangGraph workflow state, node wrappers, orchestration audit | Domain scoring hidden inside workflow wrappers, SQLAlchemy queries |
+| `jobs` | Worker tasks and scheduler entrypoints | Business rules, provider normalization, persistence queries |
+
+The backend dependency direction is:
+
+```text
+API / CLI / workers / scheduler
+  -> application services
+    -> domain services + ports
+      -> persistence / integrations / job adapters
+```
+
+Application services should depend on repository, queue, executor, scheduler,
+and provider ports. Infrastructure adapters implement those ports. This keeps
+FastAPI, SQLAlchemy, Celery, Redis, and provider SDKs out of domain code.
+
+Long-running Radar execution is designed around durable run state first.
+`radar_runs` records should carry status, timestamps, idempotency key,
+correlation id, and error metadata before a production worker is introduced.
+Celery with Redis can later implement the queue adapter, but Postgres remains
+the source of truth for run status and audit. FastAPI `BackgroundTasks` is not
+the production execution model for Radar runs because those jobs are long,
+retryable, scheduled, and must survive process restarts.
+
+Architecture contract tests enforce these rules. Existing large legacy modules
+are temporary decomposition follow-ups and not examples for new backend work:
+`live_icp_radar.py`, `icp_radar.py`, `icp_radar_catalog.py`, and
+`icp_radar_xlsx.py`.
+
 ## Frontend Module Boundaries
 
 The React frontend follows the same boundary rule as the Python domain: a screen should not become a god object. Once a product area contains its own state model, adapters, tables, previews, settings, and review controls, it must move into `frontend/src/features/<feature>/`.

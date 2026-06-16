@@ -33,6 +33,7 @@ Slice 0.6 is implemented. The repository contains:
 - deterministic ICP Radar XLSX import for the ТОиР/SIBUR-style fixture;
 - experimental `ТОиР Quick Live Radar` CLI flow that runs a small provider-backed ICP Radar through OpenRouter web search when `.[agent]` and local credentials are available;
 - initial Python/FastAPI backend boundary with health and OpenAPI contracts;
+- backend architecture guardrails for API, application, domain, persistence, integrations, workflows, jobs, and long-running Radar execution;
 - browser-local editable ICP Radar definitions with structured sources, natural-language account qualification rules, intent signals, fit/intent/tier scoring presets, and validation;
 - realistic portfolio demo input, Account Radar artifact, and generated Access Plan artifacts;
 - React + TypeScript + Vite frontend demo inside a bounded Power Web OS workspace shell with ICP Radar, Accounts, Access Plans, Account Map, and Playbook screens;

@@ -141,6 +141,51 @@ Validation:
 python -m pytest tests/test_backend_api.py
 ```
 
+## Backend Architecture Guardrails
+
+Backend work must follow the same explicit-boundary rule as the ICP Radar
+frontend feature. New backend code should use these ownership boundaries:
+
+```text
+src/power_web_os/api/           FastAPI app, routes, DTOs, dependency wiring
+src/power_web_os/application/   Use cases, transactions, ports, orchestration
+src/power_web_os/domain/        Business rules, scoring, validation, review semantics
+src/power_web_os/persistence/   SQLAlchemy models, sessions, repositories, migrations
+src/power_web_os/integrations/  Provider, source, CRM, and external API adapters
+src/power_web_os/workflows/     LangGraph workflow wrappers and workflow state
+src/power_web_os/jobs/          Worker and scheduler entrypoints
+```
+
+Rules:
+
+- API routes validate transport input, call application services, and return DTOs.
+- Application services own use cases and transaction boundaries.
+- Domain services own scoring, validation, review semantics, evidence rules, and handoff rules.
+- Domain modules must not import FastAPI, SQLAlchemy, Celery, Redis, `httpx`, `dotenv`, `uvicorn`, or provider SDKs.
+- Persistence implementations own SQLAlchemy models, sessions, and queries behind repository interfaces.
+- Provider adapters return typed observations and evidence; they do not decide candidate state or final truth.
+- Workflow wrappers orchestrate execution and audit, but do not hide domain scoring or review semantics.
+- Worker tasks and scheduler triggers are entrypoints only. They call application services and update durable run state through repositories.
+- New backend modules should stay under 500 lines unless an explicit architecture contract allowlist gives a temporary reason.
+
+Long-running Radar jobs should be modeled as durable runs before adding
+production worker infrastructure. `radar_runs` remains the source of truth for
+status, timestamps, idempotency, correlation, errors, and audit. Celery/Redis can
+later implement the queue adapter, but Celery result state must not become the
+product state. FastAPI `BackgroundTasks` is not the production execution model
+for Radar runs.
+
+Temporary legacy-large modules are allowed until a later decomposition slice:
+`live_icp_radar.py`, `icp_radar.py`, `icp_radar_catalog.py`, and
+`icp_radar_xlsx.py`. Do not copy their size or mixed responsibilities into new
+backend work.
+
+Validation:
+
+```bash
+python -m pytest tests/test_backend_architecture_contract.py
+```
+
 ## Domain Baseline
 
 The current Python package contains:
