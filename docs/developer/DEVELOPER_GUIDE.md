@@ -182,6 +182,28 @@ Validation:
 python -m pytest tests/test_radar_persistence.py
 ```
 
+### How To Extend Backend Persistence
+
+Use this path for new durable backend behavior:
+
+1. Start in `src/power_web_os/application/README.md` and
+   `src/power_web_os/persistence/README.md`.
+2. Add or update an application record for the use-case contract.
+3. Add or update an application port protocol for repository, queue, scheduler,
+   executor, or provider behavior.
+4. Add a SQLAlchemy model only for storage shape.
+5. Add an Alembic migration for schema changes.
+6. Implement a repository adapter that converts ORM models to application
+   records and back.
+7. Add repository tests and architecture contract tests.
+8. Update local layer README files when ownership, dependencies, or extension
+   rules change.
+
+Do not import `power_web_os.persistence`, SQLAlchemy, Alembic, FastAPI, Celery,
+Redis, or provider SDKs from `application`. Do not put SQLAlchemy queries in
+FastAPI routes. Do not let worker tasks, scheduler triggers, or queue adapters
+own scoring, provider normalization, review semantics, or final candidate state.
+
 ## Backend Architecture Guardrails
 
 Backend work must follow the same explicit-boundary rule as the ICP Radar

@@ -60,11 +60,18 @@ are temporary legacy exceptions, not patterns for new backend work:
 - `src/power_web_os/icp_radar_catalog.py`
 - `src/power_web_os/icp_radar_xlsx.py`
 
+Backend boundaries must also be discoverable for developers and future agents.
+Each active backend layer should have local README guidance when it owns a
+meaningful extension path. Key modules should include short module docstrings
+that explain ownership, not implementation trivia. Architecture contract tests
+guard the presence of these onboarding docs for active backend layers.
+
 ## Consequences
 
 - Slice 0.7.1 can introduce persistence behind repository/application boundaries instead of embedding SQLAlchemy in routes or domain logic.
 - Future Celery/Redis work can reuse queue and executor ports instead of becoming the application boundary.
 - Tests fail when new backend modules introduce cross-layer imports, oversized mixed-responsibility files, or hidden persistence in API routes.
+- Tests fail when active backend layers lose their local onboarding docs or key module ownership docstrings.
 - Existing large Radar modules are allowed temporarily, but follow-up work should decompose them after persistence boundaries are established.
 
 ## Alternatives considered

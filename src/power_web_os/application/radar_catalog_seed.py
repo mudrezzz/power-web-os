@@ -1,3 +1,9 @@
+"""Map deterministic Radar catalog artifacts into application records.
+
+The seed path consumes the already-normalized catalog payload so persistence
+does not need to know workbook import details or live provider behavior.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

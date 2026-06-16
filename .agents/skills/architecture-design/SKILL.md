@@ -66,6 +66,13 @@ adapters, SQLAlchemy models, or workflow wrappers as owners of domain scoring,
 review semantics, or candidate state decisions. Record temporary exceptions and
 required architecture contract tests in `ROADMAP.md`.
 
+When a backend design introduces or materially changes a layer boundary, require
+developer-facing ownership guidance close to the code, for example a local
+`README.md` in the layer package plus concise module docstrings for key modules.
+The guidance must explain allowed imports, forbidden imports, extension path,
+transaction/runtime ownership where relevant, and the architecture contract
+tests that protect the boundary.
+
 ## Required outputs
 
 Update or create:

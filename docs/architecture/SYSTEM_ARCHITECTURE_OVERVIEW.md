@@ -150,6 +150,19 @@ are temporary decomposition follow-ups and not examples for new backend work:
 `live_icp_radar.py`, `icp_radar.py`, `icp_radar_catalog.py`, and
 `icp_radar_xlsx.py`.
 
+Backend onboarding map:
+
+| Layer | First local doc | Current implementation files | Validation |
+|---|---|---|---|
+| `application` | `src/power_web_os/application/README.md` | records, ports, catalog seed mapping | architecture contract tests |
+| `persistence` | `src/power_web_os/persistence/README.md` | SQLAlchemy models, sessions, repositories, Alembic migrations | `tests/test_radar_persistence.py` |
+| `api` | Developer Guide backend API section | FastAPI app factory, health routes, settings | `tests/test_backend_api.py` |
+| `jobs` | Future local README when introduced | worker/scheduler entrypoints | architecture contract tests |
+
+New backend boundaries should include local developer-facing README guidance and
+module docstrings for non-obvious ownership. SAO remains the high-level map;
+local README files explain how to extend a layer safely.
+
 ## Frontend Module Boundaries
 
 The React frontend follows the same boundary rule as the Python domain: a screen should not become a god object. Once a product area contains its own state model, adapters, tables, previews, settings, and review controls, it must move into `frontend/src/features/<feature>/`.

@@ -1,3 +1,9 @@
+"""SQLAlchemy table mappings for Radar persistence.
+
+Models describe storage shape only. Business rules, scoring, review semantics,
+and job execution decisions belong to domain/application layers.
+"""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -60,6 +66,7 @@ class RadarDefinitionModel(Base):
 
 class RadarRunModel(Base):
     __tablename__ = "radar_runs"
+    # Durable run state is the product truth; future worker queues are adapters.
     __table_args__ = (
         CheckConstraint(
             "status in ('queued', 'running', 'waiting_human', 'completed', 'failed', 'cancelled')",

@@ -1,3 +1,5 @@
+"""Alembic environment for Power Web OS persistence migrations."""
+
 from __future__ import annotations
 
 import os

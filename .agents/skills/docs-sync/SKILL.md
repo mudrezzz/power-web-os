@@ -28,6 +28,8 @@ Keep documentation accurate, useful, and GitHub-ready.
 - `docs/developer/DEVELOPER_GUIDE.md`: local development, commands, internals.
 - `docs/user/USER_GUIDE.md`: user-facing usage.
 - `demo/README.md`: how to run and understand the demo.
+- Backend layer README files under `src/power_web_os/<layer>/README.md`:
+  local ownership, dependency, and extension rules for active backend layers.
 
 ## Completion checklist
 

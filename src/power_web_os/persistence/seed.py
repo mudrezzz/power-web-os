@@ -1,3 +1,9 @@
+"""Deterministic Radar catalog seed helpers.
+
+Seeding persists configured Radar definitions only. It does not run live
+searches, create candidates, or create Radar run records.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

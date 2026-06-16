@@ -36,6 +36,9 @@ Implement one small, complete, tested, documented product increment.
 - Add or update architecture contract tests when a slice introduces a new
   backend boundary, dependency, persistence mechanism, integration, workflow, or
   job entrypoint.
+- For backend layers, add or update local README guidance and concise module
+  docstrings so future developers can extend the layer without reading every
+  implementation file first.
 - Comment non-obvious code and tests.
 - Do not expand scope unless required for the slice to work.
 - Record follow-up work in `ROADMAP.md` instead of silently doing it.

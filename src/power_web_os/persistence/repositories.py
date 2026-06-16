@@ -1,3 +1,9 @@
+"""SQLAlchemy implementations of application Radar repository ports.
+
+This module is the adapter boundary: it translates between ORM models and
+application records, while callers own transactions and use only ports.
+"""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -192,6 +198,7 @@ def _run_record(model: RadarRunModel) -> RadarRunRecord:
 
 
 def _aware_utc(value: datetime | None) -> datetime | None:
+    # SQLite returns timezone-naive values even for timezone=True columns.
     if value is None or value.tzinfo is not None:
         return value
     return value.replace(tzinfo=UTC)

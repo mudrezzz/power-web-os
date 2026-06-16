@@ -1869,7 +1869,32 @@ Principles:
   - `python -m pytest tests/test_backend_api.py`
   - `python -m pytest`
 
-### Slice 0.7.1.1: Legacy Radar module decomposition follow-up
+### Slice 0.7.1.1: Backend developer onboarding guardrails
+
+- Status: `Done`
+- Goal: Make backend layer ownership discoverable close to the code before the next backend/product slice extends persistence or APIs.
+- User value: Developers and agents can safely extend backend functionality without guessing where records, ports, SQLAlchemy adapters, migrations, and job boundaries belong.
+- Scope:
+  - Add local onboarding docs for `application` and `persistence` layers.
+  - Add concise module docstrings to key backend application/persistence modules.
+  - Add targeted comments for non-obvious persistence decisions: payload-based seed mapping, durable run state, SQLite timezone normalization, and session ownership.
+  - Extend SAO, Developer Guide, ADR, and local agent skills so future backend work must keep ownership docs current.
+  - Extend backend architecture contract tests to guard local README docs and module docstrings.
+- Out of scope:
+  - New API endpoints.
+  - New tables or migrations.
+  - Celery/Redis runtime.
+  - Legacy Radar module decomposition.
+- Tests:
+  - `python -m pytest tests/test_backend_architecture_contract.py`
+  - `python -m pytest tests/test_radar_persistence.py`
+  - `python -m pytest`
+- Acceptance criteria:
+  - A developer can start from local layer README files and understand backend extension rules.
+  - Architecture contract tests fail if active backend onboarding docs or key module docstrings disappear.
+  - Agent skills require local backend ownership docs when backend boundaries change.
+
+### Slice 0.7.1.2: Legacy Radar module decomposition follow-up
 
 - Status: `Backlog`
 - Goal: Decompose legacy-large Radar modules after persistence/application boundaries are established.
@@ -2499,6 +2524,10 @@ Principles:
   - Added SQLAlchemy/Alembic schema for `radars`, `radar_definitions`, and `radar_runs`.
   - Added application records, repository ports, async job ports, and SQLAlchemy repository adapters.
   - Added deterministic Radar catalog database seed command and SQLite migration/repository tests.
+- `Slice 0.7.1.1: Backend developer onboarding guardrails`
+  - Added local application and persistence README files with ownership, dependency, and extension rules.
+  - Added backend module docstrings and comments for non-obvious persistence decisions.
+  - Updated ADR, SAO, Developer Guide, agent skills, and architecture contract tests to require backend onboarding docs.
 
 ## Blocked Items
 

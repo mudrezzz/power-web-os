@@ -1,3 +1,10 @@
+"""Application records for Radar catalog, definitions, and durable run state.
+
+These dataclasses are stable use-case contracts. They are intentionally separate
+from SQLAlchemy ORM models and FastAPI transport DTOs so application code can
+depend on records and ports without importing infrastructure.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

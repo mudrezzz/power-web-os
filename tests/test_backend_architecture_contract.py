@@ -8,6 +8,8 @@ BACKEND_ROOT = Path("src/power_web_os")
 ADR_PATH = Path("docs/adr/2026-06-16-backend-architecture-guardrails.md")
 ARCHITECTURE_PATH = Path("docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md")
 DEVELOPER_GUIDE_PATH = Path("docs/developer/DEVELOPER_GUIDE.md")
+APPLICATION_README_PATH = Path("src/power_web_os/application/README.md")
+PERSISTENCE_README_PATH = Path("src/power_web_os/persistence/README.md")
 
 MAX_BACKEND_MODULE_LINES = 500
 
@@ -65,6 +67,16 @@ JOB_FORBIDDEN_SNIPPETS = {
     "normalize_live_candidate",
 }
 
+BACKEND_DOCSTRING_REQUIRED_MODULES = {
+    Path("src/power_web_os/application/radar_records.py"),
+    Path("src/power_web_os/application/ports.py"),
+    Path("src/power_web_os/application/radar_catalog_seed.py"),
+    Path("src/power_web_os/persistence/engine.py"),
+    Path("src/power_web_os/persistence/models.py"),
+    Path("src/power_web_os/persistence/repositories.py"),
+    Path("src/power_web_os/persistence/seed.py"),
+}
+
 
 def python_files(root: Path = BACKEND_ROOT) -> list[Path]:
     return sorted(path for path in root.rglob("*.py") if "__pycache__" not in path.parts)
@@ -101,6 +113,29 @@ def test_backend_architecture_docs_define_required_boundaries() -> None:
         "FastAPI `BackgroundTasks` is not the production execution model",
     ]:
         assert expected in docs
+
+
+def test_backend_onboarding_docs_explain_extension_rules() -> None:
+    application_readme = APPLICATION_README_PATH.read_text(encoding="utf-8")
+    persistence_readme = PERSISTENCE_README_PATH.read_text(encoding="utf-8")
+    developer_guide = DEVELOPER_GUIDE_PATH.read_text(encoding="utf-8")
+
+    for text in [application_readme, persistence_readme]:
+        assert "Dependency Rules" in text
+        assert "How To Extend" in text
+    assert "Forbidden imports" in application_readme
+    assert "Transaction Boundary" in persistence_readme
+    assert "How To Extend Backend Persistence" in developer_guide
+
+
+def test_key_backend_modules_have_onboarding_docstrings() -> None:
+    missing = [
+        path.as_posix()
+        for path in sorted(BACKEND_DOCSTRING_REQUIRED_MODULES)
+        if not ast.get_docstring(ast.parse(path.read_text(encoding="utf-8")))
+    ]
+
+    assert missing == []
 
 
 def test_legacy_large_backend_modules_are_documented_as_temporary_allowlist() -> None:

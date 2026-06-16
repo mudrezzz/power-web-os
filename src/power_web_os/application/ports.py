@@ -1,3 +1,9 @@
+"""Application ports for repositories and future Radar execution adapters.
+
+Entry points call these protocols through application services. SQLAlchemy,
+Celery, Redis, and provider-specific adapters implement the ports elsewhere.
+"""
+
 from __future__ import annotations
 
 from datetime import datetime
