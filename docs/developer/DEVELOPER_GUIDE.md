@@ -239,9 +239,8 @@ product state. FastAPI `BackgroundTasks` is not the production execution model
 for Radar runs.
 
 Temporary legacy-large modules are allowed until a later decomposition slice:
-`live_icp_radar.py`, `icp_radar.py`, `icp_radar_catalog.py`, and
-`icp_radar_xlsx.py`. Do not copy their size or mixed responsibilities into new
-backend work.
+`icp_radar.py`, `icp_radar_catalog.py`, and `icp_radar_xlsx.py`. Do not copy
+their size or mixed responsibilities into new backend work.
 
 Validation:
 
@@ -389,6 +388,18 @@ The backend boundary is provider-neutral:
 - `OpenRouterWebSearchProvider` is the first live provider.
 - `RecordedWebSearchProvider` is used by tests and mocked runs.
 - `LiveICPRadarRunWorkflow` follows the optional `langgraph-dai` / `BaseWorkflow` pattern used elsewhere in the project.
+
+Current ownership:
+
+```text
+src/power_web_os/application/live_radar_contracts.py       Provider-neutral contracts and ports
+src/power_web_os/application/live_radar_definition.py      Live mini Radar definition and search plan
+src/power_web_os/application/live_radar_normalization.py   Candidate, signal, evidence, and score normalization
+src/power_web_os/application/live_radar_service.py         One provider-neutral live run pass
+src/power_web_os/integrations/live_radar_openrouter.py     OpenRouter and recorded provider adapters
+src/power_web_os/workflows/live_icp_radar_workflow.py      Optional langgraph-dai wrapper and fallback runtime
+src/power_web_os/live_icp_radar.py                        Compatibility facade for historical imports
+```
 
 Environment variables are loaded from the process environment or local `.env`:
 

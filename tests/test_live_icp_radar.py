@@ -5,7 +5,10 @@ from pathlib import Path
 
 import pytest
 
+import power_web_os.live_icp_radar as live_facade
+from power_web_os.application.live_radar_service import LiveRadarRunService
 from power_web_os.demo import generate_live_mini_icp_radar_plan
+from power_web_os.integrations import live_radar_openrouter
 from power_web_os.live_icp_radar import (
     FRAMEWORK_AVAILABLE,
     LiveICPRadarRunState,
@@ -20,6 +23,7 @@ from power_web_os.live_icp_radar import (
     normalize_openrouter_response,
     _filter_result_to_verified_sources,
 )
+from power_web_os.workflows import live_icp_radar_workflow
 
 
 def recorded_provider_payload() -> dict[str, object]:
@@ -118,6 +122,12 @@ def recorded_provider_payload() -> dict[str, object]:
             "web_mode": "recorded",
         },
     }
+
+
+def test_live_radar_facade_points_to_extracted_backend_layers() -> None:
+    assert live_facade.OpenRouterWebSearchProvider is live_radar_openrouter.OpenRouterWebSearchProvider
+    assert live_facade.LiveICPRadarRunWorkflow is live_icp_radar_workflow.LiveICPRadarRunWorkflow
+    assert LiveRadarRunService.__module__ == "power_web_os.application.live_radar_service"
 
 
 def test_live_mini_radar_dry_run_plan_does_not_create_candidates(tmp_path: Path) -> None:

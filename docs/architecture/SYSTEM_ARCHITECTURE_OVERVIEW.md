@@ -147,14 +147,15 @@ retryable, scheduled, and must survive process restarts.
 
 Architecture contract tests enforce these rules. Existing large legacy modules
 are temporary decomposition follow-ups and not examples for new backend work:
-`live_icp_radar.py`, `icp_radar.py`, `icp_radar_catalog.py`, and
-`icp_radar_xlsx.py`.
+`icp_radar.py`, `icp_radar_catalog.py`, and `icp_radar_xlsx.py`.
 
 Backend onboarding map:
 
 | Layer | First local doc | Current implementation files | Validation |
 |---|---|---|---|
-| `application` | `src/power_web_os/application/README.md` | records, ports, catalog seed mapping | architecture contract tests |
+| `application` | `src/power_web_os/application/README.md` | records, ports, catalog seed mapping, live Radar service/normalization | architecture contract tests |
+| `integrations` | `src/power_web_os/integrations/README.md` | OpenRouter live Radar adapter and recorded provider | live Radar tests, architecture contract tests |
+| `workflows` | `src/power_web_os/workflows/README.md` | optional `langgraph-dai` wrappers and fallback workflow runtime | live Radar tests, architecture contract tests |
 | `persistence` | `src/power_web_os/persistence/README.md` | SQLAlchemy models, sessions, repositories, Alembic migrations | `tests/test_radar_persistence.py` |
 | `api` | Developer Guide backend API section | FastAPI app factory, health routes, settings | `tests/test_backend_api.py` |
 | `jobs` | Future local README when introduced | worker/scheduler entrypoints | architecture contract tests |
@@ -274,7 +275,7 @@ Radar configuration is a first-class product boundary. There can be many ICP Rad
 
 The first realistic demo ICP profile uses `demo/fixtures/icp_radar/sibur_icp_pass1.xlsx` as a fixture. It discovers Russian legal entities inside a holding, scores them against ТОиР criteria, and shows a ranked candidate shortlist for the active `ТОиР / SIBUR` radar. The catalog also includes configured/planned radar examples without generated candidates yet. Numeric C1-C20 scores come from the XLSX. `radar.definition.intent_signals` is the canonical C1-C20 dictionary; top-level `criteria` is generated from it only as a backward-compatible alias. Criterion-level evidence is added by a separate curated synthetic fixture, `demo/fixtures/icp_radar/toir_sibur_criterion_evidence.json`, so the demo can exercise evidence-backed score explanation before production source extraction exists.
 
-The first live ICP Radar path is intentionally separate from the stable XLSX fixture. `ТОиР Quick Live Radar` uses a small definition with two qualification rules and three intent signals, runs from the CLI, and writes a separate `icp_radar_live_run` artifact only when a provider returns usable evidence. The live workflow is `LiveICPRadarRunWorkflow`, which follows the same optional `langgraph-dai` `BaseWorkflow` pattern as other workflows and delegates search to a provider-neutral `WebSearchProvider`. `OpenRouterWebSearchProvider` is the first implementation; `RecordedWebSearchProvider` supports tests. OpenRouter is therefore the first provider, not the domain boundary. Live outputs are reviewable artifacts, not accepted accounts, and the system must not fabricate candidates when provider evidence is missing.
+The first live ICP Radar path is intentionally separate from the stable XLSX fixture. `TOIR Quick Live Radar` uses a small definition with two qualification rules and three intent signals, runs from the CLI, and writes a separate `icp_radar_live_run` artifact only when a provider returns usable evidence. The live path is split by backend boundary: application modules own contracts, definition, provider-neutral normalization, and the live run service; `integrations` owns the OpenRouter adapter and recorded provider; `workflows` owns the optional `langgraph-dai` `BaseWorkflow` wrapper plus local fallback runtime. `live_icp_radar.py` remains only a compatibility facade for existing imports. OpenRouter is therefore the first provider, not the domain boundary. Live outputs are reviewable artifacts, not accepted accounts, and the system must not fabricate candidates when provider evidence is missing.
 
 Live qualification results use a richer review contract than the radar settings rule definition. Each candidate-level qualification result carries the rule snapshot, operator, requirement level, source usages, source origin, trust/check policy, evidence findings, cross-validation status, requirement evaluation, final assessment, and optional human review decision. The backend normalizer may enrich simpler provider output into this contract, but the frontend must not render raw Q1/Q2 labels without evidence, source, trust, and final-assessment context.
 

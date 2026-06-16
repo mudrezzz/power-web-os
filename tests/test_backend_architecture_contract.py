@@ -10,11 +10,12 @@ ARCHITECTURE_PATH = Path("docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md")
 DEVELOPER_GUIDE_PATH = Path("docs/developer/DEVELOPER_GUIDE.md")
 APPLICATION_README_PATH = Path("src/power_web_os/application/README.md")
 PERSISTENCE_README_PATH = Path("src/power_web_os/persistence/README.md")
+INTEGRATIONS_README_PATH = Path("src/power_web_os/integrations/README.md")
+WORKFLOWS_README_PATH = Path("src/power_web_os/workflows/README.md")
 
 MAX_BACKEND_MODULE_LINES = 500
 
 LEGACY_LARGE_MODULE_ALLOWLIST = {
-    Path("src/power_web_os/live_icp_radar.py"),
     Path("src/power_web_os/icp_radar.py"),
     Path("src/power_web_os/icp_radar_catalog.py"),
     Path("src/power_web_os/icp_radar_xlsx.py"),
@@ -56,6 +57,23 @@ APPLICATION_FORBIDDEN_IMPORT_PREFIXES = {
     "sqlalchemy",
     "fastapi",
     "uvicorn",
+    "httpx",
+    "dotenv",
+}
+
+INTEGRATION_FORBIDDEN_IMPORT_PREFIXES = {
+    "alembic",
+    "fastapi",
+    "sqlalchemy",
+    "uvicorn",
+}
+
+WORKFLOW_FORBIDDEN_SNIPPETS = {
+    "sqlalchemy",
+    "session.execute",
+    ".query(",
+    "httpx.",
+    "normalize_openrouter_response",
 }
 
 JOB_FORBIDDEN_SNIPPETS = {
@@ -68,6 +86,13 @@ JOB_FORBIDDEN_SNIPPETS = {
 }
 
 BACKEND_DOCSTRING_REQUIRED_MODULES = {
+    Path("src/power_web_os/application/live_radar_contracts.py"),
+    Path("src/power_web_os/application/live_radar_definition.py"),
+    Path("src/power_web_os/application/live_radar_normalization.py"),
+    Path("src/power_web_os/application/live_radar_service.py"),
+    Path("src/power_web_os/integrations/live_radar_openrouter.py"),
+    Path("src/power_web_os/workflows/live_icp_radar_workflow.py"),
+    Path("src/power_web_os/live_icp_radar.py"),
     Path("src/power_web_os/application/radar_records.py"),
     Path("src/power_web_os/application/ports.py"),
     Path("src/power_web_os/application/radar_catalog_seed.py"),
@@ -118,13 +143,17 @@ def test_backend_architecture_docs_define_required_boundaries() -> None:
 def test_backend_onboarding_docs_explain_extension_rules() -> None:
     application_readme = APPLICATION_README_PATH.read_text(encoding="utf-8")
     persistence_readme = PERSISTENCE_README_PATH.read_text(encoding="utf-8")
+    integrations_readme = INTEGRATIONS_README_PATH.read_text(encoding="utf-8")
+    workflows_readme = WORKFLOWS_README_PATH.read_text(encoding="utf-8")
     developer_guide = DEVELOPER_GUIDE_PATH.read_text(encoding="utf-8")
 
-    for text in [application_readme, persistence_readme]:
+    for text in [application_readme, persistence_readme, integrations_readme, workflows_readme]:
         assert "Dependency Rules" in text
         assert "How To Extend" in text
     assert "Forbidden imports" in application_readme
     assert "Transaction Boundary" in persistence_readme
+    assert "OpenRouter" in integrations_readme
+    assert "langgraph-document-ai-platform" in workflows_readme
     assert "How To Extend Backend Persistence" in developer_guide
 
 
@@ -198,6 +227,43 @@ def test_application_modules_depend_on_ports_not_persistence_adapters() -> None:
         found = sorted(imported_roots(path) & APPLICATION_FORBIDDEN_IMPORT_PREFIXES)
         if "power_web_os.persistence" in text:
             found.append("power_web_os.persistence")
+        if found:
+            violations[path.as_posix()] = found
+
+    assert violations == {}
+
+
+def test_integration_modules_do_not_own_api_persistence_or_domain_scoring() -> None:
+    integrations_dir = BACKEND_ROOT / "integrations"
+    if not integrations_dir.exists():
+        return
+
+    violations: dict[str, list[str]] = {}
+    for path in sorted(integrations_dir.rglob("*.py")):
+        text = path.read_text(encoding="utf-8").lower()
+        found = sorted(imported_roots(path) & INTEGRATION_FORBIDDEN_IMPORT_PREFIXES)
+        for forbidden in ["session.execute", ".query(", "radarrunmodel", "radarmodel"]:
+            if forbidden in text:
+                found.append(forbidden)
+        if found:
+            violations[path.as_posix()] = found
+
+    assert violations == {}
+
+
+def test_workflow_modules_delegate_to_application_services_without_provider_logic() -> None:
+    workflows_dir = BACKEND_ROOT / "workflows"
+    if not workflows_dir.exists():
+        return
+
+    violations: dict[str, list[str]] = {}
+    for path in sorted(workflows_dir.rglob("*.py")):
+        if path.name == "__init__.py":
+            continue
+        text = path.read_text(encoding="utf-8").lower()
+        found = sorted(snippet for snippet in WORKFLOW_FORBIDDEN_SNIPPETS if snippet in text)
+        if "power_web_os.application" not in text:
+            found.append("missing application service import")
         if found:
             violations[path.as_posix()] = found
 

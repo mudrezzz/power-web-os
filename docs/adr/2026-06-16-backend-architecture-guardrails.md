@@ -55,7 +55,6 @@ Postgres remains the source of truth for run state and audit.
 Architecture contract tests must guard these boundaries. Existing large modules
 are temporary legacy exceptions, not patterns for new backend work:
 
-- `src/power_web_os/live_icp_radar.py`
 - `src/power_web_os/icp_radar.py`
 - `src/power_web_os/icp_radar_catalog.py`
 - `src/power_web_os/icp_radar_xlsx.py`
@@ -73,6 +72,7 @@ guard the presence of these onboarding docs for active backend layers.
 - Tests fail when new backend modules introduce cross-layer imports, oversized mixed-responsibility files, or hidden persistence in API routes.
 - Tests fail when active backend layers lose their local onboarding docs or key module ownership docstrings.
 - Existing large Radar modules are allowed temporarily, but follow-up work should decompose them after persistence boundaries are established.
+- `live_icp_radar.py` has been decomposed into application, integrations, and workflows modules and now remains only as a compatibility facade.
 
 ## Alternatives considered
 

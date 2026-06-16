@@ -13,6 +13,13 @@ provider SDK details.
   implement these protocols outside this package.
 - `radar_catalog_seed.py` maps the existing deterministic demo catalog payload
   into records that repositories can persist.
+- `live_radar_contracts.py` defines provider-neutral live Radar DTOs and ports.
+- `live_radar_definition.py` owns the deterministic live mini Radar definition
+  and search plan.
+- `live_radar_normalization.py` owns provider-neutral candidate, signal,
+  qualification, evidence-card, and score-evaluation normalization.
+- `live_radar_service.py` orchestrates one live Radar execution pass through a
+  provider port.
 
 ## Dependency Rules
 
@@ -30,6 +37,8 @@ Forbidden imports:
 
 Application services depend on ports. They do not create sessions, run SQL
 queries, call providers directly, or own worker runtime behavior.
+Provider HTTP calls belong in `integrations`; LangGraph runtime wrappers belong
+in `workflows`.
 
 ## How To Extend
 

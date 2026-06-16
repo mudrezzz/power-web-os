@@ -1805,7 +1805,7 @@ Principles:
   - Refactoring `live_icp_radar.py` completely.
 - Implementation notes:
   - Treat this as governance hardening, similar to the ICP Radar frontend architecture contract.
-  - `live_icp_radar.py`, `icp_radar.py`, and `icp_radar_catalog.py` should be acknowledged as legacy-large modules with follow-up decomposition tasks.
+  - At the time of this slice, `live_icp_radar.py`, `icp_radar.py`, and `icp_radar_catalog.py` were acknowledged as legacy-large modules with follow-up decomposition tasks; live Radar extraction was completed later in `Slice 0.7.1.2`.
   - New backend work after this slice must use the documented boundary structure.
   - The async decision should be explicit: durable run state and queue ports first; Celery/Redis as a production adapter later.
 - Tests:
@@ -1894,48 +1894,91 @@ Principles:
   - Architecture contract tests fail if active backend onboarding docs or key module docstrings disappear.
   - Agent skills require local backend ownership docs when backend boundaries change.
 
-### Slice 0.7.1.2: Legacy Radar module decomposition follow-up
+### Slice 0.7.1.2: Live Radar backend extraction
+
+- Status: `Done`
+- Goal: Decompose the live ICP Radar path into backend-owned layers without changing CLI behavior, artifact shape, or OpenRouter semantics.
+- User value: Engineers can extend live Radar toward persisted execution without pulling a large provider/workflow/normalization module into API or persistence work.
+- Scope:
+  - Split `live_icp_radar.py` into application contracts, live Radar definition/search plan, provider-neutral normalization, live run service, OpenRouter integration adapter, and workflow wrapper.
+  - Keep `live_icp_radar.py` as a compatibility facade for existing demo/tests imports.
+  - Preserve the `icp_radar_live_run` artifact version and structure.
+  - Add local `integrations` and `workflows` README files.
+  - Remove `live_icp_radar.py` from the legacy-large architecture allowlist.
+- Out of scope:
+  - Persisting live candidates/evidence.
+  - Adding new database schema.
+  - Adding API endpoints.
+  - Adding Celery/Redis runtime.
+  - Frontend behavior changes.
+- Tests:
+  - `python -m pytest tests/test_live_icp_radar.py`
+  - `python -m pytest tests/test_backend_architecture_contract.py`
+  - `python -m pytest tests/test_radar_persistence.py`
+  - `python -m pytest`
+- Acceptance criteria:
+  - Existing live Radar CLI and tests keep producing the same artifact contract.
+  - Live provider code lives under `integrations`, LangGraph wrapper under `workflows`, and normalization/service code under `application`.
+  - `live_icp_radar.py` is below the backend module size threshold and is no longer allowlisted.
+
+### Slice 0.7.1.3: Remaining Radar legacy module decomposition follow-up
 
 - Status: `Backlog`
-- Goal: Decompose legacy-large Radar modules after persistence/application boundaries are established.
-- User value: Engineers can extend live Radar, fixture import, catalog generation, and evidence normalization without reintroducing backend god modules.
+- Goal: Decompose remaining legacy-large Radar modules after live Radar extraction.
+- User value: Engineers can extend fixture import, catalog generation, and evidence normalization without reintroducing backend god modules.
 - Scope:
-  - Split `live_icp_radar.py` into provider, request/response normalization, candidate normalization, workflow, and artifact export modules.
-  - Split `icp_radar.py`, `icp_radar_catalog.py`, and `icp_radar_xlsx.py` only where ownership becomes clear after `Slice 0.7.1`.
+  - Split `icp_radar.py`, `icp_radar_catalog.py`, and `icp_radar_xlsx.py` only where ownership becomes clear after `Slice 0.7.1.2`.
   - Remove modules from the backend architecture contract allowlist as they fall below the threshold.
 - Out of scope:
   - Changing public artifact contracts.
-  - Adding new persistence schema beyond `Slice 0.7.1`.
+  - Adding new persistence schema beyond planned backend slices.
   - Adding Celery/Redis runtime.
 - Tests:
   - `python -m pytest tests/test_backend_architecture_contract.py`
   - Existing Radar tests affected by the decomposition.
 - Acceptance criteria:
   - Decomposed modules follow application/domain/integration/workflow boundaries.
-  - Legacy allowlist shrinks or is removed.
+  - Legacy allowlist shrinks further.
   - Existing demo artifacts remain compatible.
 
-### Slice 0.7.2: Radar catalog API
+### Slice 0.7.2: Persisted live Radar run MVP
 
 - Status: `Backlog`
-- Goal: Expose persisted radar catalog and selected radar definition through API contracts.
+- Goal: Make the extracted live Radar backend path persist run state and live output snapshots instead of writing only JSON artifacts.
+- User value: Backend can reproduce the current live script capability with durable run status and reviewable candidate/source/signal data ready for API and worker execution.
+- Scope:
+  - Add persistence records/repositories for live run output snapshots: search plan, sources, candidates, qualification results, signal results, evidence cards, warnings, and run metadata.
+  - Add an application service that creates a `radar_runs` record, executes the live Radar service, persists completed/failed state, and can export the existing JSON artifact shape.
+  - Add a backend CLI path for persisted live run execution while keeping the existing non-persisted demo command working.
+  - Keep OpenRouter and future providers behind the provider-neutral boundary introduced in `Slice 0.7.1.2`.
+- Out of scope:
+  - API endpoints.
+  - Celery/Redis runtime.
+  - Frontend migration from JSON artifacts.
+  - Human review persistence beyond storing provider output snapshots.
+- Tests:
+  - Repository tests for persisted live run output snapshots.
+  - Application-service tests for queued/running/completed/failed transitions.
+  - JSON export compatibility tests against the current live artifact contract.
+  - `python -m pytest`.
+- Acceptance criteria:
+  - A live Radar run can be executed through backend application services and persisted as durable run state plus output snapshot.
+  - Existing JSON artifact shape can be exported from persisted state.
+  - No API, worker, or frontend dependency is required for the persisted MVP.
+
+### Slice 0.7.3: Radar run and catalog API
+
+- Status: `Backlog`
+- Goal: Expose persisted radars and live run results through API contracts.
 - Scope:
   - `GET /api/radars`.
   - `GET /api/radars/{radar_id}`.
-  - `POST /api/radars`.
-  - `PATCH /api/radars/{radar_id}`.
+  - `POST /api/radars/{radar_id}/runs`.
+  - `GET /api/radar-runs/{run_id}`.
+  - `GET /api/radar-runs/{run_id}/candidates`.
   - Contract tests and OpenAPI checks.
 - Acceptance criteria:
-  - Frontend can consume the API through an adapter while JSON remains fallback.
-
-### Slice 0.7.3: Live radar run persistence
-
-- Status: `Backlog`
-- Goal: Persist live mini radar runs and evidence instead of writing only JSON artifacts.
-- Scope:
-  - Store run metadata, search plan, candidates, qualification results, signal results, sources, evidence cards, and warnings.
-  - Keep OpenRouter and future providers behind the existing provider-neutral boundary.
-  - Export JSON artifacts from persisted run state for demo compatibility.
+  - Frontend can consume persisted Radar catalog and run results through an adapter while JSON remains fallback.
 
 ### Slice 0.7.3.1: Async radar jobs and scheduler adapter
 
@@ -2519,7 +2562,7 @@ Principles:
   - Added a backend boundary ADR and documented backend ownership in architecture, developer, and contributor docs.
   - Updated local agent skills so backend slices must check OOP boundaries, repository isolation, and architecture contract tests.
   - Added `tests/test_backend_architecture_contract.py` with layer import checks, module-size guardrails, and temporary legacy-large Radar module allowlist.
-  - Added a follow-up backlog slice for decomposing `live_icp_radar.py`, `icp_radar.py`, `icp_radar_catalog.py`, and `icp_radar_xlsx.py` after persistence boundaries exist.
+  - Added a follow-up backlog slice for decomposing legacy-large Radar modules after persistence boundaries exist.
 - `Slice 0.7.1: Persistence foundation`
   - Added SQLAlchemy/Alembic schema for `radars`, `radar_definitions`, and `radar_runs`.
   - Added application records, repository ports, async job ports, and SQLAlchemy repository adapters.
@@ -2528,6 +2571,10 @@ Principles:
   - Added local application and persistence README files with ownership, dependency, and extension rules.
   - Added backend module docstrings and comments for non-obvious persistence decisions.
   - Updated ADR, SAO, Developer Guide, agent skills, and architecture contract tests to require backend onboarding docs.
+- `Slice 0.7.1.2: Live Radar backend extraction`
+  - Split live Radar contracts, definition, normalization, service, OpenRouter adapter, and workflow wrapper into backend-owned layers.
+  - Kept `live_icp_radar.py` as a compatibility facade and removed it from the legacy-large allowlist.
+  - Preserved the existing live Radar CLI/artifact contract and added integration/workflow onboarding docs.
 
 ## Blocked Items
 
@@ -2543,4 +2590,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web`.
+Implement `Slice 0.7.2: Persisted live Radar run MVP`.
