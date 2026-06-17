@@ -190,6 +190,28 @@ class RadarRunReviewsResponse(BaseModel):
     decisions: list[RadarReviewDecisionResponse] = Field(default_factory=list)
 
 
+class RadarRunJournalEventResponse(BaseModel):
+    event_id: str
+    run_id: str
+    sequence: int
+    event_type: str
+    phase: str
+    actor: str
+    node_name: str = ""
+    visibility: str = "user"
+    summary: str = ""
+    payload: dict[str, Any] = Field(default_factory=dict)
+    source_refs: list[str] = Field(default_factory=list)
+    candidate_refs: list[str] = Field(default_factory=list)
+    created_at: datetime | None = None
+
+
+class RadarRunJournalResponse(BaseModel):
+    run_id: str
+    radar_id: str
+    events: list[RadarRunJournalEventResponse] = Field(default_factory=list)
+
+
 RadarSummaryResponse.model_rebuild()
 RadarDetailResponse.model_rebuild()
 RadarRunSummaryResponse.model_rebuild()

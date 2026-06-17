@@ -569,6 +569,22 @@ export type LiveRadarCandidate = {
   evidence_refs: string[];
 };
 
+export type LiveRadarJournalEvent = {
+  event_id: string;
+  run_id: string;
+  sequence: number;
+  event_type: string;
+  phase: string;
+  actor: string;
+  node_name: string;
+  visibility: 'user' | 'operator' | 'debug' | string;
+  summary: string;
+  payload: Record<string, unknown>;
+  source_refs: string[];
+  candidate_refs: string[];
+  created_at: string | null;
+};
+
 export type LiveICPRadarRunArtifact = {
   artifact_type: 'icp_radar_live_run';
   artifact_version: '0.6.3.1' | '0.6.3.4';
@@ -606,6 +622,7 @@ export type LiveICPRadarRunArtifact = {
   };
   sources: LiveRadarSourceEvidence[];
   candidates: LiveRadarCandidate[];
+  journal_events?: LiveRadarJournalEvent[];
   contract_validation?: Array<{ severity: 'error' | 'warning'; path: string; message: string }>;
 };
 

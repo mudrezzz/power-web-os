@@ -13,6 +13,7 @@ from typing import Any
 from uuid import uuid4
 
 from power_web_os.application.ports import LiveRadarArtifactExecutor, RadarRunOutputRepository, RadarRunRepository
+from power_web_os.application.radar_run_journal import RadarRunEventCommand, RadarRunJournal
 from power_web_os.application.radar_records import RadarRunOutputRecord, RadarRunRecord, RadarRunStatus
 
 
@@ -46,8 +47,9 @@ class QueuedLiveRadarRunResult:
 class QueuedLiveRadarRunService:
     """Create durable queued Radar runs without executing provider work."""
 
-    def __init__(self, *, run_repository: RadarRunRepository) -> None:
+    def __init__(self, *, run_repository: RadarRunRepository, journal: RadarRunJournal | None = None) -> None:
         self._run_repository = run_repository
+        self._journal = journal
 
     def create(self, command: PersistedLiveRadarRunCommand) -> QueuedLiveRadarRunResult:
         existing = _find_existing(self._run_repository, command)
@@ -65,6 +67,22 @@ class QueuedLiveRadarRunService:
                 run_metadata=_queued_run_metadata(command),
             )
         )
+        if self._journal is not None:
+            self._journal.append(
+                RadarRunEventCommand(
+                    run_id=run.run_id,
+                    event_type="run_queued",
+                    phase="lifecycle",
+                    actor="application",
+                    node_name="queued_live_radar_run_service",
+                    summary=f"Radar run queued for {run.radar_id}.",
+                    payload={
+                        "radar_id": run.radar_id,
+                        "live": bool(run.run_metadata.get("live", True)),
+                        "requester": str(run.run_metadata.get("requester", "")),
+                    },
+                )
+            )
         return QueuedLiveRadarRunResult(run=run, should_enqueue=True)
 
 
@@ -77,10 +95,12 @@ class PersistedLiveRadarRunExecutor:
         run_repository: RadarRunRepository,
         output_repository: RadarRunOutputRepository,
         executor: LiveRadarArtifactExecutor,
+        journal: RadarRunJournal | None = None,
     ) -> None:
         self._run_repository = run_repository
         self._output_repository = output_repository
         self._executor = executor
+        self._journal = journal
 
     def execute(self, run_id: str) -> RadarRunRecord:
         run = self._run_repository.get(run_id)
@@ -90,24 +110,63 @@ class PersistedLiveRadarRunExecutor:
             return run
 
         run = self._run_repository.update_status(run.run_id, RadarRunStatus.RUNNING)
+        self._append_event(
+            run_id=run.run_id,
+            event_type="run_started",
+            phase="lifecycle",
+            actor="worker",
+            node_name="persisted_live_radar_executor",
+            summary=f"Radar run started for {run.radar_id}.",
+            payload={"radar_id": run.radar_id, "correlation_id": run.correlation_id},
+        )
         try:
             artifact = self._executor.execute(
                 live=bool(run.run_metadata.get("live", True)),
                 task_context=_task_context_from_run(run),
             )
             self._output_repository.upsert(_output_record(run_id=run.run_id, artifact=artifact))
-            return self._run_repository.update_status(
+            if self._journal is not None:
+                self._journal.append_artifact_events(run_id=run.run_id, artifact=artifact)
+            completed = self._run_repository.update_status(
                 run.run_id,
                 RadarRunStatus.COMPLETED,
                 run_metadata={**run.run_metadata, **_run_metadata(artifact)},
             )
+            self._append_event(
+                run_id=run.run_id,
+                event_type="run_completed",
+                phase="lifecycle",
+                actor="worker",
+                node_name="persisted_live_radar_executor",
+                summary=f"Radar run completed with {len(_list_payload(artifact.get('candidates')))} candidates.",
+                payload={
+                    "source_count": len(_list_payload(artifact.get("sources"))),
+                    "candidate_count": len(_list_payload(artifact.get("candidates"))),
+                },
+            )
+            return completed
         except Exception as exc:
-            return self._run_repository.update_status(
+            failed = self._run_repository.update_status(
                 run.run_id,
                 RadarRunStatus.FAILED,
                 error_message=str(exc),
                 error_metadata={"exception_type": type(exc).__name__},
             )
+            self._append_event(
+                run_id=run.run_id,
+                event_type="run_failed",
+                phase="lifecycle",
+                actor="worker",
+                node_name="persisted_live_radar_executor",
+                visibility="operator",
+                summary=str(exc),
+                payload={"exception_type": type(exc).__name__},
+            )
+            return failed
+
+    def _append_event(self, **kwargs: Any) -> None:
+        if self._journal is not None:
+            self._journal.append(RadarRunEventCommand(**kwargs))
 
 
 class PersistedLiveRadarRunService:
@@ -117,18 +176,21 @@ class PersistedLiveRadarRunService:
         run_repository: RadarRunRepository,
         output_repository: RadarRunOutputRepository,
         executor: LiveRadarArtifactExecutor,
+        journal: RadarRunJournal | None = None,
     ) -> None:
         self._run_repository = run_repository
         self._output_repository = output_repository
         self._executor = executor
+        self._journal = journal
 
     def run(self, command: PersistedLiveRadarRunCommand) -> PersistedLiveRadarRunResult:
-        queued = QueuedLiveRadarRunService(run_repository=self._run_repository).create(command)
+        queued = QueuedLiveRadarRunService(run_repository=self._run_repository, journal=self._journal).create(command)
         if queued.should_enqueue:
             executor = PersistedLiveRadarRunExecutor(
                 run_repository=self._run_repository,
                 output_repository=self._output_repository,
                 executor=self._executor,
+                journal=self._journal,
             )
             run = executor.execute(queued.run.run_id)
         else:

@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRecord,
+    RadarRunEventRecord,
     RadarRunOutputRecord,
     RadarRunRecord,
     RadarRunStatus,
@@ -22,6 +23,7 @@ from power_web_os.application.radar_records import (
 from power_web_os.persistence.models import (
     RadarDefinitionModel,
     RadarModel,
+    RadarRunEventModel,
     RadarRunModel,
     RadarRunOutputModel,
     RadarReviewDecisionModel,
@@ -286,6 +288,45 @@ class SqlAlchemyRadarReviewDecisionRepository:
         return self._session.scalars(stmt).first()
 
 
+class SqlAlchemyRadarRunEventRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def append(self, record: RadarRunEventRecord) -> RadarRunEventRecord:
+        model = RadarRunEventModel(
+            event_id=record.event_id,
+            run_id=record.run_id,
+            sequence=record.sequence,
+            event_type=record.event_type,
+            phase=record.phase,
+            actor=record.actor,
+            node_name=record.node_name,
+            visibility=record.visibility,
+            summary=record.summary,
+            payload_json=dict(record.payload),
+            source_refs_json=list(record.source_refs),
+            candidate_refs_json=list(record.candidate_refs),
+            created_at=record.created_at or utc_now(),
+        )
+        self._session.add(model)
+        self._session.flush()
+        return _run_event_record(model)
+
+    def list_for_run(self, run_id: str) -> tuple[RadarRunEventRecord, ...]:
+        stmt = (
+            select(RadarRunEventModel)
+            .where(RadarRunEventModel.run_id == run_id)
+            .order_by(RadarRunEventModel.sequence)
+        )
+        return tuple(_run_event_record(model) for model in self._session.scalars(stmt).all())
+
+    def next_sequence(self, run_id: str) -> int:
+        value = self._session.scalar(
+            select(func.max(RadarRunEventModel.sequence)).where(RadarRunEventModel.run_id == run_id)
+        )
+        return int(value or 0) + 1
+
+
 def _radar_record(model: RadarModel) -> RadarRecord:
     return RadarRecord(
         radar_id=model.radar_id,
@@ -361,6 +402,24 @@ def _review_decision_record(model: RadarReviewDecisionModel) -> RadarReviewDecis
         reviewed_at=_aware_utc(model.reviewed_at),
         created_at=_aware_utc(model.created_at),
         updated_at=_aware_utc(model.updated_at),
+    )
+
+
+def _run_event_record(model: RadarRunEventModel) -> RadarRunEventRecord:
+    return RadarRunEventRecord(
+        event_id=model.event_id,
+        run_id=model.run_id,
+        sequence=model.sequence,
+        event_type=model.event_type,
+        phase=model.phase,
+        actor=model.actor,
+        node_name=model.node_name,
+        visibility=model.visibility,
+        summary=model.summary,
+        payload=dict(model.payload_json),
+        source_refs=[str(item) for item in model.source_refs_json],
+        candidate_refs=[str(item) for item in model.candidate_refs_json],
+        created_at=_aware_utc(model.created_at),
     )
 
 

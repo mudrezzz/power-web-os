@@ -17,6 +17,9 @@ changes through Alembic migrations.
 - `radar_review_decisions` stores the current human review decision for one
   qualification or signal finding. It is mutable current state, not an
   append-only journal.
+- `radar_run_events` stores append-only structured audit events for one durable
+  Radar run. It is the place for product-facing plans, observations, source
+  outcomes, score summaries, warnings, and self-check summaries.
 
 ## Dependency Rules
 
@@ -37,6 +40,9 @@ Persistence adapters do not decide candidate truth, score semantics, or worker
 execution policy. They store and retrieve records requested by application
 services. Review validation belongs in the application layer, not in repository
 methods.
+Journal event semantics and hidden reasoning policy also belong in the
+application layer. Persistence stores approved event records and must not infer
+planner, scoring, provider, or review meaning.
 
 ## Transaction Boundary
 
@@ -72,3 +78,5 @@ development environment.
 Celery/Redis enqueues execution through the jobs layer, but queue result state
 must not replace persisted run status, timestamps, idempotency, correlation, or
 errors.
+`radar_run_events` is append-only in the repository API: add new events, list
+events by run, and do not expose update/delete operations.

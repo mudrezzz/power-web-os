@@ -5,6 +5,7 @@ import { Badge, Button, Card, Eyebrow, Mono } from '../../components/primitives'
 import type {
   LiveICPRadarRunArtifact,
   LiveRadarCandidate,
+  LiveRadarJournalEvent,
   LiveRadarQualificationResult,
   LiveRadarSourceEvidence,
   QualificationAssessmentStatus,
@@ -74,6 +75,9 @@ export function LiveRadarCandidateDetailView({
   const { t } = useTranslation();
   const sourcesByRef = useMemo(() => new Map(artifact.sources.map((source) => [source.evidence_ref, source])), [artifact.sources]);
   const usedSources = candidate.evidence_refs.map((ref) => sourcesByRef.get(ref)).filter((source): source is LiveRadarSourceEvidence => Boolean(source));
+  const visibleJournalEvents = (artifact.journal_events ?? []).filter(
+    (event) => event.visibility !== 'debug' && (!event.candidate_refs.length || event.candidate_refs.includes(candidate.candidate_id)),
+  );
   return (
     <section className="screen icp-radar-screen icp-detail-screen" aria-label={t('icpRadar.aria')}>
       <div className="icp-detail-sticky-header">
@@ -220,14 +224,23 @@ export function LiveRadarCandidateDetailView({
                 </div>
               </dl>
               <div className="canonical-journal-list">
-                {artifact.search_plan.queries.map((query) => (
+                {visibleJournalEvents.length > 0 ? visibleJournalEvents.map((event) => (
+                  <JournalEventRow event={event} key={event.event_id} />
+                )) : artifact.search_plan.queries.length > 0 ? artifact.search_plan.queries.map((query) => (
                   <div className="canonical-journal-row" key={query.query_id}>
                     <Mono>{query.query_id}</Mono>
                     <strong>{query.query}</strong>
                     <small>{query.purpose}</small>
                   </div>
-                ))}
+                )) : (
+                  <div className="canonical-journal-row">
+                    <Mono>0</Mono>
+                    <strong>{t('icpRadar.live.journal.empty')}</strong>
+                    <small>{t('icpRadar.live.journal.emptyCopy')}</small>
+                  </div>
+                )}
               </div>
+              <p className="journal-policy-copy">{t('icpRadar.live.journal.hiddenCotPolicy')}</p>
               {candidate.review_flags.length > 0 && (
                 <div className="badge-list">
                   {candidate.review_flags.map((flag) => (
@@ -241,6 +254,48 @@ export function LiveRadarCandidateDetailView({
       </div>
     </section>
   );
+}
+
+function JournalEventRow({ event }: { event: LiveRadarJournalEvent }) {
+  const { t } = useTranslation();
+  const refs = [...event.candidate_refs, ...event.source_refs].filter(Boolean);
+  return (
+    <div className="canonical-journal-row canonical-journal-row--event">
+      <span className="journal-event-sequence"><Mono>{event.sequence}</Mono></span>
+      <span className="journal-event-main">
+        <strong className="journal-event-title">
+          {t(`icpRadar.live.journal.eventType.${event.event_type}`, { defaultValue: event.event_type })}
+        </strong>
+        <p className="journal-event-summary">{event.summary || t('icpRadar.live.journal.noSummary')}</p>
+        <span className="journal-event-meta">
+          <Badge tone={event.visibility === 'operator' ? 'unsurfaced' : 'neutral'}>
+            {t(`icpRadar.live.journal.visibility.${event.visibility}`, { defaultValue: event.visibility })}
+          </Badge>
+          <Mono>{event.actor}</Mono>
+          <Mono>{event.phase}</Mono>
+          {event.created_at && <span className="journal-event-time">{formatJournalTime(event.created_at)}</span>}
+        </span>
+        {refs.length > 0 && (
+          <span className="journal-event-refs">
+            {refs.map((ref) => <Mono key={`${event.event_id}-${ref}`}>{ref}</Mono>)}
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+function formatJournalTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString(undefined, {
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: '2-digit',
+  });
 }
 
 function LiveQualificationReviewTable({

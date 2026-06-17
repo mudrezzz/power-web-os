@@ -45,7 +45,8 @@ Forbidden behavior:
 `POST /api/radars/{radar_id}/runs` creates a durable queued run and enqueues
 worker execution. Clients poll `GET /api/radar-runs/{run_id}` until the run is
 terminal, then read `GET /api/radar-runs/{run_id}/candidates` after output
-exists.
+exists. `GET /api/radar-runs/{run_id}/journal` returns ordered structured audit
+events and must not expose raw hidden chain-of-thought fields.
 
 The app allows local Vite frontend origins by default. Use
 `POWER_WEB_OS_CORS_ORIGINS` for a comma-separated override when the frontend is

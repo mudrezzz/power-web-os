@@ -106,3 +106,22 @@ class RadarReviewDecisionRecord:
     reviewed_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RadarRunEventRecord:
+    """Append-only structured audit event for one durable Radar run."""
+
+    event_id: str
+    run_id: str
+    sequence: int
+    event_type: str
+    phase: str
+    actor: str
+    node_name: str = ""
+    visibility: str = "user"
+    summary: str = ""
+    payload: dict[str, Any] = field(default_factory=dict)
+    source_refs: list[str] = field(default_factory=list)
+    candidate_refs: list[str] = field(default_factory=list)
+    created_at: datetime | None = None

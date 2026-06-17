@@ -20,10 +20,12 @@ from power_web_os.application.persisted_live_radar import (
     QueuedLiveRadarRunService,
 )
 from power_web_os.application.ports import JobQueue, LiveRadarArtifactExecutor, RadarRunScheduler
+from power_web_os.application.radar_run_journal import RadarRunJournal
 from power_web_os.application.radar_records import RadarRunRecord
 from power_web_os.integrations.live_radar_openrouter import OpenRouterWebSearchProvider
 from power_web_os.persistence import (
     SqlAlchemyRadarRunOutputRepository,
+    SqlAlchemyRadarRunEventRepository,
     SqlAlchemyRadarRunRepository,
     create_database_engine,
     create_session_factory,
@@ -80,6 +82,7 @@ def execute_radar_run_once(
             run_repository=SqlAlchemyRadarRunRepository(session),
             output_repository=SqlAlchemyRadarRunOutputRepository(session),
             executor=live_executor,
+            journal=RadarRunJournal(repository=SqlAlchemyRadarRunEventRepository(session)),
         )
         return executor.execute(run_id)
 

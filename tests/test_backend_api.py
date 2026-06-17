@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -38,7 +39,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-        "version": "0.7.5",
+        "version": "0.7.6",
         "environment": "test",
     }
 
@@ -55,7 +56,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.5"
+    assert schema["info"]["version"] == "0.7.6"
     for path in [
         "/health",
         "/api/health",
@@ -64,6 +65,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
         "/api/radars/{radar_id}/runs",
         "/api/radar-runs/{run_id}",
         "/api/radar-runs/{run_id}/candidates",
+        "/api/radar-runs/{run_id}/journal",
         "/api/radar-runs/{run_id}/reviews",
         "/api/radar-runs/{run_id}/candidates/{candidate_id}/qualification/{rule_id}/review",
         "/api/radar-runs/{run_id}/candidates/{candidate_id}/signals/{signal_code}/review",
@@ -130,6 +132,8 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert detail["status"] == "queued"
     assert detail["output"] is None
     assert client.get(f"/api/radar-runs/{run['run_id']}/candidates").status_code == 409
+    queued_journal = client.get(f"/api/radar-runs/{run['run_id']}/journal").json()
+    assert [event["event_type"] for event in queued_journal["events"]] == ["run_queued"]
 
     execute_radar_run_once(
         run_id=run["run_id"],
@@ -138,6 +142,7 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     )
 
     candidates = client.get(f"/api/radar-runs/{run['run_id']}/candidates").json()
+    journal = client.get(f"/api/radar-runs/{run['run_id']}/journal").json()
     assert candidates["radar_id"] == "toir-quick-live"
     assert candidates["sources"][0]["evidence_ref"] == "src_1"
     candidate = candidates["candidates"][0]
@@ -146,6 +151,13 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert candidate["qualification"][0]["source_usages"][0]["source_ref"] == "src_1"
     assert candidate["qualification"][0]["evidence_findings"][0]["why_it_matches_rule"]
     assert candidate["signals"][0]["score_evaluation"]["applied_score"] == 2
+    event_types = [event["event_type"] for event in journal["events"]]
+    assert event_types[:2] == ["run_queued", "run_started"]
+    assert "source_collected" in event_types
+    assert "candidate_extracted" in event_types
+    assert "signal_evaluated" in event_types
+    assert event_types[-1] == "run_completed"
+    assert not any(marker in json.dumps(journal) for marker in ["chain_of_thought", "hidden_reasoning", "internal_thoughts"])
 
     qualification_review = client.put(
         f"/api/radar-runs/{run['run_id']}/candidates/candidate-a/qualification/rule-q1/review",
@@ -212,8 +224,10 @@ def test_api_missing_and_no_output_cases_return_explicit_statuses(tmp_path: Path
     assert client.post("/api/radars/missing/runs", json={"live": False}).status_code == 404
     assert client.get("/api/radar-runs/missing").status_code == 404
     assert client.get("/api/radar-runs/missing/candidates").status_code == 404
+    assert client.get("/api/radar-runs/missing/journal").status_code == 404
     assert client.get("/api/radar-runs/queued-run/candidates").status_code == 409
     assert client.get("/api/radar-runs/queued-run/reviews").status_code == 200
+    assert client.get("/api/radar-runs/queued-run/journal").json()["events"] == []
     assert client.put(
         "/api/radar-runs/queued-run/candidates/candidate-a/signals/S1/review",
         json={"status": "confirmed"},

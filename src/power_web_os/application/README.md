@@ -24,6 +24,8 @@ provider SDK details.
   repository and executor ports.
 - `radar_review.py` validates and persists current human review decisions
   through a review repository port.
+- `radar_run_journal.py` owns structured run audit event semantics and rejects
+  raw hidden chain-of-thought payload keys.
 
 ## Dependency Rules
 
@@ -53,6 +55,12 @@ Human review persistence follows the same rule: application code validates
 qualification/signal decision semantics and stores the current decision through
 a repository port. API routes own HTTP shape only, and repositories own storage
 shape only.
+
+Structured run journal persistence follows the same rule: application code
+emits lifecycle, planning, evidence, scoring, validation, and self-check event
+semantics through a `RadarRunEventRepository` port. Raw hidden reasoning fields
+such as `chain_of_thought`, `hidden_reasoning`, and `internal_thoughts` are not
+valid application payloads.
 
 ## How To Extend
 

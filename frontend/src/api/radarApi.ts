@@ -164,6 +164,28 @@ export type RadarRunCandidatesDto = {
   contract_validation: Array<Record<string, unknown>>;
 };
 
+export type RadarRunJournalEventDto = {
+  event_id: string;
+  run_id: string;
+  sequence: number;
+  event_type: string;
+  phase: string;
+  actor: string;
+  node_name: string;
+  visibility: 'user' | 'operator' | 'debug' | string;
+  summary: string;
+  payload: Record<string, unknown>;
+  source_refs: string[];
+  candidate_refs: string[];
+  created_at: string | null;
+};
+
+export type RadarRunJournalDto = {
+  run_id: string;
+  radar_id: string;
+  events: RadarRunJournalEventDto[];
+};
+
 export type RadarReviewDecisionRequestDto = {
   status: string;
   reviewer: string;
@@ -220,6 +242,10 @@ export class RadarApiClient {
 
   getRunCandidates(runId: string) {
     return this.request<RadarRunCandidatesDto>(`/api/radar-runs/${encodeURIComponent(runId)}/candidates`);
+  }
+
+  getRunJournal(runId: string) {
+    return this.request<RadarRunJournalDto>(`/api/radar-runs/${encodeURIComponent(runId)}/journal`);
   }
 
   saveQualificationReview(

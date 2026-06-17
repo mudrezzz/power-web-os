@@ -2082,12 +2082,44 @@ Principles:
 
 ### Slice 0.7.6: Run journal and evidence audit
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Store and display structured workflow journal events from backend state.
 - Scope:
-  - Persist structured trace, provider metadata, queries, warnings, and source normalization notes.
-  - Show journal tab from backend data.
-  - Do not store or show hidden chain-of-thought.
+  - Add append-only `radar_run_events` table with lifecycle, planning,
+    collection, extraction, evaluation, scoring, validation, and self-check
+    event types.
+  - Add `RadarRunEventRecord`, `RadarRunEventRepository`, and `RadarRunJournal`
+    application service.
+  - Instrument queued run creation and worker execution with lifecycle events.
+  - Map current live artifact sections into structured audit events without
+    storing raw hidden chain-of-thought.
+  - Add `GET /api/radar-runs/{run_id}/journal`.
+  - Show backend journal events in the frontend `Journal` tab for API-backed
+    runs and keep artifact metadata fallback for offline/demo JSON mode.
+- Completion notes:
+  - Added ADR `2026-06-17-structured-radar-run-journal.md`.
+  - `radar_runs` remains durable status truth, `radar_run_outputs` remains the
+    immutable output snapshot, and `radar_run_events` is the append-only audit
+    timeline.
+  - Application journal validation rejects raw hidden reasoning keys:
+    `chain_of_thought`, `hidden_reasoning`, and `internal_thoughts`.
+
+### Slice 0.7.6.1: Planner/executor/evaluator workflow expansion
+
+- Status: `Backlog`
+- Goal: Add explicit planner, executor, and evaluator workflow nodes that emit
+  the structured journal contract introduced in `Slice 0.7.6`.
+- Scope:
+  - Split current live Radar workflow execution into named planning,
+    collection, extraction, scoring, and validation nodes where it improves
+    observability.
+  - Keep `langgraph-document-ai-platform` as the workflow wrapper/runtime
+    boundary.
+  - Emit `radar_run_events` from node outputs through application journal
+    services, not directly from persistence or provider adapters.
+  - Keep raw hidden chain-of-thought out of storage and UI.
+  - Preserve current API/frontend contracts for runs, candidates, reviews, and
+    journal events.
 
 ### Slice 0.7: Human review queue loop
 
@@ -2636,4 +2668,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.5: Frontend API adapter`.
+Implement `Slice 0.7.6.1: Planner/executor/evaluator workflow expansion`.

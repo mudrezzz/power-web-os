@@ -2,6 +2,7 @@ import type {
   EvidenceFindingDto,
   RadarDetailDto,
   RadarRunCandidatesDto,
+  RadarRunJournalDto,
   RadarRunSummaryDto,
   SourceUsageDto,
 } from '../../../api/radarApi';
@@ -37,7 +38,7 @@ export function apiDetailsToCatalogArtifact(
     radars: details.map(apiDetailToCatalogItem),
     workflow_metadata: fallback?.workflow_metadata ?? {
       workflow_name: 'power-web-os-backend-api',
-      artifact_version: '0.7.5',
+      artifact_version: '0.7.6',
       active_fixture_radar_id: 'toir-sibur',
       radar_count: details.length,
     },
@@ -74,6 +75,7 @@ export function apiRunToLiveArtifact(
   run: RadarRunSummaryDto,
   candidates: RadarRunCandidatesDto,
   radar: ICPRadarCatalogItem,
+  journal?: RadarRunJournalDto,
 ): LiveICPRadarRunArtifact {
   return {
     artifact_type: 'icp_radar_live_run',
@@ -153,6 +155,21 @@ export function apiRunToLiveArtifact(
       review_flags: candidate.review_flags,
       evidence_refs: candidate.evidence_refs,
     })),
+    journal_events: journal?.events.map((event) => ({
+      event_id: event.event_id,
+      run_id: event.run_id,
+      sequence: event.sequence,
+      event_type: event.event_type,
+      phase: event.phase,
+      actor: event.actor,
+      node_name: event.node_name,
+      visibility: event.visibility,
+      summary: event.summary,
+      payload: event.payload,
+      source_refs: event.source_refs,
+      candidate_refs: event.candidate_refs,
+      created_at: event.created_at,
+    })) ?? [],
     contract_validation: candidates.contract_validation.map((item) => ({
       severity: item.severity === 'error' ? 'error' : 'warning',
       path: stringField(item.path, ''),

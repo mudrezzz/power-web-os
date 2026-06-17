@@ -10,6 +10,8 @@ OS tasks. It is execution infrastructure, not product state.
 - Celery messages carry durable identifiers such as `run_id`, not provider
   payloads, candidate lists, or artifacts.
 - Worker tasks open their own database session and call application services.
+- Worker tasks emit run journal events only through application journal
+  services.
 
 ## Dependency Rules
 
@@ -25,10 +27,11 @@ Forbidden behavior:
 - business scoring or review semantics inside worker tasks;
 - provider normalization inside worker tasks;
 - SQL query code inside worker tasks;
+- journal event semantics invented inside worker tasks;
 - trusting Celery result state as product truth.
 
-`radar_runs` and `radar_run_outputs` remain the source of truth. Redis/Celery
-only transport execution requests.
+`radar_runs`, `radar_run_outputs`, and `radar_run_events` remain the source of
+truth. Redis/Celery only transport execution requests.
 
 ## How To Run
 

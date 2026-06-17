@@ -12,6 +12,7 @@ from typing import Protocol
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRecord,
+    RadarRunEventRecord,
     RadarRunOutputRecord,
     RadarRunRecord,
     RadarRunStatus,
@@ -95,6 +96,16 @@ class RadarReviewDecisionRepository(Protocol):
         subject_type: str,
         subject_id: str,
     ) -> bool: ...
+
+
+class RadarRunEventRepository(Protocol):
+    """Application port for append-only structured Radar run journal events."""
+
+    def append(self, record: RadarRunEventRecord) -> RadarRunEventRecord: ...
+
+    def list_for_run(self, run_id: str) -> tuple[RadarRunEventRecord, ...]: ...
+
+    def next_sequence(self, run_id: str) -> int: ...
 
 
 class JobQueue(Protocol):

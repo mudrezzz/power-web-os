@@ -102,6 +102,7 @@ BACKEND_DOCSTRING_REQUIRED_MODULES = {
     Path("src/power_web_os/application/ports.py"),
     Path("src/power_web_os/application/radar_catalog_seed.py"),
     Path("src/power_web_os/application/radar_review.py"),
+    Path("src/power_web_os/application/radar_run_journal.py"),
     Path("src/power_web_os/persistence/engine.py"),
     Path("src/power_web_os/persistence/models.py"),
     Path("src/power_web_os/persistence/repositories.py"),

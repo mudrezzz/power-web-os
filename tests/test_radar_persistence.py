@@ -5,10 +5,13 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import inspect
+from sqlalchemy.exc import IntegrityError
 
+from power_web_os.application.radar_run_journal import RadarRunEventCommand, RadarRunJournal
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRecord,
+    RadarRunEventRecord,
     RadarRunOutputRecord,
     RadarRunRecord,
     RadarRunStatus,
@@ -20,6 +23,7 @@ from power_web_os.persistence import (
     SqlAlchemyRadarDefinitionRepository,
     SqlAlchemyRadarRepository,
     SqlAlchemyRadarReviewDecisionRepository,
+    SqlAlchemyRadarRunEventRepository,
     SqlAlchemyRadarRunOutputRepository,
     SqlAlchemyRadarRunRepository,
     create_database_engine,
@@ -44,6 +48,7 @@ def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> N
         run_repo = SqlAlchemyRadarRunRepository(session)
         output_repo = SqlAlchemyRadarRunOutputRepository(session)
         review_repo = SqlAlchemyRadarReviewDecisionRepository(session)
+        event_repo = SqlAlchemyRadarRunEventRepository(session)
 
         radar = radar_repo.upsert(
             RadarRecord(
@@ -92,6 +97,24 @@ def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> N
             )
         )
         completed = run_repo.update_status("run-1", RadarRunStatus.COMPLETED, run_metadata={"candidate_count": 1})
+        first_event = RadarRunJournal(repository=event_repo).append(
+            RadarRunEventCommand(
+                run_id="run-1",
+                event_type="run_started",
+                phase="lifecycle",
+                actor="worker",
+                summary="Run started.",
+            )
+        )
+        second_event = RadarRunJournal(repository=event_repo).append(
+            RadarRunEventCommand(
+                run_id="run-1",
+                event_type="run_completed",
+                phase="lifecycle",
+                actor="worker",
+                summary="Run completed.",
+            )
+        )
         review = review_repo.upsert(
             RadarReviewDecisionRecord(
                 decision_id="review-1",
@@ -130,6 +153,8 @@ def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> N
         assert completed.run_metadata["candidate_count"] == 1
         assert run_repo.list_for_radar("toir-sibur") == (completed,)
         assert output_repo.get("run-1") == output
+        assert event_repo.list_for_run("run-1") == (first_event, second_event)
+        assert [event.sequence for event in event_repo.list_for_run("run-1")] == [1, 2]
         assert review.decision_id == replaced.decision_id
         assert replaced.status == "rejected"
         assert review_repo.get(
@@ -146,6 +171,46 @@ def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> N
             subject_id="S1",
         )
         assert review_repo.list_for_run("run-1") == ()
+
+
+def test_radar_run_events_are_append_only_and_unique_by_run_sequence(tmp_path: Path) -> None:
+    engine = create_database_engine(database_url=sqlite_url(tmp_path / "events.db"))
+    Base.metadata.create_all(engine)
+    session_factory = create_session_factory(engine)
+
+    with session_scope(session_factory) as session:
+        SqlAlchemyRadarRepository(session).upsert(
+            RadarRecord(radar_id="toir-quick-live", name="Live", status="active", owner="ABM")
+        )
+        SqlAlchemyRadarRunRepository(session).create(RadarRunRecord(run_id="run-1", radar_id="toir-quick-live"))
+        event_repo = SqlAlchemyRadarRunEventRepository(session)
+        event_repo.append(
+            RadarRunEventRecord(
+                event_id="event-1",
+                run_id="run-1",
+                sequence=1,
+                event_type="run_started",
+                phase="lifecycle",
+                actor="worker",
+                summary="Run started.",
+            )
+        )
+        try:
+            event_repo.append(
+                RadarRunEventRecord(
+                    event_id="event-duplicate",
+                    run_id="run-1",
+                    sequence=1,
+                    event_type="run_completed",
+                    phase="lifecycle",
+                    actor="worker",
+                    summary="Duplicate sequence.",
+                )
+            )
+        except IntegrityError:
+            session.rollback()
+        else:
+            raise AssertionError("radar_run_events must enforce unique run sequence")
 
 
 def test_seed_radar_catalog_upserts_current_demo_radars(tmp_path: Path) -> None:
@@ -183,6 +248,7 @@ def test_alembic_initial_migration_creates_radar_tables(tmp_path: Path) -> None:
         "radar_runs",
         "radar_run_outputs",
         "radar_review_decisions",
+        "radar_run_events",
         "alembic_version",
     } <= table_names
 
@@ -197,4 +263,11 @@ def test_alembic_respects_database_url_environment_for_seed_command_path(tmp_pat
     engine = create_database_engine(database_url=sqlite_url(db_path))
     table_names = set(inspect(engine).get_table_names())
 
-    assert {"radars", "radar_definitions", "radar_runs", "radar_run_outputs", "radar_review_decisions"} <= table_names
+    assert {
+        "radars",
+        "radar_definitions",
+        "radar_runs",
+        "radar_run_outputs",
+        "radar_review_decisions",
+        "radar_run_events",
+    } <= table_names

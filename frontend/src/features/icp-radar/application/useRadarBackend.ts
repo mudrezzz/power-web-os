@@ -111,8 +111,11 @@ export function useRadarBackend({
       return;
     }
     try {
-      const candidates = await api.getRunCandidates(run.run_id);
-      const artifact = apiRunToLiveArtifact(run, candidates, radar);
+      const [candidates, journal] = await Promise.all([
+        api.getRunCandidates(run.run_id),
+        api.getRunJournal(run.run_id),
+      ]);
+      const artifact = apiRunToLiveArtifact(run, candidates, radar, journal);
       if (radar.radar_id === liveRadarId) {
         setApiLiveArtifact(artifact);
       }

@@ -230,6 +230,7 @@ Useful Radar API URLs:
 ```text
 http://127.0.0.1:8000/api/radars
 http://127.0.0.1:8000/api/radars/toir-quick-live
+http://127.0.0.1:8000/api/radar-runs/{run_id}/journal
 http://127.0.0.1:8000/docs
 ```
 
@@ -265,9 +266,10 @@ npm --prefix ./frontend run dev
 With Redis and the worker running, open `ICP Radar`, select
 `ТОиР Quick Live Radar`, and click `Run radar`. The UI posts a queued run,
 polls `GET /api/radar-runs/{run_id}`, and reads
-`GET /api/radar-runs/{run_id}/candidates` after output exists. If the backend
-is unavailable, the same screen stays in explicit demo fallback mode and reads
-the generated JSON files.
+`GET /api/radar-runs/{run_id}/candidates` plus
+`GET /api/radar-runs/{run_id}/journal` after output exists. If the backend is
+unavailable, the same screen stays in explicit demo fallback mode and reads the
+generated JSON files.
 
 Default queue settings:
 
@@ -300,6 +302,7 @@ src/power_web_os/application/ports.py               Repository and async job por
 src/power_web_os/application/radar_catalog_seed.py  Demo catalog -> records mapper
 src/power_web_os/application/persisted_live_radar.py Durable live Radar run service
 src/power_web_os/application/radar_review.py        Human review decision service
+src/power_web_os/application/radar_run_journal.py   Structured run audit service
 src/power_web_os/persistence/models.py              SQLAlchemy table mappings
 src/power_web_os/persistence/repositories.py        SQLAlchemy repository adapters
 src/power_web_os/persistence/migrations/            Alembic migration environment
@@ -315,6 +318,10 @@ Rules:
 - `radar_review_decisions` stores the current mutable human review decision per
   run/candidate/qualification-or-signal subject. It does not replace an
   append-only audit journal.
+- `radar_run_events` stores ordered append-only lifecycle, planning, collection,
+  extraction, scoring, validation, and self-check audit events.
+- `radar_run_events` must not store raw hidden chain-of-thought fields such as
+  `chain_of_thought`, `hidden_reasoning`, or `internal_thoughts`.
 - Celery/Redis implement `JobQueue`, but queue state must not replace `radar_runs`.
 - The seed command upserts current demo radars and active definitions; it does not execute live searches or create run records.
 - The persisted live run command executes the existing live workflow path,

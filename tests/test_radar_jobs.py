@@ -11,6 +11,7 @@ from power_web_os.jobs import radar_jobs
 from power_web_os.persistence import (
     Base,
     SqlAlchemyRadarRepository,
+    SqlAlchemyRadarRunEventRepository,
     SqlAlchemyRadarRunOutputRepository,
     SqlAlchemyRadarRunRepository,
     create_database_engine,
@@ -44,12 +45,15 @@ def test_execute_radar_run_once_completes_and_persists_output(tmp_path: Path) ->
     with session_scope(session_factory) as session:
         stored_run = SqlAlchemyRadarRunRepository(session).get("run-success")
         output = SqlAlchemyRadarRunOutputRepository(session).get("run-success")
+        events = SqlAlchemyRadarRunEventRepository(session).list_for_run("run-success")
 
     assert completed.status is RadarRunStatus.COMPLETED
     assert stored_run is not None
     assert stored_run.status is RadarRunStatus.COMPLETED
     assert output is not None
     assert output.candidates_payload[0]["legal_name"] == "Candidate A"
+    assert [event.event_type for event in events][0] == "run_started"
+    assert [event.event_type for event in events][-1] == "run_completed"
 
 
 def test_execute_radar_run_once_failure_persists_failed_state(tmp_path: Path) -> None:
@@ -64,11 +68,13 @@ def test_execute_radar_run_once_failure_persists_failed_state(tmp_path: Path) ->
     with session_scope(session_factory) as session:
         stored_run = SqlAlchemyRadarRunRepository(session).get("run-failed")
         output = SqlAlchemyRadarRunOutputRepository(session).get("run-failed")
+        events = SqlAlchemyRadarRunEventRepository(session).list_for_run("run-failed")
 
     assert failed.status is RadarRunStatus.FAILED
     assert stored_run is not None
     assert stored_run.error_message == "provider unavailable"
     assert output is None
+    assert [event.event_type for event in events] == ["run_started", "run_failed"]
 
 
 def test_celery_eager_task_executes_without_redis(tmp_path: Path, monkeypatch) -> None:

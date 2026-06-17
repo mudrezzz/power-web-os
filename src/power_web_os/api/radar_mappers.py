@@ -12,6 +12,8 @@ from power_web_os.api.radar_dtos import (
     RadarDefinitionResponse,
     RadarDetailResponse,
     RadarRunCandidatesResponse,
+    RadarRunJournalEventResponse,
+    RadarRunJournalResponse,
     RadarRunOutputSummaryResponse,
     RadarRunReviewsResponse,
     RadarRunSummaryResponse,
@@ -26,6 +28,7 @@ from power_web_os.application.radar_records import (
     RadarRecord,
     RadarReviewDecisionRecord,
     RadarRunOutputRecord,
+    RadarRunEventRecord,
     RadarRunRecord,
 )
 
@@ -129,6 +132,32 @@ def reviews_response(run: RadarRunRecord, reviews: tuple[RadarReviewDecisionReco
         run_id=run.run_id,
         radar_id=run.radar_id,
         decisions=[review_response(review) for review in reviews],
+    )
+
+
+def journal_response(run: RadarRunRecord, events: tuple[RadarRunEventRecord, ...]) -> RadarRunJournalResponse:
+    return RadarRunJournalResponse(
+        run_id=run.run_id,
+        radar_id=run.radar_id,
+        events=[journal_event_response(event) for event in events],
+    )
+
+
+def journal_event_response(record: RadarRunEventRecord) -> RadarRunJournalEventResponse:
+    return RadarRunJournalEventResponse(
+        event_id=record.event_id,
+        run_id=record.run_id,
+        sequence=record.sequence,
+        event_type=record.event_type,
+        phase=record.phase,
+        actor=record.actor,
+        node_name=record.node_name,
+        visibility=record.visibility,
+        summary=record.summary,
+        payload=record.payload,
+        source_refs=record.source_refs,
+        candidate_refs=record.candidate_refs,
+        created_at=record.created_at,
     )
 
 

@@ -293,13 +293,76 @@
 
 .canonical-journal-row {
   display: grid;
-  grid-template-columns: var(--s-16) minmax(0, 1fr);
-  gap: var(--s-2) var(--s-3);
+  grid-template-columns: minmax(var(--s-5), max-content) minmax(0, 1fr);
+  gap: var(--s-2) var(--s-4);
   padding: var(--s-3);
 }
 
 .canonical-journal-row small {
   grid-column: 2;
+}
+
+.canonical-journal-row--event {
+  align-items: start;
+  padding: var(--s-4);
+}
+
+.canonical-journal-row--event > span,
+.journal-event-main {
+  min-width: 0;
+}
+
+.journal-event-sequence {
+  color: var(--fg2);
+}
+
+.journal-event-main {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.journal-event-title,
+.journal-event-summary {
+  display: block;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.journal-event-title {
+  font: var(--h4);
+  color: var(--ink);
+}
+
+.journal-event-summary {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.journal-event-meta,
+.journal-event-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.journal-event-meta {
+  color: var(--fg2);
+}
+
+.journal-event-time {
+  color: var(--fg2);
+}
+
+.journal-event-refs {
+  overflow-wrap: anywhere;
+}
+
+.journal-policy-copy {
+  margin: var(--s-3) 0 0;
+  color: var(--fg2);
 }
 
 .qualification-review-table,

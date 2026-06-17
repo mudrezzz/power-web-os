@@ -96,6 +96,7 @@ class RadarRunModel(Base):
 
     radar: Mapped[RadarModel] = relationship(back_populates="runs")
     output: Mapped[RadarRunOutputModel | None] = relationship(back_populates="run", uselist=False)
+    events: Mapped[list[RadarRunEventModel]] = relationship(back_populates="run")
 
 
 class RadarRunOutputModel(Base):
@@ -152,3 +153,27 @@ class RadarReviewDecisionModel(Base):
         default=utc_now,
         onupdate=utc_now,
     )
+
+
+class RadarRunEventModel(Base):
+    __tablename__ = "radar_run_events"
+    __table_args__ = (
+        CheckConstraint("visibility in ('user', 'operator', 'debug')", name="ck_radar_run_events_visibility"),
+        UniqueConstraint("run_id", "sequence", name="uq_radar_run_events_run_sequence"),
+    )
+
+    event_id: Mapped[str] = mapped_column(String(220), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("radar_runs.run_id"), nullable=False, index=True)
+    sequence: Mapped[int] = mapped_column(nullable=False)
+    event_type: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    phase: Mapped[str] = mapped_column(String(80), nullable=False)
+    actor: Mapped[str] = mapped_column(String(80), nullable=False)
+    node_name: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    visibility: Mapped[str] = mapped_column(String(40), nullable=False, default="user")
+    summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    source_refs_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    candidate_refs_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+    run: Mapped[RadarRunModel] = relationship(back_populates="events")

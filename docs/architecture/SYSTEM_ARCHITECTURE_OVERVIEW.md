@@ -84,10 +84,11 @@ The first backend slice exposed only a health boundary. The backend now adds DB
 settings, sessions, Alembic, Radar catalog/run repositories, persisted live
 Radar output snapshots, and FastAPI contracts for Radar catalog, run state, and
 candidate snapshots. It also has a Celery/Redis job adapter for long-running
-Radar execution and durable human review decisions for live Radar findings.
+Radar execution, durable human review decisions for live Radar findings, and an
+append-only structured run journal for reasoning/audit summaries.
 Backend slices should continue in this order:
 
-1. run journal and evidence audit;
+1. planner/executor/evaluator workflow expansion over the run journal contract;
 2. normalized candidate/evidence query tables when API usage needs them;
 3. production schedule/cadence controls.
 
@@ -106,13 +107,17 @@ Backend ownership boundaries:
 - Infrastructure adapters own database, provider, and external API calls.
 
 The current persistence slice stores `radars`, `radar_definitions`,
-`radar_runs`, `radar_run_outputs`, and `radar_review_decisions`.
+`radar_runs`, `radar_run_outputs`, `radar_review_decisions`, and
+`radar_run_events`.
 `radar_run_outputs` is a JSON snapshot table for the current live Radar artifact
 sections. `radar_review_decisions` is mutable current review state for one
 qualification or signal subject; it does not mutate the output snapshot and is
-not the append-only run journal. Local regression uses SQLite for migration and
-repository smoke tests, while schema and runtime configuration remain
-PostgreSQL-ready through SQLAlchemy/Alembic and `POWER_WEB_OS_DATABASE_URL`.
+not the append-only run journal. `radar_run_events` stores ordered structured
+audit events for lifecycle, planning, source collection, candidate extraction,
+finding evaluation, score explanation, validation warnings, and self-check
+summaries. Local regression uses SQLite for migration and repository smoke
+tests, while schema and runtime configuration remain PostgreSQL-ready through
+SQLAlchemy/Alembic and `POWER_WEB_OS_DATABASE_URL`.
 
 LLM/search outputs must be persisted as reviewable evidence and run records, not
 as authoritative final truth. Human review decisions are first-class product
@@ -161,12 +166,20 @@ Review endpoints save/reset current qualification and signal decisions for
 existing snapshot findings, and candidate DTOs overlay those decisions without
 rewriting `radar_run_outputs`.
 
+`GET /api/radar-runs/{run_id}/journal` returns ordered structured audit events.
+The journal is not raw hidden chain-of-thought. Application services reject
+payload keys such as `chain_of_thought`, `hidden_reasoning`, and
+`internal_thoughts`; supported payloads are product-facing plans, observations,
+tool/source outcomes, score rationale summaries, warnings, evidence refs, and
+self-check summaries.
+
 The frontend API adapter is a thin client boundary. `frontend/src/api/` owns
 transport and error normalization, `frontend/src/features/icp-radar/adapters/`
 maps API DTOs into the existing Radar view contracts, and
 `frontend/src/features/icp-radar/application/` owns backend mode, queued run
 polling, fallback selection, and review mutations. Presentation components show
-run controls and status, but do not call `fetch` or own persistence.
+run controls, status, and journal events, but do not call `fetch` or own
+persistence.
 
 Architecture contract tests enforce these rules. Existing large legacy modules
 are temporary decomposition follow-ups and not examples for new backend work:

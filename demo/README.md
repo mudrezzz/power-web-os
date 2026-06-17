@@ -137,10 +137,12 @@ local manual smoke testing.
 `run_id`. A Celery worker executes the run in the background. API clients poll
 `GET /api/radar-runs/{run_id}` until the run is `completed` or `failed`, then
 read `GET /api/radar-runs/{run_id}/candidates` after output exists. The
-backend API can persist current qualification and signal review decisions for
-that output. The frontend uses these API contracts for live Radar catalog,
-manual run, candidates, and review decisions when the backend is available.
-Browser-local overlays remain only for fixture/offline fallback state.
+backend API also exposes `GET /api/radar-runs/{run_id}/journal` for structured
+run audit events and can persist current qualification and signal review
+decisions for that output. The frontend uses these API contracts for live Radar
+catalog, manual run, candidates, journal, and review decisions when the backend
+is available. Browser-local overlays remain only for fixture/offline fallback
+state.
 
 When the backend API is running, inspect `ТОиР Quick Live Radar` and click
 `Run radar`. The UI creates a queued run, shows `queued/running/completed/failed`
