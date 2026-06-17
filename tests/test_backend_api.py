@@ -12,6 +12,7 @@ from power_web_os.application.radar_records import (
     RadarRecord,
     RadarRunRecord,
 )
+from power_web_os.jobs.radar_jobs import execute_radar_run_once
 from power_web_os.persistence import (
     Base,
     SqlAlchemyRadarDefinitionRepository,
@@ -37,7 +38,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-        "version": "0.7.3",
+        "version": "0.7.3.1",
         "environment": "test",
     }
 
@@ -54,7 +55,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.3"
+    assert schema["info"]["version"] == "0.7.3.1"
     for path in [
         "/health",
         "/api/health",
@@ -83,9 +84,11 @@ def test_radar_catalog_and_detail_read_persisted_data(tmp_path: Path) -> None:
     assert detail["runs"] == []
 
 
-def test_post_radar_run_executes_inline_and_persists_output(tmp_path: Path) -> None:
+def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execution(tmp_path: Path) -> None:
     database_url = _create_seeded_database(tmp_path)
-    client = TestClient(_app(tmp_path, database_url=database_url, artifact=_artifact()))
+    queue = _RecordingJobQueue()
+    app = _app(tmp_path, database_url=database_url, job_queue=queue)
+    client = TestClient(app)
 
     response = client.post(
         "/api/radars/toir-quick-live/runs",
@@ -97,17 +100,24 @@ def test_post_radar_run_executes_inline_and_persists_output(tmp_path: Path) -> N
         },
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 202
     run = response.json()
-    assert run["status"] == "completed"
+    assert run["status"] == "queued"
     assert run["radar_id"] == "toir-quick-live"
     assert run["correlation_id"] == "corr-api-1"
-    assert run["output"]["candidate_count"] == 1
-    assert run["output"]["source_count"] == 1
+    assert run["output"] is None
+    assert queue.enqueued_run_ids == [run["run_id"]]
 
     detail = client.get(f"/api/radar-runs/{run['run_id']}").json()
-    assert detail["status"] == "completed"
-    assert detail["output"]["candidate_count"] == 1
+    assert detail["status"] == "queued"
+    assert detail["output"] is None
+    assert client.get(f"/api/radar-runs/{run['run_id']}/candidates").status_code == 409
+
+    execute_radar_run_once(
+        run_id=run["run_id"],
+        live_executor=_FakeExecutor(_artifact()),
+        session_factory=app.state.session_factory,
+    )
 
     candidates = client.get(f"/api/radar-runs/{run['run_id']}/candidates").json()
     assert candidates["radar_id"] == "toir-quick-live"
@@ -120,18 +130,19 @@ def test_post_radar_run_executes_inline_and_persists_output(tmp_path: Path) -> N
     assert candidate["signals"][0]["score_evaluation"]["applied_score"] == 2
 
 
-def test_post_radar_run_persists_failed_run_without_untracked_http_500(tmp_path: Path) -> None:
+def test_post_radar_run_idempotency_does_not_enqueue_duplicate(tmp_path: Path) -> None:
     database_url = _create_seeded_database(tmp_path)
-    client = TestClient(_app(tmp_path, database_url=database_url, executor=_FailingExecutor()))
+    queue = _RecordingJobQueue()
+    client = TestClient(_app(tmp_path, database_url=database_url, job_queue=queue))
 
-    response = client.post("/api/radars/toir-quick-live/runs", json={"live": True})
+    payload = {"live": False, "idempotency_key": "radar:live:api"}
+    first = client.post("/api/radars/toir-quick-live/runs", json=payload)
+    second = client.post("/api/radars/toir-quick-live/runs", json=payload)
 
-    assert response.status_code == 200
-    run = response.json()
-    assert run["status"] == "failed"
-    assert run["error_message"] == "provider unavailable"
-    assert run["error_metadata"]["exception_type"] == "RuntimeError"
-    assert run["output"] is None
+    assert first.status_code == 202
+    assert second.status_code == 202
+    assert first.json()["run_id"] == second.json()["run_id"]
+    assert queue.enqueued_run_ids == [first.json()["run_id"]]
 
 
 def test_api_missing_and_no_output_cases_return_explicit_statuses(tmp_path: Path) -> None:
@@ -149,12 +160,11 @@ def _app(
     tmp_path: Path,
     *,
     database_url: str | None = None,
-    artifact: dict[str, Any] | None = None,
-    executor: object | None = None,
+    job_queue: object | None = None,
 ):
     return create_app(
         ApiSettings(environment="test", database_url=database_url or sqlite_url(tmp_path / "api.db")),
-        live_executor_factory=lambda: executor or _FakeExecutor(artifact or _artifact()),
+        job_queue_factory=lambda: job_queue or _RecordingJobQueue(),
     )
 
 
@@ -190,6 +200,14 @@ def _create_seeded_database(tmp_path: Path, *, queued_run: bool = False) -> str:
     return database_url
 
 
+class _RecordingJobQueue:
+    def __init__(self) -> None:
+        self.enqueued_run_ids: list[str] = []
+
+    def enqueue_radar_run(self, run: RadarRunRecord) -> None:
+        self.enqueued_run_ids.append(run.run_id)
+
+
 class _FakeExecutor:
     def __init__(self, artifact: dict[str, Any]) -> None:
         self._artifact = artifact
@@ -197,12 +215,6 @@ class _FakeExecutor:
     def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, object]:
         _ = live, task_context
         return self._artifact
-
-
-class _FailingExecutor:
-    def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, object]:
-        _ = live, task_context
-        raise RuntimeError("provider unavailable")
 
 
 def _artifact() -> dict[str, Any]:

@@ -138,7 +138,7 @@ Current files:
 src/power_web_os/api/README.md          API layer ownership guide
 src/power_web_os/api/app.py             FastAPI app factory and router registration
 src/power_web_os/api/config.py          API settings boundary
-src/power_web_os/api/dependencies.py    Repository/executor dependency wiring
+src/power_web_os/api/dependencies.py    Repository/job queue dependency wiring
 src/power_web_os/api/radar_routes.py    Radar catalog/run/candidate endpoints
 src/power_web_os/api/radar_dtos.py      Pydantic transport contracts
 src/power_web_os/api/radar_mappers.py   Application record -> API DTO mapping
@@ -163,9 +163,10 @@ Rules:
 - Keep generated JSON artifacts as demo/export fallback, not long-term source of truth.
 - Do not import frontend/demo artifact readers into API routes as hidden persistence.
 - Use Pydantic DTOs for request/response contracts and keep OpenAPI stable.
-- `POST /api/radars/{radar_id}/runs` executes inline only until the async
-  worker adapter lands in `Slice 0.7.3.1`; long-term execution belongs behind
-  `JobQueue`, not inside HTTP request handling.
+- `POST /api/radars/{radar_id}/runs` creates a queued run, enqueues worker
+  execution through `JobQueue`, and returns `202 Accepted`.
+- Clients poll `GET /api/radar-runs/{run_id}` until the status is terminal,
+  then call `GET /api/radar-runs/{run_id}/candidates` after output exists.
 
 Run locally after migrations and seed:
 
@@ -187,6 +188,47 @@ Validation:
 
 ```bash
 python -m pytest tests/test_backend_api.py
+```
+
+## Backend Jobs
+
+Radar jobs are queued through Celery and transported by Redis, while
+`radar_runs` remains the source of truth.
+
+Current files:
+
+```text
+src/power_web_os/jobs/README.md       Jobs layer ownership guide
+src/power_web_os/jobs/radar_jobs.py   Celery app, queue adapter, worker task, scheduler adapter
+```
+
+Local worker flow:
+
+```bash
+python -m alembic upgrade head
+python -m power_web_os.demo seed-radar-db
+celery -A power_web_os.jobs.radar_jobs.radar_celery_app worker --loglevel=INFO --pool=solo
+power-web-os-api
+```
+
+Default queue settings:
+
+```text
+POWER_WEB_OS_CELERY_BROKER_URL=redis://localhost:6379/0
+POWER_WEB_OS_CELERY_RESULT_BACKEND=redis://localhost:6379/1
+```
+
+For tests and local diagnostics without Redis:
+
+```text
+POWER_WEB_OS_CELERY_TASK_ALWAYS_EAGER=1
+POWER_WEB_OS_CELERY_TASK_EAGER_PROPAGATES=1
+```
+
+Validation:
+
+```bash
+python -m pytest tests/test_radar_jobs.py
 ```
 
 ## Backend Persistence Foundation
@@ -211,7 +253,7 @@ Rules:
 - `radar_runs` is the durable source of truth for queued/running/waiting-human/completed/failed/cancelled state.
 - `radar_run_outputs` stores the current live Radar artifact as a JSON snapshot;
   do not treat it as a final normalized candidate/evidence schema.
-- Celery/Redis can later implement `JobQueue`, but queue state must not replace `radar_runs`.
+- Celery/Redis implement `JobQueue`, but queue state must not replace `radar_runs`.
 - The seed command upserts current demo radars and active definitions; it does not execute live searches or create run records.
 - The persisted live run command executes the existing live workflow path,
   persists run state and output, and exports the same JSON artifact shape for
@@ -275,8 +317,8 @@ Rules:
 
 Long-running Radar jobs should be modeled as durable runs before adding
 production worker infrastructure. `radar_runs` remains the source of truth for
-status, timestamps, idempotency, correlation, errors, and audit. Celery/Redis can
-later implement the queue adapter, but Celery result state must not become the
+status, timestamps, idempotency, correlation, errors, and audit. Celery/Redis
+implements the queue adapter, but Celery result state must not become the
 product state. FastAPI `BackgroundTasks` is not the production execution model
 for Radar runs.
 

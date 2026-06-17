@@ -1985,14 +1985,14 @@ Principles:
 - Acceptance criteria:
   - Frontend can consume persisted Radar catalog and run results through an adapter while JSON remains fallback.
 - Completion notes:
-  - Added FastAPI Radar catalog, detail, inline run, run detail, and candidate snapshot endpoints.
+  - Added FastAPI Radar catalog, detail, temporary inline run, run detail, and candidate snapshot endpoints.
   - Added canonical candidate API DTOs backed by persisted `radar_run_outputs` snapshots.
-  - Kept inline run execution temporary until the async worker adapter slice.
+  - Kept inline run execution temporary until the async worker adapter slice; superseded by `Slice 0.7.3.1`.
   - Validated with backend API, architecture contract, persistence/live Radar, and full Python regression tests.
 
 ### Slice 0.7.3.1: Async radar jobs and scheduler adapter
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Add a production-oriented async execution adapter for long-running Radar jobs without moving source-of-truth state out of Postgres.
 - User value: Live and scheduled Radars can run in the background with durable status, retries, audit, and later UI progress instead of blocking API or CLI requests.
 - Scope:
@@ -2018,13 +2018,19 @@ Principles:
 - Docs:
   - Update architecture, developer guide, and operations notes with worker/scheduler commands and failure semantics.
 - Demo impact:
-  - No default demo behavior changes until API/UI run controls are added.
+  - No frontend UI migration; API clients can create queued runs and poll durable run state.
 - Acceptance criteria:
   - A Radar run can be enqueued through a port and executed by a worker adapter.
   - Durable `radar_runs` status changes are observable without trusting Celery result state.
   - Worker code does not own domain scoring, provider normalization, or persistence queries directly.
 - Risks:
   - Celery/Redis can add local setup friction; mitigate with inline/eager adapters for tests and default demo flows.
+- Completion notes:
+  - Added Celery/Redis dependencies and a `jobs` layer with queue adapter, worker task, eager-test path, and local scheduler adapter.
+  - Refactored persisted live Radar execution into queued-run creation and execute-existing-run application services.
+  - Changed `POST /api/radars/{radar_id}/runs` to return `202 Accepted` with durable `queued` status; clients poll run detail and read candidates after output exists.
+  - Kept `radar_runs` and `radar_run_outputs` as the source of truth; Celery messages carry only `run_id`.
+  - Added job/worker, API polling, idempotency, and architecture contract coverage.
 
 ### Slice 0.7.4: Human review persistence
 
@@ -2600,4 +2606,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.3.1: Async radar jobs and scheduler adapter`.
+Implement `Slice 0.7.4: Human review persistence`.

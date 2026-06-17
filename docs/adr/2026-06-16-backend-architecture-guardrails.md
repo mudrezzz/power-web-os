@@ -52,6 +52,10 @@ status, timestamps, idempotency keys, correlation ids, errors, and events will
 live in Postgres. Celery/Redis can be added later as an execution adapter, but
 Postgres remains the source of truth for run state and audit.
 
+Update after `Slice 0.7.3.1`: Celery/Redis now exists as that execution
+adapter. The decision remains that queue/result backend state is infrastructure
+only; `radar_runs` and `radar_run_outputs` stay the product contract.
+
 Architecture contract tests must guard these boundaries. Existing large modules
 are temporary legacy exceptions, not patterns for new backend work:
 
@@ -68,7 +72,7 @@ guard the presence of these onboarding docs for active backend layers.
 ## Consequences
 
 - Slice 0.7.1 can introduce persistence behind repository/application boundaries instead of embedding SQLAlchemy in routes or domain logic.
-- Future Celery/Redis work can reuse queue and executor ports instead of becoming the application boundary.
+- Celery/Redis work reuses queue and executor ports instead of becoming the application boundary.
 - Tests fail when new backend modules introduce cross-layer imports, oversized mixed-responsibility files, or hidden persistence in API routes.
 - Tests fail when active backend layers lose their local onboarding docs or key module ownership docstrings.
 - Existing large Radar modules are allowed temporarily, but follow-up work should decompose them after persistence boundaries are established.
@@ -78,4 +82,4 @@ guard the presence of these onboarding docs for active backend layers.
 
 - **Rely on written guidance only**: rejected because the frontend monolith was prevented from recurring only after contract tests were added.
 - **Refactor all large Python modules now**: rejected because this slice is governance-only and should not delay persistence foundation work.
-- **Add Celery/Redis immediately**: rejected because durable run state and queue ports should come first; worker infrastructure is a later adapter.
+- **Add Celery/Redis immediately**: rejected at the time because durable run state and queue ports needed to come first; worker infrastructure was added later as an adapter.

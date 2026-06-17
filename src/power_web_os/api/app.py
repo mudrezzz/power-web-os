@@ -8,9 +8,9 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from power_web_os.api.config import ApiSettings, get_api_settings
-from power_web_os.api.dependencies import default_live_executor
+from power_web_os.api.dependencies import default_job_queue
 from power_web_os.api.radar_routes import router as radar_router
-from power_web_os.application.ports import LiveRadarArtifactExecutor
+from power_web_os.application.ports import JobQueue
 from power_web_os.persistence import create_database_engine, create_session_factory
 
 
@@ -24,7 +24,7 @@ class HealthResponse(BaseModel):
 def create_app(
     settings: ApiSettings | None = None,
     *,
-    live_executor_factory: Callable[[], LiveRadarArtifactExecutor] | None = None,
+    job_queue_factory: Callable[[], JobQueue] | None = None,
 ) -> FastAPI:
     api_settings = settings or get_api_settings()
     app = FastAPI(
@@ -34,7 +34,7 @@ def create_app(
     )
     engine = create_database_engine(database_url=api_settings.database_url)
     app.state.session_factory = create_session_factory(engine)
-    app.state.live_executor_factory = live_executor_factory or default_live_executor
+    app.state.job_queue_factory = job_queue_factory or default_job_queue
 
     @app.get("/health", response_model=HealthResponse, tags=["system"])
     def health() -> HealthResponse:

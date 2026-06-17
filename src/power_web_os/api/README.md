@@ -9,8 +9,8 @@ Pydantic DTOs.
 - `app.py` creates the FastAPI app, shared runtime state, health routes, and
   router registration.
 - `config.py` owns API settings, including the database URL used by API runs.
-- `dependencies.py` wires per-request repository adapters and live Radar
-  executor adapters.
+- `dependencies.py` wires per-request repository adapters and job queue
+  adapters.
 - `radar_routes.py` owns Radar catalog, run, and candidate HTTP routes.
 - `radar_dtos.py` owns transport DTOs.
 - `radar_mappers.py` maps application records and persisted snapshots into API
@@ -41,6 +41,7 @@ Forbidden behavior:
 4. Put record-to-DTO shaping in API mappers.
 5. Add `tests/test_backend_api.py` coverage and update OpenAPI expectations.
 
-`POST /api/radars/{radar_id}/runs` executes live Radar inline only as a
-temporary developer bridge. The next async worker slice should move execution
-behind a queue adapter while keeping `radar_runs` as the source of truth.
+`POST /api/radars/{radar_id}/runs` creates a durable queued run and enqueues
+worker execution. Clients poll `GET /api/radar-runs/{run_id}` until the run is
+terminal, then read `GET /api/radar-runs/{run_id}/candidates` after output
+exists.

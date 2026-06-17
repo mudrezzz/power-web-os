@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from power_web_os.api.dependencies import RadarApiContext, get_radar_api_context
 from power_web_os.api.radar_dtos import (
@@ -15,7 +15,7 @@ from power_web_os.api.radar_dtos import (
     RadarSummaryResponse,
 )
 from power_web_os.api.radar_mappers import candidates_response, radar_detail_response, radar_summary_response, run_summary_response
-from power_web_os.application.persisted_live_radar import PersistedLiveRadarRunCommand, PersistedLiveRadarRunService
+from power_web_os.application.persisted_live_radar import PersistedLiveRadarRunCommand, QueuedLiveRadarRunService
 from power_web_os.application.radar_records import RadarRunOutputRecord, RadarRunRecord
 
 router = APIRouter(prefix="/api", tags=["radars"])
@@ -47,18 +47,17 @@ def get_radar(radar_id: str, context: RadarContext) -> RadarDetailResponse:
     )
 
 
-@router.post("/radars/{radar_id}/runs", response_model=RadarRunSummaryResponse)
-def run_radar_inline(radar_id: str, request: RadarRunRequest, context: RadarContext) -> RadarRunSummaryResponse:
+@router.post(
+    "/radars/{radar_id}/runs",
+    response_model=RadarRunSummaryResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def queue_radar_run(radar_id: str, request: RadarRunRequest, context: RadarContext) -> RadarRunSummaryResponse:
     radar = context.radar_repository.get(radar_id)
     if radar is None:
         raise HTTPException(status_code=404, detail=f"Radar not found: {radar_id}")
 
-    service = PersistedLiveRadarRunService(
-        run_repository=context.run_repository,
-        output_repository=context.output_repository,
-        executor=context.live_executor,
-    )
-    result = service.run(
+    result = QueuedLiveRadarRunService(run_repository=context.run_repository).create(
         PersistedLiveRadarRunCommand(
             radar_id=radar_id,
             live=request.live,
@@ -68,7 +67,9 @@ def run_radar_inline(radar_id: str, request: RadarRunRequest, context: RadarCont
             task_context=request.task_context,
         )
     )
-    return run_summary_response(result.run, output=result.output)
+    if result.should_enqueue:
+        context.job_queue.enqueue_radar_run(result.run)
+    return run_summary_response(result.run, output=context.output_repository.get(result.run.run_id))
 
 
 @router.get("/radar-runs/{run_id}", response_model=RadarRunSummaryResponse)

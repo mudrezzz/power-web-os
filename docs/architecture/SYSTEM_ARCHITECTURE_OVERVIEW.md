@@ -83,12 +83,12 @@ Chosen stack:
 The first backend slice exposed only a health boundary. The backend now adds DB
 settings, sessions, Alembic, Radar catalog/run repositories, persisted live
 Radar output snapshots, and FastAPI contracts for Radar catalog, run state, and
-candidate snapshots. Backend slices should continue in this order:
+candidate snapshots. It also has a Celery/Redis job adapter for long-running
+Radar execution. Backend slices should continue in this order:
 
-1. async radar jobs and scheduler adapter;
-2. qualification and signal human-review persistence;
-3. frontend API adapter with JSON fallback;
-4. run journal and evidence audit.
+1. qualification and signal human-review persistence;
+2. frontend API adapter with JSON fallback;
+3. run journal and evidence audit.
 
 JSON artifacts remain useful as demo exports and offline fallback, but they are
 not the long-term source of truth. Browser `localStorage` overlays remain demo
@@ -142,18 +142,18 @@ FastAPI, SQLAlchemy, Celery, Redis, and provider SDKs out of domain code.
 
 Long-running Radar execution is designed around durable run state first.
 `radar_runs` records should carry status, timestamps, idempotency key,
-correlation id, and error metadata before a production worker is introduced.
-Celery with Redis can later implement the queue adapter, but Postgres remains
-the source of truth for run status and audit. FastAPI `BackgroundTasks` is not
-the production execution model for Radar runs because those jobs are long,
-retryable, scheduled, and must survive process restarts.
+correlation id, and error metadata. Celery with Redis implements the queue
+adapter, but Postgres remains the source of truth for run status and audit.
+FastAPI `BackgroundTasks` is not the production execution model for Radar runs
+because those jobs are long, retryable, scheduled, and must survive process
+restarts.
 
 The first Radar API exposes persisted catalog, run, and candidate snapshot data.
-`POST /api/radars/{radar_id}/runs` executes the live Radar path inline only as a
-temporary developer/demo bridge. It still writes durable `radar_runs` and
-`radar_run_outputs` records, and provider failures are represented as persisted
-failed runs. The next async slice should keep the same API-facing run state but
-move execution behind a queue adapter.
+`POST /api/radars/{radar_id}/runs` creates a queued durable run and sends only
+`run_id` through Celery. Worker execution loads the run, updates
+queued/running/completed/failed state, persists `radar_run_outputs`, and leaves
+Celery result state outside the product contract. Clients observe progress by
+polling `GET /api/radar-runs/{run_id}` and read candidates after completion.
 
 Architecture contract tests enforce these rules. Existing large legacy modules
 are temporary decomposition follow-ups and not examples for new backend work:
@@ -168,7 +168,7 @@ Backend onboarding map:
 | `workflows` | `src/power_web_os/workflows/README.md` | optional `langgraph-dai` wrappers and fallback workflow runtime | live Radar tests, architecture contract tests |
 | `persistence` | `src/power_web_os/persistence/README.md` | SQLAlchemy models, sessions, repositories, Alembic migrations | `tests/test_radar_persistence.py` |
 | `api` | `src/power_web_os/api/README.md` | FastAPI app factory, health routes, Radar routes, DTOs, dependency wiring | `tests/test_backend_api.py` |
-| `jobs` | Future local README when introduced | worker/scheduler entrypoints | architecture contract tests |
+| `jobs` | `src/power_web_os/jobs/README.md` | Celery app, Radar queue adapter, worker task, scheduler adapter | `tests/test_radar_jobs.py`, architecture contract tests |
 
 New backend boundaries should include local developer-facing README guidance and
 module docstrings for non-obvious ownership. SAO remains the high-level map;

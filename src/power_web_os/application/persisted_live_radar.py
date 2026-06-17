@@ -37,6 +37,79 @@ class PersistedLiveRadarRunResult:
         return self.output.artifact_payload if self.output is not None else None
 
 
+@dataclass(frozen=True, slots=True)
+class QueuedLiveRadarRunResult:
+    run: RadarRunRecord
+    should_enqueue: bool
+
+
+class QueuedLiveRadarRunService:
+    """Create durable queued Radar runs without executing provider work."""
+
+    def __init__(self, *, run_repository: RadarRunRepository) -> None:
+        self._run_repository = run_repository
+
+    def create(self, command: PersistedLiveRadarRunCommand) -> QueuedLiveRadarRunResult:
+        existing = _find_existing(self._run_repository, command)
+        if existing is not None:
+            return QueuedLiveRadarRunResult(run=existing, should_enqueue=False)
+
+        run_id = command.run_id or f"radar-run-{uuid4()}"
+        correlation_id = command.correlation_id or f"corr-{run_id}"
+        run = self._run_repository.create(
+            RadarRunRecord(
+                run_id=run_id,
+                radar_id=command.radar_id,
+                idempotency_key=command.idempotency_key,
+                correlation_id=correlation_id,
+                run_metadata=_queued_run_metadata(command),
+            )
+        )
+        return QueuedLiveRadarRunResult(run=run, should_enqueue=True)
+
+
+class PersistedLiveRadarRunExecutor:
+    """Execute an already persisted Radar run by id."""
+
+    def __init__(
+        self,
+        *,
+        run_repository: RadarRunRepository,
+        output_repository: RadarRunOutputRepository,
+        executor: LiveRadarArtifactExecutor,
+    ) -> None:
+        self._run_repository = run_repository
+        self._output_repository = output_repository
+        self._executor = executor
+
+    def execute(self, run_id: str) -> RadarRunRecord:
+        run = self._run_repository.get(run_id)
+        if run is None:
+            raise KeyError(f"Radar run not found: {run_id}")
+        if run.status.is_terminal:
+            return run
+
+        run = self._run_repository.update_status(run.run_id, RadarRunStatus.RUNNING)
+        try:
+            artifact = self._executor.execute(
+                live=bool(run.run_metadata.get("live", True)),
+                task_context=_task_context_from_run(run),
+            )
+            self._output_repository.upsert(_output_record(run_id=run.run_id, artifact=artifact))
+            return self._run_repository.update_status(
+                run.run_id,
+                RadarRunStatus.COMPLETED,
+                run_metadata={**run.run_metadata, **_run_metadata(artifact)},
+            )
+        except Exception as exc:
+            return self._run_repository.update_status(
+                run.run_id,
+                RadarRunStatus.FAILED,
+                error_message=str(exc),
+                error_metadata={"exception_type": type(exc).__name__},
+            )
+
+
 class PersistedLiveRadarRunService:
     def __init__(
         self,
@@ -50,64 +123,46 @@ class PersistedLiveRadarRunService:
         self._executor = executor
 
     def run(self, command: PersistedLiveRadarRunCommand) -> PersistedLiveRadarRunResult:
-        existing = self._find_existing(command)
-        if existing is not None:
-            return PersistedLiveRadarRunResult(run=existing, output=self._output_repository.get(existing.run_id))
-
-        run_id = command.run_id or f"radar-run-{uuid4()}"
-        correlation_id = command.correlation_id or f"corr-{run_id}"
-        run = self._run_repository.create(
-            RadarRunRecord(
-                run_id=run_id,
-                radar_id=command.radar_id,
-                idempotency_key=command.idempotency_key,
-                correlation_id=correlation_id,
-                run_metadata={"execution_mode": "persisted_live_radar", "live": command.live},
+        queued = QueuedLiveRadarRunService(run_repository=self._run_repository).create(command)
+        if queued.should_enqueue:
+            executor = PersistedLiveRadarRunExecutor(
+                run_repository=self._run_repository,
+                output_repository=self._output_repository,
+                executor=self._executor,
             )
-        )
-        run = self._run_repository.update_status(run.run_id, RadarRunStatus.RUNNING)
-
-        try:
-            artifact = self._executor.execute(
-                live=command.live,
-                task_context=_task_context(command=command, run_id=run.run_id, correlation_id=correlation_id),
-            )
-            output = self._output_repository.upsert(_output_record(run_id=run.run_id, artifact=artifact))
-            run = self._run_repository.update_status(
-                run.run_id,
-                RadarRunStatus.COMPLETED,
-                run_metadata=_run_metadata(artifact),
-            )
-            return PersistedLiveRadarRunResult(run=run, output=output)
-        except Exception as exc:
-            run = self._run_repository.update_status(
-                run.run_id,
-                RadarRunStatus.FAILED,
-                error_message=str(exc),
-                error_metadata={"exception_type": type(exc).__name__},
-            )
-            return PersistedLiveRadarRunResult(run=run)
-
-    def _find_existing(self, command: PersistedLiveRadarRunCommand) -> RadarRunRecord | None:
-        if command.idempotency_key is None:
-            return None
-        return self._run_repository.find_by_idempotency_key(command.idempotency_key)
+            run = executor.execute(queued.run.run_id)
+        else:
+            run = queued.run
+        return PersistedLiveRadarRunResult(run=run, output=self._output_repository.get(run.run_id))
 
 
-def _task_context(
-    *,
-    command: PersistedLiveRadarRunCommand,
-    run_id: str,
-    correlation_id: str,
-) -> dict[str, Any]:
+def _queued_run_metadata(command: PersistedLiveRadarRunCommand) -> dict[str, Any]:
     return {
-        **(command.task_context or {}),
-        "task_id": f"persisted-live-mini-icp-radar-{run_id}",
-        "correlation_id": correlation_id,
+        "execution_mode": "queued_live_radar",
+        "live": command.live,
         "requester": command.requester,
-        "radar_id": command.radar_id,
-        "run_id": run_id,
+        "task_context": dict(command.task_context or {}),
     }
+
+
+def _task_context_from_run(run: RadarRunRecord) -> dict[str, Any]:
+    task_context = run.run_metadata.get("task_context", {})
+    if not isinstance(task_context, dict):
+        task_context = {}
+    return {
+        **task_context,
+        "task_id": f"persisted-live-mini-icp-radar-{run.run_id}",
+        "correlation_id": run.correlation_id,
+        "requester": run.run_metadata.get("requester", "worker"),
+        "radar_id": run.radar_id,
+        "run_id": run.run_id,
+    }
+
+
+def _find_existing(repository: RadarRunRepository, command: PersistedLiveRadarRunCommand) -> RadarRunRecord | None:
+    if command.idempotency_key is None:
+        return None
+    return repository.find_by_idempotency_key(command.idempotency_key)
 
 
 def _output_record(*, run_id: str, artifact: dict[str, object]) -> RadarRunOutputRecord:

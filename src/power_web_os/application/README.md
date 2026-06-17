@@ -61,5 +61,5 @@ provider are wired outside the application layer.
    introduced.
 
 `radar_runs` is the application-visible source of truth for long-running Radar
-state. Future Celery/Redis adapters may enqueue work, but they must update and
-read durable run state through application ports.
+state. Celery/Redis adapters may enqueue work, but they must update and read
+durable run state through application ports.

@@ -1,4 +1,4 @@
-"""API dependency wiring for Radar repositories and execution adapters."""
+"""API dependency wiring for Radar repositories and queue adapters."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from dataclasses import dataclass
 
 from fastapi import Request
 
-from power_web_os.application.ports import LiveRadarArtifactExecutor
-from power_web_os.integrations.live_radar_openrouter import OpenRouterWebSearchProvider
+from power_web_os.application.ports import JobQueue
+from power_web_os.jobs import CeleryJobQueue
 from power_web_os.persistence import (
     SqlAlchemyRadarDefinitionRepository,
     SqlAlchemyRadarRepository,
@@ -16,7 +16,6 @@ from power_web_os.persistence import (
     SqlAlchemyRadarRunRepository,
     session_scope,
 )
-from power_web_os.workflows.live_radar_executor import WorkflowLiveRadarArtifactExecutor
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,21 +24,21 @@ class RadarApiContext:
     definition_repository: SqlAlchemyRadarDefinitionRepository
     run_repository: SqlAlchemyRadarRunRepository
     output_repository: SqlAlchemyRadarRunOutputRepository
-    live_executor: LiveRadarArtifactExecutor
+    job_queue: JobQueue
 
 
-def default_live_executor() -> LiveRadarArtifactExecutor:
-    return WorkflowLiveRadarArtifactExecutor(provider=OpenRouterWebSearchProvider())
+def default_job_queue() -> JobQueue:
+    return CeleryJobQueue()
 
 
 def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
     session_factory = request.app.state.session_factory
-    live_executor_factory = request.app.state.live_executor_factory
+    job_queue_factory = request.app.state.job_queue_factory
     with session_scope(session_factory) as session:
         yield RadarApiContext(
             radar_repository=SqlAlchemyRadarRepository(session),
             definition_repository=SqlAlchemyRadarDefinitionRepository(session),
             run_repository=SqlAlchemyRadarRunRepository(session),
             output_repository=SqlAlchemyRadarRunOutputRepository(session),
-            live_executor=live_executor_factory(),
+            job_queue=job_queue_factory(),
         )

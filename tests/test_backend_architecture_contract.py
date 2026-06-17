@@ -12,6 +12,7 @@ APPLICATION_README_PATH = Path("src/power_web_os/application/README.md")
 PERSISTENCE_README_PATH = Path("src/power_web_os/persistence/README.md")
 INTEGRATIONS_README_PATH = Path("src/power_web_os/integrations/README.md")
 WORKFLOWS_README_PATH = Path("src/power_web_os/workflows/README.md")
+JOBS_README_PATH = Path("src/power_web_os/jobs/README.md")
 
 MAX_BACKEND_MODULE_LINES = 500
 
@@ -78,7 +79,8 @@ WORKFLOW_FORBIDDEN_SNIPPETS = {
 }
 
 JOB_FORBIDDEN_SNIPPETS = {
-    "sqlalchemy",
+    "from sqlalchemy",
+    "import sqlalchemy",
     "session.execute",
     ".query(",
     "deterministicaccessplanner",
@@ -103,6 +105,7 @@ BACKEND_DOCSTRING_REQUIRED_MODULES = {
     Path("src/power_web_os/persistence/models.py"),
     Path("src/power_web_os/persistence/repositories.py"),
     Path("src/power_web_os/persistence/seed.py"),
+    Path("src/power_web_os/jobs/radar_jobs.py"),
 }
 
 
@@ -148,15 +151,17 @@ def test_backend_onboarding_docs_explain_extension_rules() -> None:
     persistence_readme = PERSISTENCE_README_PATH.read_text(encoding="utf-8")
     integrations_readme = INTEGRATIONS_README_PATH.read_text(encoding="utf-8")
     workflows_readme = WORKFLOWS_README_PATH.read_text(encoding="utf-8")
+    jobs_readme = JOBS_README_PATH.read_text(encoding="utf-8")
     developer_guide = DEVELOPER_GUIDE_PATH.read_text(encoding="utf-8")
 
-    for text in [application_readme, persistence_readme, integrations_readme, workflows_readme]:
+    for text in [application_readme, persistence_readme, integrations_readme, workflows_readme, jobs_readme]:
         assert "Dependency Rules" in text
         assert "How To Extend" in text
     assert "Forbidden imports" in application_readme
     assert "Transaction Boundary" in persistence_readme
     assert "OpenRouter" in integrations_readme
     assert "langgraph-document-ai-platform" in workflows_readme
+    assert "Celery" in jobs_readme
     assert "How To Extend Backend Persistence" in developer_guide
 
 

@@ -65,5 +65,6 @@ development environment.
    checks for dependency direction.
 
 `radar_runs` remains the durable source of truth for long-running job state.
-Celery/Redis may later enqueue execution, but queue result state must not
-replace persisted run status, timestamps, idempotency, correlation, or errors.
+Celery/Redis enqueues execution through the jobs layer, but queue result state
+must not replace persisted run status, timestamps, idempotency, correlation, or
+errors.
