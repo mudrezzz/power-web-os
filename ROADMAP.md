@@ -2049,12 +2049,36 @@ Principles:
 
 ### Slice 0.7.5: Frontend API adapter
 
-- Status: `Backlog`
-- Goal: Add a frontend API data source that can replace JSON artifacts gradually.
+- Status: `Done`
+- Goal: Add a frontend API data source that can replace JSON artifacts gradually and manually start live Radar runs.
 - Scope:
-  - Add typed API client.
-  - Add API-backed ICP Radar catalog adapter.
-  - Keep offline/demo JSON fallback explicit.
+  - Add typed frontend API client.
+  - Add API-backed ICP Radar catalog and live candidate adapter.
+  - Add manual live Radar run button with queued status polling.
+  - Persist qualification and signal review decisions through backend API in API mode.
+  - Keep offline/demo JSON and browser-local review fallback explicit.
+- Completion notes:
+  - Added `VITE_POWER_WEB_OS_API_BASE_URL` support with `http://127.0.0.1:8000` default.
+  - Added FastAPI CORS settings for the local Vite frontend and bumped API version to `0.7.5`.
+  - The frontend now reads persisted Radar catalog/details when the backend is available, otherwise it uses JSON artifacts.
+  - `ТОиР Quick Live Radar` can be started from the UI; the UI polls `radar_runs` and reads candidates after output exists.
+  - Live qualification and signal review controls save/reset persisted decisions when viewing an API-backed run.
+
+### Slice 0.7.5.1: One-command Docker dev stack
+
+- Status: `Done`
+- Goal: Run the local Radar UI/API/worker path with one Docker Compose command.
+- Scope:
+  - Add Docker Compose services for Redis, backend init, FastAPI API, Celery worker, and Vite frontend.
+  - Keep the default dev database as shared SQLite under `demo/output`.
+  - Mount shared `demo/output` into API and worker containers so `radar_runs` remains the durable source of truth.
+  - Keep OpenRouter credentials in local `.env`; do not include secrets in the Docker build context.
+  - Document `docker compose up --build` manual smoke flow.
+- Completion notes:
+  - Added backend and frontend Dockerfiles plus `.dockerignore`.
+  - Added `backend-init` service for Alembic migrations and Radar catalog seed.
+  - Added static contract tests for compose services, ports, Redis URLs, SQLite volume, and secret exclusions.
+  - Postgres compose profile is intentionally left for a later production-like stack slice.
 
 ### Slice 0.7.6: Run journal and evidence audit
 

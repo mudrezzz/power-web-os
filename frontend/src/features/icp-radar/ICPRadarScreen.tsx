@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Card, Eyebrow } from '../../components/primitives';
 import type { ICPRadarArtifact, ICPRadarCatalogArtifact, LiveICPRadarRunArtifact } from '../../types';
 import { useRadarWorkspace } from './application/useRadarWorkspace';
+import type { RadarBackendController } from './application/useRadarBackend';
 import {
   CandidateTable,
   EmptyShortlist,
@@ -17,17 +18,19 @@ const RadarSettings = lazy(() => import('./settings').then((module) => ({ defaul
 
 export function ICPRadarScreen({
   artifact,
+  backend,
   catalog,
   error,
   liveRunArtifact,
 }: {
   artifact: ICPRadarArtifact | null;
+  backend: RadarBackendController;
   catalog: ICPRadarCatalogArtifact | null;
   error: string | null;
   liveRunArtifact: LiveICPRadarRunArtifact | null;
 }) {
   const { t } = useTranslation();
-  const workspace = useRadarWorkspace({ artifact, catalog, liveRunArtifact, t });
+  const workspace = useRadarWorkspace({ artifact, backend, catalog, liveRunArtifact, t });
   const { navigation } = workspace;
 
   if (error || !catalog) {
@@ -85,13 +88,13 @@ export function ICPRadarScreen({
         candidate={workspace.detailLiveCandidate}
         onBack={() => navigation.setDetailLiveCandidateId(null)}
         onQualificationReviewChange={workspace.saveQualificationReviewDecision}
-        onSignalDecisionChange={workspace.saveSignalValidationDecision}
-        onSignalDecisionReset={workspace.resetSignalValidationDecision}
+        onSignalDecisionChange={workspace.saveLiveSignalDecision}
+        onSignalDecisionReset={workspace.resetLiveSignalDecision}
         onTabChange={navigation.setCandidateDetailTab}
-        qualificationReview={workspace.qualificationReview}
+        qualificationReview={workspace.liveQualificationReview}
         radarId={workspace.selectedRadar.radar_id}
         radarName={workspace.selectedRadar.name}
-        signalValidation={workspace.signalValidation}
+        signalValidation={workspace.liveSignalValidation}
       />
     );
   }
@@ -168,9 +171,11 @@ function RadarShortlist({ workspace }: { workspace: ReturnType<typeof useRadarWo
         expandedCandidateId={navigation.expandedLiveCandidateId}
         onOpenDetails={navigation.setDetailLiveCandidateId}
         onOpenSettings={() => navigation.setSelectedTab('settings')}
+        onRunRadar={() => workspace.runRadar(workspace.selectedRadar!.radar_id)}
         onToggleCandidate={(candidateId) => navigation.setExpandedLiveCandidateId(
           navigation.expandedLiveCandidateId === candidateId ? null : candidateId,
         )}
+        runState={workspace.runState}
       />
     );
   }

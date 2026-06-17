@@ -20,6 +20,38 @@ python -m pip install -e ".[api,dev]"
 power-web-os-api
 ```
 
+Run the full local Radar dev stack with Docker:
+
+```bash
+docker compose up --build
+```
+
+This starts Redis, runs Alembic migrations and `seed-radar-db`, then starts the
+FastAPI API, Celery worker, and Vite frontend. The default Docker stack uses the
+shared SQLite file `demo/output/power_web_os.sqlite3`; API and worker containers
+mount `./demo/output` so both processes see the same durable `radar_runs` state.
+Keep OpenRouter credentials in local `.env`; Compose mounts it read-only into
+backend containers as `/app/.env`, and `.dockerignore` keeps it out of the
+Docker build context.
+
+Useful Docker stack URLs:
+
+```text
+http://127.0.0.1:5173
+http://127.0.0.1:8000/health
+http://127.0.0.1:8000/docs
+```
+
+Troubleshooting:
+
+- If the UI stays in `Demo fallback`, check that the `api` service is healthy
+  and `VITE_POWER_WEB_OS_API_BASE_URL` points to `http://127.0.0.1:8000`.
+- If a run stays `queued`, check the `worker` service logs and Redis service.
+- If a run becomes `failed`, inspect `worker` logs and `.env` OpenRouter
+  credentials/model settings.
+- A Postgres Compose profile is intentionally out of scope for this dev stack;
+  use `POWER_WEB_OS_DATABASE_URL` manually for PostgreSQL-backed development.
+
 Useful local API URLs:
 
 ```text
@@ -27,6 +59,11 @@ http://127.0.0.1:8000/health
 http://127.0.0.1:8000/api/health
 http://127.0.0.1:8000/docs
 ```
+
+The browser frontend reads this API from `VITE_POWER_WEB_OS_API_BASE_URL`.
+If the variable is omitted, the default is `http://127.0.0.1:8000`. The API
+allows local Vite origins by default; set `POWER_WEB_OS_CORS_ORIGINS` to a
+comma-separated list when using a different frontend host.
 
 Run Radar persistence migrations and seed the current demo catalog:
 
@@ -118,6 +155,9 @@ Rules:
 - Keep the feature entrypoint thin; it should not own localStorage, raw fixture/live mapping, or score calculation.
 - Put new radar source types behind an adapter that emits the canonical radar/candidate view model.
 - Put browser-local state in application hooks, not in presentation components.
+- Put backend Radar transport in `frontend/src/api/` and map API DTOs under
+  `frontend/src/features/icp-radar/adapters/`. Presentation components must not
+  call `fetch` directly.
 - Keep model/normalization/scoring helpers separate from JSX-heavy view components.
 - Keep feature-specific CSS next to the feature module; leave `frontend/src/styles.css` for app shell and shared primitives.
 - Keep large feature CSS split by surface. ICP Radar styles use `icpRadar.css` only as an import entrypoint, with catalog, shortlist, preview, detail, settings, criteria, and responsive rules in `frontend/src/features/icp-radar/styles/`.
@@ -126,7 +166,7 @@ Rules:
 - Do not add comments that repeat obvious JSX.
 - Run `python -m pytest` after feature-structure changes; `tests/test_frontend_architecture_contract.py` guards the ICP Radar decomposition, application/adapters/domain/components boundaries, model barrel boundaries, feature CSS module ownership, lazy Settings loading, and i18n runtime/resource split.
 
-When adding ICP Radar UI, prefer the existing module boundary instead of adding new logic to `ICPRadarScreen.tsx`: source-specific artifact mapping goes to `adapters/`, browser-local workflows go to `application/`, domain decisions go to `domain/`, shortlist/table changes go to `fixtureShortlist.tsx` or `liveShortlist.tsx`, preview-only changes go to `fixturePreview.tsx`, detail/review changes go to `fixtureDetail.tsx` or `liveDetail.tsx`, and settings block changes go to the relevant `settings*` module.
+When adding ICP Radar UI, prefer the existing module boundary instead of adding new logic to `ICPRadarScreen.tsx`: source-specific artifact/API mapping goes to `adapters/`, browser-local and backend workflows go to `application/`, domain decisions go to `domain/`, shortlist/table changes go to `fixtureShortlist.tsx` or `liveShortlist.tsx`, preview-only changes go to `fixturePreview.tsx`, detail/review changes go to `fixtureDetail.tsx` or `liveDetail.tsx`, and settings block changes go to the relevant `settings*` module.
 
 ## Backend API Baseline
 
@@ -173,8 +213,9 @@ Rules:
 - Clients poll `GET /api/radar-runs/{run_id}` until the status is terminal,
   then call `GET /api/radar-runs/{run_id}/candidates` after output exists.
 - Review endpoints persist current human decisions for existing qualification
-  and signal findings. The frontend still uses browser `localStorage` until the
-  frontend API adapter slice.
+  and signal findings. The frontend uses those endpoints when a live Radar run
+  is API-backed, and keeps browser `localStorage` only for fixture/offline
+  fallback state.
 
 Run locally after migrations and seed:
 
@@ -217,7 +258,16 @@ python -m alembic upgrade head
 python -m power_web_os.demo seed-radar-db
 celery -A power_web_os.jobs.radar_jobs.radar_celery_app worker --loglevel=INFO --pool=solo
 power-web-os-api
+$env:VITE_POWER_WEB_OS_API_BASE_URL="http://127.0.0.1:8000"
+npm --prefix ./frontend run dev
 ```
+
+With Redis and the worker running, open `ICP Radar`, select
+`ТОиР Quick Live Radar`, and click `Run radar`. The UI posts a queued run,
+polls `GET /api/radar-runs/{run_id}`, and reads
+`GET /api/radar-runs/{run_id}/candidates` after output exists. If the backend
+is unavailable, the same screen stays in explicit demo fallback mode and reads
+the generated JSON files.
 
 Default queue settings:
 

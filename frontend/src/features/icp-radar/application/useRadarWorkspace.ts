@@ -5,7 +5,9 @@ import type {
   ICPRadarCatalogArtifact,
   ICPRadarCatalogItem,
   LiveICPRadarRunArtifact,
+  QualificationReviewDecision,
   RadarConfigOverride,
+  SignalValidationDecision,
   SourceDefinition,
 } from '../../../types';
 import { radarToViewModel, mergeCatalogWithOverrides } from '../adapters/catalogAdapter';
@@ -24,6 +26,7 @@ import { useQualificationReviewOverlay } from './useQualificationReviewOverlay';
 import { useRadarConfigOverrides } from './useRadarConfigOverrides';
 import { useRadarNavigation } from './useRadarNavigation';
 import { useSignalValidationOverlay } from './useSignalValidationOverlay';
+import type { RadarBackendController } from './useRadarBackend';
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
@@ -32,11 +35,13 @@ export function useRadarWorkspace({
   artifact,
   catalog,
   liveRunArtifact,
+  backend,
   t,
 }: {
   artifact: ICPRadarArtifact | null;
   catalog: ICPRadarCatalogArtifact | null;
   liveRunArtifact: LiveICPRadarRunArtifact | null;
+  backend: RadarBackendController;
   t: Translate;
 }) {
   const navigation = useRadarNavigation();
@@ -58,6 +63,7 @@ export function useRadarWorkspace({
   const activeFixtureRadarId = catalog?.workflow_metadata.active_fixture_radar_id ?? 'toir-sibur';
   const selectedFixtureArtifact = selectedRadar?.radar_id === activeFixtureRadarId ? artifact : null;
   const selectedLiveArtifact = selectedRadar?.radar_id === 'toir-quick-live' ? liveRunArtifact : null;
+  const apiBackedLiveArtifact = Boolean(selectedLiveArtifact && backend.runState.mode === 'api');
   const radarViewModel = selectedRadar
     ? radarToViewModel(selectedRadar, activeFixtureRadarId, selectedFixtureArtifact, selectedLiveArtifact)
     : null;
@@ -206,6 +212,32 @@ export function useRadarWorkspace({
     setEditingBlock(null);
   }
 
+  async function saveLiveQualificationReviewDecision(
+    radarId: string,
+    candidateId: string,
+    ruleId: string,
+    decision: QualificationReviewDecision | null,
+  ) {
+    if (await backend.saveQualificationReview(radarId, candidateId, ruleId, decision)) {
+      return;
+    }
+    saveQualificationReviewDecision(radarId, candidateId, ruleId, decision);
+  }
+
+  async function saveLiveSignalDecision(decision: SignalValidationDecision) {
+    if (await backend.saveSignalReview(decision)) {
+      return;
+    }
+    saveSignalValidationDecision(decision);
+  }
+
+  async function resetLiveSignalDecision(radarId: string, candidateId: string, signalCode: string) {
+    if (await backend.resetSignalReview(radarId, candidateId, signalCode)) {
+      return;
+    }
+    resetSignalValidationDecision(radarId, candidateId, signalCode);
+  }
+
   return {
     navigation,
     mergedRadars,
@@ -226,11 +258,17 @@ export function useRadarWorkspace({
     sourcesById,
     validationErrors,
     signalValidation,
+    liveSignalValidation: apiBackedLiveArtifact ? {} : signalValidation,
     qualificationReview,
+    liveQualificationReview: apiBackedLiveArtifact ? {} : qualificationReview,
     saveSignalValidationDecision,
-    saveQualificationReviewDecision,
+    saveQualificationReviewDecision: saveLiveQualificationReviewDecision,
+    saveLiveSignalDecision,
+    resetLiveSignalDecision,
     resetCandidateSignalValidation,
     resetSignalValidationDecision,
+    runState: backend.runState,
+    runRadar: backend.runRadar,
     createRadar,
     deleteRadar,
     resetRadarToArtifact,

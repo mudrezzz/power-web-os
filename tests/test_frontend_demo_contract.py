@@ -253,7 +253,9 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert "/demo/icp_radars.json" in app
     assert "/demo/icp_radar.json" in app
     assert "/demo/live_mini_icp_radar_run.json" in app
-    assert "liveRunArtifact={liveMiniRadarArtifact}" in app
+    assert "useRadarBackend" in app
+    assert "liveRunArtifact={activeLiveMiniRadarArtifact}" in app
+    assert "backend={icpRadarBackend}" in app
     assert "activeScreen === 'icp_radar'" in app
     assert "nav.icpRadar" in shell
     assert "topbar.icpRadar" in shell
@@ -346,7 +348,8 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     ]:
         assert contract_value in screen
 
-    assert "/api/" not in screen
+    assert "/api/" not in Path("frontend/src/features/icp-radar/ICPRadarScreen.tsx").read_text(encoding="utf-8")
+    assert "RadarApiClient" in screen
     assert "fetch(" not in screen
 
     for table_first_value in [

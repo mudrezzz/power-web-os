@@ -29,19 +29,24 @@ python demo/run_demo.py generate-account-radar
 npm --prefix ./frontend run dev
 ```
 
-Optional live mini radar:
+Optional live mini radar through CLI/export fallback:
 
 ```bash
 python -m power_web_os.demo run-live-mini-icp-radar --dry-run-plan
 python -m power_web_os.demo run-live-mini-icp-radar --live
 ```
 
-The live command requires local OpenRouter credentials in `.env`. If the live artifact is absent or OpenRouter rejects the credentials, `ТОиР Quick Live Radar` stays visible in the catalog but shows an empty state and the CLI command instead of fake candidates.
+The live command requires local OpenRouter credentials in `.env`. The preferred
+interactive path is the backend API: start Redis, the Celery worker, and
+`power-web-os-api`, then open `РўРћРёР  Quick Live Radar` and click `Run radar`.
+If the backend is unavailable, the screen stays in demo fallback mode and can
+still show `frontend/public/demo/live_mini_icp_radar_run.json` when that file
+exists. No fake candidates are created.
 
 Open the Vite URL printed by the frontend command. The demo opens in a bounded Power Web OS workspace shell with `ICP Radar` active. It shows:
 
 - ICP Radar catalog with multiple configured radars;
-- experimental `ТОиР Quick Live Radar`, which shows only real provider-backed findings from `frontend/public/demo/live_mini_icp_radar_run.json`;
+- experimental `РўРћРёР  Quick Live Radar`, which can start a backend live run and still falls back to real provider-backed findings from `frontend/public/demo/live_mini_icp_radar_run.json`;
 - selected-radar `Found accounts` and editable local-demo `Settings` modes;
 
 - sidebar navigation for `ICP Radar`, `Accounts`, `Account Map`, `Access Plans`, `Signals`, and `Playbook`;
@@ -93,7 +98,7 @@ Settings are intentionally business-facing:
 - Scoring uses only `Fit / Соответствие`, `Intent / Интент`, and `Tier / Уровень`. Presets cover arithmetic mean, weighted average, maximum signal, capped sum, and custom formula.
 - Custom formula mode is the only place where generated rule IDs and signal codes matter.
 
-The catalog also includes `ТОиР Quick Live Radar`. This is the first live experimental radar. It is launched from the CLI, not from the UI. Before a successful run, its `Found accounts` tab shows an empty state and the command to generate `live_mini_icp_radar_run.json`. After a successful run, the radar is reviewed through the same canonical table-first flow as `ТОиР / SIBUR`: candidates stay in the same sticky-column shortlist, row click opens the same four-block preview, and `Open details` opens the same tabbed in-shell detail view. Runtime/provider metadata is available in the candidate `Journal` tab, not on the main shortlist. Live findings always require human review and do not flow into `Accounts` automatically.
+The catalog also includes `РўРћРёР  Quick Live Radar`. This is the first live experimental radar. In API mode, use `Run radar` to create a queued backend run, watch `queued/running/completed/failed` status, and load candidates after output exists. In fallback mode, its `Found accounts` tab can still show the exported `live_mini_icp_radar_run.json` artifact. After a successful run, the radar is reviewed through the same canonical table-first flow as `РўРћРёР  / SIBUR`: candidates stay in the same sticky-column shortlist, row click opens the same four-block preview, and `Open details` opens the same tabbed in-shell detail view. Runtime/provider metadata is available in the candidate `Journal` tab, not on the main shortlist. Live findings always require human review and do not flow into `Accounts` automatically.
 
 Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. The main surface is a wide table: the company column stays fixed while score, tier, evidence, and criteria-related columns can scroll horizontally inside the table. Click a candidate row to open a bounded inline preview with the main signal, short recommendation, top evidence refs, and top criteria. Open the candidate detail view when you need the full C1-C20 signal breakdown, source refs, and local signal validation controls. Take-into-work is still a planned follow-up slice.
 
@@ -136,7 +141,7 @@ The current ICP Radar UI is table-first:
 - Sources are structured entities with type, label, reference, and trust policy: trusted, cross-check, or HITL required. The shared source base is a numbered bounded table.
 - Intent signals have detection rules and a separate global fixed `0/1/2` scoring rubric block. Fit and intent scoring use presets; tier thresholds classify the result.
 - The active `ТОиР / SIBUR` shortlist opens as a broad ranked account table.
-- The live `ТОиР Quick Live Radar` uses the same broad table, inline preview, and tabbed detail view. Only the data source differs: it shows what the OpenRouter-backed workflow found in the live run artifact.
+- The live `РўРћРёР  Quick Live Radar` uses the same broad table, inline preview, and tabbed detail view. Only the data source differs: it shows what the OpenRouter-backed backend workflow found in the persisted run output or exported live artifact fallback.
 - The first account/company column stays fixed while the user scrolls horizontally across score, evidence, and criteria columns.
 - Clicking a candidate expands a compact preview directly under that row.
 - Every ICP Radar preview uses the same four blocks: summary, tier explanation, qualification, and signals. Qualification and signal blocks are capped at five rows each; sources and runtime metadata stay out of preview.
@@ -155,7 +160,7 @@ The current ICP Radar UI is table-first:
 - Click a signal row to inspect rationale, source refs, facts, original score, effective score, and validation state.
 - You can confirm a signal, reject it, mark it stale, or correct its score with confidence, selected evidence refs, corrected summary, and a mandatory comment for negative/corrective actions.
 - Confirmed and unreviewed signals keep their original score. Corrected signals use the adjusted score. Rejected and stale signals stay visible in the evidence trail but contribute `0` to the effective score.
-- Validation decisions are saved in browser-local demo state under `power-web-os-icp-radar-signal-validation`. They update the visible shortlist score and ranking, but they do not mutate generated JSON artifacts or persist to a backend.
+- Fixture validation decisions are saved in browser-local demo state under `power-web-os-icp-radar-signal-validation`. They update the visible fixture shortlist score and ranking, but they do not mutate generated JSON artifacts. API-backed live run decisions persist through backend review endpoints.
 - Numeric C1-C20 scores come from the XLSX fixture. Criterion-level facts are a curated synthetic demo annotation layer, clearly labelled as `synthetic_demo_annotation`; they demonstrate the product mechanic that future production extraction should replace.
 - Criteria without curated facts are still explicit: nonzero scores are marked as inferred from the XLSX score, and zero scores are marked as not observed.
 - Use `Reset local validation` in candidate detail to remove local validation decisions for the selected candidate.
@@ -175,14 +180,13 @@ The generated JSON artifact is also available at:
 ## Current Limitations
 
 - ICP Radar settings can be edited as local browser demo drafts. Production persistence, run scheduling, live source setup, and shortlist recalculation are not implemented yet.
-- ICP Radar signal and qualification validation is still browser-local in the UI.
-  Backend API persistence exists for live run review decisions, but the
-  frontend adapter is not connected yet.
+- ICP Radar fixture signal and qualification validation is still browser-local in the UI.
+  API-backed live run review decisions are saved through backend review endpoints.
 - `Take into work` does not create accepted accounts yet.
 - No live CRM integration yet.
 - No live source connectors yet.
-- No production API server yet.
-- No frontend-integrated persisted review or downstream feedback loop yet.
+- No hosted production API server yet.
+- No downstream feedback loop yet.
 
 ## ICP Radar Flow
 

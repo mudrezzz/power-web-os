@@ -5,6 +5,7 @@ import { AccountsScreen } from './screens/AccountsScreen';
 import { AccountMapScreen } from './screens/AccountMapScreen';
 import { ICPRadarScreen } from './screens/ICPRadarScreen';
 import { PlannedScreen } from './screens/PlannedScreen';
+import { useRadarBackend } from './features/icp-radar/application/useRadarBackend';
 import { PlaybookScreen } from './screens/PlaybookScreen';
 import type {
   AccountRadarArtifact,
@@ -32,6 +33,10 @@ export function App() {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [artifact, setArtifact] = useState<AccessPlanArtifact | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const icpRadarBackend = useRadarBackend({
+    fallbackCatalog: icpRadarCatalog,
+    fallbackLiveRunArtifact: liveMiniRadarArtifact,
+  });
 
   useEffect(() => {
     fetch(icpRadarCatalogUrl)
@@ -107,14 +112,19 @@ export function App() {
     setActiveScreen('plans');
   }
 
+  const activeIcpRadarCatalog = icpRadarBackend.catalog ?? icpRadarCatalog;
+  const activeLiveMiniRadarArtifact = icpRadarBackend.liveRunArtifact ?? liveMiniRadarArtifact;
+  const activeIcpRadarError = activeIcpRadarCatalog ? icpRadarError : (icpRadarCatalogError ?? icpRadarError);
+
   return (
     <AppShell activeScreen={activeScreen} artifact={artifact} onNavigate={setActiveScreen}>
       {activeScreen === 'icp_radar' ? (
         <ICPRadarScreen
           artifact={icpRadarArtifact}
-          catalog={icpRadarCatalog}
-          error={icpRadarCatalogError ?? icpRadarError}
-          liveRunArtifact={liveMiniRadarArtifact}
+          backend={icpRadarBackend}
+          catalog={activeIcpRadarCatalog}
+          error={activeIcpRadarError}
+          liveRunArtifact={activeLiveMiniRadarArtifact}
         />
       ) : activeScreen === 'accounts' ? (
         <AccountsScreen

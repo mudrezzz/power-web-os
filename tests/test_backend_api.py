@@ -38,7 +38,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-        "version": "0.7.4",
+        "version": "0.7.5",
         "environment": "test",
     }
 
@@ -55,7 +55,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.4"
+    assert schema["info"]["version"] == "0.7.5"
     for path in [
         "/health",
         "/api/health",
@@ -69,6 +69,21 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
         "/api/radar-runs/{run_id}/candidates/{candidate_id}/signals/{signal_code}/review",
     ]:
         assert path in schema["paths"]
+
+
+def test_api_allows_local_vite_frontend_origin(tmp_path: Path) -> None:
+    client = TestClient(_app(tmp_path))
+
+    response = client.options(
+        "/api/radars",
+        headers={
+            "Origin": "http://127.0.0.1:5173",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"
 
 
 def test_radar_catalog_and_detail_read_persisted_data(tmp_path: Path) -> None:

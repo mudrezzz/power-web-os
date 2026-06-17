@@ -8,7 +8,8 @@ Pydantic DTOs.
 
 - `app.py` creates the FastAPI app, shared runtime state, health routes, and
   router registration.
-- `config.py` owns API settings, including the database URL used by API runs.
+- `config.py` owns API settings, including the database URL used by API runs
+  and local frontend CORS origins.
 - `dependencies.py` wires per-request repository adapters and job queue
   adapters.
 - `radar_routes.py` owns Radar catalog, run, and candidate HTTP routes.
@@ -45,6 +46,10 @@ Forbidden behavior:
 worker execution. Clients poll `GET /api/radar-runs/{run_id}` until the run is
 terminal, then read `GET /api/radar-runs/{run_id}/candidates` after output
 exists.
+
+The app allows local Vite frontend origins by default. Use
+`POWER_WEB_OS_CORS_ORIGINS` for a comma-separated override when the frontend is
+served from another host.
 
 Review endpoints persist current qualification and signal decisions for a
 completed output snapshot. Routes verify that the run, candidate, and reviewed

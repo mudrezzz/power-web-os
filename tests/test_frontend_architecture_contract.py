@@ -104,6 +104,10 @@ def test_icp_radar_has_application_and_adapter_boundaries() -> None:
             "liveRadarToViewModel",
             "liveCandidateToViewModel",
         ],
+        "apiRadarAdapter.ts": [
+            "apiDetailsToCatalogArtifact",
+            "apiRunToLiveArtifact",
+        ],
         "viewModels.ts": [
             "RadarViewModel",
             "RadarCandidateViewModel",
@@ -119,6 +123,7 @@ def test_icp_radar_has_application_and_adapter_boundaries() -> None:
         "useRadarConfigOverrides.ts": ["radarConfigStorageKey", "window.localStorage"],
         "useSignalValidationOverlay.ts": ["signalValidationStorageKey", "window.localStorage"],
         "useQualificationReviewOverlay.ts": ["qualificationReviewStorageKey", "window.localStorage"],
+        "useRadarBackend.ts": ["RadarApiClient", "queueRadarRun", "getRunCandidates"],
     }
 
     for file_name, expected_symbols in adapters.items():
@@ -152,7 +157,9 @@ def test_icp_radar_boundary_modules_have_ownership_comments() -> None:
         "adapters/catalogAdapter.ts": "raw artifact adapter owns a radar",
         "adapters/fixtureRadarAdapter.ts": "Fixture artifacts are normalized here",
         "adapters/liveRadarAdapter.ts": "provider metadata goes to journal rows",
+        "adapters/apiRadarAdapter.ts": "API DTOs are normalized here",
         "application/useRadarWorkspace.ts": "composes adapters, navigation, and local overlays",
+        "application/useRadarBackend.ts": "backend mode",
         "application/useRadarConfigOverrides.ts": "demo persistence boundary",
         "application/useSignalValidationOverlay.ts": "never mutate generated demo artifacts",
         "application/useQualificationReviewOverlay.ts": "mirror signal validation",
@@ -168,6 +175,21 @@ def test_icp_radar_presentation_components_do_not_own_storage() -> None:
         text = component.read_text(encoding="utf-8")
         assert "window.localStorage" not in text
         assert "StorageKey" not in text
+
+
+def test_icp_radar_presentation_does_not_own_api_transport() -> None:
+    feature_dir = Path("frontend/src/features/icp-radar")
+    presentation_files = [
+        feature_dir / "ICPRadarScreen.tsx",
+        feature_dir / "liveShortlist.tsx",
+        feature_dir / "liveDetail.tsx",
+        *list((feature_dir / "components").glob("*.tsx")),
+    ]
+
+    for component in presentation_files:
+        text = component.read_text(encoding="utf-8")
+        assert "fetch(" not in text
+        assert "RadarApiClient" not in text
 
 
 def test_icp_radar_component_barrels_stay_small() -> None:

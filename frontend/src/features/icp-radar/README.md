@@ -12,7 +12,7 @@ compatibility wrapper. New radar behavior belongs here.
 ```text
 ICPRadarScreen.tsx      Feature coordinator: loading/error state and current surface assembly.
 adapters/               Raw artifacts -> canonical radar and candidate view models.
-application/            Navigation, browser-local overlays, settings drafts, review mutations.
+application/            Navigation, backend mode, browser-local fallback overlays, settings drafts, review mutations.
 domain/                 Pure score, status, validation, qualification, and metadata helpers.
 components/             Presentation-only catalog/header components.
 fixture*                Fixture-backed shortlist, preview, and detail surfaces.
@@ -25,14 +25,17 @@ styles/                 Feature CSS split by UI surface.
 
 ```mermaid
 flowchart TD
+    Api["Backend Radar API<br/>catalog, queued runs, candidates, reviews"]
     RawArtifacts["Raw demo artifacts<br/>icp_radars.json<br/>icp_radar.json<br/>live_mini_icp_radar_run.json"]
     Adapters["adapters/<br/>catalogAdapter<br/>fixtureRadarAdapter<br/>liveRadarAdapter"]
     ViewModels["Canonical view models<br/>RadarViewModel<br/>RadarCandidateViewModel"]
-    AppHooks["application hooks<br/>useRadarWorkspace<br/>navigation and overlays"]
+    AppHooks["application hooks<br/>useRadarBackend<br/>useRadarWorkspace<br/>navigation and overlays"]
     UI["UI surfaces<br/>catalog -> shortlist -> preview -> detail tabs -> settings"]
     LocalOverlays["localStorage overlays<br/>config drafts<br/>signal validation<br/>qualification review"]
 
+    Api --> AppHooks
     RawArtifacts --> Adapters
+    AppHooks --> Adapters
     Adapters --> ViewModels
     ViewModels --> AppHooks
     AppHooks --> UI
@@ -40,8 +43,10 @@ flowchart TD
     AppHooks <--> LocalOverlays
 ```
 
-Generated artifacts are read-only. Browser-local overlays can change demo state,
-but they must never mutate generated JSON.
+Generated artifacts are read-only. The backend API is preferred for live Radar
+catalog, run, candidates, and review decisions when available. Browser-local
+overlays can change fixture/offline demo state, but they must never mutate
+generated JSON.
 
 ## How To Add A New Radar Type
 
@@ -70,6 +75,8 @@ but they must never mutate generated JSON.
 ## Where Code Should Not Go
 
 - No `window.localStorage` in presentation components.
+- No `fetch` or `RadarApiClient` in presentation components.
+- No API DTO passthrough into JSX; normalize API responses in `adapters/`.
 - No provider-specific branching in the route wrapper or feature coordinator.
 - No scoring, validation, or artifact normalization inside JSX-heavy modules.
 - No ICP Radar selectors in global `frontend/src/styles.css`.

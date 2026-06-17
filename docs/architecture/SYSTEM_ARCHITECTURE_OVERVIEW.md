@@ -87,13 +87,15 @@ candidate snapshots. It also has a Celery/Redis job adapter for long-running
 Radar execution and durable human review decisions for live Radar findings.
 Backend slices should continue in this order:
 
-1. frontend API adapter with JSON fallback;
-2. run journal and evidence audit;
-3. normalized candidate/evidence query tables when API usage needs them.
+1. run journal and evidence audit;
+2. normalized candidate/evidence query tables when API usage needs them;
+3. production schedule/cadence controls.
 
 JSON artifacts remain useful as demo exports and offline fallback, but they are
-not the long-term source of truth. Browser `localStorage` overlays remain demo
-state until their corresponding backend records exist.
+not the long-term source of truth. The frontend now prefers the Radar API for
+catalog, live run, candidates, and live review decisions when the backend is
+available, while browser `localStorage` overlays remain fixture/offline fallback
+state.
 
 Backend ownership boundaries:
 
@@ -159,6 +161,13 @@ Review endpoints save/reset current qualification and signal decisions for
 existing snapshot findings, and candidate DTOs overlay those decisions without
 rewriting `radar_run_outputs`.
 
+The frontend API adapter is a thin client boundary. `frontend/src/api/` owns
+transport and error normalization, `frontend/src/features/icp-radar/adapters/`
+maps API DTOs into the existing Radar view contracts, and
+`frontend/src/features/icp-radar/application/` owns backend mode, queued run
+polling, fallback selection, and review mutations. Presentation components show
+run controls and status, but do not call `fetch` or own persistence.
+
 Architecture contract tests enforce these rules. Existing large legacy modules
 are temporary decomposition follow-ups and not examples for new backend work:
 `icp_radar.py`, `icp_radar_catalog.py`, and `icp_radar_xlsx.py`.
@@ -185,8 +194,8 @@ The React frontend follows the same boundary rule as the Python domain: a screen
 `frontend/src/screens/ICPRadarScreen.tsx` is now a thin wrapper. The ICP Radar feature owns:
 
 - screen orchestration through a small feature entrypoint;
-- application hooks for local navigation state, draft overlays, signal validation, and qualification review;
-- fixture, live, and empty radar adapters;
+- application hooks for local navigation state, draft overlays, API-backed live runs, signal validation, and qualification review;
+- fixture, API-backed live, JSON-backed live, and empty radar adapters;
 - canonical radar and candidate view-model contracts;
 - canonical shortlist, preview, and detail views;
 - C1-C20 signal evidence and validation review;

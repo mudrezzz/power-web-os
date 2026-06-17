@@ -47,6 +47,17 @@ The next recommended product slice is `Slice 0.6.4: Take-into-work handoff from 
 
 ## Quick Start
 
+One-command local Radar stack with Docker:
+
+```bash
+docker compose up --build
+# UI:  http://127.0.0.1:5173
+# API: http://127.0.0.1:8000/health
+```
+
+This starts Redis, FastAPI, Celery worker, Vite frontend, and the Radar DB
+init step using shared SQLite state under `demo/output/`.
+
 ```bash
 python -m pip install -e ".[dev]"
 python -m pytest

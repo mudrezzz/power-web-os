@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from power_web_os.api.config import ApiSettings, get_api_settings
@@ -31,6 +32,13 @@ def create_app(
         title=api_settings.service_name,
         version=api_settings.api_version,
         description="Persistent backend boundary for Power Web OS.",
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(api_settings.cors_origins),
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
     )
     engine = create_database_engine(database_url=api_settings.database_url)
     app.state.session_factory = create_session_factory(engine)

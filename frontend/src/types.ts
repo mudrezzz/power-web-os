@@ -551,6 +551,7 @@ export type LiveRadarSignalResult = {
   evidence_findings?: SignalEvidenceFinding[];
   cross_validation?: QualificationCrossValidation;
   score_evaluation?: SignalScoreEvaluation | null;
+  review_decision?: SignalValidationDecision | null;
 };
 
 export type LiveRadarCandidate = {

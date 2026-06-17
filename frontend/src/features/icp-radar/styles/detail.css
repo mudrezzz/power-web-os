@@ -183,6 +183,48 @@
   color: var(--fg2);
 }
 
+.live-radar-actions,
+.live-radar-run-toolbar,
+.live-radar-run-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.live-radar-actions {
+  justify-content: flex-end;
+}
+
+.live-radar-run-toolbar {
+  justify-content: space-between;
+  gap: var(--s-4);
+}
+
+.live-radar-run-toolbar > div {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.live-radar-run-status {
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.live-radar-run-status .mono,
+.live-radar-run-error {
+  max-width: calc(var(--s-20) * 4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-radar-run-error {
+  color: var(--danger);
+}
+
 .icp-candidate-detail-tabs {
   display: flex;
   flex-wrap: wrap;

@@ -51,7 +51,7 @@ export function LiveSignalReviewTable({
         <span>{t('icpRadar.live.signalColumns.decision')}</span>
       </div>
       {candidate.signals.map((item) => {
-        const decision = signalValidation[signalValidationKey(radarId, candidate.candidate_id, item.signal_code)] ?? null;
+        const decision = signalValidation[signalValidationKey(radarId, candidate.candidate_id, item.signal_code)] ?? item.review_decision ?? null;
         return (
           <LiveSignalReviewRow
             candidate={candidate}

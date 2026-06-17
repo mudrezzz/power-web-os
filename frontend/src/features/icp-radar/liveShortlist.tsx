@@ -1,8 +1,9 @@
-import { ArrowRight, ChevronDown, ChevronRight, Radar, Settings, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronRight, Play, Radar, RotateCw, Settings, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../../components/primitives';
 import type { LiveICPRadarRunArtifact, LiveRadarCandidate } from '../../types';
 import { liveTotalScore, qualificationAssessmentTone, qualificationRuleText, qualificationStatusToAssessment } from './model';
+import type { RadarRunControlState } from './application/useRadarBackend';
 
 // Live shortlist deliberately mirrors fixture shortlist: table scan, inline preview, then explicit detail navigation.
 
@@ -11,13 +12,17 @@ export function LiveRadarShortlistTable({
   expandedCandidateId,
   onOpenDetails,
   onOpenSettings,
+  onRunRadar,
   onToggleCandidate,
+  runState,
 }: {
   artifact: LiveICPRadarRunArtifact | null;
   expandedCandidateId: string | null;
   onOpenDetails: (candidateId: string) => void;
   onOpenSettings: () => void;
+  onRunRadar: () => void;
   onToggleCandidate: (candidateId: string) => void;
+  runState: RadarRunControlState;
 }) {
   const { t } = useTranslation();
 
@@ -33,10 +38,16 @@ export function LiveRadarShortlistTable({
             <h2>{t('icpRadar.live.emptyTitle')}</h2>
             <p>{t('icpRadar.live.emptyCopy')}</p>
             <code>python -m power_web_os.demo run-live-mini-icp-radar --live</code>
+            <LiveRunStatus state={runState} />
           </div>
-          <Button icon={<Settings aria-hidden="true" />} variant="default" onClick={onOpenSettings}>
-            {t('icpRadar.openSettings')}
-          </Button>
+          <div className="live-radar-actions">
+            <Button disabled={runState.busy || runState.mode === 'loading'} icon={<Play aria-hidden="true" />} variant="primary" onClick={onRunRadar}>
+              {runState.busy ? t('icpRadar.live.runInProgress') : t('icpRadar.live.runRadar')}
+            </Button>
+            <Button icon={<Settings aria-hidden="true" />} variant="quiet" onClick={onOpenSettings}>
+              {t('icpRadar.openSettings')}
+            </Button>
+          </div>
         </div>
       </Card>
     );
@@ -44,6 +55,17 @@ export function LiveRadarShortlistTable({
 
   return (
     <>
+      <Card>
+        <div className="live-radar-run-toolbar">
+          <div>
+            <Eyebrow>{t('icpRadar.live.runEyebrow')}</Eyebrow>
+            <LiveRunStatus state={runState} />
+          </div>
+          <Button disabled={runState.busy || runState.mode === 'loading'} icon={<RotateCw aria-hidden="true" />} variant="default" onClick={onRunRadar}>
+            {runState.busy ? t('icpRadar.live.runInProgress') : t('icpRadar.live.runAgain')}
+          </Button>
+        </div>
+      </Card>
       {artifact.candidates.length === 0 ? (
         <Card>
           <div className="icp-empty-shortlist">
@@ -120,6 +142,22 @@ export function LiveRadarShortlistTable({
         </Card>
       )}
     </>
+  );
+}
+
+function LiveRunStatus({ state }: { state: RadarRunControlState }) {
+  const { t } = useTranslation();
+  const status = state.status ?? (state.mode === 'api' ? 'ready' : state.mode);
+  return (
+    <div className="live-radar-run-status">
+      <Badge tone={state.error ? 'blocker' : state.busy || state.outputPending ? 'unsurfaced' : state.mode === 'api' ? 'ally' : 'neutral'}>
+        {t(`icpRadar.live.runStatus.${status}`, { defaultValue: status })}
+      </Badge>
+      <span>{t(`icpRadar.live.backendMode.${state.mode}`)}</span>
+      {state.runId && <Mono>{state.runId}</Mono>}
+      {state.outputPending && <span>{t('icpRadar.live.outputPending')}</span>}
+      {state.error && <span className="live-radar-run-error">{state.error}</span>}
+    </div>
   );
 }
 
