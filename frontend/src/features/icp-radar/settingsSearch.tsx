@@ -61,7 +61,7 @@ export function SourceTable({ sources }: { sources: SourceDefinition[] }) {
   const { t } = useTranslation();
   return (
     <div className="source-table-wrap">
-      <table className="source-table">
+      <table className="source-table source-table--settings">
         <thead>
           <tr>
             <th>{t('icpRadar.settings.sourceNumber')}</th>

@@ -508,7 +508,7 @@ function LiveSourceSummary({ sources }: { sources: LiveRadarSourceEvidence[] }) 
   }
   return (
     <div className="source-table-wrap">
-      <table className="source-table">
+      <table className="source-table source-table--live">
         <thead>
           <tr>
             <th>{t('icpRadar.settings.sourceNumber')}</th>
