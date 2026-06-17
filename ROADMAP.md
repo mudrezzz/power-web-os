@@ -1973,7 +1973,7 @@ Principles:
 
 ### Slice 0.7.3: Radar run and catalog API
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Expose persisted radars and live run results through API contracts.
 - Scope:
   - `GET /api/radars`.
@@ -1984,6 +1984,11 @@ Principles:
   - Contract tests and OpenAPI checks.
 - Acceptance criteria:
   - Frontend can consume persisted Radar catalog and run results through an adapter while JSON remains fallback.
+- Completion notes:
+  - Added FastAPI Radar catalog, detail, inline run, run detail, and candidate snapshot endpoints.
+  - Added canonical candidate API DTOs backed by persisted `radar_run_outputs` snapshots.
+  - Kept inline run execution temporary until the async worker adapter slice.
+  - Validated with backend API, architecture contract, persistence/live Radar, and full Python regression tests.
 
 ### Slice 0.7.3.1: Async radar jobs and scheduler adapter
 
@@ -2595,4 +2600,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.3: Radar run and catalog API`.
+Implement `Slice 0.7.3.1: Async radar jobs and scheduler adapter`.

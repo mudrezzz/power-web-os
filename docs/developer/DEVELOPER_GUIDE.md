@@ -130,14 +130,29 @@ When adding ICP Radar UI, prefer the existing module boundary instead of adding 
 
 ## Backend API Baseline
 
-The first persistent backend boundary lives in `src/power_web_os/api/`.
+The persistent backend boundary lives in `src/power_web_os/api/`.
 
 Current files:
 
 ```text
-src/power_web_os/api/app.py        FastAPI app factory and health endpoints
-src/power_web_os/api/config.py     API settings boundary
-src/power_web_os/api/__main__.py   Local uvicorn runner for power-web-os-api
+src/power_web_os/api/README.md          API layer ownership guide
+src/power_web_os/api/app.py             FastAPI app factory and router registration
+src/power_web_os/api/config.py          API settings boundary
+src/power_web_os/api/dependencies.py    Repository/executor dependency wiring
+src/power_web_os/api/radar_routes.py    Radar catalog/run/candidate endpoints
+src/power_web_os/api/radar_dtos.py      Pydantic transport contracts
+src/power_web_os/api/radar_mappers.py   Application record -> API DTO mapping
+src/power_web_os/api/__main__.py        Local uvicorn runner for power-web-os-api
+```
+
+Current Radar endpoints:
+
+```text
+GET  /api/radars
+GET  /api/radars/{radar_id}
+POST /api/radars/{radar_id}/runs
+GET  /api/radar-runs/{run_id}
+GET  /api/radar-runs/{run_id}/candidates
 ```
 
 Rules:
@@ -148,6 +163,25 @@ Rules:
 - Keep generated JSON artifacts as demo/export fallback, not long-term source of truth.
 - Do not import frontend/demo artifact readers into API routes as hidden persistence.
 - Use Pydantic DTOs for request/response contracts and keep OpenAPI stable.
+- `POST /api/radars/{radar_id}/runs` executes inline only until the async
+  worker adapter lands in `Slice 0.7.3.1`; long-term execution belongs behind
+  `JobQueue`, not inside HTTP request handling.
+
+Run locally after migrations and seed:
+
+```bash
+python -m alembic upgrade head
+python -m power_web_os.demo seed-radar-db
+power-web-os-api
+```
+
+Useful Radar API URLs:
+
+```text
+http://127.0.0.1:8000/api/radars
+http://127.0.0.1:8000/api/radars/toir-quick-live
+http://127.0.0.1:8000/docs
+```
 
 Validation:
 

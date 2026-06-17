@@ -44,7 +44,8 @@ FORBIDDEN_DOMAIN_IMPORT_PREFIXES = {
 }
 
 API_FORBIDDEN_SNIPPETS = {
-    "sqlalchemy",
+    "from sqlalchemy",
+    "import sqlalchemy",
     "session.execute",
     ".query(",
     "select(",

@@ -37,6 +37,7 @@ python -m power_web_os.demo generate-icp-radar-catalog
 python -m power_web_os.demo generate-account-radar
 python -m alembic upgrade head
 python -m power_web_os.demo seed-radar-db
+power-web-os-api
 npm install --prefix ./frontend
 npm --prefix ./frontend run dev
 ```
@@ -52,6 +53,7 @@ python -m power_web_os.demo run-live-mini-icp-radar --live
 python -m alembic upgrade head
 python -m power_web_os.demo seed-radar-db
 python -m power_web_os.demo run-live-mini-icp-radar-persisted --live
+power-web-os-api
 ```
 
 To refresh documentation screenshots:
@@ -93,6 +95,19 @@ The persisted live mini radar command uses the same provider-backed workflow but
 also creates a `radar_runs` row and a `radar_run_outputs` JSON snapshot in the
 configured database. It still exports the same JSON paths, so the current UI can
 show the result before API-backed Radar screens are implemented.
+
+The local API can expose the same persisted backend state:
+
+```text
+http://127.0.0.1:8000/api/radars
+http://127.0.0.1:8000/api/radars/toir-quick-live
+http://127.0.0.1:8000/api/radar-runs/{run_id}
+http://127.0.0.1:8000/api/radar-runs/{run_id}/candidates
+```
+
+`POST /api/radars/{radar_id}/runs` is available as a temporary inline backend
+execution path until the async worker slice is implemented. The frontend still
+uses JSON fallback files in this slice.
 
 When the live artifact exists, inspect `ТОиР Quick Live Radar` through the same shortlist UX as the fixture radar: sticky first candidate column, bounded inline preview, and `Open details` into the tabbed in-shell candidate detail view. Live runtime metadata is shown in the `Journal` tab. Qualification and signal rows use evidence cards that keep source, excerpt/fallback, match rationale, score/fit rationale, and local human review together. Live results are a different data source, not a different UI pattern.
 
@@ -143,7 +158,10 @@ Signal validation is visible in the demo: users can confirm, correct, reject, or
 - The planner is deterministic.
 - ICP Radar signal validation is not backend-persisted yet.
 - Radar catalog, definition, run state, and live output snapshot persistence exists, but the frontend still reads generated JSON artifacts.
-- Persisted live Radar runs are CLI-only until API-backed run control is added.
+- Radar API contracts can read persisted catalog, run, and candidate snapshot
+  state, but the frontend adapter is not implemented yet.
+- Persisted live Radar runs are CLI/API-only until async worker execution and
+  frontend controls are added.
 - `ТОиР Quick Live Radar` is CLI-only and experimental. It uses OpenRouter when credentials are valid, and it can legitimately return no candidates.
 - ICP Radar settings edits are browser-local demo drafts only; production persistence, schedule execution, live source setup, and shortlist recalculation are not implemented yet.
 - ICP Radar candidate detail is read-only.

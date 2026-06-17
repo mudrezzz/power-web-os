@@ -26,7 +26,7 @@ The current baseline has:
 - deterministic Power Web Board selected-account read model;
 - deterministic Playbook Analysis selected-account read model;
 - `AccessPlanningWorkflow` with optional `langgraph-dai` integration and local fallback;
-- initial FastAPI backend boundary with health/OpenAPI contracts;
+- FastAPI backend boundary with health, Radar catalog, Radar run, and Radar candidate contracts;
 - SQLAlchemy/Alembic persistence foundation for Radar catalog, Radar definitions, durable Radar run state, and persisted live Radar output snapshots;
 - generated ICP Radar, Account Radar, and Access Plan artifacts;
 - React TypeScript Vite demo inside the Power Web OS workspace shell using `ui-design-system`;
@@ -80,16 +80,15 @@ Chosen stack:
 - `pgvector` later for evidence retrieval.
 - `langgraph-dai` for agent workflow orchestration.
 
-The first backend slice exposed only a health boundary. The persistence
-foundation now adds DB settings, sessions, Alembic, Radar catalog/run
-repositories, and persisted live Radar output snapshots behind application
-ports. Backend slices should continue in this order:
+The first backend slice exposed only a health boundary. The backend now adds DB
+settings, sessions, Alembic, Radar catalog/run repositories, persisted live
+Radar output snapshots, and FastAPI contracts for Radar catalog, run state, and
+candidate snapshots. Backend slices should continue in this order:
 
-1. radar run and catalog API;
-2. async radar jobs and scheduler adapter;
-3. qualification and signal human-review persistence;
-4. frontend API adapter with JSON fallback;
-5. run journal and evidence audit.
+1. async radar jobs and scheduler adapter;
+2. qualification and signal human-review persistence;
+3. frontend API adapter with JSON fallback;
+4. run journal and evidence audit.
 
 JSON artifacts remain useful as demo exports and offline fallback, but they are
 not the long-term source of truth. Browser `localStorage` overlays remain demo
@@ -149,6 +148,13 @@ the source of truth for run status and audit. FastAPI `BackgroundTasks` is not
 the production execution model for Radar runs because those jobs are long,
 retryable, scheduled, and must survive process restarts.
 
+The first Radar API exposes persisted catalog, run, and candidate snapshot data.
+`POST /api/radars/{radar_id}/runs` executes the live Radar path inline only as a
+temporary developer/demo bridge. It still writes durable `radar_runs` and
+`radar_run_outputs` records, and provider failures are represented as persisted
+failed runs. The next async slice should keep the same API-facing run state but
+move execution behind a queue adapter.
+
 Architecture contract tests enforce these rules. Existing large legacy modules
 are temporary decomposition follow-ups and not examples for new backend work:
 `icp_radar.py`, `icp_radar_catalog.py`, and `icp_radar_xlsx.py`.
@@ -161,7 +167,7 @@ Backend onboarding map:
 | `integrations` | `src/power_web_os/integrations/README.md` | OpenRouter live Radar adapter and recorded provider | live Radar tests, architecture contract tests |
 | `workflows` | `src/power_web_os/workflows/README.md` | optional `langgraph-dai` wrappers and fallback workflow runtime | live Radar tests, architecture contract tests |
 | `persistence` | `src/power_web_os/persistence/README.md` | SQLAlchemy models, sessions, repositories, Alembic migrations | `tests/test_radar_persistence.py` |
-| `api` | Developer Guide backend API section | FastAPI app factory, health routes, settings | `tests/test_backend_api.py` |
+| `api` | `src/power_web_os/api/README.md` | FastAPI app factory, health routes, Radar routes, DTOs, dependency wiring | `tests/test_backend_api.py` |
 | `jobs` | Future local README when introduced | worker/scheduler entrypoints | architecture contract tests |
 
 New backend boundaries should include local developer-facing README guidance and
