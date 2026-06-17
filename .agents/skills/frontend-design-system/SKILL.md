@@ -1,6 +1,6 @@
 ---
 name: frontend-design-system
-description: Use for any Power Web OS frontend work: building or modifying screens, product shell, navigation, components, layout, styling, UI copy, visual QA, responsive behavior, or frontend design review. Always use the local design system in ui-design-system/, starting from START-HERE.md, and enforce its tokens, app-prototype shell/screens, components, visual rules, and checklist.
+description: "Use for any Power Web OS frontend work: building or modifying screens, product shell, navigation, components, layout, styling, UI copy, visual QA, responsive behavior, or frontend design review. Always use the local design system in ui-design-system/, starting from START-HERE.md, and enforce its tokens, app-prototype shell/screens, components, visual rules, and checklist."
 ---
 
 # Frontend Design System
