@@ -8,6 +8,8 @@ integration belongs.
 
 - `live_icp_radar_workflow.py` wraps the live Radar application service in the
   existing `BaseWorkflow` pattern when the framework is installed.
+- `live_radar_executor.py` adapts the live workflow to the application
+  `LiveRadarArtifactExecutor` port for persisted run services.
 - Local fallback workflow behavior remains available for base installs and
   deterministic tests.
 

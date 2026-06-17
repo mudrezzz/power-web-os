@@ -1943,7 +1943,7 @@ Principles:
 
 ### Slice 0.7.2: Persisted live Radar run MVP
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Make the extracted live Radar backend path persist run state and live output snapshots instead of writing only JSON artifacts.
 - User value: Backend can reproduce the current live script capability with durable run status and reviewable candidate/source/signal data ready for API and worker execution.
 - Scope:
@@ -1965,6 +1965,11 @@ Principles:
   - A live Radar run can be executed through backend application services and persisted as durable run state plus output snapshot.
   - Existing JSON artifact shape can be exported from persisted state.
   - No API, worker, or frontend dependency is required for the persisted MVP.
+- Completion notes:
+  - Added `radar_run_outputs` with JSON snapshots of the current live artifact sections.
+  - Added persisted live Radar application service, repository/output ports, workflow-backed executor adapter, and persisted CLI command.
+  - Kept existing `run-live-mini-icp-radar --live` behavior intact and additive.
+  - Validated with repository, application service, live Radar, backend API, architecture contract, and full Python regression tests.
 
 ### Slice 0.7.3: Radar run and catalog API
 
@@ -2590,4 +2595,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.2: Persisted live Radar run MVP`.
+Implement `Slice 0.7.3: Radar run and catalog API`.

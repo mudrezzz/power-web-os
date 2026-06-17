@@ -95,3 +95,26 @@ class RadarRunModel(Base):
     )
 
     radar: Mapped[RadarModel] = relationship(back_populates="runs")
+    output: Mapped[RadarRunOutputModel | None] = relationship(back_populates="run", uselist=False)
+
+
+class RadarRunOutputModel(Base):
+    __tablename__ = "radar_run_outputs"
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("radar_runs.run_id"), primary_key=True)
+    artifact_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    radar_payload_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    search_plan_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    sources_json: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    candidates_json: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    contract_validation_json: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    artifact_payload_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+
+    run: Mapped[RadarRunModel] = relationship(back_populates="output")

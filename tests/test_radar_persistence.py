@@ -6,12 +6,19 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import inspect
 
-from power_web_os.application.radar_records import RadarDefinitionRecord, RadarRecord, RadarRunRecord, RadarRunStatus
+from power_web_os.application.radar_records import (
+    RadarDefinitionRecord,
+    RadarRecord,
+    RadarRunOutputRecord,
+    RadarRunRecord,
+    RadarRunStatus,
+)
 from power_web_os.demo import build_icp_radar_catalog_from_workbook
 from power_web_os.persistence import (
     Base,
     SqlAlchemyRadarDefinitionRepository,
     SqlAlchemyRadarRepository,
+    SqlAlchemyRadarRunOutputRepository,
     SqlAlchemyRadarRunRepository,
     create_database_engine,
     create_session_factory,
@@ -33,6 +40,7 @@ def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> N
         radar_repo = SqlAlchemyRadarRepository(session)
         definition_repo = SqlAlchemyRadarDefinitionRepository(session)
         run_repo = SqlAlchemyRadarRunRepository(session)
+        output_repo = SqlAlchemyRadarRunOutputRepository(session)
 
         radar = radar_repo.upsert(
             RadarRecord(
@@ -68,13 +76,27 @@ def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> N
         assert run_repo.find_by_idempotency_key("radar:toir-sibur:2026-06-16") == run
 
         running = run_repo.update_status("run-1", RadarRunStatus.RUNNING)
-        completed = run_repo.update_status("run-1", RadarRunStatus.COMPLETED)
+        output = output_repo.upsert(
+            RadarRunOutputRecord(
+                run_id="run-1",
+                artifact_version="0.6.3.4",
+                radar_payload={"radar_id": "toir-sibur"},
+                search_plan_payload={"queries": [{"query_id": "q1"}]},
+                sources_payload=[{"evidence_ref": "src_1"}],
+                candidates_payload=[{"candidate_id": "candidate-a", "signals": []}],
+                contract_validation_payload=[],
+                artifact_payload={"artifact_type": "icp_radar_live_run", "candidates": []},
+            )
+        )
+        completed = run_repo.update_status("run-1", RadarRunStatus.COMPLETED, run_metadata={"candidate_count": 1})
 
         assert running.status is RadarRunStatus.RUNNING
         assert running.started_at is not None
         assert completed.status is RadarRunStatus.COMPLETED
         assert completed.completed_at is not None
+        assert completed.run_metadata["candidate_count"] == 1
         assert run_repo.list_for_radar("toir-sibur") == (completed,)
+        assert output_repo.get("run-1") == output
 
 
 def test_seed_radar_catalog_upserts_current_demo_radars(tmp_path: Path) -> None:
@@ -106,7 +128,7 @@ def test_alembic_initial_migration_creates_radar_tables(tmp_path: Path) -> None:
     engine = create_database_engine(database_url=sqlite_url(db_path))
     table_names = set(inspect(engine).get_table_names())
 
-    assert {"radars", "radar_definitions", "radar_runs", "alembic_version"} <= table_names
+    assert {"radars", "radar_definitions", "radar_runs", "radar_run_outputs", "alembic_version"} <= table_names
 
 
 def test_alembic_respects_database_url_environment_for_seed_command_path(tmp_path: Path, monkeypatch) -> None:
@@ -119,4 +141,4 @@ def test_alembic_respects_database_url_environment_for_seed_command_path(tmp_pat
     engine = create_database_engine(database_url=sqlite_url(db_path))
     table_names = set(inspect(engine).get_table_names())
 
-    assert {"radars", "radar_definitions", "radar_runs"} <= table_names
+    assert {"radars", "radar_definitions", "radar_runs", "radar_run_outputs"} <= table_names

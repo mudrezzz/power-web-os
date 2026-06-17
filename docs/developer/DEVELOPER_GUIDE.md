@@ -33,6 +33,7 @@ Run Radar persistence migrations and seed the current demo catalog:
 ```bash
 python -m alembic upgrade head
 python -m power_web_os.demo seed-radar-db
+python -m power_web_os.demo run-live-mini-icp-radar-persisted --live
 ```
 
 By default, local persistence uses `sqlite:///./demo/output/power_web_os.sqlite3`
@@ -163,6 +164,7 @@ adapters:
 src/power_web_os/application/radar_records.py       Radar records and run status
 src/power_web_os/application/ports.py               Repository and async job ports
 src/power_web_os/application/radar_catalog_seed.py  Demo catalog -> records mapper
+src/power_web_os/application/persisted_live_radar.py Durable live Radar run service
 src/power_web_os/persistence/models.py              SQLAlchemy table mappings
 src/power_web_os/persistence/repositories.py        SQLAlchemy repository adapters
 src/power_web_os/persistence/migrations/            Alembic migration environment
@@ -173,13 +175,19 @@ Rules:
 - Application modules define records, use-case ports, and payload mapping only.
 - SQLAlchemy imports, sessions, models, and queries stay inside `persistence`.
 - `radar_runs` is the durable source of truth for queued/running/waiting-human/completed/failed/cancelled state.
+- `radar_run_outputs` stores the current live Radar artifact as a JSON snapshot;
+  do not treat it as a final normalized candidate/evidence schema.
 - Celery/Redis can later implement `JobQueue`, but queue state must not replace `radar_runs`.
 - The seed command upserts current demo radars and active definitions; it does not execute live searches or create run records.
+- The persisted live run command executes the existing live workflow path,
+  persists run state and output, and exports the same JSON artifact shape for
+  demo/frontend fallback.
 
 Validation:
 
 ```bash
 python -m pytest tests/test_radar_persistence.py
+python -m pytest tests/test_persisted_live_radar.py
 ```
 
 ### How To Extend Backend Persistence
@@ -418,6 +426,7 @@ Commands:
 ```bash
 python -m power_web_os.demo run-live-mini-icp-radar --dry-run-plan
 python -m power_web_os.demo run-live-mini-icp-radar --live
+python -m power_web_os.demo run-live-mini-icp-radar-persisted --live
 ```
 
 `--dry-run-plan` does not call the network and does not create fake candidates. `--live` requires `OPENROUTER_API_KEY` and writes:
@@ -426,6 +435,11 @@ python -m power_web_os.demo run-live-mini-icp-radar --live
 demo/output/live_mini_icp_radar_run.json
 frontend/public/demo/live_mini_icp_radar_run.json
 ```
+
+The persisted command requires the Alembic schema and seeded Radar catalog. It
+uses the same OpenRouter-backed workflow path, creates a `radar_runs` record,
+stores the `icp_radar_live_run` snapshot in `radar_run_outputs`, and exports the
+same JSON artifact paths for the current frontend fallback.
 
 Live artifacts must never contain API keys, authorization headers, bearer tokens, or raw provider dumps. Model-supplied URLs are filtered by HTTP reachability before they can support candidates. If OpenRouter rejects the credentials or no usable sources are returned, the frontend should show the live radar empty state rather than fabricated candidates.
 

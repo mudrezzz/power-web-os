@@ -211,6 +211,45 @@ def generate_live_mini_icp_radar_artifact(
     return artifact
 
 
+def generate_persisted_live_mini_icp_radar_artifact(
+    *,
+    output_path: Path,
+    frontend_output_path: Path,
+    database_url: str | None = None,
+) -> dict[str, Any]:
+    from power_web_os.application.persisted_live_radar import (
+        PersistedLiveRadarRunCommand,
+        PersistedLiveRadarRunService,
+    )
+    from power_web_os.persistence import (
+        SqlAlchemyRadarRunOutputRepository,
+        SqlAlchemyRadarRunRepository,
+        create_database_engine,
+        create_session_factory,
+        session_scope,
+    )
+    from power_web_os.workflows.live_radar_executor import WorkflowLiveRadarArtifactExecutor
+
+    engine = create_database_engine(database_url=database_url)
+    session_factory = create_session_factory(engine)
+
+    with session_scope(session_factory) as session:
+        service = PersistedLiveRadarRunService(
+            run_repository=SqlAlchemyRadarRunRepository(session),
+            output_repository=SqlAlchemyRadarRunOutputRepository(session),
+            executor=WorkflowLiveRadarArtifactExecutor(provider=OpenRouterWebSearchProvider()),
+        )
+        result = service.run(PersistedLiveRadarRunCommand(live=True))
+
+    if result.artifact is None:
+        raise RuntimeError(f"Persisted live Radar run failed: {result.run.error_message}")
+    _assert_no_secrets(result.artifact)
+    artifact = result.artifact
+    _write_json(output_path, artifact)
+    _write_json(frontend_output_path, artifact)
+    return artifact
+
+
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -218,7 +257,7 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def _assert_no_secrets(payload: dict[str, Any]) -> None:
     serialized = json.dumps(payload, ensure_ascii=False)
-    forbidden = ("OPENROUTER_API_KEY", "Authorization", "Bearer ")
+    forbidden = ("OPENROUTER_API_KEY", "Authorization", "Bearer", "sk-or-")
     if any(token in serialized for token in forbidden):
         raise RuntimeError("Refusing to write live radar artifact containing secret-like content")
 
@@ -241,6 +280,7 @@ def main() -> None:
             "generate-icp-radar-catalog",
             "seed-radar-db",
             "run-live-mini-icp-radar",
+            "run-live-mini-icp-radar-persisted",
         ),
     )
     parser.add_argument("--input", type=Path, default=root / "demo" / "sample_account.json")
@@ -355,6 +395,14 @@ def main() -> None:
             )
         else:
             parser.error("run-live-mini-icp-radar requires --dry-run-plan or --live")
+    elif args.command == "run-live-mini-icp-radar-persisted":
+        if not args.live:
+            parser.error("run-live-mini-icp-radar-persisted requires --live")
+        artifact = generate_persisted_live_mini_icp_radar_artifact(
+            output_path=args.live_mini_radar_output,
+            frontend_output_path=args.frontend_live_mini_radar_output,
+            database_url=args.database_url,
+        )
     else:
         artifact = build_demo_plan(args.input)
     print(json.dumps(artifact, ensure_ascii=False, indent=2))

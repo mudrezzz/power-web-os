@@ -20,6 +20,8 @@ provider SDK details.
   qualification, evidence-card, and score-evaluation normalization.
 - `live_radar_service.py` orchestrates one live Radar execution pass through a
   provider port.
+- `persisted_live_radar.py` owns the durable live Radar run lifecycle through
+  repository and executor ports.
 
 ## Dependency Rules
 
@@ -39,6 +41,11 @@ Application services depend on ports. They do not create sessions, run SQL
 queries, call providers directly, or own worker runtime behavior.
 Provider HTTP calls belong in `integrations`; LangGraph runtime wrappers belong
 in `workflows`.
+
+Persisted live Radar execution follows the same rule: application code creates
+and updates run records through repository ports, then calls a
+`LiveRadarArtifactExecutor` port. The workflow-backed adapter and OpenRouter
+provider are wired outside the application layer.
 
 ## How To Extend
 

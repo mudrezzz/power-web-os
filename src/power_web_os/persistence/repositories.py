@@ -14,10 +14,17 @@ from sqlalchemy.orm import Session
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRecord,
+    RadarRunOutputRecord,
     RadarRunRecord,
     RadarRunStatus,
 )
-from power_web_os.persistence.models import RadarDefinitionModel, RadarModel, RadarRunModel, utc_now
+from power_web_os.persistence.models import (
+    RadarDefinitionModel,
+    RadarModel,
+    RadarRunModel,
+    RadarRunOutputModel,
+    utc_now,
+)
 
 
 class SqlAlchemyRadarRepository:
@@ -133,6 +140,7 @@ class SqlAlchemyRadarRunRepository:
         completed_at: datetime | None = None,
         error_message: str | None = None,
         error_metadata: dict[str, object] | None = None,
+        run_metadata: dict[str, object] | None = None,
     ) -> RadarRunRecord:
         model = self._session.get(RadarRunModel, run_id)
         if model is None:
@@ -148,9 +156,37 @@ class SqlAlchemyRadarRunRepository:
             model.error_message = error_message
         if error_metadata is not None:
             model.error_metadata_json = dict(error_metadata)
+        if run_metadata is not None:
+            model.run_metadata_json = dict(run_metadata)
         model.updated_at = now
         self._session.flush()
         return _run_record(model)
+
+
+class SqlAlchemyRadarRunOutputRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def upsert(self, record: RadarRunOutputRecord) -> RadarRunOutputRecord:
+        model = self._session.get(RadarRunOutputModel, record.run_id)
+        now = utc_now()
+        if model is None:
+            model = RadarRunOutputModel(run_id=record.run_id, created_at=record.created_at or now)
+            self._session.add(model)
+        model.artifact_version = record.artifact_version
+        model.radar_payload_json = dict(record.radar_payload)
+        model.search_plan_json = dict(record.search_plan_payload)
+        model.sources_json = [dict(item) for item in record.sources_payload]
+        model.candidates_json = [dict(item) for item in record.candidates_payload]
+        model.contract_validation_json = [dict(item) for item in record.contract_validation_payload]
+        model.artifact_payload_json = dict(record.artifact_payload)
+        model.updated_at = record.updated_at or now
+        self._session.flush()
+        return _run_output_record(model)
+
+    def get(self, run_id: str) -> RadarRunOutputRecord | None:
+        model = self._session.get(RadarRunOutputModel, run_id)
+        return _run_output_record(model) if model is not None else None
 
 
 def _radar_record(model: RadarModel) -> RadarRecord:
@@ -192,6 +228,21 @@ def _run_record(model: RadarRunModel) -> RadarRunRecord:
         error_message=model.error_message,
         error_metadata=dict(model.error_metadata_json),
         run_metadata=dict(model.run_metadata_json),
+        created_at=_aware_utc(model.created_at),
+        updated_at=_aware_utc(model.updated_at),
+    )
+
+
+def _run_output_record(model: RadarRunOutputModel) -> RadarRunOutputRecord:
+    return RadarRunOutputRecord(
+        run_id=model.run_id,
+        artifact_version=model.artifact_version,
+        radar_payload=dict(model.radar_payload_json),
+        search_plan_payload=dict(model.search_plan_json),
+        sources_payload=[dict(item) for item in model.sources_json],
+        candidates_payload=[dict(item) for item in model.candidates_json],
+        contract_validation_payload=[dict(item) for item in model.contract_validation_json],
+        artifact_payload=dict(model.artifact_payload_json),
         created_at=_aware_utc(model.created_at),
         updated_at=_aware_utc(model.updated_at),
     )

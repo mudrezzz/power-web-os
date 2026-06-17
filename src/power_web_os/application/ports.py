@@ -12,6 +12,7 @@ from typing import Protocol
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRecord,
+    RadarRunOutputRecord,
     RadarRunRecord,
     RadarRunStatus,
 )
@@ -57,7 +58,16 @@ class RadarRunRepository(Protocol):
         completed_at: datetime | None = None,
         error_message: str | None = None,
         error_metadata: dict[str, object] | None = None,
+        run_metadata: dict[str, object] | None = None,
     ) -> RadarRunRecord: ...
+
+
+class RadarRunOutputRepository(Protocol):
+    """Application port for persisted live Radar output snapshots."""
+
+    def upsert(self, record: RadarRunOutputRecord) -> RadarRunOutputRecord: ...
+
+    def get(self, run_id: str) -> RadarRunOutputRecord | None: ...
 
 
 class JobQueue(Protocol):
@@ -70,6 +80,12 @@ class RadarRunExecutor(Protocol):
     """Application port for executing an already persisted Radar run."""
 
     def execute(self, run_id: str) -> RadarRunRecord: ...
+
+
+class LiveRadarArtifactExecutor(Protocol):
+    """Application port for producing a live Radar artifact."""
+
+    def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, object]: ...
 
 
 class RadarRunScheduler(Protocol):

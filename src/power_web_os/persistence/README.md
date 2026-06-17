@@ -12,6 +12,8 @@ changes through Alembic migrations.
 - `migrations/` contains Alembic environment and versioned schema changes.
 - `seed.py` persists deterministic demo Radar catalog data through repository
   adapters.
+- `radar_run_outputs` stores live Radar output snapshots as JSON artifact
+  sections until later API slices normalize candidate/evidence query tables.
 
 ## Dependency Rules
 
@@ -44,6 +46,7 @@ state, but they do not commit.
 ```bash
 python -m alembic upgrade head
 python -m power_web_os.demo seed-radar-db
+python -m power_web_os.demo run-live-mini-icp-radar-persisted --live
 python -m pytest tests/test_radar_persistence.py
 ```
 

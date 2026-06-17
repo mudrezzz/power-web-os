@@ -25,6 +25,8 @@ The demo shows the current Power Web OS loop: a ТОиР/SIBUR-style ICP Radar f
 - A durable app shell with sidebar navigation, top bar account context, active `Accounts`, clickable `Access Plans`, working `Account Map`, working `Playbook`, and planned placeholders for future workspaces.
 - A bounded SPA frame with internal workspace scrolling and EN/RU switching for UI chrome plus visible deterministic demo data.
 - Optional local Radar persistence seed for the generated catalog and active definitions.
+- Optional persisted live Radar backend run that stores durable run state and the
+  live output snapshot before exporting the current JSON artifact for the UI.
 
 ## How To Run
 
@@ -47,6 +49,9 @@ copy .env.example .env
 # Fill OPENROUTER_API_KEY and OPENROUTER_MODEL locally.
 python -m power_web_os.demo run-live-mini-icp-radar --dry-run-plan
 python -m power_web_os.demo run-live-mini-icp-radar --live
+python -m alembic upgrade head
+python -m power_web_os.demo seed-radar-db
+python -m power_web_os.demo run-live-mini-icp-radar-persisted --live
 ```
 
 To refresh documentation screenshots:
@@ -84,6 +89,11 @@ Alembic migrations.
 
 The live mini radar command writes `demo/output/live_mini_icp_radar_run.json` and `frontend/public/demo/live_mini_icp_radar_run.json` only when OpenRouter returns usable evidence. It does not generate synthetic candidates. If the artifact is absent, the frontend shows the live radar empty state with the CLI command.
 
+The persisted live mini radar command uses the same provider-backed workflow but
+also creates a `radar_runs` row and a `radar_run_outputs` JSON snapshot in the
+configured database. It still exports the same JSON paths, so the current UI can
+show the result before API-backed Radar screens are implemented.
+
 When the live artifact exists, inspect `ТОиР Quick Live Radar` through the same shortlist UX as the fixture radar: sticky first candidate column, bounded inline preview, and `Open details` into the tabbed in-shell candidate detail view. Live runtime metadata is shown in the `Journal` tab. Qualification and signal rows use evidence cards that keep source, excerpt/fallback, match rationale, score/fit rationale, and local human review together. Live results are a different data source, not a different UI pattern.
 
 The frontend command prints a local Vite URL. Open it to inspect the `ICP Radar` catalog first, switch the UI between EN/RU from the top bar if needed, then open `ТОиР / SIBUR`. Use `Found accounts` to scan candidates and `Settings` to inspect or edit the radar definition. Settings are edited by block: selected radar header, global search base, account qualification rules, monitoring, intent signals, scoring model, and validation. The header owns name, description, active status, read-only owner, duplicate, local delete, and reset. Rules and signals are edited in business language as flat natural-language rows; generated IDs/codes are shown only as compact references and are not manually edited. Sources are entities, the global source base is shown as a bounded table, and rule/signal source policy uses global-base, local-source, cross-validation, and HITL switches instead of source IDs or fallback confidence. Monitoring uses dropdown policies and number/unit duration controls. Scoring uses Fit, Intent, and Tier models with preset dropdowns; custom formula text appears only in custom mode. Settings edits are saved only to browser local demo state under `power-web-os-icp-radar-config-overrides`; they do not rewrite generated JSON, run live search, or recalculate the fixture shortlist. Click a candidate row to open a bounded inline preview with four canonical blocks: summary, tier explanation, qualification, and signals. Open the candidate detail view for overview, qualification, signals, sources, and journal tabs. In candidate detail, qualification rows show rule snapshot, operator, final assessment, source count, cross-validation, and local decision. Expanded qualification rows use evidence cards that combine source ref/title/origin/trust with fact, short excerpt or fallback, why the evidence matches the rule, and evidence strength; cross-validation appears inside requirement fit. C1-C20 signals start as a compact table with filters, sorting, expandable evidence rows, and local confirm/correct/reject/stale controls. Validation decisions are stored in browser local demo state under `power-web-os-icp-radar-signal-validation`, update the effective shortlist score/ranking, and do not mutate generated artifacts. Then use `Accounts` for the accepted portfolio. Click an account row to inspect that account's Access Plan visually inside the Power Web OS shell. Use the sidebar `Account Map` item to inspect the selected account's Power Web Lite board and highlighted recommended access route. Use `Playbook` to compare the current playbook with the pre-generated `No partner motion` variant and see how route decisions and route preview change without a page reload.
@@ -102,6 +112,7 @@ The frontend command prints a local Vite URL. Open it to inspect the `ICP Radar`
 - `frontend/public/demo/icp_radars.json`
 - `demo/output/live_mini_icp_radar_run.json` when live OpenRouter run succeeds
 - `frontend/public/demo/live_mini_icp_radar_run.json` when live OpenRouter run succeeds
+- `demo/output/power_web_os.sqlite3` when local Radar persistence commands run
 - `frontend/public/demo/access_plan.json`
 - `frontend/public/demo/account_radar.json`
 - `frontend/public/demo/access_plans/{account_id}.json`
@@ -131,7 +142,8 @@ Signal validation is visible in the demo: users can confirm, correct, reject, or
 
 - The planner is deterministic.
 - ICP Radar signal validation is not backend-persisted yet.
-- Radar catalog and definition persistence exists, but the frontend still reads generated JSON artifacts.
+- Radar catalog, definition, run state, and live output snapshot persistence exists, but the frontend still reads generated JSON artifacts.
+- Persisted live Radar runs are CLI-only until API-backed run control is added.
 - `ТОиР Quick Live Radar` is CLI-only and experimental. It uses OpenRouter when credentials are valid, and it can legitimately return no candidates.
 - ICP Radar settings edits are browser-local demo drafts only; production persistence, schedule execution, live source setup, and shortlist recalculation are not implemented yet.
 - ICP Radar candidate detail is read-only.

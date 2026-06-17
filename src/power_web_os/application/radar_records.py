@@ -65,3 +65,24 @@ class RadarRunRecord:
     run_metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RadarRunOutputRecord:
+    """Persisted live Radar output snapshot for one durable run.
+
+    The record intentionally stores JSON payload sections instead of normalized
+    candidate/evidence rows. This preserves the current live artifact contract
+    while later slices design API-oriented tables.
+    """
+
+    run_id: str
+    artifact_version: str
+    radar_payload: dict[str, Any]
+    search_plan_payload: dict[str, Any]
+    sources_payload: list[dict[str, Any]]
+    candidates_payload: list[dict[str, Any]]
+    contract_validation_payload: list[dict[str, Any]] = field(default_factory=list)
+    artifact_payload: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime | None = None
+    updated_at: datetime | None = None

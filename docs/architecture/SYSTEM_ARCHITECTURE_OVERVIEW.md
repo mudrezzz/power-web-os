@@ -27,7 +27,7 @@ The current baseline has:
 - deterministic Playbook Analysis selected-account read model;
 - `AccessPlanningWorkflow` with optional `langgraph-dai` integration and local fallback;
 - initial FastAPI backend boundary with health/OpenAPI contracts;
-- SQLAlchemy/Alembic persistence foundation for Radar catalog, Radar definitions, and durable Radar run state;
+- SQLAlchemy/Alembic persistence foundation for Radar catalog, Radar definitions, durable Radar run state, and persisted live Radar output snapshots;
 - generated ICP Radar, Account Radar, and Access Plan artifacts;
 - React TypeScript Vite demo inside the Power Web OS workspace shell using `ui-design-system`;
 - pytest baseline and frontend build check.
@@ -81,12 +81,12 @@ Chosen stack:
 - `langgraph-dai` for agent workflow orchestration.
 
 The first backend slice exposed only a health boundary. The persistence
-foundation now adds DB settings, sessions, Alembic, and Radar catalog/run
-repositories behind application ports. Backend slices should continue in this
-order:
+foundation now adds DB settings, sessions, Alembic, Radar catalog/run
+repositories, and persisted live Radar output snapshots behind application
+ports. Backend slices should continue in this order:
 
-1. radar catalog API;
-2. live radar run persistence;
+1. radar run and catalog API;
+2. async radar jobs and scheduler adapter;
 3. qualification and signal human-review persistence;
 4. frontend API adapter with JSON fallback;
 5. run journal and evidence audit.
@@ -103,10 +103,14 @@ Backend ownership boundaries:
 - Repository interfaces isolate application/domain code from SQLAlchemy.
 - Infrastructure adapters own database, provider, and external API calls.
 
-The current persistence slice stores `radars`, `radar_definitions`, and
-`radar_runs`. Local regression uses SQLite for migration and repository smoke
-tests, while schema and runtime configuration remain PostgreSQL-ready through
-SQLAlchemy/Alembic and `POWER_WEB_OS_DATABASE_URL`.
+The current persistence slice stores `radars`, `radar_definitions`,
+`radar_runs`, and `radar_run_outputs`. `radar_run_outputs` is a JSON snapshot
+table for the current live Radar artifact sections. It preserves the existing
+artifact contract while later API slices decide which candidate, signal, source,
+and evidence fields deserve normalized query tables. Local regression uses
+SQLite for migration and repository smoke tests, while schema and runtime
+configuration remain PostgreSQL-ready through SQLAlchemy/Alembic and
+`POWER_WEB_OS_DATABASE_URL`.
 
 LLM/search outputs must be persisted as reviewable evidence and run records, not
 as authoritative final truth. Human review decisions are first-class product
@@ -276,6 +280,14 @@ Radar configuration is a first-class product boundary. There can be many ICP Rad
 The first realistic demo ICP profile uses `demo/fixtures/icp_radar/sibur_icp_pass1.xlsx` as a fixture. It discovers Russian legal entities inside a holding, scores them against ТОиР criteria, and shows a ranked candidate shortlist for the active `ТОиР / SIBUR` radar. The catalog also includes configured/planned radar examples without generated candidates yet. Numeric C1-C20 scores come from the XLSX. `radar.definition.intent_signals` is the canonical C1-C20 dictionary; top-level `criteria` is generated from it only as a backward-compatible alias. Criterion-level evidence is added by a separate curated synthetic fixture, `demo/fixtures/icp_radar/toir_sibur_criterion_evidence.json`, so the demo can exercise evidence-backed score explanation before production source extraction exists.
 
 The first live ICP Radar path is intentionally separate from the stable XLSX fixture. `TOIR Quick Live Radar` uses a small definition with two qualification rules and three intent signals, runs from the CLI, and writes a separate `icp_radar_live_run` artifact only when a provider returns usable evidence. The live path is split by backend boundary: application modules own contracts, definition, provider-neutral normalization, and the live run service; `integrations` owns the OpenRouter adapter and recorded provider; `workflows` owns the optional `langgraph-dai` `BaseWorkflow` wrapper plus local fallback runtime. `live_icp_radar.py` remains only a compatibility facade for existing imports. OpenRouter is therefore the first provider, not the domain boundary. Live outputs are reviewable artifacts, not accepted accounts, and the system must not fabricate candidates when provider evidence is missing.
+
+The persisted live Radar MVP adds an application service around that same
+workflow-backed execution path. The service creates a durable `radar_runs`
+record, updates queued/running/completed/failed state, and stores the current
+`icp_radar_live_run` payload in `radar_run_outputs` as a JSON snapshot. The
+snapshot is deliberately not a normalized candidate/evidence schema yet; it is a
+compatibility layer that lets the backend reproduce the current live script
+while API and review persistence are designed in later slices.
 
 Live qualification results use a richer review contract than the radar settings rule definition. Each candidate-level qualification result carries the rule snapshot, operator, requirement level, source usages, source origin, trust/check policy, evidence findings, cross-validation status, requirement evaluation, final assessment, and optional human review decision. The backend normalizer may enrich simpler provider output into this contract, but the frontend must not render raw Q1/Q2 labels without evidence, source, trust, and final-assessment context.
 
