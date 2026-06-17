@@ -175,12 +175,14 @@ The generated JSON artifact is also available at:
 ## Current Limitations
 
 - ICP Radar settings can be edited as local browser demo drafts. Production persistence, run scheduling, live source setup, and shortlist recalculation are not implemented yet.
-- ICP Radar signal validation is browser-local demo state. It is not backend-persisted yet.
+- ICP Radar signal and qualification validation is still browser-local in the UI.
+  Backend API persistence exists for live run review decisions, but the
+  frontend adapter is not connected yet.
 - `Take into work` does not create accepted accounts yet.
 - No live CRM integration yet.
 - No live source connectors yet.
 - No production API server yet.
-- No persisted review or feedback loop yet.
+- No frontend-integrated persisted review or downstream feedback loop yet.
 
 ## ICP Radar Flow
 

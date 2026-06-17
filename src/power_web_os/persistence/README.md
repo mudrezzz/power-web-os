@@ -14,6 +14,9 @@ changes through Alembic migrations.
   adapters.
 - `radar_run_outputs` stores live Radar output snapshots as JSON artifact
   sections until later API slices normalize candidate/evidence query tables.
+- `radar_review_decisions` stores the current human review decision for one
+  qualification or signal finding. It is mutable current state, not an
+  append-only journal.
 
 ## Dependency Rules
 
@@ -32,7 +35,8 @@ Forbidden imports:
 
 Persistence adapters do not decide candidate truth, score semantics, or worker
 execution policy. They store and retrieve records requested by application
-services.
+services. Review validation belongs in the application layer, not in repository
+methods.
 
 ## Transaction Boundary
 

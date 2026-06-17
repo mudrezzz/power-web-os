@@ -105,6 +105,7 @@ http://127.0.0.1:8000/api/radars
 http://127.0.0.1:8000/api/radars/toir-quick-live
 http://127.0.0.1:8000/api/radar-runs/{run_id}
 http://127.0.0.1:8000/api/radar-runs/{run_id}/candidates
+http://127.0.0.1:8000/api/radar-runs/{run_id}/reviews
 ```
 
 Start Redis before using the non-eager Celery worker. Default local URLs are
@@ -115,7 +116,9 @@ result backend.
 `run_id`. A Celery worker executes the run in the background. API clients poll
 `GET /api/radar-runs/{run_id}` until the run is `completed` or `failed`, then
 read `GET /api/radar-runs/{run_id}/candidates` after output exists. The
-frontend still uses JSON fallback files in this slice.
+backend API can persist current qualification and signal review decisions for
+that output. The frontend still uses JSON fallback files and browser-local
+review overlays in this slice.
 
 When the live artifact exists, inspect `ТОиР Quick Live Radar` through the same shortlist UX as the fixture radar: sticky first candidate column, bounded inline preview, and `Open details` into the tabbed in-shell candidate detail view. Live runtime metadata is shown in the `Journal` tab. Qualification and signal rows use evidence cards that keep source, excerpt/fallback, match rationale, score/fit rationale, and local human review together. Live results are a different data source, not a different UI pattern.
 
@@ -159,12 +162,13 @@ The generated `icp_radar.json` keeps numeric C1-C20 scores from the XLSX and add
 
 The generated accepted-account demo data uses Russian-language company and person names. Existing account IDs remain stable for artifact paths.
 
-Signal validation is visible in the demo: users can confirm, correct, reject, or mark found signals stale, and the visible ICP score updates from those validation decisions. The state is browser-local only.
+Signal validation is visible in the demo: users can confirm, correct, reject, or mark found signals stale, and the visible ICP score updates from those validation decisions. The frontend state is browser-local until the API adapter slice, although backend review endpoints can now persist the same current decision shape for live run snapshots.
 
 ## Known Limitations
 
 - The planner is deterministic.
-- ICP Radar signal validation is not backend-persisted yet.
+- ICP Radar review decisions are backend-persisted through API endpoints, but
+  the frontend still uses browser-local overlays until the API adapter slice.
 - Radar catalog, definition, run state, and live output snapshot persistence exists, but the frontend still reads generated JSON artifacts.
 - Radar API contracts can read persisted catalog, run, and candidate snapshot
   state, but the frontend adapter is not implemented yet.
@@ -175,4 +179,4 @@ Signal validation is visible in the demo: users can confirm, correct, reject, or
 - `Take into work` is visible as a planned affordance and does not change state yet.
 - No live source connectors yet.
 - No CRM export yet.
-- No persisted review or feedback loop yet.
+- No frontend-integrated persisted review or downstream feedback loop yet.

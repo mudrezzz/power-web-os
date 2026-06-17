@@ -22,6 +22,8 @@ provider SDK details.
   provider port.
 - `persisted_live_radar.py` owns the durable live Radar run lifecycle through
   repository and executor ports.
+- `radar_review.py` validates and persists current human review decisions
+  through a review repository port.
 
 ## Dependency Rules
 
@@ -46,6 +48,11 @@ Persisted live Radar execution follows the same rule: application code creates
 and updates run records through repository ports, then calls a
 `LiveRadarArtifactExecutor` port. The workflow-backed adapter and OpenRouter
 provider are wired outside the application layer.
+
+Human review persistence follows the same rule: application code validates
+qualification/signal decision semantics and stores the current decision through
+a repository port. API routes own HTTP shape only, and repositories own storage
+shape only.
 
 ## How To Extend
 

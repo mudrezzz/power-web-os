@@ -153,6 +153,11 @@ GET  /api/radars/{radar_id}
 POST /api/radars/{radar_id}/runs
 GET  /api/radar-runs/{run_id}
 GET  /api/radar-runs/{run_id}/candidates
+GET  /api/radar-runs/{run_id}/reviews
+PUT  /api/radar-runs/{run_id}/candidates/{candidate_id}/qualification/{rule_id}/review
+DELETE /api/radar-runs/{run_id}/candidates/{candidate_id}/qualification/{rule_id}/review
+PUT  /api/radar-runs/{run_id}/candidates/{candidate_id}/signals/{signal_code}/review
+DELETE /api/radar-runs/{run_id}/candidates/{candidate_id}/signals/{signal_code}/review
 ```
 
 Rules:
@@ -167,6 +172,9 @@ Rules:
   execution through `JobQueue`, and returns `202 Accepted`.
 - Clients poll `GET /api/radar-runs/{run_id}` until the status is terminal,
   then call `GET /api/radar-runs/{run_id}/candidates` after output exists.
+- Review endpoints persist current human decisions for existing qualification
+  and signal findings. The frontend still uses browser `localStorage` until the
+  frontend API adapter slice.
 
 Run locally after migrations and seed:
 
@@ -241,6 +249,7 @@ src/power_web_os/application/radar_records.py       Radar records and run status
 src/power_web_os/application/ports.py               Repository and async job ports
 src/power_web_os/application/radar_catalog_seed.py  Demo catalog -> records mapper
 src/power_web_os/application/persisted_live_radar.py Durable live Radar run service
+src/power_web_os/application/radar_review.py        Human review decision service
 src/power_web_os/persistence/models.py              SQLAlchemy table mappings
 src/power_web_os/persistence/repositories.py        SQLAlchemy repository adapters
 src/power_web_os/persistence/migrations/            Alembic migration environment
@@ -253,6 +262,9 @@ Rules:
 - `radar_runs` is the durable source of truth for queued/running/waiting-human/completed/failed/cancelled state.
 - `radar_run_outputs` stores the current live Radar artifact as a JSON snapshot;
   do not treat it as a final normalized candidate/evidence schema.
+- `radar_review_decisions` stores the current mutable human review decision per
+  run/candidate/qualification-or-signal subject. It does not replace an
+  append-only audit journal.
 - Celery/Redis implement `JobQueue`, but queue state must not replace `radar_runs`.
 - The seed command upserts current demo radars and active definitions; it does not execute live searches or create run records.
 - The persisted live run command executes the existing live workflow path,
@@ -264,6 +276,7 @@ Validation:
 ```bash
 python -m pytest tests/test_radar_persistence.py
 python -m pytest tests/test_persisted_live_radar.py
+python -m pytest tests/test_radar_review_decisions.py
 ```
 
 ### How To Extend Backend Persistence

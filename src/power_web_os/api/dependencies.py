@@ -12,6 +12,7 @@ from power_web_os.jobs import CeleryJobQueue
 from power_web_os.persistence import (
     SqlAlchemyRadarDefinitionRepository,
     SqlAlchemyRadarRepository,
+    SqlAlchemyRadarReviewDecisionRepository,
     SqlAlchemyRadarRunOutputRepository,
     SqlAlchemyRadarRunRepository,
     session_scope,
@@ -24,6 +25,7 @@ class RadarApiContext:
     definition_repository: SqlAlchemyRadarDefinitionRepository
     run_repository: SqlAlchemyRadarRunRepository
     output_repository: SqlAlchemyRadarRunOutputRepository
+    review_repository: SqlAlchemyRadarReviewDecisionRepository
     job_queue: JobQueue
 
 
@@ -40,5 +42,6 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
             definition_repository=SqlAlchemyRadarDefinitionRepository(session),
             run_repository=SqlAlchemyRadarRunRepository(session),
             output_repository=SqlAlchemyRadarRunOutputRepository(session),
+            review_repository=SqlAlchemyRadarReviewDecisionRepository(session),
             job_queue=job_queue_factory(),
         )

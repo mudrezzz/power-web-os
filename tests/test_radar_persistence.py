@@ -12,12 +12,14 @@ from power_web_os.application.radar_records import (
     RadarRunOutputRecord,
     RadarRunRecord,
     RadarRunStatus,
+    RadarReviewDecisionRecord,
 )
 from power_web_os.demo import build_icp_radar_catalog_from_workbook
 from power_web_os.persistence import (
     Base,
     SqlAlchemyRadarDefinitionRepository,
     SqlAlchemyRadarRepository,
+    SqlAlchemyRadarReviewDecisionRepository,
     SqlAlchemyRadarRunOutputRepository,
     SqlAlchemyRadarRunRepository,
     create_database_engine,
@@ -41,6 +43,7 @@ def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> N
         definition_repo = SqlAlchemyRadarDefinitionRepository(session)
         run_repo = SqlAlchemyRadarRunRepository(session)
         output_repo = SqlAlchemyRadarRunOutputRepository(session)
+        review_repo = SqlAlchemyRadarReviewDecisionRepository(session)
 
         radar = radar_repo.upsert(
             RadarRecord(
@@ -89,6 +92,36 @@ def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> N
             )
         )
         completed = run_repo.update_status("run-1", RadarRunStatus.COMPLETED, run_metadata={"candidate_count": 1})
+        review = review_repo.upsert(
+            RadarReviewDecisionRecord(
+                decision_id="review-1",
+                run_id="run-1",
+                radar_id=radar.radar_id,
+                candidate_id="candidate-a",
+                subject_type="signal",
+                subject_id="S1",
+                status="corrected",
+                reviewer="tester",
+                comment="Score should be lower.",
+                decision_payload={"adjusted_score": 1},
+                score_impact={"original_score": 2, "effective_score": 1, "delta": -1},
+            )
+        )
+        replaced = review_repo.upsert(
+            RadarReviewDecisionRecord(
+                decision_id="review-replacement",
+                run_id="run-1",
+                radar_id=radar.radar_id,
+                candidate_id="candidate-a",
+                subject_type="signal",
+                subject_id="S1",
+                status="rejected",
+                reviewer="tester",
+                comment="Wrong signal.",
+                decision_payload={"adjusted_score": None},
+                score_impact={"original_score": 2, "effective_score": 0, "delta": -2},
+            )
+        )
 
         assert running.status is RadarRunStatus.RUNNING
         assert running.started_at is not None
@@ -97,6 +130,22 @@ def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> N
         assert completed.run_metadata["candidate_count"] == 1
         assert run_repo.list_for_radar("toir-sibur") == (completed,)
         assert output_repo.get("run-1") == output
+        assert review.decision_id == replaced.decision_id
+        assert replaced.status == "rejected"
+        assert review_repo.get(
+            run_id="run-1",
+            candidate_id="candidate-a",
+            subject_type="signal",
+            subject_id="S1",
+        ) == replaced
+        assert review_repo.list_for_run("run-1") == (replaced,)
+        assert review_repo.delete(
+            run_id="run-1",
+            candidate_id="candidate-a",
+            subject_type="signal",
+            subject_id="S1",
+        )
+        assert review_repo.list_for_run("run-1") == ()
 
 
 def test_seed_radar_catalog_upserts_current_demo_radars(tmp_path: Path) -> None:
@@ -128,7 +177,14 @@ def test_alembic_initial_migration_creates_radar_tables(tmp_path: Path) -> None:
     engine = create_database_engine(database_url=sqlite_url(db_path))
     table_names = set(inspect(engine).get_table_names())
 
-    assert {"radars", "radar_definitions", "radar_runs", "radar_run_outputs", "alembic_version"} <= table_names
+    assert {
+        "radars",
+        "radar_definitions",
+        "radar_runs",
+        "radar_run_outputs",
+        "radar_review_decisions",
+        "alembic_version",
+    } <= table_names
 
 
 def test_alembic_respects_database_url_environment_for_seed_command_path(tmp_path: Path, monkeypatch) -> None:
@@ -141,4 +197,4 @@ def test_alembic_respects_database_url_environment_for_seed_command_path(tmp_pat
     engine = create_database_engine(database_url=sqlite_url(db_path))
     table_names = set(inspect(engine).get_table_names())
 
-    assert {"radars", "radar_definitions", "radar_runs", "radar_run_outputs"} <= table_names
+    assert {"radars", "radar_definitions", "radar_runs", "radar_run_outputs", "radar_review_decisions"} <= table_names

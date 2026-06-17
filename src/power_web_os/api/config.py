@@ -12,7 +12,7 @@ from power_web_os.persistence.config import DEFAULT_DATABASE_URL
 class ApiSettings:
     service_name: str = "Power Web OS API"
     environment: str = "local"
-    api_version: str = "0.7.3.1"
+    api_version: str = "0.7.4"
     database_url: str = DEFAULT_DATABASE_URL
 
 

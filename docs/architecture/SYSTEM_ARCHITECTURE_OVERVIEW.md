@@ -84,11 +84,12 @@ The first backend slice exposed only a health boundary. The backend now adds DB
 settings, sessions, Alembic, Radar catalog/run repositories, persisted live
 Radar output snapshots, and FastAPI contracts for Radar catalog, run state, and
 candidate snapshots. It also has a Celery/Redis job adapter for long-running
-Radar execution. Backend slices should continue in this order:
+Radar execution and durable human review decisions for live Radar findings.
+Backend slices should continue in this order:
 
-1. qualification and signal human-review persistence;
-2. frontend API adapter with JSON fallback;
-3. run journal and evidence audit.
+1. frontend API adapter with JSON fallback;
+2. run journal and evidence audit;
+3. normalized candidate/evidence query tables when API usage needs them.
 
 JSON artifacts remain useful as demo exports and offline fallback, but they are
 not the long-term source of truth. Browser `localStorage` overlays remain demo
@@ -103,13 +104,13 @@ Backend ownership boundaries:
 - Infrastructure adapters own database, provider, and external API calls.
 
 The current persistence slice stores `radars`, `radar_definitions`,
-`radar_runs`, and `radar_run_outputs`. `radar_run_outputs` is a JSON snapshot
-table for the current live Radar artifact sections. It preserves the existing
-artifact contract while later API slices decide which candidate, signal, source,
-and evidence fields deserve normalized query tables. Local regression uses
-SQLite for migration and repository smoke tests, while schema and runtime
-configuration remain PostgreSQL-ready through SQLAlchemy/Alembic and
-`POWER_WEB_OS_DATABASE_URL`.
+`radar_runs`, `radar_run_outputs`, and `radar_review_decisions`.
+`radar_run_outputs` is a JSON snapshot table for the current live Radar artifact
+sections. `radar_review_decisions` is mutable current review state for one
+qualification or signal subject; it does not mutate the output snapshot and is
+not the append-only run journal. Local regression uses SQLite for migration and
+repository smoke tests, while schema and runtime configuration remain
+PostgreSQL-ready through SQLAlchemy/Alembic and `POWER_WEB_OS_DATABASE_URL`.
 
 LLM/search outputs must be persisted as reviewable evidence and run records, not
 as authoritative final truth. Human review decisions are first-class product
@@ -154,6 +155,9 @@ The first Radar API exposes persisted catalog, run, and candidate snapshot data.
 queued/running/completed/failed state, persists `radar_run_outputs`, and leaves
 Celery result state outside the product contract. Clients observe progress by
 polling `GET /api/radar-runs/{run_id}` and read candidates after completion.
+Review endpoints save/reset current qualification and signal decisions for
+existing snapshot findings, and candidate DTOs overlay those decisions without
+rewriting `radar_run_outputs`.
 
 Architecture contract tests enforce these rules. Existing large legacy modules
 are temporary decomposition follow-ups and not examples for new backend work:
@@ -293,7 +297,7 @@ record, updates queued/running/completed/failed state, and stores the current
 `icp_radar_live_run` payload in `radar_run_outputs` as a JSON snapshot. The
 snapshot is deliberately not a normalized candidate/evidence schema yet; it is a
 compatibility layer that lets the backend reproduce the current live script
-while API and review persistence are designed in later slices.
+while API-oriented normalized tables are designed in later slices.
 
 Live qualification results use a richer review contract than the radar settings rule definition. Each candidate-level qualification result carries the rule snapshot, operator, requirement level, source usages, source origin, trust/check policy, evidence findings, cross-validation status, requirement evaluation, final assessment, and optional human review decision. The backend normalizer may enrich simpler provider output into this contract, but the frontend must not render raw Q1/Q2 labels without evidence, source, trust, and final-assessment context.
 
@@ -305,7 +309,7 @@ The current criterion evidence contract is deliberately explicit:
 
 This read model is not a substitute for production extraction. It defines the UI and artifact surface that future source ingestion should populate. The current demo adds browser-local signal validation on top of the generated artifact: confirmed and unreviewed signals keep their score, corrected signals use an adjusted score, and rejected/stale signals remain visible but contribute `0`.
 
-Signal validation is part of the ICP Radar boundary. A human must be able to confirm, correct, reject, or mark a signal as stale. Validation changes must affect the score and preserve an audit trail explaining why the candidate score changed. In this slice that audit trail is browser-local demo state under `power-web-os-icp-radar-signal-validation`; durable persistence, multi-user audit, and live source re-checking remain future boundaries.
+Signal validation is part of the ICP Radar boundary. A human must be able to confirm, correct, reject, or mark a signal as stale. Validation changes must affect the score and preserve an audit trail explaining why the candidate score changed. Backend review APIs now persist current qualification and signal decisions for live run snapshots, while the frontend still uses browser-local demo state until the frontend API adapter slice. Multi-user audit history and live source re-checking remain future boundaries.
 
 The frontend ICP Radar workspace should be table-first. The main screen is a broad shortlist table with a sticky account column, bounded inline candidate preview, effective score deltas, and a separate candidate detail screen. The detail screen is the intended surface for signal validation actions; the shortlist should stay optimized for scanning and comparison.
 

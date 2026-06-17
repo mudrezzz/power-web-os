@@ -45,3 +45,9 @@ Forbidden behavior:
 worker execution. Clients poll `GET /api/radar-runs/{run_id}` until the run is
 terminal, then read `GET /api/radar-runs/{run_id}/candidates` after output
 exists.
+
+Review endpoints persist current qualification and signal decisions for a
+completed output snapshot. Routes verify that the run, candidate, and reviewed
+finding exist, then delegate decision validation to the application service.
+Use `GET /api/radar-runs/{run_id}/reviews` to read the current overlay and the
+qualification/signal `PUT`/`DELETE` endpoints to save or reset one subject.

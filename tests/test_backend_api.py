@@ -38,7 +38,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-        "version": "0.7.3.1",
+        "version": "0.7.4",
         "environment": "test",
     }
 
@@ -55,7 +55,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.3.1"
+    assert schema["info"]["version"] == "0.7.4"
     for path in [
         "/health",
         "/api/health",
@@ -64,6 +64,9 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
         "/api/radars/{radar_id}/runs",
         "/api/radar-runs/{run_id}",
         "/api/radar-runs/{run_id}/candidates",
+        "/api/radar-runs/{run_id}/reviews",
+        "/api/radar-runs/{run_id}/candidates/{candidate_id}/qualification/{rule_id}/review",
+        "/api/radar-runs/{run_id}/candidates/{candidate_id}/signals/{signal_code}/review",
     ]:
         assert path in schema["paths"]
 
@@ -129,6 +132,47 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert candidate["qualification"][0]["evidence_findings"][0]["why_it_matches_rule"]
     assert candidate["signals"][0]["score_evaluation"]["applied_score"] == 2
 
+    qualification_review = client.put(
+        f"/api/radar-runs/{run['run_id']}/candidates/candidate-a/qualification/rule-q1/review",
+        json={
+            "status": "corrected",
+            "reviewer": "reviewer-a",
+            "comment": "Evidence only partially supports this qualification.",
+            "corrected_assessment": "partially_matches",
+        },
+    )
+    signal_review = client.put(
+        f"/api/radar-runs/{run['run_id']}/candidates/candidate-a/signals/S1/review",
+        json={
+            "status": "corrected",
+            "reviewer": "reviewer-a",
+            "comment": "Signal is present but should be lower strength.",
+            "adjusted_score": 1,
+            "confidence": "medium",
+            "corrected_summary": "Moderate modernization signal.",
+            "evidence_refs": ["src_1"],
+        },
+    )
+
+    assert qualification_review.status_code == 200
+    assert qualification_review.json()["score_impact"]["effective_assessment"] == "partially_matches"
+    assert signal_review.status_code == 200
+    assert signal_review.json()["score_impact"] == {"original_score": 2, "effective_score": 1, "delta": -1}
+
+    reviews = client.get(f"/api/radar-runs/{run['run_id']}/reviews").json()
+    assert [item["subject_type"] for item in reviews["decisions"]] == ["qualification", "signal"]
+
+    reviewed_candidates = client.get(f"/api/radar-runs/{run['run_id']}/candidates").json()
+    reviewed_candidate = reviewed_candidates["candidates"][0]
+    assert reviewed_candidate["qualification"][0]["review_decision"]["status"] == "corrected"
+    assert reviewed_candidate["qualification"][0]["review_decision"]["corrected_assessment"] == "partially_matches"
+    assert reviewed_candidate["signals"][0]["review_decision"]["adjusted_score"] == 1
+
+    reset = client.delete(f"/api/radar-runs/{run['run_id']}/candidates/candidate-a/signals/S1/review")
+    assert reset.status_code == 204
+    after_reset = client.get(f"/api/radar-runs/{run['run_id']}/candidates").json()
+    assert after_reset["candidates"][0]["signals"][0]["review_decision"] is None
+
 
 def test_post_radar_run_idempotency_does_not_enqueue_duplicate(tmp_path: Path) -> None:
     database_url = _create_seeded_database(tmp_path)
@@ -154,6 +198,38 @@ def test_api_missing_and_no_output_cases_return_explicit_statuses(tmp_path: Path
     assert client.get("/api/radar-runs/missing").status_code == 404
     assert client.get("/api/radar-runs/missing/candidates").status_code == 404
     assert client.get("/api/radar-runs/queued-run/candidates").status_code == 409
+    assert client.get("/api/radar-runs/queued-run/reviews").status_code == 200
+    assert client.put(
+        "/api/radar-runs/queued-run/candidates/candidate-a/signals/S1/review",
+        json={"status": "confirmed"},
+    ).status_code == 409
+
+
+def test_review_api_rejects_missing_subject_and_invalid_payload(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    queue = _RecordingJobQueue()
+    app = _app(tmp_path, database_url=database_url, job_queue=queue)
+    client = TestClient(app)
+    run = client.post("/api/radars/toir-quick-live/runs", json={"live": False}).json()
+    execute_radar_run_once(
+        run_id=run["run_id"],
+        live_executor=_FakeExecutor(_artifact()),
+        session_factory=app.state.session_factory,
+    )
+
+    assert client.put(
+        f"/api/radar-runs/{run['run_id']}/candidates/missing/signals/S1/review",
+        json={"status": "confirmed"},
+    ).status_code == 404
+    assert client.put(
+        f"/api/radar-runs/{run['run_id']}/candidates/candidate-a/signals/MISSING/review",
+        json={"status": "confirmed"},
+    ).status_code == 404
+    invalid = client.put(
+        f"/api/radar-runs/{run['run_id']}/candidates/candidate-a/signals/S1/review",
+        json={"status": "stale", "comment": ""},
+    )
+    assert invalid.status_code == 422
 
 
 def _app(

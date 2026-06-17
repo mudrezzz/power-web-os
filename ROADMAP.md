@@ -2034,12 +2034,18 @@ Principles:
 
 ### Slice 0.7.4: Human review persistence
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Persist qualification and signal review decisions in backend state.
 - Scope:
   - Store approve/reject/correct/stale decisions, comments, reviewer, timestamps, and effective score impact.
-  - Replace browser-local overlays for live radar review.
+  - Add backend API support for replacing browser-local overlays in a later frontend slice.
   - Keep fixture/demo local fallback where useful.
+- Completion notes:
+  - Added `radar_review_decisions` with current decision per run/candidate/qualification-or-signal subject.
+  - Added application review records, repository port, and validation service for qualification and signal decisions.
+  - Added API endpoints to save, list, and reset persisted review decisions.
+  - Candidate API DTOs now overlay persisted review decisions without mutating `radar_run_outputs`.
+  - Kept frontend localStorage behavior unchanged until `Slice 0.7.5`.
 
 ### Slice 0.7.5: Frontend API adapter
 
@@ -2606,4 +2612,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.4: Human review persistence`.
+Implement `Slice 0.7.5: Frontend API adapter`.

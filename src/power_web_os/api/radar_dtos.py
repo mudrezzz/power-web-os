@@ -119,6 +119,7 @@ class SignalResponse(BaseModel):
     evidence_findings: list[EvidenceFindingResponse] = Field(default_factory=list)
     cross_validation: dict[str, Any] = Field(default_factory=dict)
     score_evaluation: dict[str, Any] | None = None
+    review_decision: dict[str, Any] | None = None
 
 
 class CandidateScoreResponse(BaseModel):
@@ -153,6 +154,40 @@ class RadarRunCandidatesResponse(BaseModel):
     candidates: list[RadarCandidateResponse]
     sources: list[RadarSourceResponse]
     contract_validation: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class RadarReviewDecisionRequest(BaseModel):
+    status: str
+    reviewer: str = "api"
+    comment: str = ""
+    corrected_assessment: str | None = None
+    adjusted_score: int | None = None
+    confidence: str | None = None
+    corrected_summary: str | None = None
+    evidence_refs: list[str] = Field(default_factory=list)
+    reviewed_at: datetime | None = None
+
+
+class RadarReviewDecisionResponse(BaseModel):
+    decision_id: str
+    run_id: str
+    radar_id: str
+    candidate_id: str
+    subject_type: str
+    subject_id: str
+    status: str
+    reviewer: str
+    comment: str
+    decision_payload: dict[str, Any] = Field(default_factory=dict)
+    score_impact: dict[str, Any] = Field(default_factory=dict)
+    reviewed_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class RadarRunReviewsResponse(BaseModel):
+    run_id: str
+    radar_id: str
+    decisions: list[RadarReviewDecisionResponse] = Field(default_factory=list)
 
 
 RadarSummaryResponse.model_rebuild()

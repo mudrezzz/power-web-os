@@ -86,3 +86,23 @@ class RadarRunOutputRecord:
     artifact_payload: dict[str, Any] = field(default_factory=dict)
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RadarReviewDecisionRecord:
+    """Current human review decision for one persisted live Radar finding."""
+
+    decision_id: str
+    run_id: str
+    radar_id: str
+    candidate_id: str
+    subject_type: str
+    subject_id: str
+    status: str
+    reviewer: str
+    comment: str
+    decision_payload: dict[str, Any] = field(default_factory=dict)
+    score_impact: dict[str, Any] = field(default_factory=dict)
+    reviewed_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None

@@ -15,6 +15,7 @@ from power_web_os.application.radar_records import (
     RadarRunOutputRecord,
     RadarRunRecord,
     RadarRunStatus,
+    RadarReviewDecisionRecord,
 )
 
 
@@ -68,6 +69,32 @@ class RadarRunOutputRepository(Protocol):
     def upsert(self, record: RadarRunOutputRecord) -> RadarRunOutputRecord: ...
 
     def get(self, run_id: str) -> RadarRunOutputRecord | None: ...
+
+
+class RadarReviewDecisionRepository(Protocol):
+    """Application port for current human review decisions on Radar findings."""
+
+    def upsert(self, record: RadarReviewDecisionRecord) -> RadarReviewDecisionRecord: ...
+
+    def get(
+        self,
+        *,
+        run_id: str,
+        candidate_id: str,
+        subject_type: str,
+        subject_id: str,
+    ) -> RadarReviewDecisionRecord | None: ...
+
+    def list_for_run(self, run_id: str) -> tuple[RadarReviewDecisionRecord, ...]: ...
+
+    def delete(
+        self,
+        *,
+        run_id: str,
+        candidate_id: str,
+        subject_type: str,
+        subject_id: str,
+    ) -> bool: ...
 
 
 class JobQueue(Protocol):

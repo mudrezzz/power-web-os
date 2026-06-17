@@ -118,3 +118,37 @@ class RadarRunOutputModel(Base):
     )
 
     run: Mapped[RadarRunModel] = relationship(back_populates="output")
+
+
+class RadarReviewDecisionModel(Base):
+    __tablename__ = "radar_review_decisions"
+    __table_args__ = (
+        CheckConstraint("subject_type in ('qualification', 'signal')", name="ck_radar_review_subject_type"),
+        UniqueConstraint(
+            "run_id",
+            "candidate_id",
+            "subject_type",
+            "subject_id",
+            name="uq_radar_review_decision_subject",
+        ),
+    )
+
+    decision_id: Mapped[str] = mapped_column(String(360), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("radar_runs.run_id"), nullable=False, index=True)
+    radar_id: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    candidate_id: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
+    subject_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    subject_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    reviewer: Mapped[str] = mapped_column(String(160), nullable=False)
+    comment: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    decision_payload_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    score_impact_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
