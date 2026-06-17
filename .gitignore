@@ -32,6 +32,7 @@ Thumbs.db
 
 # Generated demo/output artifacts.
 demo/output/
+frontend/public/demo/live_mini_icp_radar_run.json
 
 # Local bootstrap/reference artifacts not part of the product baseline.
 codex-project-template.zip
