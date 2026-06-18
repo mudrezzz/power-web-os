@@ -18,6 +18,11 @@ provider SDK details.
   and backward-compatible search-plan projection.
 - `live_radar_execution_plan.py` compiles generic Radar definitions into
   qualification-first staged execution plans.
+- `live_radar_discovery_planning.py` owns the discovery planner contracts,
+  deterministic fallback planner, source-policy validation, and product-source
+  visibility helpers.
+- `live_radar_planning_pipeline.py` builds the accepted discovery plan through
+  a planner/validator/revision loop before compiling execution tasks.
 - `live_radar_staged_execution.py` executes staged provider tasks and suppresses
   signal searches for rejected qualification candidates.
 - `live_radar_normalization.py` owns provider-neutral candidate, signal,
@@ -77,6 +82,14 @@ code owns execution strategy: qualification discovery and gates run before
 signal searches, and providers receive bounded tasks instead of the whole Radar
 as one mixed prompt.
 
+Discovery planning follows the same rule. A `RadarDiscoveryPlanner` may propose
+candidate-universe, source-probe, qualification-gate, and coverage-check steps,
+but `RadarDiscoveryPlanValidator` is the backend authority for source policy,
+stage ordering, and accepted execution. If configured global or local source
+bases are present, the accepted plan must select them or explicitly skip them
+with a product-safe reason. Signal search steps are compiled only after the
+accepted qualification plan.
+
 Technical trace persistence follows the same rule: application code emits
 pipeline/provider debug summaries through `RadarRunTechnicalTracer`, which
 redacts payloads before they reach persistence. Provider adapters may emit
@@ -90,8 +103,8 @@ hidden chain-of-thought.
 2. Add or extend a port protocol for persistence, queue, provider, or scheduler
    behavior.
 3. For live Radar workflow behavior, add or extend the execution plan compiler,
-   staged execution helper, or relevant pipeline phase before changing workflow
-   wrappers.
+   discovery planner/validator, staged execution helper, or relevant pipeline
+   phase before changing workflow wrappers.
 4. Implement adapters in the owning infrastructure package, for example
    `persistence`, `integrations`, or `jobs`.
 5. Add contract tests that prove application code imports without infrastructure

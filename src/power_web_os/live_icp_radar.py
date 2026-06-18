@@ -20,6 +20,11 @@ from power_web_os.application.live_radar_contracts import (
     QualificationRequirementEvaluation,
     QualificationReviewDecision,
     QualificationSourceUsage,
+    RadarDiscoveryPlanner,
+    RadarDiscoveryPlanningInput,
+    RadarDiscoveryPlan,
+    RadarDiscoveryPlanStep,
+    RadarDiscoveryPlanValidationResult,
     RadarExecutionPlan,
     RadarExecutionTask,
     RadarSearchPlan,
@@ -40,6 +45,10 @@ from power_web_os.application.live_radar_normalization import (
     _rank_candidates,
     normalize_live_candidate,
     validate_live_radar_qualification_contract,
+)
+from power_web_os.integrations.openrouter_discovery_planner import (
+    OpenRouterDiscoveryPlanner,
+    build_openrouter_discovery_planner_request,
 )
 from power_web_os.integrations.live_radar_openrouter import (
     OpenRouterWebSearchProvider,
@@ -65,6 +74,7 @@ __all__ = [
     "LiveRadarScore",
     "LiveRadarSignalResult",
     "OpenRouterWebSearchProvider",
+    "OpenRouterDiscoveryPlanner",
     "QualificationContractIssue",
     "QualificationCrossValidation",
     "QualificationEvidenceFinding",
@@ -72,6 +82,11 @@ __all__ = [
     "QualificationReviewDecision",
     "QualificationSourceUsage",
     "RadarExecutionPlan",
+    "RadarDiscoveryPlanner",
+    "RadarDiscoveryPlanningInput",
+    "RadarDiscoveryPlan",
+    "RadarDiscoveryPlanStep",
+    "RadarDiscoveryPlanValidationResult",
     "RadarExecutionTask",
     "RadarSearchPlan",
     "RadarSearchQuery",

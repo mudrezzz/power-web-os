@@ -15,7 +15,7 @@ from power_web_os.application.live_radar_contracts import (
     LiveRadarExtractionResult,
     LiveICPRadarRunState,
     LiveRadarPipelineEvent,
-    LiveRadarPlanningResult,
+    RadarDiscoveryPlanner,
     RadarExecutionPlan,
     LiveRadarRunArtifact,
     LiveRadarValidationResult,
@@ -24,10 +24,8 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProvider,
 )
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition, build_live_mini_radar_search_plan
-from power_web_os.application.live_radar_execution_plan import (
-    compile_radar_execution_plan,
-    execution_plan_to_search_plan,
-)
+from power_web_os.application.live_radar_discovery_planning import DeterministicRadarDiscoveryPlanner, product_sources_for_candidates
+from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_plan_to_search_plan
 from power_web_os.application.live_radar_normalization import (
     _dedupe_sources,
     _rank_candidates,
@@ -36,18 +34,19 @@ from power_web_os.application.live_radar_normalization import (
 )
 from power_web_os.application.live_radar_pipeline_support import (
     candidate_rejected as _candidate_rejected,
-    planned_event_type as _planned_event_type,
     rejected_candidate_payload as _rejected_candidate_payload,
     trace_pipeline_step as _trace,
 )
+from power_web_os.application.live_radar_planning_pipeline import build_planned_state
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
 
 
 class LiveRadarRunService:
     """Provider-neutral planner/executor/evaluator pipeline for live Radar."""
 
-    def __init__(self, provider: WebSearchProvider) -> None:
+    def __init__(self, provider: WebSearchProvider, *, discovery_planner: RadarDiscoveryPlanner | None = None) -> None:
         self._provider = provider
+        self._discovery_planner = discovery_planner or DeterministicRadarDiscoveryPlanner()
 
     def run(
         self,
@@ -74,66 +73,7 @@ class LiveRadarRunService:
         )
 
     def build_search_plan(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
-        _trace(
-            state, "planning", "build_search_plan", "pipeline_input", "Build search plan input",
-            payload={"task_context": state.task_context, "has_existing_radar": state.radar is not None},
-        )
-        radar = state.radar or build_live_mini_radar_definition()
-        execution_plan = compile_radar_execution_plan(radar)
-        plan = execution_plan_to_search_plan(execution_plan)
-        result = LiveRadarPlanningResult(
-            radar=radar,
-            search_plan=plan,
-            events=[
-                LiveRadarPipelineEvent(
-                    event_type="plan_created",
-                    phase="planning",
-                    actor="workflow",
-                    node_name="build_search_plan",
-                    summary=f"Qualification-first Radar plan prepared with {len(execution_plan.tasks)} tasks.",
-                    payload={
-                        "query_count": len(plan.queries),
-                        "task_count": len(execution_plan.tasks),
-                        "radar_id": plan.radar_id,
-                        "execution_plan": execution_plan.model_dump(),
-                    },
-                ),
-                *[
-                    LiveRadarPipelineEvent(
-                        event_type=_planned_event_type(query.stage),
-                        phase="planning",
-                        actor="workflow",
-                        node_name=query.query_id,
-                        summary=query.query,
-                        payload={
-                            "stage": query.stage,
-                            "subject_type": query.subject_type,
-                            "subject_id": query.subject_id,
-                            "purpose": query.purpose,
-                            "expected_evidence": list(query.expected_evidence),
-                            "depends_on": list(query.depends_on),
-                        },
-                    )
-                    for query in plan.queries
-                ],
-            ],
-        )
-        next_state = state.model_copy(update={
-            "radar": result.radar,
-            "search_plan": result.search_plan.model_dump(),
-            "execution_plan": execution_plan.model_dump(),
-            "pipeline_events": _append_events(state, result.events),
-        })
-        _trace(
-            next_state, "planning", "build_search_plan", "pipeline_output", "Build search plan output",
-            summary=f"Built {len(execution_plan.tasks)} staged search tasks.",
-            payload={
-                "radar_id": plan.radar_id,
-                "execution_plan": execution_plan.model_dump(),
-                "queries": [query.model_dump() for query in plan.queries],
-            },
-        )
-        return next_state
+        return build_planned_state(state=state, planner=self._discovery_planner)
 
     def run_web_search(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
         radar = state.radar or build_live_mini_radar_definition()
@@ -241,8 +181,12 @@ class LiveRadarRunService:
         ])
         visible_candidates = [candidate for candidate in candidates if not _candidate_rejected(candidate)]
         rejected_candidates = [_rejected_candidate_payload(candidate) for candidate in candidates if _candidate_rejected(candidate)]
-        result = LiveRadarExtractionResult(
+        product_sources, analyzed_sources = product_sources_for_candidates(
             sources=sources,
+            candidates=[candidate.model_dump() for candidate in visible_candidates],
+        )
+        result = LiveRadarExtractionResult(
+            sources=product_sources,
             candidates=visible_candidates,
             events=[
                 LiveRadarPipelineEvent(
@@ -259,8 +203,12 @@ class LiveRadarRunService:
         execution_results = {
             **state.execution_results,
             "rejected_candidates": rejected_candidates or state.execution_results.get("rejected_candidates", []),
+            "analyzed_sources": analyzed_sources,
+            "analyzed_source_count": len(analyzed_sources),
+            "used_source_count": len(product_sources),
         }
         next_state = state.model_copy(update={
+            "sources": [item.model_dump() for item in result.sources],
             "candidates": [item.model_dump() for item in result.candidates],
             "execution_results": execution_results,
             "pipeline_events": _append_events(state, result.events),
@@ -271,11 +219,14 @@ class LiveRadarRunService:
             payload={
                 "candidate_count": len(visible_candidates),
                 "rejected_candidate_count": len(rejected_candidates),
+                "used_source_count": len(product_sources),
+                "analyzed_source_count": len(analyzed_sources),
                 "candidates": [
                     {"candidate_id": item.candidate_id, "legal_name": item.legal_name, "evidence_refs": list(item.evidence_refs)}
                     for item in visible_candidates
                 ],
                 "rejected_candidates": rejected_candidates,
+                "analyzed_sources": analyzed_sources,
             },
         )
         return next_state
@@ -483,6 +434,7 @@ class LiveRadarRunService:
             "query_count": len(state.search_plan["queries"]) if state.search_plan else 0,
             "source_count": len(state.sources),
             "candidate_count": len(state.candidates),
+            "discovery_plan": state.discovery_plan or {},
             "execution_plan": state.execution_plan or {},
             "execution_results": dict(state.execution_results),
             "run_at": _now_iso(),

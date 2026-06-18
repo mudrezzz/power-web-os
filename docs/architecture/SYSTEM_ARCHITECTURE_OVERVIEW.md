@@ -184,6 +184,25 @@ emit structured event summaries that are persisted through `RadarRunJournal`;
 older artifact-derived journal mapping remains only a compatibility fallback
 for existing snapshots.
 
+Discovery strategy itself is now a bounded planning loop. The application layer
+builds `RadarDiscoveryPlanningInput` from the active definition, qualification
+rules, global/local source policy, task context, and run limits. A planner port
+may ask OpenRouter for a structured JSON discovery plan, but the backend
+validator accepts or rejects it. Accepted plans must respect configured source
+policy, select or explicitly skip configured source bases with rationale, keep
+qualification discovery separate from signals, and stay within run step limits.
+If the first plan is invalid, one sanitized revision attempt is allowed; an
+invalid revised plan fails clearly rather than falling back to a broad search.
+This keeps the logic generic for holding-contour, industry/region/revenue, and
+registry/source-constrained radars without hardcoding the SIBUR case.
+
+Source visibility is split by audience. Product APIs and dossier source lists
+use only evidence-bearing `used_sources`: sources used for candidate identity,
+qualification evidence, signal evidence, validation warnings, or score
+rationale. Sources analyzed but not used stay in execution metadata and the
+sanitized technical trace with reasons such as duplicate, irrelevant,
+policy-skipped, insufficient evidence, unreachable, or not used by a candidate.
+
 `GET /api/radar-runs/{run_id}/journal` returns ordered structured audit events.
 The journal is not raw hidden chain-of-thought. Application services reject
 payload keys such as `chain_of_thought`, `hidden_reasoning`, and
@@ -197,7 +216,10 @@ output snapshot, source usage links, validation issues, review overlay counts,
 and non-debug journal events into a readable dossier. Queued, running, and
 failed runs can return a partial dossier with `output_state`; the candidates
 endpoint still returns `409` until output exists. The dossier is intentionally
-not a technical trace.
+not a technical trace. For completed API-backed runs, it also exposes the
+accepted discovery plan, selected/skipped source-base decisions, coverage
+summary, and used/analyzed/skipped source counts so users can inspect why the
+Radar searched the way it did.
 
 `GET /api/radar-runs/{run_id}/technical-trace` is the developer/admin
 inspection projection. It reads append-only sanitized traces for pipeline

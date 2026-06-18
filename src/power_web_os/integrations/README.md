@@ -7,6 +7,9 @@ CRM tools, and other network-facing infrastructure.
 
 - `openrouter_request_builder.py` owns bounded OpenRouter prompt/request
   shaping for one Radar execution task.
+- `openrouter_discovery_planner.py` owns the OpenRouter adapter for structured
+  discovery-plan proposals. It does not execute web search and does not decide
+  candidate truth.
 - `live_radar_openrouter.py` owns the OpenRouter request/response adapter for
   the live mini ICP Radar.
 - Recorded provider adapters used by tests may live here when they implement the
@@ -35,6 +38,10 @@ They must never store headers, API keys, or raw hidden chain-of-thought.
 OpenRouter requests must stay scoped to the current execution task: qualification
 tasks must not include intent signals, and signal tasks must not discover new
 candidates.
+OpenRouter planner requests are a separate boundary: they receive Radar
+settings, qualification rules, source policy, and task context, then return a
+JSON discovery plan for backend validation. Planner output is advisory until the
+application validator accepts it.
 
 ## How To Extend
 

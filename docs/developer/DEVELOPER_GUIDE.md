@@ -344,9 +344,18 @@ Rules:
   workflow wrapper. The workflow wrapper maps runtime nodes onto those phases;
   it must not become the owner of provider calls, scoring semantics, review
   decisions, or persistence.
+- Discovery strategy is planned separately from execution. Add or modify
+  `RadarDiscoveryPlanningInput`, `RadarDiscoveryPlanner`, and
+  `RadarDiscoveryPlanValidator` when the system needs smarter candidate-universe
+  planning. The LLM planner proposes source bases, bounded steps, expected
+  evidence, and coverage hypotheses; backend validation remains authoritative
+  for source policy, stage ordering, and accepted execution.
 - Qualification tasks and signal tasks must remain separate. Provider adapters
   execute one bounded task at a time; application services own stage ordering
   and rejected-candidate signal suppression.
+- Product source lists must contain only evidence-bearing used sources. Keep
+  analyzed/skipped sources in execution metadata or sanitized technical trace so
+  users see clean evidence while developers can debug source selection.
 - Structured journal events should come from pipeline phase outputs through
   `RadarRunJournal`. Artifact-derived journal mapping exists only as a
   backward-compatible fallback for older snapshots and fake test executors.

@@ -118,6 +118,12 @@ universe, applies required qualification gates in order, and only then runs
 signal searches for candidates that were not rejected by those gates. This is a
 generic execution plan compiled from the active radar definition, not a
 SIBUR-specific script.
+Discovery is also planned before execution. The backend asks the planner for a
+structured candidate-universe strategy, validates it against the radar source
+policy, allows one revision if needed, and executes only accepted bounded tasks.
+The normal product source list shows only sources that went into candidate,
+qualification, signal, validation, or scoring evidence. Analyzed-but-unused
+sources remain in the technical trace for debugging.
 
 The local API can expose the same persisted backend state:
 
@@ -151,10 +157,11 @@ fixture/offline fallback state.
 
 The backend also exposes `GET /api/radar-runs/{run_id}/dossier`. The frontend
 uses it in the live Radar detail `Journal` tab as the product run dossier:
-run context, definition version, task context, staged qualification-first search
-plan, source usage, validation warnings, and non-debug timeline events. This is
-not the admin technical trace; provider prompts, raw requests/responses, and
-debug payloads remain out of this product view.
+run context, definition version, task context, discovery strategy, selected or
+skipped source bases, coverage summary, staged qualification-first search plan,
+source usage, validation warnings, and non-debug timeline events. This is not
+the admin technical trace; provider prompts, raw requests/responses, analyzed
+unused sources, and debug payloads remain out of this product view.
 
 For local developer inspection, the backend exposes
 `GET /api/radar-runs/{run_id}/technical-trace`. API-backed live runs show it in a

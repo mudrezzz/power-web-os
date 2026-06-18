@@ -2334,7 +2334,7 @@ Principles:
 
 ### Slice 0.7.6.1.4: LLM-planned discovery strategy and source policy
 
-- Status: `Ready`
+- Status: `Done`
 - Goal: Make candidate-universe discovery a real planning process instead of a
   single generated query, while keeping the strategy generic across Radar
   definitions.
@@ -2427,6 +2427,25 @@ Principles:
     measure both.
   - Planner validation can become too permissive; keep backend-side policy
     checks explicit and covered by tests.
+- Completed:
+  - Added `RadarDiscoveryPlanningInput`, `RadarDiscoveryPlan`,
+    `RadarDiscoveryPlanStep`, planner port, deterministic fallback planner, and
+    backend `RadarDiscoveryPlanValidator`.
+  - Added OpenRouter discovery planner adapter as a separate integration path
+    from provider search/extraction.
+  - Reworked live Radar planning into initial plan, backend validation, one
+    revision attempt, accepted execution-plan compilation, and clear failure
+    when revised plans remain invalid.
+  - Kept qualification-first execution: candidate universe discovery and gates
+    run before signal searches; signal searches still run only for
+    non-rejected candidates.
+  - Split product and technical source visibility: product output/dossier
+    sources are evidence-bearing used sources, while analyzed-but-unused
+    sources remain in execution metadata and technical trace.
+  - Extended dossier/API/frontend Journal view with discovery strategy,
+    selected/skipped source bases, coverage summary, and used/analyzed/skipped
+    source counts.
+  - Added ADR `2026-06-18-llm-planned-radar-discovery.md`.
 
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 

@@ -266,6 +266,9 @@ class RadarRunDossierQueryResponse(BaseModel):
     subject_type: str | None = None
     subject_id: str | None = None
     rule_snapshot: str = ""
+    source_scope: str = "additional"
+    source_ids: list[str] = Field(default_factory=list)
+    external_source_hints: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)
     candidate_scope: list[str] = Field(default_factory=list)
     source_count: int = 0
@@ -297,6 +300,8 @@ class RadarRunDossierSummaryResponse(BaseModel):
     query_count: int = 0
     source_count: int = 0
     used_source_count: int = 0
+    analyzed_source_count: int = 0
+    skipped_source_count: int = 0
     candidate_count: int = 0
     validation_issue_count: int = 0
     review_flag_count: int = 0
@@ -306,6 +311,9 @@ class RadarRunDossierResponse(BaseModel):
     run_context: RadarRunDossierContextResponse
     radar_snapshot: dict[str, Any] = Field(default_factory=dict)
     definition_snapshot: RadarRunDossierDefinitionResponse | None = None
+    discovery_plan: dict[str, Any] = Field(default_factory=dict)
+    source_policy_decisions: list[dict[str, Any]] = Field(default_factory=list)
+    coverage_summary: dict[str, Any] = Field(default_factory=dict)
     search_plan: list[RadarRunDossierQueryResponse] = Field(default_factory=list)
     sources: list[RadarRunDossierSourceResponse] = Field(default_factory=list)
     validation: list[dict[str, Any]] = Field(default_factory=list)

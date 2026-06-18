@@ -41,7 +41,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-        "version": "0.7.6.1.3",
+        "version": "0.7.6.1.4",
         "environment": "test",
     }
 
@@ -58,7 +58,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.6.1.3"
+    assert schema["info"]["version"] == "0.7.6.1.4"
     for path in [
         "/health",
         "/api/health",
@@ -172,6 +172,13 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["run_context"]["requester"] == "test"
     assert dossier["summary"]["output_state"] == "available"
     assert dossier["summary"]["query_count"] == 1
+    assert dossier["summary"]["used_source_count"] == 1
+    assert dossier["summary"]["analyzed_source_count"] == 1
+    assert dossier["summary"]["skipped_source_count"] == 1
+    assert dossier["discovery_plan"]["plan_summary"] == "Test discovery plan."
+    assert dossier["discovery_plan"]["steps"][0]["stage"] == "candidate_universe_discovery"
+    assert dossier["source_policy_decisions"][0]["decision"] == "selected"
+    assert dossier["coverage_summary"]["analyzed_source_reasons"] == ["not_used_by_candidate"]
     assert dossier["search_plan"][0]["query_id"] == "q1"
     assert dossier["search_plan"][0]["source_refs"] == ["src_1"]
     assert dossier["search_plan"][0]["candidate_refs"] == ["candidate-a"]
@@ -383,7 +390,61 @@ def _artifact() -> dict[str, Any]:
         "artifact_type": "icp_radar_live_run",
         "artifact_version": "0.6.3.4",
         "radar": {"radar_id": "toir-quick-live", "name": "TOIR Quick Live Radar"},
-        "run_metadata": {"runtime": "recorded", "candidate_count": 1, "source_count": 1},
+        "run_metadata": {
+            "runtime": "recorded",
+            "candidate_count": 1,
+            "source_count": 1,
+            "discovery_plan": {
+                "plan_summary": "Test discovery plan.",
+                "steps": [
+                    {
+                        "step_id": "discover-q1",
+                        "stage": "candidate_universe_discovery",
+                        "subject_rule_ids": ["rule-q1"],
+                        "source_scope": "global",
+                        "source_ids": ["registry"],
+                        "query": "Candidate A target group",
+                        "purpose": "Find candidate universe.",
+                        "expected_evidence": ["target group relationship"],
+                        "acceptance_criteria": ["Candidate belongs to target group."],
+                    }
+                ],
+                "source_policy_decisions": [
+                    {
+                        "source_id": "registry",
+                        "source_label": "Registry",
+                        "decision": "selected",
+                        "reason": "Best source for legal entity identity.",
+                        "rule_ids": ["rule-q1"],
+                    },
+                    {
+                        "source_id": "open-web",
+                        "source_label": "Open web",
+                        "decision": "skipped",
+                        "reason": "Registry is sufficient for this fixture.",
+                        "rule_ids": ["rule-q1"],
+                    },
+                ],
+                "coverage_hypotheses": [
+                    {
+                        "summary": "Registry should cover the candidate universe.",
+                        "expected_candidate_count": "1",
+                        "completeness_risk": "low",
+                    }
+                ],
+                "warnings": [],
+            },
+            "execution_results": {
+                "analyzed_source_count": 1,
+                "used_source_count": 1,
+                "analyzed_sources": [
+                    {
+                        "evidence_ref": "unused_src",
+                        "reason": "not_used_by_candidate",
+                    }
+                ],
+            },
+        },
         "search_plan": {
             "radar_id": "toir-quick-live",
             "queries": [

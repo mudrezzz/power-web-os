@@ -12,6 +12,7 @@ from power_web_os.icp_radar_catalog import build_icp_radar_catalog
 from power_web_os.icp_radar_xlsx import load_icp_radar_workbook
 from power_web_os.live_icp_radar import (
     OpenRouterWebSearchProvider,
+    OpenRouterDiscoveryPlanner,
     build_live_mini_radar_artifact,
     build_live_mini_radar_search_plan_artifact,
 )
@@ -203,6 +204,7 @@ def generate_live_mini_icp_radar_artifact(
 ) -> dict[str, Any]:
     artifact = build_live_mini_radar_artifact(
         provider=OpenRouterWebSearchProvider(),
+        discovery_planner=OpenRouterDiscoveryPlanner(),
         live=True,
     )
     _assert_no_secrets(artifact)
@@ -237,7 +239,10 @@ def generate_persisted_live_mini_icp_radar_artifact(
         service = PersistedLiveRadarRunService(
             run_repository=SqlAlchemyRadarRunRepository(session),
             output_repository=SqlAlchemyRadarRunOutputRepository(session),
-            executor=WorkflowLiveRadarArtifactExecutor(provider=OpenRouterWebSearchProvider()),
+            executor=WorkflowLiveRadarArtifactExecutor(
+                provider=OpenRouterWebSearchProvider(),
+                discovery_planner=OpenRouterDiscoveryPlanner(),
+            ),
         )
         result = service.run(PersistedLiveRadarRunCommand(live=True))
 

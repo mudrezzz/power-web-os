@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from power_web_os.application.live_radar_contracts import LiveICPRadarRunState, WebSearchProvider
+from power_web_os.application.live_radar_contracts import LiveICPRadarRunState, RadarDiscoveryPlanner, WebSearchProvider
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition
 from power_web_os.application.live_radar_service import LiveRadarRunService
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTracer, technical_trace_context
@@ -29,11 +29,12 @@ except Exception:  # pragma: no cover - normal path for base install.
 def build_live_mini_radar_artifact(
     *,
     provider: WebSearchProvider,
+    discovery_planner: RadarDiscoveryPlanner | None = None,
     live: bool,
     task_context: dict[str, Any] | None = None,
     technical_tracer: RadarRunTechnicalTracer | None = None,
 ) -> dict[str, Any]:
-    workflow = LiveICPRadarRunWorkflow(provider=provider)
+    workflow = LiveICPRadarRunWorkflow(provider=provider, discovery_planner=discovery_planner)
     state = LiveICPRadarRunState(
         task_context=task_context or {
             "task_id": "live-mini-icp-radar",
@@ -51,10 +52,10 @@ def build_live_mini_radar_artifact(
 
 
 class _FallbackLiveICPRadarRunWorkflow:
-    def __init__(self, provider: WebSearchProvider | None = None, **_: Any) -> None:
+    def __init__(self, provider: WebSearchProvider | None = None, discovery_planner: RadarDiscoveryPlanner | None = None, **_: Any) -> None:
         self._provider = provider or RecordedWebSearchProvider({"sources": [], "candidate_observations": []})
         self._runtime_mode = "local_fallback"
-        self._service = LiveRadarRunService(self._provider)
+        self._service = LiveRadarRunService(self._provider, discovery_planner=discovery_planner)
 
     def compile(self) -> dict[str, Any]:
         return {
@@ -121,6 +122,7 @@ if FRAMEWORK_AVAILABLE:
         def __init__(
             self,
             provider: WebSearchProvider | None = None,
+            discovery_planner: RadarDiscoveryPlanner | None = None,
             *,
             use_langgraph_runtime: bool = True,
             checkpointer: object | None = None,
@@ -131,7 +133,7 @@ if FRAMEWORK_AVAILABLE:
                 checkpointer=checkpointer,
                 node_event_sink=node_event_sink,
             )
-            self._fallback = _FallbackLiveICPRadarRunWorkflow(provider=provider)
+            self._fallback = _FallbackLiveICPRadarRunWorkflow(provider=provider, discovery_planner=discovery_planner)
             self.compile()
 
         def state_schema(self) -> type[LiveICPRadarRunState]:

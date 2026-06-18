@@ -22,6 +22,7 @@ from power_web_os.application.persisted_live_radar import (
 from power_web_os.application.ports import JobQueue, LiveRadarArtifactExecutor, RadarRunScheduler
 from power_web_os.application.radar_run_journal import RadarRunJournal
 from power_web_os.application.radar_records import RadarRunRecord
+from power_web_os.integrations.openrouter_discovery_planner import OpenRouterDiscoveryPlanner
 from power_web_os.integrations.live_radar_openrouter import OpenRouterWebSearchProvider
 from power_web_os.persistence import (
     SqlAlchemyRadarRunOutputRepository,
@@ -59,6 +60,7 @@ def default_live_executor(
 ) -> LiveRadarArtifactExecutor:
     return WorkflowLiveRadarArtifactExecutor(
         provider=OpenRouterWebSearchProvider(),
+        discovery_planner=OpenRouterDiscoveryPlanner(),
         technical_trace_repository=technical_trace_repository,
     )
 

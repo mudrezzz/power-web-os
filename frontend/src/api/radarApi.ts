@@ -219,6 +219,9 @@ export type RadarRunDossierQueryDto = {
   subject_type?: string | null;
   subject_id?: string | null;
   rule_snapshot?: string;
+  source_scope: string;
+  source_ids: string[];
+  external_source_hints: string[];
   depends_on?: string[];
   candidate_scope?: string[];
   source_count: number;
@@ -250,6 +253,8 @@ export type RadarRunDossierSummaryDto = {
   query_count: number;
   source_count: number;
   used_source_count: number;
+  analyzed_source_count: number;
+  skipped_source_count: number;
   candidate_count: number;
   validation_issue_count: number;
   review_flag_count: number;
@@ -259,6 +264,9 @@ export type RadarRunDossierDto = {
   run_context: RadarRunDossierContextDto;
   radar_snapshot: Record<string, unknown>;
   definition_snapshot: RadarRunDossierDefinitionDto | null;
+  discovery_plan: Record<string, unknown>;
+  source_policy_decisions: Array<Record<string, unknown>>;
+  coverage_summary: Record<string, unknown>;
   search_plan: RadarRunDossierQueryDto[];
   sources: RadarRunDossierSourceDto[];
   validation: Array<Record<string, unknown>>;

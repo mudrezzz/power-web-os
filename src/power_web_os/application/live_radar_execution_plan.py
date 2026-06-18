@@ -91,6 +91,9 @@ def execution_task_to_query(task: RadarExecutionTask) -> RadarSearchQuery:
         subject_type=task.subject_type,
         subject_id=task.subject_id,
         rule_snapshot=task.rule_snapshot,
+        source_scope=task.source_scope,
+        source_ids=list(task.source_ids),
+        external_source_hints=list(task.external_source_hints),
         depends_on=list(task.depends_on),
         candidate_scope=list(task.candidate_scope),
     )

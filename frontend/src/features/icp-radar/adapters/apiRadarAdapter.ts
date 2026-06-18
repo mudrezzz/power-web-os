@@ -129,6 +129,9 @@ export function apiRunToLiveArtifact(
         subject_type: query.subject_type,
         subject_id: query.subject_id,
         rule_snapshot: query.rule_snapshot,
+        source_scope: query.source_scope,
+        source_ids: query.source_ids,
+        external_source_hints: query.external_source_hints,
         depends_on: query.depends_on,
         candidate_scope: query.candidate_scope,
       })) ?? [],
@@ -224,6 +227,37 @@ function runDossier(dossier: RadarRunDossierDto): LiveRadarRunDossier {
     run_context: dossier.run_context,
     radar_snapshot: dossier.radar_snapshot,
     definition_snapshot: dossier.definition_snapshot,
+    discovery_plan: {
+      ...dossier.discovery_plan,
+      plan_summary: stringField(dossier.discovery_plan.plan_summary, ''),
+      steps: arrayField(dossier.discovery_plan.steps).map((item) => ({
+        step_id: stringField(item.step_id, ''),
+        stage: stringField(item.stage, ''),
+        subject_rule_ids: stringArray(item.subject_rule_ids),
+        source_scope: stringField(item.source_scope, ''),
+        source_ids: stringArray(item.source_ids),
+        query: stringField(item.query, ''),
+        purpose: stringField(item.purpose, ''),
+        expected_evidence: stringArray(item.expected_evidence),
+        acceptance_criteria: stringArray(item.acceptance_criteria),
+        skip_rationale: nullableString(item.skip_rationale),
+        depends_on: stringArray(item.depends_on),
+        candidate_scope: stringArray(item.candidate_scope),
+      })),
+      source_policy_decisions: arrayField(dossier.discovery_plan.source_policy_decisions).map(sourcePolicyDecision),
+      coverage_hypotheses: arrayField(dossier.discovery_plan.coverage_hypotheses),
+      warnings: stringArray(dossier.discovery_plan.warnings),
+    },
+    source_policy_decisions: dossier.source_policy_decisions.map(sourcePolicyDecision),
+    coverage_summary: {
+      ...dossier.coverage_summary,
+      hypotheses: arrayField(dossier.coverage_summary.hypotheses),
+      warnings: stringArray(dossier.coverage_summary.warnings),
+      analyzed_source_count: numberField(dossier.coverage_summary.analyzed_source_count, dossier.summary.analyzed_source_count),
+      used_source_count: numberField(dossier.coverage_summary.used_source_count, dossier.summary.used_source_count),
+      rejected_candidate_count: numberField(dossier.coverage_summary.rejected_candidate_count, 0),
+      analyzed_source_reasons: stringArray(dossier.coverage_summary.analyzed_source_reasons),
+    },
     search_plan: dossier.search_plan,
     sources: dossier.sources,
     validation: dossier.validation,
@@ -243,6 +277,16 @@ function runDossier(dossier: RadarRunDossierDto): LiveRadarRunDossier {
       created_at: event.created_at,
     })),
     summary: dossier.summary,
+  };
+}
+
+function sourcePolicyDecision(value: Record<string, unknown>) {
+  return {
+    source_id: stringField(value.source_id, ''),
+    source_label: stringField(value.source_label, ''),
+    decision: stringField(value.decision, ''),
+    reason: stringField(value.reason, ''),
+    rule_ids: stringArray(value.rule_ids),
   };
 }
 
@@ -489,4 +533,12 @@ function nullableString(value: unknown) {
 
 function numberField(value: unknown, fallback: number) {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function arrayField(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => item !== null && typeof item === 'object' && !Array.isArray(item)) : [];
+}
+
+function stringArray(value: unknown) {
+  return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
 }

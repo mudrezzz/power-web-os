@@ -34,18 +34,28 @@ def dossier_response(
     artifact = output.artifact_payload if output is not None else {}
     candidates = _list(artifact.get("candidates"))
     sources = _list(artifact.get("sources"))
+    run_metadata = _dict(artifact.get("run_metadata"))
+    discovery_plan = _dict(run_metadata.get("discovery_plan"))
+    execution_results = _dict(run_metadata.get("execution_results"))
+    source_policy_decisions = _list(discovery_plan.get("source_policy_decisions"))
+    coverage_summary = _coverage_summary(discovery_plan, execution_results)
     source_usage_index = _source_usage_index(candidates)
     queries = _dossier_queries(output.search_plan_payload if output is not None else {}, sources, source_usage_index)
     source_responses = [_dossier_source_response(item, source_usage_index=source_usage_index) for item in sources]
     validation = _list(artifact.get("contract_validation")) or (output.contract_validation_payload if output is not None else [])
     timeline = [journal_event_response(event) for event in events if event.visibility != "debug"]
     used_source_count = sum(1 for item in source_responses if item.usage_status == "used")
+    analyzed_source_count = _int(execution_results.get("analyzed_source_count"), default=0)
+    skipped_source_count = sum(1 for item in source_policy_decisions if str(item.get("decision")) == "skipped")
     review_flag_count = sum(len([flag for flag in item.get("review_flags", []) if isinstance(flag, str)]) for item in candidates)
 
     return RadarRunDossierResponse(
         run_context=_dossier_context(run),
         radar_snapshot=_dict(artifact.get("radar")) or _definition_payload_summary(active_definition),
         definition_snapshot=_definition_snapshot(active_definition),
+        discovery_plan=discovery_plan,
+        source_policy_decisions=source_policy_decisions,
+        coverage_summary=coverage_summary,
         search_plan=queries,
         sources=source_responses,
         validation=validation,
@@ -55,6 +65,8 @@ def dossier_response(
             query_count=len(queries),
             source_count=len(source_responses),
             used_source_count=used_source_count,
+            analyzed_source_count=analyzed_source_count,
+            skipped_source_count=skipped_source_count,
             candidate_count=len(candidates),
             validation_issue_count=len(validation),
             review_flag_count=review_flag_count + len(reviews),
@@ -107,6 +119,29 @@ def _definition_payload_summary(record: RadarDefinitionRecord | None) -> dict[st
     }
 
 
+def _coverage_summary(discovery_plan: dict[str, Any], execution_results: dict[str, Any]) -> dict[str, Any]:
+    hypotheses = _list(discovery_plan.get("coverage_hypotheses"))
+    warnings = [
+        str(value)
+        for value in discovery_plan.get("warnings", [])
+        if isinstance(value, str) and value.strip()
+    ]
+    analyzed_sources = _list(execution_results.get("analyzed_sources"))
+    rejected_candidates = _list(execution_results.get("rejected_candidates"))
+    return {
+        "hypotheses": hypotheses,
+        "warnings": warnings,
+        "analyzed_source_count": _int(execution_results.get("analyzed_source_count"), default=len(analyzed_sources)),
+        "used_source_count": _int(execution_results.get("used_source_count"), default=0),
+        "rejected_candidate_count": len(rejected_candidates),
+        "analyzed_source_reasons": sorted({
+            str(item.get("reason"))
+            for item in analyzed_sources
+            if str(item.get("reason", "")).strip()
+        }),
+    }
+
+
 def _dossier_queries(
     search_plan: dict[str, Any],
     sources: list[dict[str, Any]],
@@ -132,6 +167,9 @@ def _dossier_queries(
                 subject_type=str(item.get("subject_type")) if item.get("subject_type") is not None else None,
                 subject_id=str(item.get("subject_id")) if item.get("subject_id") is not None else None,
                 rule_snapshot=str(item.get("rule_snapshot") or ""),
+                source_scope=str(item.get("source_scope") or "additional"),
+                source_ids=[str(value) for value in item.get("source_ids", []) if isinstance(value, str)],
+                external_source_hints=[str(value) for value in item.get("external_source_hints", []) if isinstance(value, str)],
                 depends_on=[str(value) for value in item.get("depends_on", []) if isinstance(value, str)],
                 candidate_scope=[str(value) for value in item.get("candidate_scope", []) if isinstance(value, str)],
                 source_count=len(source_refs),
@@ -237,3 +275,7 @@ def _list(value: object) -> list[dict[str, Any]]:
 
 def _dict(value: object) -> dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
+
+
+def _int(value: object, *, default: int) -> int:
+    return value if isinstance(value, int) and not isinstance(value, bool) else default

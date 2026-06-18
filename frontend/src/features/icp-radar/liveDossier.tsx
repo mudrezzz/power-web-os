@@ -73,6 +73,15 @@ export function LiveRunDossierPanel({
   const { t } = useTranslation();
   const taskContextEntries = readableEntries(dossier.run_context.task_context);
   const visibleTimeline = dossier.timeline.filter((event) => event.visibility !== 'debug');
+  const discoverySteps = dossier.discovery_plan.steps ?? [];
+  const sourcePolicyDecisions = dossier.source_policy_decisions.length > 0
+    ? dossier.source_policy_decisions
+    : dossier.discovery_plan.source_policy_decisions ?? [];
+  const coverageWarnings = [
+    ...(dossier.coverage_summary.warnings ?? []),
+    ...(dossier.discovery_plan.warnings ?? []),
+  ].filter(Boolean);
+  const coverageHypotheses = dossier.coverage_summary.hypotheses ?? dossier.discovery_plan.coverage_hypotheses ?? [];
   return (
     <div className="run-dossier">
       <section className="run-dossier-section">
@@ -125,6 +134,88 @@ export function LiveRunDossierPanel({
       </section>
 
       <section className="run-dossier-section">
+        <h3>{t('icpRadar.live.dossier.discoveryPlan')}</h3>
+        <div className="run-dossier-grid">
+          <DossierMetric label={t('icpRadar.live.dossier.usedSources')} value={dossier.summary.used_source_count} />
+          <DossierMetric label={t('icpRadar.live.dossier.analyzedSources')} value={dossier.summary.analyzed_source_count} />
+          <DossierMetric label={t('icpRadar.live.dossier.skippedSources')} value={dossier.summary.skipped_source_count} />
+          <DossierMetric label={t('icpRadar.live.dossier.rejectedCandidates')} value={dossier.coverage_summary.rejected_candidate_count ?? 0} />
+        </div>
+        {dossier.discovery_plan.plan_summary && (
+          <div className="run-dossier-card">
+            <strong>{t('icpRadar.live.dossier.plannerSummary')}</strong>
+            <p>{dossier.discovery_plan.plan_summary}</p>
+          </div>
+        )}
+        <div className="run-dossier-query-list">
+          {discoverySteps.length > 0 ? discoverySteps.map((step) => (
+            <article className="run-dossier-card" key={step.step_id}>
+              <header className="run-dossier-card-head">
+                <Mono>{step.step_id}</Mono>
+                <Badge tone="neutral">{t(`icpRadar.live.dossier.stage.${step.stage}`, { defaultValue: step.stage })}</Badge>
+              </header>
+              <strong>{step.query}</strong>
+              <p>{step.purpose || t('icpRadar.live.journal.noSummary')}</p>
+              <div className="run-dossier-tags">
+                {step.source_scope && <span><Mono>{t('icpRadar.live.dossier.sourceScope')}</Mono>{step.source_scope}</span>}
+                {step.subject_rule_ids?.map((ruleId) => <span key={`${step.step_id}-${ruleId}`}><Mono>{t('icpRadar.live.dossier.rule')}</Mono>{ruleId}</span>)}
+                {step.source_ids?.map((sourceId) => <span key={`${step.step_id}-${sourceId}`}><Mono>{t('icpRadar.live.dossier.sourceBase')}</Mono>{sourceId}</span>)}
+              </div>
+              <DossierRefs label={t('icpRadar.live.dossier.expectedEvidence')} refs={step.expected_evidence ?? []} />
+              <DossierRefs label={t('icpRadar.live.dossier.acceptanceCriteria')} refs={step.acceptance_criteria ?? []} />
+              <DossierRefs label={t('icpRadar.live.dossier.dependsOn')} refs={step.depends_on ?? []} />
+            </article>
+          )) : <p>{t('icpRadar.live.dossier.noDiscoveryPlan')}</p>}
+        </div>
+      </section>
+
+      <section className="run-dossier-section">
+        <h3>{t('icpRadar.live.dossier.sourcePolicy')}</h3>
+        <div className="run-dossier-source-list">
+          {sourcePolicyDecisions.length > 0 ? sourcePolicyDecisions.map((decision) => (
+            <article className="run-dossier-source" key={`${decision.source_id}-${decision.decision}`}>
+              <header className="run-dossier-card-head">
+                <Mono>{decision.source_id}</Mono>
+                <Badge tone={decision.decision === 'selected' ? 'ally' : 'neutral'}>
+                  {t(`icpRadar.live.dossier.sourceDecision.${decision.decision}`, { defaultValue: decision.decision })}
+                </Badge>
+              </header>
+              <strong>{decision.source_label || decision.source_id}</strong>
+              <p>{decision.reason || t('icpRadar.live.journal.noSummary')}</p>
+              <DossierRefs label={t('icpRadar.live.dossier.ruleRefs')} refs={decision.rule_ids ?? []} />
+            </article>
+          )) : <p>{t('icpRadar.live.dossier.noSourcePolicy')}</p>}
+        </div>
+      </section>
+
+      <section className="run-dossier-section">
+        <h3>{t('icpRadar.live.dossier.coverage')}</h3>
+        {coverageHypotheses.length > 0 || coverageWarnings.length > 0 || (dossier.coverage_summary.analyzed_source_reasons?.length ?? 0) > 0 ? (
+          <div className="run-dossier-validation-list">
+            {coverageHypotheses.map((item, index) => (
+              <div className="run-dossier-card" key={`coverage-${index}`}>
+                <Badge tone="neutral">{t('icpRadar.live.dossier.coverageHypothesis')}</Badge>
+                <strong>{String(item.summary ?? t('icpRadar.live.journal.noSummary'))}</strong>
+                <p>{coverageDetails(item)}</p>
+              </div>
+            ))}
+            {coverageWarnings.map((warning) => (
+              <div className="run-dossier-card" key={warning}>
+                <Badge tone="unsurfaced">{t('icpRadar.live.dossier.coverageWarning')}</Badge>
+                <p>{warning}</p>
+              </div>
+            ))}
+            {dossier.coverage_summary.analyzed_source_reasons?.map((reason) => (
+              <div className="run-dossier-card" key={reason}>
+                <Badge tone="neutral">{t('icpRadar.live.dossier.analyzedNotUsed')}</Badge>
+                <p>{reason}</p>
+              </div>
+            ))}
+          </div>
+        ) : <p>{t('icpRadar.live.dossier.noCoverage')}</p>}
+      </section>
+
+      <section className="run-dossier-section">
         <h3>{t('icpRadar.live.dossier.plan')}</h3>
         <div className="run-dossier-query-list">
           {dossier.search_plan.length > 0 ? dossier.search_plan.map((query) => (
@@ -139,6 +230,8 @@ export function LiveRunDossierPanel({
                 <div className="run-dossier-tags">
                   {query.stage && <span><Mono>stage</Mono>{query.stage}</span>}
                   {query.subject_id && <span><Mono>subject</Mono>{query.subject_id}</span>}
+                  {query.source_scope && <span><Mono>{t('icpRadar.live.dossier.sourceScope')}</Mono>{query.source_scope}</span>}
+                  {query.source_ids?.map((sourceId) => <span key={`${query.query_id}-${sourceId}`}><Mono>{t('icpRadar.live.dossier.sourceBase')}</Mono>{sourceId}</span>)}
                   {query.candidate_scope && query.candidate_scope.length > 0 && (
                     <span><Mono>scope</Mono>{query.candidate_scope.join(', ')}</span>
                   )}
@@ -304,4 +397,11 @@ function readableValue(value: unknown) {
     return value.map(String).join(', ');
   }
   return '';
+}
+
+function coverageDetails(value: Record<string, unknown>) {
+  return readableEntries(value)
+    .filter(([key]) => key !== 'summary')
+    .map(([key, entry]) => `${key}: ${entry}`)
+    .join(' · ');
 }

@@ -585,6 +585,29 @@ export type LiveRadarJournalEvent = {
   created_at: string | null;
 };
 
+export type LiveRadarDiscoveryPlanStep = {
+  step_id: string;
+  stage: string;
+  subject_rule_ids?: string[];
+  source_scope?: string;
+  source_ids?: string[];
+  query: string;
+  purpose: string;
+  expected_evidence?: string[];
+  acceptance_criteria?: string[];
+  skip_rationale?: string | null;
+  depends_on?: string[];
+  candidate_scope?: string[];
+};
+
+export type LiveRadarSourcePolicyDecision = {
+  source_id: string;
+  source_label?: string;
+  decision: string;
+  reason: string;
+  rule_ids?: string[];
+};
+
 export type LiveRadarRunDossier = {
   run_context: {
     run_id: string;
@@ -609,6 +632,22 @@ export type LiveRadarRunDossier = {
     is_active: boolean | null;
     payload_summary: Record<string, unknown>;
   } | null;
+  discovery_plan: {
+    plan_summary?: string;
+    steps?: LiveRadarDiscoveryPlanStep[];
+    source_policy_decisions?: LiveRadarSourcePolicyDecision[];
+    coverage_hypotheses?: Array<Record<string, unknown>>;
+    warnings?: string[];
+  };
+  source_policy_decisions: LiveRadarSourcePolicyDecision[];
+  coverage_summary: {
+    hypotheses?: Array<Record<string, unknown>>;
+    warnings?: string[];
+    analyzed_source_count?: number;
+    used_source_count?: number;
+    rejected_candidate_count?: number;
+    analyzed_source_reasons?: string[];
+  };
   search_plan: Array<{
     query_id: string;
     query: string;
@@ -618,6 +657,9 @@ export type LiveRadarRunDossier = {
     subject_type?: string | null;
     subject_id?: string | null;
     rule_snapshot?: string;
+    source_scope?: string;
+    source_ids?: string[];
+    external_source_hints?: string[];
     depends_on?: string[];
     candidate_scope?: string[];
     source_count: number;
@@ -647,6 +689,8 @@ export type LiveRadarRunDossier = {
     query_count: number;
     source_count: number;
     used_source_count: number;
+    analyzed_source_count: number;
+    skipped_source_count: number;
     candidate_count: number;
     validation_issue_count: number;
     review_flag_count: number;
@@ -711,6 +755,9 @@ export type LiveICPRadarRunArtifact = {
       subject_type?: string | null;
       subject_id?: string | null;
       rule_snapshot?: string;
+      source_scope?: string;
+      source_ids?: string[];
+      external_source_hints?: string[];
       depends_on?: string[];
       candidate_scope?: string[];
     }>;

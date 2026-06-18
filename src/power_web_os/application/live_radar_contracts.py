@@ -21,6 +21,8 @@ QualificationTrustPolicy = Literal["trusted", "cross_checked", "hitl_required"]
 QualificationCrossValidationStatus = Literal["passed", "weak", "failed", "not_required"]
 RadarExecutionStage = Literal["qualification_discovery", "qualification_gate", "signal_search", "evaluation", "validation"]
 RadarExecutionSubjectType = Literal["radar", "qualification", "signal"]
+RadarDiscoveryPlanStepStage = Literal["candidate_universe_discovery", "source_probe", "qualification_gate", "coverage_check"]
+RadarDiscoverySourceScope = Literal["global", "local", "additional", "system"]
 
 
 class RadarSearchQuery(BaseModel):
@@ -32,6 +34,9 @@ class RadarSearchQuery(BaseModel):
     subject_type: RadarExecutionSubjectType | None = None
     subject_id: str | None = None
     rule_snapshot: str = ""
+    source_scope: RadarDiscoverySourceScope = "additional"
+    source_ids: list[str] = Field(default_factory=list)
+    external_source_hints: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)
     candidate_scope: list[str] = Field(default_factory=list)
 
@@ -50,6 +55,9 @@ class RadarExecutionTask(BaseModel):
     query: str
     purpose: str
     expected_evidence: list[str] = Field(default_factory=list)
+    source_scope: RadarDiscoverySourceScope = "additional"
+    source_ids: list[str] = Field(default_factory=list)
+    external_source_hints: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)
     candidate_scope: list[str] = Field(default_factory=list)
 
@@ -57,6 +65,66 @@ class RadarExecutionTask(BaseModel):
 class RadarExecutionPlan(BaseModel):
     radar_id: str
     tasks: list[RadarExecutionTask]
+
+
+class RadarDiscoveryPlanStep(BaseModel):
+    step_id: str
+    stage: RadarDiscoveryPlanStepStage
+    subject_rule_ids: list[str] = Field(default_factory=list)
+    source_scope: RadarDiscoverySourceScope = "additional"
+    source_ids: list[str] = Field(default_factory=list)
+    external_source_hints: list[str] = Field(default_factory=list)
+    query: str
+    purpose: str
+    expected_evidence: list[str] = Field(default_factory=list)
+    acceptance_criteria: list[str] = Field(default_factory=list)
+    skip_rationale: str = ""
+    depends_on: list[str] = Field(default_factory=list)
+    candidate_scope: list[str] = Field(default_factory=list)
+
+
+class RadarDiscoverySourcePolicyDecision(BaseModel):
+    source_id: str
+    source_label: str = ""
+    decision: Literal["selected", "skipped"]
+    reason: str
+    rule_ids: list[str] = Field(default_factory=list)
+
+
+class RadarDiscoveryCoverageHypothesis(BaseModel):
+    summary: str
+    expected_candidate_count: str = ""
+    completeness_risk: Literal["low", "medium", "high"] = "medium"
+
+
+class RadarDiscoveryPlan(BaseModel):
+    plan_summary: str
+    steps: list[RadarDiscoveryPlanStep] = Field(default_factory=list)
+    source_policy_decisions: list[RadarDiscoverySourcePolicyDecision] = Field(default_factory=list)
+    coverage_hypotheses: list[RadarDiscoveryCoverageHypothesis] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class RadarDiscoveryPlanningInput(BaseModel):
+    radar_id: str
+    name: str
+    description: str = ""
+    qualification_rules: list[dict[str, Any]] = Field(default_factory=list)
+    global_search_policy: dict[str, Any] = Field(default_factory=dict)
+    task_context: dict[str, Any] = Field(default_factory=dict)
+    requester: str = ""
+    live: bool = False
+    model: str | None = None
+    web_mode: str | None = None
+    max_steps: int = 8
+    max_iterations: int = 2
+    source_visibility_policy: str = "used_sources_product"
+
+
+class RadarDiscoveryPlanValidationResult(BaseModel):
+    accepted: bool
+    errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
 
 
 class RadarSourceEvidence(BaseModel):
@@ -247,6 +315,7 @@ class LiveICPRadarRunState(BaseModel):
     task_context: dict[str, Any] = Field(default_factory=dict)
     radar: dict[str, Any] = Field(default_factory=dict)
     search_plan: dict[str, Any] | None = None
+    discovery_plan: dict[str, Any] | None = None
     execution_plan: dict[str, Any] | None = None
     execution_results: dict[str, Any] = Field(default_factory=dict)
     sources: list[dict[str, Any]] = Field(default_factory=list)
@@ -266,4 +335,17 @@ class WebSearchProvider(ABC):
 
     @abstractmethod
     def run_search_plan(self, *, radar: dict[str, Any], search_plan: RadarSearchPlan) -> WebSearchProviderResult:
+        raise NotImplementedError
+
+
+class RadarDiscoveryPlanner(ABC):
+    runtime_name = "discovery_planner"
+
+    @abstractmethod
+    def propose_plan(
+        self,
+        *,
+        planning_input: RadarDiscoveryPlanningInput,
+        previous_validation: RadarDiscoveryPlanValidationResult | None = None,
+    ) -> RadarDiscoveryPlan:
         raise NotImplementedError
