@@ -2106,7 +2106,7 @@ Principles:
 
 ### Slice 0.7.6.1: Planner/executor/evaluator workflow expansion
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Add explicit planner, executor, and evaluator workflow nodes that emit
   the structured journal contract introduced in `Slice 0.7.6`.
 - Scope:
@@ -2120,6 +2120,252 @@ Principles:
   - Keep raw hidden chain-of-thought out of storage and UI.
   - Preserve current API/frontend contracts for runs, candidates, reviews, and
     journal events.
+- Completion notes:
+  - Added provider-neutral live Radar pipeline step contracts for planning,
+    collection, extraction, evaluation, validation, and artifact shaping.
+  - Reworked `LiveRadarRunService` into explicit phase methods while keeping
+    the existing `icp_radar_live_run` artifact/API/frontend contracts stable.
+  - Updated the workflow wrapper so LangGraph node names map to concrete
+    pipeline phases instead of invoking one monolithic run from every node.
+  - Persisted journal events now prefer pipeline-emitted structured events and
+    keep artifact-derived journal mapping as a backward-compatible fallback.
+  - Real model-quality testing against the SIBUR contour remains after the run
+    dossier and technical trace slices.
+
+### Slice 0.7.6.1.1: Radar run dossier and plan inspection
+
+- Status: `Done`
+- Goal: Make each live Radar run understandable as a reproducible product
+  dossier, not just a flat journal event list.
+- User value: A user can open a completed run and see what exact radar
+  definition, input context, search plan, source set, validation warnings, and
+  source-to-finding links were used for that run.
+- Scope:
+  - Add a backend dossier read contract for `radar_runs` that composes existing
+    run state, active definition snapshot, output snapshot, sources,
+    candidates, validation, and journal events.
+  - Expose run input context: `run_id`, `correlation_id`, requester, live/demo
+    mode, model, web mode, timestamps, radar definition version, qualification
+    rules, intent signals, scoring/source policy, and task context.
+  - Expose the actual search plan: query id, query text, purpose, expected
+    evidence, and the radar rule/signal context it supports where available.
+  - Expose source usage summary: source url/title/snippet/query id, accepted
+    status, usage by candidate/qualification/signal, and validation warnings.
+  - Update the Radar detail `Journal` area into product sections such as
+    `Run`, `Plan`, `Sources`, `Validation`, and `Timeline`, using the existing
+    design-system tokens and tabbed candidate detail layout.
+  - Fix the API-backed frontend adapter so completed runs preserve real
+    `search_plan.queries` instead of showing an empty plan.
+- Out of scope:
+  - Raw provider prompt/request bodies.
+  - Raw hidden chain-of-thought.
+  - Admin-only debug trace authorization.
+  - SIBUR benchmark execution.
+- Implementation notes:
+  - Prefer a read-only DTO derived from existing tables; do not add schema
+    unless a field cannot be reconstructed from `radar_run_outputs` or
+    `radar_run_events`.
+  - Keep `radar_run_outputs` immutable. Dossier views are projections over
+    existing persisted state.
+  - Product dossier text should be explanatory and compact; avoid dumping raw
+    JSON into the normal user view.
+- Tests:
+  - API test for run dossier shape with input context, plan queries, sources,
+    validation, and source usage links.
+  - Frontend adapter test proving API-backed live artifact keeps real search
+    plan queries.
+  - Frontend contract test that presentation components do not call `fetch`.
+  - Visual/static smoke for the dossier sections in EN/RU.
+- Docs:
+  - Update SAO, Developer Guide, frontend Radar docs, and demo docs with the
+    run dossier purpose and endpoint/adapter flow.
+- Demo impact:
+  - A user can click a finished Radar run and inspect the real input, plan,
+    sources, validation, and timeline before trusting or reviewing candidates.
+- Acceptance criteria:
+  - The UI answers: what settings were used, what plan was built, what sources
+    were used, and what warnings were produced.
+  - Existing run/candidate/review API contracts remain compatible.
+  - No secrets or raw hidden CoT appear in dossier responses or UI.
+- Risks:
+  - Dossier can become too verbose; keep normal product view curated and leave
+    raw technical detail for the next slice.
+- Completion notes:
+  - Added `GET /api/radar-runs/{run_id}/dossier` as a read-only projection over
+    existing run state, active definition summary, output snapshot, source
+    usage links, validation issues, review counts, and non-debug journal events.
+  - Kept queued/running/failed runs inspectable through partial dossier
+    `output_state`, while candidate output still returns `409` until a snapshot
+    exists.
+  - Updated the frontend API client and adapter so API-backed live artifacts
+    preserve persisted `search_plan.queries` instead of rendering an empty plan.
+  - Reworked the live Radar detail `Journal` tab into a product dossier with
+    `Run`, `Input`, `Plan`, `Sources`, `Validation`, and `Timeline` sections
+    for API-backed runs; offline JSON artifacts keep the existing journal
+    fallback.
+  - Product dossier remains separate from the future admin technical trace and
+    does not expose provider prompts, raw debug payloads, secrets, or hidden
+    chain-of-thought.
+
+### Slice 0.7.6.1.2: Admin technical trace for Radar runs
+
+- Status: `Backlog`
+- Goal: Add a separate developer/admin trace surface for inspecting sanitized
+  provider prompts, requests, responses, and pipeline step inputs/outputs.
+- User value: A developer can debug whether the agent workflow, prompt,
+  OpenRouter request, provider response parsing, normalization, and validation
+  worked correctly without mixing technical logs into the product dossier.
+- Scope:
+  - Add a technical trace contract for live Radar runs with sanitized provider
+    request metadata, prompt/messages, web-search settings, response metadata,
+    structured model JSON, parsing outcomes, normalization warnings, step
+    durations, and pipeline phase input/output summaries.
+  - Add redaction guards for API keys, authorization headers, bearer tokens,
+    local env values, and provider secrets.
+  - Add backend endpoint such as
+    `GET /api/radar-runs/{run_id}/technical-trace` for dev/admin inspection.
+  - Add a frontend `Trace` tab or admin-only trace section using a structured
+    JSON/detail viewer that wraps long values and avoids horizontal scrolling.
+  - Keep trace visibility separated from normal `Journal`/dossier content so it
+    can later be protected by authorization.
+- Out of scope:
+  - Raw hidden chain-of-thought storage or display.
+  - Production authorization/role model.
+  - Full observability stack, log aggregation, or distributed tracing.
+  - SIBUR benchmark execution.
+- Implementation notes:
+  - Prefer storing or deriving sanitized technical trace artifacts through
+    application-owned contracts, not direct provider/persistence shortcuts.
+  - If persistence is required, keep trace payloads separate from product
+    review state and document retention/redaction policy.
+  - Technical trace may include prompts and structured model responses, but
+    must reject `chain_of_thought`, `hidden_reasoning`, and
+    `internal_thoughts`.
+- Tests:
+  - Backend tests for trace creation/read path, redaction, and forbidden raw
+    reasoning keys.
+  - Integration test proving OpenRouter secrets and `Authorization` markers do
+    not appear in trace API responses or persisted trace payloads.
+  - Frontend tests for trace rendering, long-line wrapping, and no direct
+    `fetch` calls from presentation components.
+- Docs:
+  - Add ADR or update the structured journal ADR to distinguish product dossier,
+    structured journal, and admin technical trace.
+  - Update Developer Guide with what is safe to store/show in technical trace.
+- Demo impact:
+  - In local/dev mode a developer can inspect what was sent to the provider and
+    how the response moved through the pipeline.
+- Acceptance criteria:
+  - Technical trace can explain prompt/request/response/normalization behavior
+    for a run.
+  - Product dossier remains readable for non-admin users.
+  - No secrets or raw hidden CoT are stored or exposed.
+- Risks:
+  - Prompt/response payloads can be large; cap, summarize, or paginate trace
+    payloads if needed.
+
+### Slice 0.7.6.2: SIBUR contour discovery benchmark
+
+- Status: `Backlog`
+- Goal: Run a real-model live Radar experiment against the SIBUR enterprise
+  contour and inspect whether the planner/executor/evaluator loop can discover
+  the relevant companies with source-backed evidence.
+- User value: A user can see whether a strong model can move beyond the mini
+  live Radar and find a broad, evidence-backed SIBUR shortlist in the real web.
+- Scope:
+  - Add an expanded `SIBUR contour discovery` Radar definition separate from
+    the current quick mini Radar.
+  - Configure the run path to use a selected high-capability OpenRouter model
+    through the existing provider boundary.
+  - Run through backend API/worker persistence, not a one-off script-only path.
+  - Persist run state, output snapshot, source evidence, candidates, validation
+    warnings, and structured journal events.
+  - Add a demo/diagnostic command or documented manual flow for one benchmark
+    run.
+- Out of scope:
+  - Storing raw hidden chain-of-thought.
+  - Guaranteeing complete SIBUR coverage without a baseline list.
+  - Normalized candidate/evidence tables beyond the existing output snapshot.
+  - Automated scheduled benchmark runs.
+- Implementation notes:
+  - Run this only after the run dossier and technical trace slices are in
+    place, so benchmark failures can be inspected through product and developer
+    evidence.
+  - Treat this as a model-quality experiment, not as accepted product truth.
+  - Use structured reasoning artifacts: plans, search hypotheses, source
+    outcomes, rationale summaries, warnings, and self-check summaries.
+  - Keep the benchmark Radar definition versioned so prompts/search policy can
+    evolve without overwriting the quick live Radar.
+- Tests:
+  - Contract test that the benchmark definition is persisted/seeded and does
+    not replace the quick live Radar.
+  - Recorded-provider test for benchmark artifact shape and journal mapping.
+  - Smoke test that benchmark run creation uses backend queued execution.
+- Docs:
+  - Document model/env prerequisites, expected cost/latency risk, and manual
+    benchmark commands.
+  - Update architecture docs to mark the benchmark as evaluation, not product
+    truth.
+- Demo impact:
+  - The UI can show a persisted benchmark run through the existing Radar API and
+    Journal tab.
+- Acceptance criteria:
+  - A benchmark run can be started and inspected with persisted candidates,
+    sources, validation warnings, and journal events.
+  - The output can be compared manually against a known SIBUR baseline in the
+    next slice.
+  - No raw hidden CoT is stored or shown.
+- Risks:
+  - Live web/model output may be incomplete, slow, expensive, or noisy.
+  - Source ambiguity around subsidiaries, joint ventures, historical assets, and
+    similarly named entities can create false positives.
+
+### Slice 0.7.6.3: Radar recall/precision evaluation loop
+
+- Status: `Backlog`
+- Goal: Evaluate SIBUR contour discovery quality against an explicit baseline
+  list so model output can be judged by recall, precision, and evidence quality
+  instead of subjective inspection.
+- User value: A user can understand whether the live Radar is actually good
+  enough for ABM discovery and where the model/search strategy fails.
+- Scope:
+  - Add a baseline fixture for known SIBUR legal entities/sites/sources used for
+    evaluation.
+  - Add candidate matching rules for exact names, normalized names, aliases, and
+    source-backed partial matches.
+  - Produce recall/precision, false-positive, false-negative, and evidence
+    quality summaries for one persisted run.
+  - Store or export an evaluation report linked to `radar_runs`.
+  - Render evaluation summary in docs/demo output or a minimal backend endpoint
+    if needed.
+- Out of scope:
+  - Treating the baseline as exhaustive production master data.
+  - Automated model leaderboard infrastructure.
+  - Human adjudication workflow for disputed matches.
+- Implementation notes:
+  - Keep evaluation logic separate from the live Radar executor so benchmark
+    scoring does not leak into candidate extraction.
+  - Evaluation should read persisted outputs and journal events after the run.
+  - Record unknown/ambiguous cases explicitly instead of forcing them into true
+    or false.
+- Tests:
+  - Unit tests for name/alias matching and ambiguity handling.
+  - Recorded artifact test that produces deterministic recall/precision output.
+  - Architecture test that evaluation code does not import provider SDKs or
+    execute live web calls.
+- Docs:
+  - Document baseline source, matching assumptions, and metric definitions.
+  - Update roadmap/demo docs with how to interpret benchmark quality.
+- Demo impact:
+  - A benchmark report can show what the model found, missed, and overmatched.
+- Acceptance criteria:
+  - A persisted SIBUR benchmark run can be evaluated against the baseline.
+  - The report lists true positives, false positives, false negatives, and
+    ambiguous matches with evidence refs.
+  - Metrics are reproducible for recorded artifacts.
+- Risks:
+  - Baseline quality can dominate the result; unclear entities must be flagged
+    rather than hidden.
 
 ### Slice 0.7: Human review queue loop
 
@@ -2668,4 +2914,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1: Planner/executor/evaluator workflow expansion`.
+Implement `Slice 0.7.6.1.2: Admin technical trace for Radar runs`.

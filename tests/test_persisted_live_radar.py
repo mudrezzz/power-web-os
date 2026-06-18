@@ -84,6 +84,13 @@ def test_persisted_live_radar_run_completes_and_stores_artifact_snapshot(tmp_pat
     assert stored_run.run_metadata["candidate_count"] == 1
     assert stored_run.run_metadata["source_count"] == 1
     assert [event.event_type for event in events][:2] == ["run_queued", "run_started"]
+    assert {event.node_name for event in events} >= {
+        "build_search_plan",
+        "run_web_search",
+        "extract_candidates",
+        "evaluate_candidates",
+        "validate_artifact",
+    }
     assert "source_collected" in {event.event_type for event in events}
     assert "candidate_extracted" in {event.event_type for event in events}
     assert "signal_evaluated" in {event.event_type for event in events}

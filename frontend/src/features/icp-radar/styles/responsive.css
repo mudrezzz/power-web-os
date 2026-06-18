@@ -54,3 +54,141 @@
   }
 }
 
+.run-dossier,
+.run-dossier-section,
+.run-dossier-query-list,
+.run-dossier-source-list,
+.run-dossier-validation-list {
+  display: grid;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.run-dossier-section {
+  padding-block: var(--s-2);
+}
+
+.run-dossier-section h3 {
+  margin: 0;
+  font: var(--h4);
+}
+
+.run-dossier-facts,
+.run-dossier-grid {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.run-dossier-facts {
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--s-20) * 1.4), 1fr));
+  margin: 0;
+}
+
+.run-dossier-grid {
+  grid-template-columns: repeat(auto-fit, minmax(var(--s-20), 1fr));
+}
+
+.run-dossier-facts div,
+.run-dossier-metric,
+.run-dossier-card,
+.run-dossier-source {
+  min-width: 0;
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.run-dossier-facts dt,
+.run-dossier-metric span,
+.run-dossier-refs > span:first-child {
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.run-dossier-facts dd {
+  min-width: 0;
+  margin: var(--s-1) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.run-dossier-metric,
+.run-dossier-card,
+.run-dossier-source {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.run-dossier-metric {
+  gap: var(--s-1);
+}
+
+.run-dossier-card strong,
+.run-dossier-card p,
+.run-dossier-source strong,
+.run-dossier-source p,
+.run-dossier-source a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.run-dossier-card p,
+.run-dossier-source p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.run-dossier-card-head,
+.run-dossier-source-meta,
+.run-dossier-tags,
+.run-dossier-usages,
+.run-dossier-refs,
+.run-dossier-refs > span:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.run-dossier-card-head {
+  justify-content: space-between;
+}
+
+.run-dossier-tags span,
+.run-dossier-usages span {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  max-width: 100%;
+  gap: var(--s-2);
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--fg2);
+  overflow-wrap: anywhere;
+}
+
+.run-dossier-usages span {
+  border: 1px solid var(--border-faint);
+}
+
+.run-dossier-usages small {
+  color: var(--fg3);
+}
+
+.run-dossier-source a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.run-dossier-source a svg {
+  width: var(--s-4);
+  height: var(--s-4);
+  flex-shrink: 0;
+}
+

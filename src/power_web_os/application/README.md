@@ -18,8 +18,9 @@ provider SDK details.
   and search plan.
 - `live_radar_normalization.py` owns provider-neutral candidate, signal,
   qualification, evidence-card, and score-evaluation normalization.
-- `live_radar_service.py` orchestrates one live Radar execution pass through a
-  provider port.
+- `live_radar_service.py` orchestrates one live Radar execution pass through
+  explicit planning, provider collection, source normalization, candidate
+  extraction, candidate evaluation, validation, and artifact-shaping phases.
 - `persisted_live_radar.py` owns the durable live Radar run lifecycle through
   repository and executor ports.
 - `radar_review.py` validates and persists current human review decisions
@@ -62,17 +63,24 @@ semantics through a `RadarRunEventRepository` port. Raw hidden reasoning fields
 such as `chain_of_thought`, `hidden_reasoning`, and `internal_thoughts` are not
 valid application payloads.
 
+Live Radar pipeline phases emit structured event summaries through application
+contracts. The persisted run service writes those events through
+`RadarRunJournal`. Artifact-derived journal mapping remains a compatibility
+fallback for existing snapshots, not the preferred extension path.
+
 ## How To Extend
 
 1. Add or extend an application record when a use case needs a stable internal
    contract.
 2. Add or extend a port protocol for persistence, queue, provider, or scheduler
    behavior.
-3. Implement adapters in the owning infrastructure package, for example
+3. For live Radar workflow behavior, add or extend the relevant pipeline phase
+   in `live_radar_service.py` before changing workflow wrappers.
+4. Implement adapters in the owning infrastructure package, for example
    `persistence`, `integrations`, or `jobs`.
-4. Add contract tests that prove application code imports without infrastructure
+5. Add contract tests that prove application code imports without infrastructure
    adapters.
-5. Update this README and the Developer Guide when a new backend boundary is
+6. Update this README and the Developer Guide when a new backend boundary is
    introduced.
 
 `radar_runs` is the application-visible source of truth for long-running Radar

@@ -10,6 +10,7 @@ from power_web_os.api.dependencies import RadarApiContext, get_radar_api_context
 from power_web_os.api.radar_dtos import (
     RadarDetailResponse,
     RadarRunCandidatesResponse,
+    RadarRunDossierResponse,
     RadarRunJournalResponse,
     RadarRunRequest,
     RadarRunReviewsResponse,
@@ -18,6 +19,7 @@ from power_web_os.api.radar_dtos import (
     RadarReviewDecisionResponse,
     RadarSummaryResponse,
 )
+from power_web_os.api.radar_dossier_mappers import dossier_response
 from power_web_os.api.radar_mappers import (
     candidates_response,
     journal_response,
@@ -115,6 +117,20 @@ def get_radar_run_journal(run_id: str, context: RadarContext) -> RadarRunJournal
     if run is None:
         raise HTTPException(status_code=404, detail=f"Radar run not found: {run_id}")
     return journal_response(run, context.event_repository.list_for_run(run_id))
+
+
+@router.get("/radar-runs/{run_id}/dossier", response_model=RadarRunDossierResponse)
+def get_radar_run_dossier(run_id: str, context: RadarContext) -> RadarRunDossierResponse:
+    run = context.run_repository.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"Radar run not found: {run_id}")
+    return dossier_response(
+        run,
+        output=context.output_repository.get(run_id),
+        active_definition=context.definition_repository.get_active(run.radar_id),
+        events=context.event_repository.list_for_run(run_id),
+        reviews=context.review_repository.list_for_run(run_id),
+    )
 
 
 @router.get("/radar-runs/{run_id}/reviews", response_model=RadarRunReviewsResponse)

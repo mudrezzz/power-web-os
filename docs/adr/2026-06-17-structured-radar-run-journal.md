@@ -25,6 +25,13 @@ workflow meaning. API routes map records to transport DTOs. Frontend screens
 display structured summaries from the API-backed journal and use artifact
 metadata only as an offline fallback.
 
+Live Radar execution emits journal-ready events from explicit application
+pipeline phases: planning, provider collection, source normalization, candidate
+extraction, candidate evaluation, validation, and artifact shaping. Workflow
+wrappers map optional LangGraph nodes onto those phases; they do not own the
+event semantics. Artifact-derived journal events remain a compatibility fallback
+for older snapshots and fake executors.
+
 Allowed audit payloads include:
 
 - lifecycle events such as `run_queued`, `run_started`, `run_completed`, and
@@ -46,7 +53,7 @@ Forbidden payloads include raw hidden reasoning keys such as
 - `radar_run_events` becomes the append-only reasoning/audit timeline.
 - Celery and Redis remain execution infrastructure only; they do not own audit
   or product truth.
-- Future planner/executor/evaluator nodes can emit the same event contract
-  instead of requiring a schema rewrite.
+- Future planner/executor/evaluator nodes can extend the same application phase
+  and event contracts instead of requiring a schema rewrite.
 - Debug visibility is allowed in the contract, but product UI should display
   user/operator audit summaries by default.

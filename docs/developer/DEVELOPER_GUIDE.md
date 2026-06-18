@@ -231,6 +231,7 @@ Useful Radar API URLs:
 http://127.0.0.1:8000/api/radars
 http://127.0.0.1:8000/api/radars/toir-quick-live
 http://127.0.0.1:8000/api/radar-runs/{run_id}/journal
+http://127.0.0.1:8000/api/radar-runs/{run_id}/dossier
 http://127.0.0.1:8000/docs
 ```
 
@@ -267,7 +268,12 @@ With Redis and the worker running, open `ICP Radar`, select
 `ТОиР Quick Live Radar`, and click `Run radar`. The UI posts a queued run,
 polls `GET /api/radar-runs/{run_id}`, and reads
 `GET /api/radar-runs/{run_id}/candidates` plus
-`GET /api/radar-runs/{run_id}/journal` after output exists. If the backend is
+`GET /api/radar-runs/{run_id}/journal` after output exists. It also reads
+`GET /api/radar-runs/{run_id}/dossier` to show the product run dossier: run
+context, definition version, task context, persisted search plan, source usage,
+validation warnings, and non-debug timeline events. The dossier is safe for the
+normal product UI; provider prompts, request/response bodies, and raw debug
+payloads belong to the future admin technical trace. If the backend is
 unavailable, the same screen stays in explicit demo fallback mode and reads the
 generated JSON files.
 
@@ -327,6 +333,15 @@ Rules:
 - The persisted live run command executes the existing live workflow path,
   persists run state and output, and exports the same JSON artifact shape for
   demo/frontend fallback.
+- Live Radar execution is now an explicit application pipeline. Extend
+  planning, provider collection, source normalization, candidate extraction,
+  candidate evaluation, validation, or artifact shaping as separate phase
+  methods/contracts before changing the workflow wrapper. The workflow wrapper
+  maps runtime nodes onto those phases; it must not become the owner of
+  provider calls, scoring semantics, review decisions, or persistence.
+- Structured journal events should come from pipeline phase outputs through
+  `RadarRunJournal`. Artifact-derived journal mapping exists only as a
+  backward-compatible fallback for older snapshots and fake test executors.
 
 Validation:
 

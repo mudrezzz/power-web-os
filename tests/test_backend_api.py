@@ -66,6 +66,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
         "/api/radar-runs/{run_id}",
         "/api/radar-runs/{run_id}/candidates",
         "/api/radar-runs/{run_id}/journal",
+        "/api/radar-runs/{run_id}/dossier",
         "/api/radar-runs/{run_id}/reviews",
         "/api/radar-runs/{run_id}/candidates/{candidate_id}/qualification/{rule_id}/review",
         "/api/radar-runs/{run_id}/candidates/{candidate_id}/signals/{signal_code}/review",
@@ -134,6 +135,10 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert client.get(f"/api/radar-runs/{run['run_id']}/candidates").status_code == 409
     queued_journal = client.get(f"/api/radar-runs/{run['run_id']}/journal").json()
     assert [event["event_type"] for event in queued_journal["events"]] == ["run_queued"]
+    queued_dossier = client.get(f"/api/radar-runs/{run['run_id']}/dossier").json()
+    assert queued_dossier["summary"]["output_state"] == "pending"
+    assert queued_dossier["run_context"]["status"] == "queued"
+    assert queued_dossier["search_plan"] == []
 
     execute_radar_run_once(
         run_id=run["run_id"],
@@ -143,6 +148,7 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
 
     candidates = client.get(f"/api/radar-runs/{run['run_id']}/candidates").json()
     journal = client.get(f"/api/radar-runs/{run['run_id']}/journal").json()
+    dossier = client.get(f"/api/radar-runs/{run['run_id']}/dossier").json()
     assert candidates["radar_id"] == "toir-quick-live"
     assert candidates["sources"][0]["evidence_ref"] == "src_1"
     candidate = candidates["candidates"][0]
@@ -158,6 +164,17 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert "signal_evaluated" in event_types
     assert event_types[-1] == "run_completed"
     assert not any(marker in json.dumps(journal) for marker in ["chain_of_thought", "hidden_reasoning", "internal_thoughts"])
+    assert dossier["run_context"]["correlation_id"] == "corr-api-1"
+    assert dossier["run_context"]["requester"] == "test"
+    assert dossier["summary"]["output_state"] == "available"
+    assert dossier["summary"]["query_count"] == 1
+    assert dossier["search_plan"][0]["query_id"] == "q1"
+    assert dossier["search_plan"][0]["source_refs"] == ["src_1"]
+    assert dossier["search_plan"][0]["candidate_refs"] == ["candidate-a"]
+    assert dossier["sources"][0]["usage_status"] == "used"
+    assert {usage["subject_type"] for usage in dossier["sources"][0]["usages"]} == {"candidate", "qualification", "signal"}
+    assert [event["event_type"] for event in dossier["timeline"]][0] == "run_queued"
+    assert not any(marker in json.dumps(dossier) for marker in ["chain_of_thought", "hidden_reasoning", "internal_thoughts"])
 
     qualification_review = client.put(
         f"/api/radar-runs/{run['run_id']}/candidates/candidate-a/qualification/rule-q1/review",
@@ -225,7 +242,11 @@ def test_api_missing_and_no_output_cases_return_explicit_statuses(tmp_path: Path
     assert client.get("/api/radar-runs/missing").status_code == 404
     assert client.get("/api/radar-runs/missing/candidates").status_code == 404
     assert client.get("/api/radar-runs/missing/journal").status_code == 404
+    assert client.get("/api/radar-runs/missing/dossier").status_code == 404
     assert client.get("/api/radar-runs/queued-run/candidates").status_code == 409
+    queued_dossier = client.get("/api/radar-runs/queued-run/dossier")
+    assert queued_dossier.status_code == 200
+    assert queued_dossier.json()["summary"]["output_state"] == "pending"
     assert client.get("/api/radar-runs/queued-run/reviews").status_code == 200
     assert client.get("/api/radar-runs/queued-run/journal").json()["events"] == []
     assert client.put(
@@ -328,7 +349,17 @@ def _artifact() -> dict[str, Any]:
         "artifact_version": "0.6.3.4",
         "radar": {"radar_id": "toir-quick-live", "name": "TOIR Quick Live Radar"},
         "run_metadata": {"runtime": "recorded", "candidate_count": 1, "source_count": 1},
-        "search_plan": {"radar_id": "toir-quick-live", "queries": []},
+        "search_plan": {
+            "radar_id": "toir-quick-live",
+            "queries": [
+                {
+                    "query_id": "q1",
+                    "query": "Candidate A maintenance modernization SIBUR",
+                    "purpose": "Find source-backed modernization evidence for Candidate A.",
+                    "expected_evidence": ["maintenance modernization", "target group relationship"],
+                }
+            ],
+        },
         "sources": [
             {
                 "evidence_ref": "src_1",
@@ -405,5 +436,5 @@ def _artifact() -> dict[str, Any]:
                 ],
             }
         ],
-        "contract_validation": [],
+        "contract_validation": [{"severity": "warning", "path": "signals.S1", "message": "Human review recommended."}],
     }

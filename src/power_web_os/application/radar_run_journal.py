@@ -63,9 +63,36 @@ class RadarRunJournal:
 
     def append_artifact_events(self, *, run_id: str, artifact: dict[str, object]) -> tuple[RadarRunEventRecord, ...]:
         events: list[RadarRunEventRecord] = []
-        for command in artifact_event_commands(run_id=run_id, artifact=artifact):
+        for command in pipeline_event_commands(run_id=run_id, artifact=artifact) or artifact_event_commands(run_id=run_id, artifact=artifact):
             events.append(self.append(command))
         return tuple(events)
+
+
+def pipeline_event_commands(*, run_id: str, artifact: dict[str, object]) -> tuple[RadarRunEventCommand, ...]:
+    run_metadata = _dict(artifact.get("run_metadata"))
+    raw_events = run_metadata.get("pipeline_events")
+    if not isinstance(raw_events, list):
+        return ()
+
+    commands: list[RadarRunEventCommand] = []
+    for item in raw_events:
+        if not isinstance(item, dict):
+            continue
+        commands.append(
+            RadarRunEventCommand(
+                run_id=run_id,
+                event_type=str(item.get("event_type", "")),
+                phase=str(item.get("phase", "")),
+                actor=str(item.get("actor", "")),
+                node_name=str(item.get("node_name", "")),
+                visibility=str(item.get("visibility", "user")),
+                summary=str(item.get("summary", "")),
+                payload=_dict(item.get("payload")),
+                source_refs=[str(ref) for ref in item.get("source_refs", []) if str(ref).strip()],
+                candidate_refs=[str(ref) for ref in item.get("candidate_refs", []) if str(ref).strip()],
+            )
+        )
+    return tuple(commands)
 
 
 def artifact_event_commands(*, run_id: str, artifact: dict[str, object]) -> tuple[RadarRunEventCommand, ...]:

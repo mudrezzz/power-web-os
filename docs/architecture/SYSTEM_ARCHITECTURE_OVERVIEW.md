@@ -88,7 +88,7 @@ Radar execution, durable human review decisions for live Radar findings, and an
 append-only structured run journal for reasoning/audit summaries.
 Backend slices should continue in this order:
 
-1. planner/executor/evaluator workflow expansion over the run journal contract;
+1. SIBUR contour discovery benchmark over the structured workflow pipeline;
 2. normalized candidate/evidence query tables when API usage needs them;
 3. production schedule/cadence controls.
 
@@ -166,6 +166,16 @@ Review endpoints save/reset current qualification and signal decisions for
 existing snapshot findings, and candidate DTOs overlay those decisions without
 rewriting `radar_run_outputs`.
 
+Live Radar execution is structure-first and pipeline-shaped. The application
+service owns explicit provider-neutral phases: planning, provider collection,
+source normalization, candidate extraction, candidate evaluation, validation,
+and artifact shaping. The workflows layer maps optional LangGraph node names to
+those phases and may add runtime metadata, but it does not own provider calls,
+SQLAlchemy persistence, scoring semantics, or review decisions. Pipeline phases
+emit structured event summaries that are persisted through `RadarRunJournal`;
+older artifact-derived journal mapping remains only a compatibility fallback
+for existing snapshots.
+
 `GET /api/radar-runs/{run_id}/journal` returns ordered structured audit events.
 The journal is not raw hidden chain-of-thought. Application services reject
 payload keys such as `chain_of_thought`, `hidden_reasoning`, and
@@ -173,13 +183,23 @@ payload keys such as `chain_of_thought`, `hidden_reasoning`, and
 tool/source outcomes, score rationale summaries, warnings, evidence refs, and
 self-check summaries.
 
+`GET /api/radar-runs/{run_id}/dossier` is the product inspection projection for
+a run. It composes existing run state, active definition summary, persisted
+output snapshot, source usage links, validation issues, review overlay counts,
+and non-debug journal events into a readable dossier. Queued, running, and
+failed runs can return a partial dossier with `output_state`; the candidates
+endpoint still returns `409` until output exists. The dossier is intentionally
+not a technical trace: provider prompts, raw requests/responses, and admin debug
+payloads belong to the future technical trace surface, and raw hidden
+chain-of-thought remains disallowed.
+
 The frontend API adapter is a thin client boundary. `frontend/src/api/` owns
 transport and error normalization, `frontend/src/features/icp-radar/adapters/`
 maps API DTOs into the existing Radar view contracts, and
 `frontend/src/features/icp-radar/application/` owns backend mode, queued run
 polling, fallback selection, and review mutations. Presentation components show
-run controls, status, and journal events, but do not call `fetch` or own
-persistence.
+run controls, status, product dossier sections, and journal events, but do not
+call `fetch` or own persistence.
 
 Architecture contract tests enforce these rules. Existing large legacy modules
 are temporary decomposition follow-ups and not examples for new backend work:

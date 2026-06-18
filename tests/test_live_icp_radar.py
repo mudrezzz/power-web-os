@@ -230,6 +230,41 @@ def test_recorded_response_normalizes_sources_candidates_and_scores() -> None:
     assert artifact["contract_validation"] == []
 
 
+def test_live_radar_service_executes_explicit_pipeline_phases() -> None:
+    payload = recorded_provider_payload()
+    service = LiveRadarRunService(RecordedWebSearchProvider(payload))
+    state = LiveICPRadarRunState(radar=build_live_mini_radar_definition(), live=False)
+
+    planned = service.build_search_plan(state)
+    collected = service.run_web_search(planned)
+    normalized = service.normalize_sources(collected)
+    extracted = service.extract_candidates(normalized)
+    evaluated = service.evaluate_candidates(extracted)
+    validated = service.validate_artifact(evaluated)
+    shaped = service.shape_artifact(
+        state=validated,
+        node_name="shape_artifact",
+        runtime_mode="local_fallback",
+        framework_available=False,
+    )
+
+    assert planned.search_plan is not None
+    assert len(planned.search_plan["queries"]) == 3
+    assert len(collected.candidate_observations) == 1
+    assert len(normalized.sources) == 1
+    assert extracted.candidates[0]["legal_name"] == payload["candidate_observations"][0]["legal_name"]
+    assert evaluated.candidates[0]["score"]["tier"] == "Tier 1"
+    assert validated.contract_validation == []
+    assert shaped.artifact is not None
+    assert shaped.artifact["artifact_type"] == "icp_radar_live_run"
+    event_types = [event["event_type"] for event in shaped.workflow_metadata["pipeline_events"]]
+    assert event_types[:2] == ["plan_created", "search_query_planned"]
+    assert "source_collected" in event_types
+    assert "candidate_extracted" in event_types
+    assert "signal_evaluated" in event_types
+    assert "self_check_completed" in event_types
+
+
 def test_openrouter_response_parser_handles_json_content_and_annotations() -> None:
     payload = {
         "id": "response-1",

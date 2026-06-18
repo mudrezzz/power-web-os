@@ -212,6 +212,80 @@ class RadarRunJournalResponse(BaseModel):
     events: list[RadarRunJournalEventResponse] = Field(default_factory=list)
 
 
+class RadarRunDossierContextResponse(BaseModel):
+    run_id: str
+    radar_id: str
+    status: str
+    live: bool
+    requester: str = ""
+    correlation_id: str | None = None
+    idempotency_key: str | None = None
+    queued_at: datetime | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    model: str | None = None
+    web_mode: str | None = None
+    runtime: str = ""
+    task_context: dict[str, Any] = Field(default_factory=dict)
+
+
+class RadarRunDossierDefinitionResponse(BaseModel):
+    definition_id: str | None = None
+    definition_version: str | None = None
+    is_active: bool | None = None
+    payload_summary: dict[str, Any] = Field(default_factory=dict)
+
+
+class RadarRunDossierQueryResponse(BaseModel):
+    query_id: str
+    query: str
+    purpose: str = ""
+    expected_evidence: list[str] = Field(default_factory=list)
+    source_count: int = 0
+    source_refs: list[str] = Field(default_factory=list)
+    candidate_refs: list[str] = Field(default_factory=list)
+
+
+class RadarRunDossierSourceUsageResponse(BaseModel):
+    candidate_id: str
+    candidate_name: str = ""
+    subject_type: str
+    subject_id: str
+    subject_label: str = ""
+
+
+class RadarRunDossierSourceResponse(BaseModel):
+    evidence_ref: str
+    title: str = ""
+    url: str = ""
+    snippet: str = ""
+    query_id: str | None = None
+    source_type: str = "web"
+    usage_status: str = "collected_not_used"
+    usages: list[RadarRunDossierSourceUsageResponse] = Field(default_factory=list)
+
+
+class RadarRunDossierSummaryResponse(BaseModel):
+    output_state: str
+    query_count: int = 0
+    source_count: int = 0
+    used_source_count: int = 0
+    candidate_count: int = 0
+    validation_issue_count: int = 0
+    review_flag_count: int = 0
+
+
+class RadarRunDossierResponse(BaseModel):
+    run_context: RadarRunDossierContextResponse
+    radar_snapshot: dict[str, Any] = Field(default_factory=dict)
+    definition_snapshot: RadarRunDossierDefinitionResponse | None = None
+    search_plan: list[RadarRunDossierQueryResponse] = Field(default_factory=list)
+    sources: list[RadarRunDossierSourceResponse] = Field(default_factory=list)
+    validation: list[dict[str, Any]] = Field(default_factory=list)
+    timeline: list[RadarRunJournalEventResponse] = Field(default_factory=list)
+    summary: RadarRunDossierSummaryResponse
+
+
 RadarSummaryResponse.model_rebuild()
 RadarDetailResponse.model_rebuild()
 RadarRunSummaryResponse.model_rebuild()

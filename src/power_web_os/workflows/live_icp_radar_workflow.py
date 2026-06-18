@@ -78,6 +78,39 @@ class _FallbackLiveICPRadarRunWorkflow:
             framework_available=False,
         )
 
+    def build_search_plan(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
+        return self._service.build_search_plan(state)
+
+    def run_web_search(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
+        return self._service.run_web_search(state)
+
+    def normalize_sources(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
+        return self._service.normalize_sources(state)
+
+    def extract_candidates(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
+        return self._service.extract_candidates(state)
+
+    def evaluate_candidates(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
+        return self._service.evaluate_candidates(state)
+
+    def validate_artifact(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
+        return self._service.validate_artifact(state)
+
+    def shape_artifact(
+        self,
+        state: LiveICPRadarRunState,
+        *,
+        node_name: str,
+        runtime_mode: str | None = None,
+        framework_available: bool = False,
+    ) -> LiveICPRadarRunState:
+        return self._service.shape_artifact(
+            state=state,
+            node_name=node_name,
+            runtime_mode=runtime_mode or self._runtime_mode,
+            framework_available=framework_available,
+        )
+
 
 if FRAMEWORK_AVAILABLE:
 
@@ -104,14 +137,13 @@ if FRAMEWORK_AVAILABLE:
         def workflow_nodes(self, *, is_resume: bool) -> list[Any]:
             _ = is_resume
             return [
-                WorkflowNodeSpec(name="build_search_plan", handler=self._run_node),  # type: ignore[misc,operator]
-                WorkflowNodeSpec(name="run_web_search", handler=self._run_node),  # type: ignore[misc,operator]
-                WorkflowNodeSpec(name="normalize_sources", handler=self._run_node),  # type: ignore[misc,operator]
-                WorkflowNodeSpec(name="extract_candidates", handler=self._run_node),  # type: ignore[misc,operator]
-                WorkflowNodeSpec(name="evaluate_qualification", handler=self._run_node),  # type: ignore[misc,operator]
-                WorkflowNodeSpec(name="extract_signals", handler=self._run_node),  # type: ignore[misc,operator]
-                WorkflowNodeSpec(name="rank_candidates", handler=self._run_node),  # type: ignore[misc,operator]
-                WorkflowNodeSpec(name="shape_artifact", handler=self._run_node),  # type: ignore[misc,operator]
+                WorkflowNodeSpec(name="build_search_plan", handler=self._build_search_plan_node),  # type: ignore[misc,operator]
+                WorkflowNodeSpec(name="run_web_search", handler=self._run_web_search_node),  # type: ignore[misc,operator]
+                WorkflowNodeSpec(name="normalize_sources", handler=self._normalize_sources_node),  # type: ignore[misc,operator]
+                WorkflowNodeSpec(name="extract_candidates", handler=self._extract_candidates_node),  # type: ignore[misc,operator]
+                WorkflowNodeSpec(name="evaluate_candidates", handler=self._evaluate_candidates_node),  # type: ignore[misc,operator]
+                WorkflowNodeSpec(name="validate_artifact", handler=self._validate_artifact_node),  # type: ignore[misc,operator]
+                WorkflowNodeSpec(name="shape_artifact", handler=self._shape_artifact_node),  # type: ignore[misc,operator]
             ]
 
         def execute(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
@@ -120,11 +152,52 @@ if FRAMEWORK_AVAILABLE:
         def execute_resume(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
             return self.execute(state)
 
-        def _run_node(self, state: LiveICPRadarRunState, context: WorkflowExecutionContext) -> LiveICPRadarRunState:
+        def _build_search_plan_node(self, state: LiveICPRadarRunState, context: WorkflowExecutionContext) -> LiveICPRadarRunState:
             _ = context
             if state.artifact is not None:
                 return state
-            return self._run_with_langgraph_metadata(state)
+            return self._fallback.build_search_plan(state)
+
+        def _run_web_search_node(self, state: LiveICPRadarRunState, context: WorkflowExecutionContext) -> LiveICPRadarRunState:
+            _ = context
+            if state.artifact is not None:
+                return state
+            return self._fallback.run_web_search(state)
+
+        def _normalize_sources_node(self, state: LiveICPRadarRunState, context: WorkflowExecutionContext) -> LiveICPRadarRunState:
+            _ = context
+            if state.artifact is not None:
+                return state
+            return self._fallback.normalize_sources(state)
+
+        def _extract_candidates_node(self, state: LiveICPRadarRunState, context: WorkflowExecutionContext) -> LiveICPRadarRunState:
+            _ = context
+            if state.artifact is not None:
+                return state
+            return self._fallback.extract_candidates(state)
+
+        def _evaluate_candidates_node(self, state: LiveICPRadarRunState, context: WorkflowExecutionContext) -> LiveICPRadarRunState:
+            _ = context
+            if state.artifact is not None:
+                return state
+            return self._fallback.evaluate_candidates(state)
+
+        def _validate_artifact_node(self, state: LiveICPRadarRunState, context: WorkflowExecutionContext) -> LiveICPRadarRunState:
+            _ = context
+            if state.artifact is not None:
+                return state
+            return self._fallback.validate_artifact(state)
+
+        def _shape_artifact_node(self, state: LiveICPRadarRunState, context: WorkflowExecutionContext) -> LiveICPRadarRunState:
+            _ = context
+            if state.artifact is not None:
+                return state
+            return self._fallback.shape_artifact(
+                state,
+                node_name="shape_artifact",
+                runtime_mode="langgraph_dai",
+                framework_available=True,
+            )
 
         def _run_with_langgraph_metadata(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
             result = self._fallback.invoke(state)

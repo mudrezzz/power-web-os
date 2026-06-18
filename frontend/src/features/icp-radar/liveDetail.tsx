@@ -1,11 +1,10 @@
-import { ArrowLeft, ChevronRight, ExternalLink, Radar, RotateCcw, Save } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Radar, RotateCcw, Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../../components/primitives';
 import type {
   LiveICPRadarRunArtifact,
   LiveRadarCandidate,
-  LiveRadarJournalEvent,
   LiveRadarQualificationResult,
   LiveRadarSourceEvidence,
   QualificationAssessmentStatus,
@@ -14,6 +13,7 @@ import type {
   SignalValidationOverlay,
 } from '../../types';
 import { CandidateDetailTabs, Metric, ScoreBox } from './detailPrimitives';
+import { LiveRunDossierPanel, LiveRunJournalFallback } from './liveDossier';
 import { LiveSignalReviewTable } from './liveSignalReview';
 import {
   type CandidateDetailTab,
@@ -21,7 +21,6 @@ import {
   effectiveQualificationAssessment,
   liveFitScoreMax,
   liveIntentScoreMax,
-  liveRuntimeKey,
   liveTotalScore,
   liveTotalScoreMax,
   qualificationAssessmentTone,
@@ -197,49 +196,14 @@ export function LiveRadarCandidateDetailView({
           <Card>
             <section className="icp-detail-section">
               <Eyebrow>{t('icpRadar.canonicalDetail.journal')}</Eyebrow>
-              <dl className="icp-definition-list">
-                <div>
-                  <dt>{t('icpRadar.live.runtime')}</dt>
-                  <dd>{t(liveRuntimeKey(artifact.run_metadata.runtime))}</dd>
-                </div>
-                <div>
-                  <dt>{t('icpRadar.live.model')}</dt>
-                  <dd>{artifact.run_metadata.model ?? t('icpRadar.unknown')}</dd>
-                </div>
-                <div>
-                  <dt>{t('icpRadar.live.webMode')}</dt>
-                  <dd>{artifact.run_metadata.web_mode ?? t('icpRadar.unknown')}</dd>
-                </div>
-                <div>
-                  <dt>{t('icpRadar.live.queries')}</dt>
-                  <dd>{artifact.run_metadata.query_count}</dd>
-                </div>
-                <div>
-                  <dt>{t('icpRadar.live.sources')}</dt>
-                  <dd>{artifact.run_metadata.source_count}</dd>
-                </div>
-                <div>
-                  <dt>{t('icpRadar.canonicalDetail.runAt')}</dt>
-                  <dd>{artifact.run_metadata.run_at}</dd>
-                </div>
-              </dl>
-              <div className="canonical-journal-list">
-                {visibleJournalEvents.length > 0 ? visibleJournalEvents.map((event) => (
-                  <JournalEventRow event={event} key={event.event_id} />
-                )) : artifact.search_plan.queries.length > 0 ? artifact.search_plan.queries.map((query) => (
-                  <div className="canonical-journal-row" key={query.query_id}>
-                    <Mono>{query.query_id}</Mono>
-                    <strong>{query.query}</strong>
-                    <small>{query.purpose}</small>
-                  </div>
-                )) : (
-                  <div className="canonical-journal-row">
-                    <Mono>0</Mono>
-                    <strong>{t('icpRadar.live.journal.empty')}</strong>
-                    <small>{t('icpRadar.live.journal.emptyCopy')}</small>
-                  </div>
-                )}
-              </div>
+              {artifact.dossier ? (
+                <LiveRunDossierPanel artifact={artifact} candidate={candidate} dossier={artifact.dossier} />
+              ) : (
+                <LiveRunJournalFallback
+                  artifact={artifact}
+                  events={visibleJournalEvents}
+                />
+              )}
               <p className="journal-policy-copy">{t('icpRadar.live.journal.hiddenCotPolicy')}</p>
               {candidate.review_flags.length > 0 && (
                 <div className="badge-list">
@@ -254,48 +218,6 @@ export function LiveRadarCandidateDetailView({
       </div>
     </section>
   );
-}
-
-function JournalEventRow({ event }: { event: LiveRadarJournalEvent }) {
-  const { t } = useTranslation();
-  const refs = [...event.candidate_refs, ...event.source_refs].filter(Boolean);
-  return (
-    <div className="canonical-journal-row canonical-journal-row--event">
-      <span className="journal-event-sequence"><Mono>{event.sequence}</Mono></span>
-      <span className="journal-event-main">
-        <strong className="journal-event-title">
-          {t(`icpRadar.live.journal.eventType.${event.event_type}`, { defaultValue: event.event_type })}
-        </strong>
-        <p className="journal-event-summary">{event.summary || t('icpRadar.live.journal.noSummary')}</p>
-        <span className="journal-event-meta">
-          <Badge tone={event.visibility === 'operator' ? 'unsurfaced' : 'neutral'}>
-            {t(`icpRadar.live.journal.visibility.${event.visibility}`, { defaultValue: event.visibility })}
-          </Badge>
-          <Mono>{event.actor}</Mono>
-          <Mono>{event.phase}</Mono>
-          {event.created_at && <span className="journal-event-time">{formatJournalTime(event.created_at)}</span>}
-        </span>
-        {refs.length > 0 && (
-          <span className="journal-event-refs">
-            {refs.map((ref) => <Mono key={`${event.event_id}-${ref}`}>{ref}</Mono>)}
-          </span>
-        )}
-      </span>
-    </div>
-  );
-}
-
-function formatJournalTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString(undefined, {
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    month: '2-digit',
-  });
 }
 
 function LiveQualificationReviewTable({

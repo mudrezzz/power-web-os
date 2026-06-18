@@ -585,6 +585,68 @@ export type LiveRadarJournalEvent = {
   created_at: string | null;
 };
 
+export type LiveRadarRunDossier = {
+  run_context: {
+    run_id: string;
+    radar_id: string;
+    status: string;
+    live: boolean;
+    requester: string;
+    correlation_id: string | null;
+    idempotency_key: string | null;
+    queued_at: string | null;
+    started_at: string | null;
+    completed_at: string | null;
+    model: string | null;
+    web_mode: string | null;
+    runtime: string;
+    task_context: Record<string, unknown>;
+  };
+  radar_snapshot: Record<string, unknown>;
+  definition_snapshot: {
+    definition_id: string | null;
+    definition_version: string | null;
+    is_active: boolean | null;
+    payload_summary: Record<string, unknown>;
+  } | null;
+  search_plan: Array<{
+    query_id: string;
+    query: string;
+    purpose: string;
+    expected_evidence: string[];
+    source_count: number;
+    source_refs: string[];
+    candidate_refs: string[];
+  }>;
+  sources: Array<{
+    evidence_ref: string;
+    title: string;
+    url: string;
+    snippet: string;
+    query_id: string | null;
+    source_type: string;
+    usage_status: 'used' | 'collected_not_used' | string;
+    usages: Array<{
+      candidate_id: string;
+      candidate_name: string;
+      subject_type: string;
+      subject_id: string;
+      subject_label: string;
+    }>;
+  }>;
+  validation: Array<Record<string, unknown>>;
+  timeline: LiveRadarJournalEvent[];
+  summary: {
+    output_state: string;
+    query_count: number;
+    source_count: number;
+    used_source_count: number;
+    candidate_count: number;
+    validation_issue_count: number;
+    review_flag_count: number;
+  };
+};
+
 export type LiveICPRadarRunArtifact = {
   artifact_type: 'icp_radar_live_run';
   artifact_version: '0.6.3.1' | '0.6.3.4';
@@ -623,6 +685,7 @@ export type LiveICPRadarRunArtifact = {
   sources: LiveRadarSourceEvidence[];
   candidates: LiveRadarCandidate[];
   journal_events?: LiveRadarJournalEvent[];
+  dossier?: LiveRadarRunDossier;
   contract_validation?: Array<{ severity: 'error' | 'warning'; path: string; message: string }>;
 };
 

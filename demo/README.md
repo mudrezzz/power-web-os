@@ -144,6 +144,13 @@ catalog, manual run, candidates, journal, and review decisions when the backend
 is available. Browser-local overlays remain only for fixture/offline fallback
 state.
 
+The backend also exposes `GET /api/radar-runs/{run_id}/dossier`. The frontend
+uses it in the live Radar detail `Journal` tab as the product run dossier:
+run context, definition version, task context, real search plan, source usage,
+validation warnings, and non-debug timeline events. This is not the admin
+technical trace; provider prompts, raw requests/responses, and debug payloads
+remain out of this product view.
+
 When the backend API is running, inspect `ТОиР Quick Live Radar` and click
 `Run radar`. The UI creates a queued run, shows `queued/running/completed/failed`
 status with the run id, and refreshes the live shortlist after output exists. If

@@ -2,6 +2,7 @@ import type {
   EvidenceFindingDto,
   RadarDetailDto,
   RadarRunCandidatesDto,
+  RadarRunDossierDto,
   RadarRunJournalDto,
   RadarRunSummaryDto,
   SourceUsageDto,
@@ -10,6 +11,7 @@ import type {
   ICPRadarCatalogArtifact,
   ICPRadarCatalogItem,
   LiveICPRadarRunArtifact,
+  LiveRadarRunDossier,
   LiveRadarSignalResult,
   QualificationAssessmentStatus,
   QualificationCrossValidation,
@@ -76,7 +78,9 @@ export function apiRunToLiveArtifact(
   candidates: RadarRunCandidatesDto,
   radar: ICPRadarCatalogItem,
   journal?: RadarRunJournalDto,
+  dossier?: RadarRunDossierDto,
 ): LiveICPRadarRunArtifact {
+  const normalizedDossier = dossier ? runDossier(dossier) : undefined;
   return {
     artifact_type: 'icp_radar_live_run',
     artifact_version: '0.6.3.4',
@@ -113,7 +117,12 @@ export function apiRunToLiveArtifact(
     },
     search_plan: {
       radar_id: radar.radar_id,
-      queries: [],
+      queries: normalizedDossier?.search_plan.map((query) => ({
+        query_id: query.query_id,
+        query: query.query,
+        purpose: query.purpose,
+        expected_evidence: query.expected_evidence,
+      })) ?? [],
     },
     sources: candidates.sources.map((source) => ({
       evidence_ref: source.evidence_ref,
@@ -170,11 +179,39 @@ export function apiRunToLiveArtifact(
       candidate_refs: event.candidate_refs,
       created_at: event.created_at,
     })) ?? [],
+    dossier: normalizedDossier,
     contract_validation: candidates.contract_validation.map((item) => ({
       severity: item.severity === 'error' ? 'error' : 'warning',
       path: stringField(item.path, ''),
       message: stringField(item.message, ''),
     })),
+  };
+}
+
+function runDossier(dossier: RadarRunDossierDto): LiveRadarRunDossier {
+  return {
+    run_context: dossier.run_context,
+    radar_snapshot: dossier.radar_snapshot,
+    definition_snapshot: dossier.definition_snapshot,
+    search_plan: dossier.search_plan,
+    sources: dossier.sources,
+    validation: dossier.validation,
+    timeline: dossier.timeline.map((event) => ({
+      event_id: event.event_id,
+      run_id: event.run_id,
+      sequence: event.sequence,
+      event_type: event.event_type,
+      phase: event.phase,
+      actor: event.actor,
+      node_name: event.node_name,
+      visibility: event.visibility,
+      summary: event.summary,
+      payload: event.payload,
+      source_refs: event.source_refs,
+      candidate_refs: event.candidate_refs,
+      created_at: event.created_at,
+    })),
+    summary: dossier.summary,
   };
 }
 

@@ -163,6 +163,49 @@ class WebSearchProviderResult(BaseModel):
     provider_metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class LiveRadarPipelineEvent(BaseModel):
+    """Provider-neutral event emitted by one live Radar pipeline step."""
+
+    event_type: str
+    phase: str
+    actor: str
+    node_name: str
+    summary: str
+    visibility: Literal["user", "operator", "debug"] = "user"
+    payload: dict[str, Any] = Field(default_factory=dict)
+    source_refs: list[str] = Field(default_factory=list)
+    candidate_refs: list[str] = Field(default_factory=list)
+
+
+class LiveRadarPlanningResult(BaseModel):
+    radar: dict[str, Any]
+    search_plan: RadarSearchPlan
+    events: list[LiveRadarPipelineEvent] = Field(default_factory=list)
+
+
+class LiveRadarCollectionResult(BaseModel):
+    sources: list[RadarSourceEvidence] = Field(default_factory=list)
+    candidate_observations: list[dict[str, Any]] = Field(default_factory=list)
+    provider_metadata: dict[str, Any] = Field(default_factory=dict)
+    events: list[LiveRadarPipelineEvent] = Field(default_factory=list)
+
+
+class LiveRadarExtractionResult(BaseModel):
+    sources: list[RadarSourceEvidence] = Field(default_factory=list)
+    candidates: list[LiveRadarCandidate] = Field(default_factory=list)
+    events: list[LiveRadarPipelineEvent] = Field(default_factory=list)
+
+
+class LiveRadarEvaluationResult(BaseModel):
+    candidates: list[LiveRadarCandidate] = Field(default_factory=list)
+    events: list[LiveRadarPipelineEvent] = Field(default_factory=list)
+
+
+class LiveRadarValidationResult(BaseModel):
+    issues: list[QualificationContractIssue] = Field(default_factory=list)
+    events: list[LiveRadarPipelineEvent] = Field(default_factory=list)
+
+
 class LiveRadarRunArtifact(BaseModel):
     artifact_type: Literal["icp_radar_live_run"] = "icp_radar_live_run"
     artifact_version: Literal["0.6.3.4"] = "0.6.3.4"
@@ -179,7 +222,11 @@ class LiveICPRadarRunState(BaseModel):
     radar: dict[str, Any] = Field(default_factory=dict)
     search_plan: dict[str, Any] | None = None
     sources: list[dict[str, Any]] = Field(default_factory=list)
+    candidate_observations: list[dict[str, Any]] = Field(default_factory=list)
     candidates: list[dict[str, Any]] = Field(default_factory=list)
+    contract_validation: list[dict[str, Any]] = Field(default_factory=list)
+    provider_metadata: dict[str, Any] = Field(default_factory=dict)
+    pipeline_events: list[dict[str, Any]] = Field(default_factory=list)
     artifact: dict[str, Any] | None = None
     workflow_metadata: dict[str, Any] = Field(default_factory=dict)
     live: bool = False

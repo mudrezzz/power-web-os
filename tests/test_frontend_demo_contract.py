@@ -569,6 +569,8 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert ".icp-candidate-detail-panel" in css
     assert ".canonical-detail-table" in css
     assert ".canonical-journal-list" in css
+    assert ".run-dossier" in css
+    assert ".run-dossier-source-list" in css
     assert ".live-radar-source-list" in css
     assert ".live-radar-layout" not in css
     assert ".live-radar-grid" not in css
@@ -678,8 +680,12 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     live_detail_segment = screen.split("function LiveRadarCandidateDetailView", 1)[1].split("function LiveEvidenceList", 1)[0]
     assert "CandidateDetailTabs" in live_detail_segment
     assert "activeTab === 'journal'" in live_detail_segment
+    assert "LiveRunDossierPanel" in live_detail_segment
+    assert "artifact.dossier" in live_detail_segment
     assert "artifact.run_metadata.model" in live_detail_segment
     assert "artifact.run_metadata.query_count" in live_detail_segment
+    assert "icpRadar.live.dossier.plan" in live_detail_segment
+    assert "icpRadar.live.dossier.sourcesTitle" in live_detail_segment
 
     for ru_label in [
         "Соответствие",
@@ -712,12 +718,18 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
     catalog = Path("frontend/public/demo/icp_radars.json").read_text(encoding="utf-8")
     app = Path("frontend/src/App.tsx").read_text(encoding="utf-8")
     screen = icp_radar_feature_text()
+    api_client = Path("frontend/src/api/radarApi.ts").read_text(encoding="utf-8")
+    api_adapter = Path("frontend/src/features/icp-radar/adapters/apiRadarAdapter.ts").read_text(encoding="utf-8")
     types = Path("frontend/src/types.ts").read_text(encoding="utf-8")
     i18n = i18n_text()
 
     assert "toir-quick-live" in catalog
     assert "/demo/live_mini_icp_radar_run.json" in catalog
     assert "fetch(liveMiniRadarArtifactUrl)" in app
+    assert "getRunDossier" in api_client
+    assert "RadarRunDossierDto" in api_client
+    assert "normalizedDossier?.search_plan.map" in api_adapter
+    assert "queries: []" not in api_adapter
     assert "return null" in app
     assert "LiveRadarShortlistTable" in screen
     assert "LiveRadarCandidatePreview" in screen
@@ -742,6 +754,7 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
         "QualificationReviewDecision",
         "SignalEvidenceFinding",
         "SignalScoreEvaluation",
+        "LiveRadarRunDossier",
     ]:
         assert type_name in types
     for screen_token in [

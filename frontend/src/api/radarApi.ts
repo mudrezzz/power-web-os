@@ -186,6 +186,80 @@ export type RadarRunJournalDto = {
   events: RadarRunJournalEventDto[];
 };
 
+export type RadarRunDossierContextDto = {
+  run_id: string;
+  radar_id: string;
+  status: string;
+  live: boolean;
+  requester: string;
+  correlation_id: string | null;
+  idempotency_key: string | null;
+  queued_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  model: string | null;
+  web_mode: string | null;
+  runtime: string;
+  task_context: Record<string, unknown>;
+};
+
+export type RadarRunDossierDefinitionDto = {
+  definition_id: string | null;
+  definition_version: string | null;
+  is_active: boolean | null;
+  payload_summary: Record<string, unknown>;
+};
+
+export type RadarRunDossierQueryDto = {
+  query_id: string;
+  query: string;
+  purpose: string;
+  expected_evidence: string[];
+  source_count: number;
+  source_refs: string[];
+  candidate_refs: string[];
+};
+
+export type RadarRunDossierSourceUsageDto = {
+  candidate_id: string;
+  candidate_name: string;
+  subject_type: string;
+  subject_id: string;
+  subject_label: string;
+};
+
+export type RadarRunDossierSourceDto = {
+  evidence_ref: string;
+  title: string;
+  url: string;
+  snippet: string;
+  query_id: string | null;
+  source_type: string;
+  usage_status: 'used' | 'collected_not_used' | string;
+  usages: RadarRunDossierSourceUsageDto[];
+};
+
+export type RadarRunDossierSummaryDto = {
+  output_state: 'pending' | 'available' | 'failed' | string;
+  query_count: number;
+  source_count: number;
+  used_source_count: number;
+  candidate_count: number;
+  validation_issue_count: number;
+  review_flag_count: number;
+};
+
+export type RadarRunDossierDto = {
+  run_context: RadarRunDossierContextDto;
+  radar_snapshot: Record<string, unknown>;
+  definition_snapshot: RadarRunDossierDefinitionDto | null;
+  search_plan: RadarRunDossierQueryDto[];
+  sources: RadarRunDossierSourceDto[];
+  validation: Array<Record<string, unknown>>;
+  timeline: RadarRunJournalEventDto[];
+  summary: RadarRunDossierSummaryDto;
+};
+
 export type RadarReviewDecisionRequestDto = {
   status: string;
   reviewer: string;
@@ -246,6 +320,10 @@ export class RadarApiClient {
 
   getRunJournal(runId: string) {
     return this.request<RadarRunJournalDto>(`/api/radar-runs/${encodeURIComponent(runId)}/journal`);
+  }
+
+  getRunDossier(runId: string) {
+    return this.request<RadarRunDossierDto>(`/api/radar-runs/${encodeURIComponent(runId)}/dossier`);
   }
 
   saveQualificationReview(
