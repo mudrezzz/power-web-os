@@ -5,7 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from power_web_os.application.live_radar_contracts import RadarSearchPlan, RadarSearchQuery
+from power_web_os.application.live_radar_contracts import RadarSearchPlan
+from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_plan_to_search_plan
 
 def build_live_mini_radar_definition() -> dict[str, Any]:
     return {
@@ -57,29 +58,7 @@ def build_live_mini_radar_definition() -> dict[str, Any]:
 
 def build_live_mini_radar_search_plan(radar: dict[str, Any] | None = None) -> RadarSearchPlan:
     radar_payload = radar or build_live_mini_radar_definition()
-    return RadarSearchPlan(
-        radar_id=str(radar_payload["radar_id"]),
-        queries=[
-            RadarSearchQuery(
-                query_id="q1-toir-reliability",
-                query="СИБУР ТОиР ремонты надежность межремонтный интервал производственная площадка",
-                purpose="Найти активы СИБУР и сигналы по ТОиР, ремонту и надежности.",
-                expected_evidence=["Q1", "Q2", "S1"],
-            ),
-            RadarSearchQuery(
-                query_id="q2-modernization-investment",
-                query="СИБУР модернизация оборудование инвестиции рост мощности нефтехимия",
-                purpose="Найти сигналы модернизации, инвестиций и роста мощности.",
-                expected_evidence=["Q1", "Q2", "S2"],
-            ),
-            RadarSearchQuery(
-                query_id="q3-digital-diagnostics",
-                query="СИБУР цифровизация производство диагностика предиктивная аналитика датчики",
-                purpose="Найти сигналы цифровизации, диагностики и предиктивной аналитики.",
-                expected_evidence=["Q1", "Q2", "S3"],
-            ),
-        ],
-    )
+    return execution_plan_to_search_plan(compile_radar_execution_plan(radar_payload))
 
 
 def build_live_mini_radar_search_plan_artifact() -> dict[str, Any]:

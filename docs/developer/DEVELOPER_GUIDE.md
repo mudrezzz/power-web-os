@@ -271,11 +271,12 @@ polls `GET /api/radar-runs/{run_id}`, and reads
 `GET /api/radar-runs/{run_id}/candidates` plus
 `GET /api/radar-runs/{run_id}/journal` after output exists. It also reads
 `GET /api/radar-runs/{run_id}/dossier` to show the product run dossier: run
-context, definition version, task context, persisted search plan, source usage,
-validation warnings, and non-debug timeline events. The dossier is safe for the
-normal product UI. API-backed live runs also expose a separate `Trace` tab backed
-by `GET /api/radar-runs/{run_id}/technical-trace`; it is developer/admin
-oriented and contains sanitized pipeline/provider payloads plus redaction
+context, definition version, task context, persisted qualification-first search
+plan, source usage, validation warnings, and non-debug timeline events. The
+dossier is safe for the normal product UI. API-backed live runs also expose a
+separate `Trace` tab backed by
+`GET /api/radar-runs/{run_id}/technical-trace`; it is developer/admin oriented
+and contains sanitized per-task pipeline/provider payloads plus redaction
 reports. Do not store or display raw hidden chain-of-thought. If the backend is
 unavailable, the same screen stays in explicit demo fallback mode and reads the
 generated JSON files.
@@ -336,12 +337,16 @@ Rules:
 - The persisted live run command executes the existing live workflow path,
   persists run state and output, and exports the same JSON artifact shape for
   demo/frontend fallback.
-- Live Radar execution is now an explicit application pipeline. Extend
-  planning, provider collection, source normalization, candidate extraction,
-  candidate evaluation, validation, or artifact shaping as separate phase
-  methods/contracts before changing the workflow wrapper. The workflow wrapper
-  maps runtime nodes onto those phases; it must not become the owner of
-  provider calls, scoring semantics, review decisions, or persistence.
+- Live Radar execution is now an explicit qualification-first application
+  pipeline. Extend `RadarExecutionPlan` compilation, provider collection,
+  source normalization, candidate extraction, candidate evaluation, validation,
+  or artifact shaping as separate phase methods/contracts before changing the
+  workflow wrapper. The workflow wrapper maps runtime nodes onto those phases;
+  it must not become the owner of provider calls, scoring semantics, review
+  decisions, or persistence.
+- Qualification tasks and signal tasks must remain separate. Provider adapters
+  execute one bounded task at a time; application services own stage ordering
+  and rejected-candidate signal suppression.
 - Structured journal events should come from pipeline phase outputs through
   `RadarRunJournal`. Artifact-derived journal mapping exists only as a
   backward-compatible fallback for older snapshots and fake test executors.
@@ -566,8 +571,11 @@ Current ownership:
 ```text
 src/power_web_os/application/live_radar_contracts.py       Provider-neutral contracts and ports
 src/power_web_os/application/live_radar_definition.py      Live mini Radar definition and search plan
+src/power_web_os/application/live_radar_execution_plan.py  Qualification-first execution plan compiler
+src/power_web_os/application/live_radar_staged_execution.py Staged provider-call executor
 src/power_web_os/application/live_radar_normalization.py   Candidate, signal, evidence, and score normalization
 src/power_web_os/application/live_radar_service.py         One provider-neutral live run pass
+src/power_web_os/integrations/openrouter_request_builder.py Bounded OpenRouter prompt/request shaping
 src/power_web_os/integrations/live_radar_openrouter.py     OpenRouter and recorded provider adapters
 src/power_web_os/workflows/live_icp_radar_workflow.py      Optional langgraph-dai wrapper and fallback runtime
 src/power_web_os/live_icp_radar.py                        Compatibility facade for historical imports

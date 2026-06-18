@@ -84,12 +84,13 @@ The first backend slice exposed only a health boundary. The backend now adds DB
 settings, sessions, Alembic, Radar catalog/run repositories, persisted live
 Radar output snapshots, and FastAPI contracts for Radar catalog, run state, and
 candidate snapshots. It also has a Celery/Redis job adapter for long-running
-Radar execution, durable human review decisions for live Radar findings, and an
-append-only structured run journal for reasoning/audit summaries, and an
-append-only sanitized admin technical trace for developer inspection.
+Radar execution, durable human review decisions for live Radar findings, an
+append-only structured run journal for reasoning/audit summaries, an append-only
+sanitized admin technical trace for developer inspection, and a
+qualification-first live Radar execution plan.
 Backend slices should continue in this order:
 
-1. SIBUR contour discovery benchmark over the structured workflow pipeline;
+1. SIBUR contour discovery benchmark over the qualification-first workflow pipeline;
 2. normalized candidate/evidence query tables when API usage needs them;
 3. production schedule/cadence controls.
 
@@ -167,12 +168,18 @@ Review endpoints save/reset current qualification and signal decisions for
 existing snapshot findings, and candidate DTOs overlay those decisions without
 rewriting `radar_run_outputs`.
 
-Live Radar execution is structure-first and pipeline-shaped. The application
-service owns explicit provider-neutral phases: planning, provider collection,
-source normalization, candidate extraction, candidate evaluation, validation,
-and artifact shaping. The workflows layer maps optional LangGraph node names to
-those phases and may add runtime metadata, but it does not own provider calls,
-SQLAlchemy persistence, scoring semantics, or review decisions. Pipeline phases
+Live Radar execution is structure-first, qualification-first, and
+pipeline-shaped. The application service owns explicit provider-neutral phases:
+planning, provider collection, source normalization, candidate extraction,
+candidate evaluation, validation, and artifact shaping. Planning compiles a
+generic `RadarExecutionPlan` from the Radar definition. It discovers the initial
+candidate universe, applies qualification gates sequentially, and runs signal
+searches only for candidates not rejected by required qualification rules. The
+workflows layer maps optional LangGraph node names to those phases and may add
+runtime metadata, but it does not own provider calls, SQLAlchemy persistence,
+scoring semantics, or review decisions. Provider adapters receive bounded tasks;
+OpenRouter qualification prompts do not include intent signals, and signal
+prompts include only one signal and the current candidate scope. Pipeline phases
 emit structured event summaries that are persisted through `RadarRunJournal`;
 older artifact-derived journal mapping remains only a compatibility fallback
 for existing snapshots.
@@ -339,7 +346,7 @@ Radar configuration is a first-class product boundary. There can be many ICP Rad
 
 The first realistic demo ICP profile uses `demo/fixtures/icp_radar/sibur_icp_pass1.xlsx` as a fixture. It discovers Russian legal entities inside a holding, scores them against ТОиР criteria, and shows a ranked candidate shortlist for the active `ТОиР / SIBUR` radar. The catalog also includes configured/planned radar examples without generated candidates yet. Numeric C1-C20 scores come from the XLSX. `radar.definition.intent_signals` is the canonical C1-C20 dictionary; top-level `criteria` is generated from it only as a backward-compatible alias. Criterion-level evidence is added by a separate curated synthetic fixture, `demo/fixtures/icp_radar/toir_sibur_criterion_evidence.json`, so the demo can exercise evidence-backed score explanation before production source extraction exists.
 
-The first live ICP Radar path is intentionally separate from the stable XLSX fixture. `TOIR Quick Live Radar` uses a small definition with two qualification rules and three intent signals, runs from the CLI, and writes a separate `icp_radar_live_run` artifact only when a provider returns usable evidence. The live path is split by backend boundary: application modules own contracts, definition, provider-neutral normalization, and the live run service; `integrations` owns the OpenRouter adapter and recorded provider; `workflows` owns the optional `langgraph-dai` `BaseWorkflow` wrapper plus local fallback runtime. `live_icp_radar.py` remains only a compatibility facade for existing imports. OpenRouter is therefore the first provider, not the domain boundary. Live outputs are reviewable artifacts, not accepted accounts, and the system must not fabricate candidates when provider evidence is missing.
+The first live ICP Radar path is intentionally separate from the stable XLSX fixture. `TOIR Quick Live Radar` uses a small definition with two qualification rules and three intent signals, runs from the CLI, and writes a separate `icp_radar_live_run` artifact only when a provider returns usable evidence. The live path is split by backend boundary: application modules own contracts, definition, qualification-first execution planning, provider-neutral normalization, and the live run service; `integrations` owns the OpenRouter adapter and recorded provider; `workflows` owns the optional `langgraph-dai` `BaseWorkflow` wrapper plus local fallback runtime. `live_icp_radar.py` remains only a compatibility facade for existing imports. OpenRouter is therefore the first provider, not the domain boundary. Live outputs are reviewable artifacts, not accepted accounts, and the system must not fabricate candidates when provider evidence is missing.
 
 The persisted live Radar MVP adds an application service around that same
 workflow-backed execution path. The service creates a durable `radar_runs`

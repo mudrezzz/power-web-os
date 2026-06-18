@@ -2277,42 +2277,204 @@ Principles:
   - Prompt/response payloads can be large; cap, summarize, or paginate trace
     payloads if needed.
 
-### Slice 0.7.6.2: SIBUR contour discovery benchmark
+### Slice 0.7.6.1.3: Qualification-first Radar execution plan
+
+- Status: `Done`
+- Goal: Make live Radar execution qualification-first and backend-orchestrated
+  before model-quality benchmarking.
+- User value: A developer can inspect and trust that Radar first discovers and
+  filters candidate accounts through qualification gates, then searches intent
+  signals only for non-rejected candidates.
+- Scope:
+  - Added an application-level `RadarExecutionPlan` with
+    `qualification_discovery`, sequential `qualification_gate`, and
+    `signal_search` tasks.
+  - Kept existing `search_plan.queries` as a backward-compatible projection
+    while adding task stage, subject, dependency, rule snapshot, and candidate
+    scope metadata.
+  - Reworked live Radar collection so the backend executes bounded provider
+    calls in order instead of sending one mixed qualification/signal prompt.
+  - Filtered rejected required-qualification candidates out of the public
+    candidate artifact while retaining rejected summaries in execution metadata.
+  - Scoped OpenRouter prompts so qualification tasks do not include signals and
+    signal tasks include only one signal and the current candidate scope.
+  - Updated dossier/trace inputs so staged task metadata is inspectable without
+    a database migration.
+- Out of scope:
+  - SIBUR benchmark execution.
+  - Normalized candidate/evidence tables.
+  - Production entity-resolution or deduplication beyond current snapshot
+    merging.
+  - Raw hidden chain-of-thought storage or display.
+- Implementation notes:
+  - The logic is generic over Radar definitions and uses the rule/signal
+    content from the definition; it is not hardcoded to SIBUR.
+  - LLM/provider adapters execute bounded tasks. Application services own stage
+    ordering, gate semantics, candidate filtering, and observability metadata.
+- Tests:
+  - Contract tests cover generic plan compilation, staged provider call order,
+    rejected-candidate signal suppression, scoped OpenRouter request payloads,
+    persisted run compatibility, API compatibility, frontend type/build
+    compatibility, and backend architecture guardrails.
+- Docs:
+  - Added ADR `2026-06-18-qualification-first-radar-execution.md`.
+  - Updated SAO, Developer Guide, demo docs, and layer README guidance for the
+    qualification-first execution model.
+- Demo impact:
+  - Existing UI/API flows remain compatible. Product dossier and technical
+    trace can now show staged plan metadata before the SIBUR benchmark.
+- Acceptance criteria:
+  - Qualification gates run before signal searches.
+  - Signal tasks are not created for rejected candidates.
+  - External run/candidate/dossier/journal/trace contracts remain compatible.
+  - No SIBUR-specific logic is introduced.
+- Risks:
+  - Live web runs now involve more bounded provider calls; benchmark cost and
+    latency should be measured in `Slice 0.7.6.2`.
+
+### Slice 0.7.6.1.4: LLM-planned discovery strategy and source policy
+
+- Status: `Ready`
+- Goal: Make candidate-universe discovery a real planning process instead of a
+  single generated query, while keeping the strategy generic across Radar
+  definitions.
+- User value: A user can inspect why the Radar searched specific source bases,
+  which qualification criteria drove each discovery step, why some sources were
+  used or skipped, and whether the candidate universe is plausibly complete
+  before signal search begins.
+- Scope:
+  - Add an application-level discovery planner port that receives the active
+    Radar definition, qualification rules, global search base, source policies,
+    task context, and current run metadata.
+  - Add an LLM-backed planner adapter behind the existing integration/workflow
+    boundaries. The planner returns structured discovery plan steps, not raw
+    hidden chain-of-thought.
+  - Represent discovery planning as a loop:
+    1. inspect radar settings and source policy;
+    2. propose candidate-universe discovery steps;
+    3. validate those steps against source policy, rule dependencies, and
+       expected evidence;
+    4. revise or accept the plan;
+    5. execute only accepted bounded tasks.
+  - Support generic qualification criteria such as industry, region, revenue,
+    ownership/group membership, asset type, and source preference without
+    hardcoding SIBUR-specific logic.
+  - Allow the planner to prefer configured global source bases, for example
+    SBIS or an official registry, when they are relevant to the criterion, and
+    to explain when a configured source base is not useful for a specific step.
+  - Keep provider execution bounded: each executed task receives one current
+    discovery or qualification step, its source constraints, and expected
+    evidence.
+  - Store analyzed-but-not-used sources in technical trace only. Product
+    sources and dossier source lists should include only sources that actually
+    contributed to accepted/unknown candidates, qualification evidence, signal
+    evidence, or validation warnings.
+  - Extend dossier with discovery-plan inspection: planned steps, accepted
+    steps, skipped source bases, source-use rationale, candidate universe
+    counts, rejected/unknown counts, and coverage warnings.
+  - Extend technical trace with planner input/output, validation outcome, and
+    revision attempts after redaction.
+- Out of scope:
+  - SIBUR-specific baseline evaluation.
+  - Raw hidden chain-of-thought storage or display.
+  - Normalized candidate/evidence tables.
+  - Production auth for hiding technical trace.
+  - Perfect entity resolution for all registries.
+- Implementation notes:
+  - Backend application services own strategy validation and execution
+    acceptance. LLM planner proposes structured steps; it does not become the
+    source of truth for stage ordering, source policy, or candidate filtering.
+  - The source policy must be explicit in planner input: global source base,
+    local source overrides, cross-validation settings, fallback confidence,
+    allow-additional-sources, and HITL policy.
+  - Product output should separate `used_sources` from `analyzed_sources`.
+    `used_sources` feed the existing candidates/dossier UI; `analyzed_sources`
+    remain in technical trace until a normalized evidence schema is added.
+  - The implementation must be tested with at least three Radar definitions:
+    a holding/group-membership discovery case, an industry/region/revenue case,
+    and a source-constrained registry-first case.
+- Tests:
+  - Unit tests for planner input construction from radar settings and source
+    policy.
+  - Recorded LLM planner tests for three generic Radar definitions without
+    SIBUR-specific assertions.
+  - Contract tests that rejected/skipped/analyzed-only sources do not appear in
+    product source lists but remain visible in technical trace.
+  - Tests proving signal searches run only after accepted discovery plan steps
+    and qualification gates.
+  - API/dossier tests for discovery-plan inspection fields.
+- Docs:
+  - Add ADR: LLM proposes discovery plans; backend validates and executes
+    bounded tasks.
+  - Update SAO with planner/validator/executor ownership and source visibility
+    policy.
+  - Update Developer Guide and demo docs with the difference between product
+    used sources and technical analyzed sources.
+- Demo impact:
+  - UI `Journal`/dossier can explain why a source base was used or skipped and
+    why a discovery step was accepted.
+  - UI source lists become cleaner because they show only sources that went
+    into evidence or validation, while Trace retains the broader debug trail.
+- Acceptance criteria:
+  - Discovery planning works for at least three different Radar definitions.
+  - Planner output is structured, inspectable, redacted, and contains no raw
+    hidden CoT.
+  - Configured source policy influences planning and is visible in dossier.
+  - Product source lists exclude sources that were only analyzed and not used.
+  - No SIBUR-specific branching exists in application or integration code.
+- Risks:
+  - More planning steps can increase latency and cost; benchmark slices should
+    measure both.
+  - Planner validation can become too permissive; keep backend-side policy
+    checks explicit and covered by tests.
+
+### Slice 0.7.6.2: Multi-radar discovery benchmark
 
 - Status: `Backlog`
-- Goal: Run a real-model live Radar experiment against the SIBUR enterprise
-  contour and inspect whether the planner/executor/evaluator loop can discover
-  the relevant companies with source-backed evidence.
+- Goal: Run real-model live Radar experiments across several discovery shapes
+  and inspect whether the planner/executor/evaluator loop can discover relevant
+  companies with source-backed evidence.
 - User value: A user can see whether a strong model can move beyond the mini
-  live Radar and find a broad, evidence-backed SIBUR shortlist in the real web.
+  live Radar and solve materially different discovery tasks, not only a
+  SIBUR-shaped group-membership example.
 - Scope:
-  - Add an expanded `SIBUR contour discovery` Radar definition separate from
-    the current quick mini Radar.
+  - Add at least three benchmark Radar definitions separate from the current
+    quick mini Radar:
+    - group/holding contour discovery, with SIBUR as the checked example;
+    - industry + region + revenue qualification discovery;
+    - source-constrained registry-first discovery, for example a case where
+      SBIS or another configured source base is expected to be useful.
   - Configure the run path to use a selected high-capability OpenRouter model
     through the existing provider boundary.
   - Run through backend API/worker persistence, not a one-off script-only path.
   - Persist run state, output snapshot, source evidence, candidates, validation
     warnings, and structured journal events.
-  - Add a demo/diagnostic command or documented manual flow for one benchmark
-    run.
+  - Add a demo/diagnostic command or documented manual flow for benchmark runs.
+  - Compare product used-source lists with technical trace analyzed-source
+    trails for each benchmark.
 - Out of scope:
   - Storing raw hidden chain-of-thought.
-  - Guaranteeing complete SIBUR coverage without a baseline list.
+  - Guaranteeing complete coverage without baseline lists.
   - Normalized candidate/evidence tables beyond the existing output snapshot.
   - Automated scheduled benchmark runs.
 - Implementation notes:
-  - Run this only after the run dossier and technical trace slices are in
-    place, so benchmark failures can be inspected through product and developer
-    evidence.
+  - Run this only after `Slice 0.7.6.1.4`, so the benchmark tests the
+    LLM-planned discovery strategy rather than the older one-query discovery
+    fallback.
+  - The benchmark should use the qualification-first execution plan from
+    `Slice 0.7.6.1.3` plus the LLM-planned discovery strategy from
+    `Slice 0.7.6.1.4`; failures should be diagnosed per planner step, source
+    policy decision, and execution stage before changing model policy.
   - Treat this as a model-quality experiment, not as accepted product truth.
   - Use structured reasoning artifacts: plans, search hypotheses, source
     outcomes, rationale summaries, warnings, and self-check summaries.
-  - Keep the benchmark Radar definition versioned so prompts/search policy can
+  - Keep benchmark Radar definitions versioned so prompts/search policy can
     evolve without overwriting the quick live Radar.
 - Tests:
-  - Contract test that the benchmark definition is persisted/seeded and does
-    not replace the quick live Radar.
-  - Recorded-provider test for benchmark artifact shape and journal mapping.
+  - Contract test that benchmark definitions are persisted/seeded and do not
+    replace the quick live Radar.
+  - Recorded-provider tests for benchmark artifact shape, dossier mapping, and
+    journal/trace mapping across all benchmark definitions.
   - Smoke test that benchmark run creation uses backend queued execution.
 - Docs:
   - Document model/env prerequisites, expected cost/latency risk, and manual
@@ -2323,10 +2485,12 @@ Principles:
   - The UI can show a persisted benchmark run through the existing Radar API and
     Journal tab.
 - Acceptance criteria:
-  - A benchmark run can be started and inspected with persisted candidates,
-    sources, validation warnings, and journal events.
-  - The output can be compared manually against a known SIBUR baseline in the
-    next slice.
+  - Each benchmark run can be started and inspected with persisted candidates,
+    used sources, validation warnings, dossier, journal events, and technical
+    trace.
+  - The SIBUR output can be compared manually against a known SIBUR baseline in
+    the next slice, while the other benchmark definitions demonstrate that the
+    pipeline is generic.
   - No raw hidden CoT is stored or shown.
 - Risks:
   - Live web/model output may be incomplete, slow, expensive, or noisy.

@@ -125,6 +125,12 @@ export function apiRunToLiveArtifact(
         query: query.query,
         purpose: query.purpose,
         expected_evidence: query.expected_evidence,
+        stage: query.stage,
+        subject_type: query.subject_type,
+        subject_id: query.subject_id,
+        rule_snapshot: query.rule_snapshot,
+        depends_on: query.depends_on,
+        candidate_scope: query.candidate_scope,
       })) ?? [],
     },
     sources: candidates.sources.map((source) => ({

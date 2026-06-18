@@ -10,6 +10,9 @@ integration belongs.
   existing `BaseWorkflow` pattern when the framework is installed. Its node
   names map to application pipeline phases such as planning, collection,
   extraction, evaluation, validation, and artifact shaping.
+- The qualification-first execution strategy belongs to application services.
+  Workflow nodes expose runtime structure and audit metadata; they do not decide
+  which qualification gate or signal search runs next.
 - `live_radar_executor.py` adapts the live workflow to the application
   `LiveRadarArtifactExecutor` port for persisted run services.
 - Local fallback workflow behavior remains available for base installs and

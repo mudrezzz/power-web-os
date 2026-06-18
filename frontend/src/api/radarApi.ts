@@ -215,6 +215,12 @@ export type RadarRunDossierQueryDto = {
   query: string;
   purpose: string;
   expected_evidence: string[];
+  stage?: string | null;
+  subject_type?: string | null;
+  subject_id?: string | null;
+  rule_snapshot?: string;
+  depends_on?: string[];
+  candidate_scope?: string[];
   source_count: number;
   source_refs: string[];
   candidate_refs: string[];

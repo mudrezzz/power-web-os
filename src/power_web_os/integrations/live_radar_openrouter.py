@@ -17,6 +17,7 @@ from power_web_os.application.live_radar_contracts import (
 )
 from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
+from power_web_os.integrations.openrouter_request_builder import build_openrouter_request
 
 
 class RecordedWebSearchProvider(WebSearchProvider):
@@ -24,10 +25,11 @@ class RecordedWebSearchProvider(WebSearchProvider):
 
     def __init__(self, result: WebSearchProviderResult | dict[str, Any]) -> None:
         self._result = WebSearchProviderResult.model_validate(result)
+        self.calls: list[RadarSearchPlan] = []
 
     def run_search_plan(self, *, radar: dict[str, Any], search_plan: RadarSearchPlan) -> WebSearchProviderResult:
         _ = radar
-        _ = search_plan
+        self.calls.append(search_plan)
         return self._result
 
 
@@ -150,127 +152,6 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
             fallback_metadata={"provider": "openrouter", "model": self.model, "web_mode": mode},
         )
         return _filter_result_to_verified_sources(result)
-
-
-def build_openrouter_request(
-    *,
-    radar: dict[str, Any],
-    search_plan: RadarSearchPlan,
-    model: str,
-    web_mode: str,
-) -> dict[str, Any]:
-    prompt = {
-        "task": "Run a live ICP radar search. Use web search and return only JSON.",
-        "radar": radar,
-        "search_plan": search_plan.model_dump(),
-        "output_schema": {
-            "sources": [
-                {
-                    "evidence_ref": "stable short id",
-                    "title": "source title",
-                    "url": "https://...",
-                    "snippet": "short evidence summary",
-                    "query_id": "search query id",
-                }
-            ],
-            "candidates": [
-                {
-                    "legal_name": "candidate legal name",
-                    "description": "short account description",
-                    "qualification": [
-                        {
-                            "criterion_code": "Q1 or Q2",
-                            "operator": "AND|OR|AND_NOT|OR_NOT",
-                            "requirement_level": "required|recommended",
-                            "status": "confirmed|weak|unknown|rejected",
-                            "confidence": "high|medium|low",
-                            "rationale": "why this status",
-                            "evidence_refs": ["source ids"],
-                            "evidence_findings": [
-                                {
-                                    "source_ref": "source id",
-                                    "fact": "what exactly was found",
-                                    "excerpt": "short source excerpt or paraphrased fragment, not a long quote",
-                                    "excerpt_type": "quote|paraphrase|not_available",
-                                    "why_it_matches_rule": "why this fact satisfies or fails the rule",
-                                    "evidence_strength": "strong|medium|weak",
-                                    "contradicts_rule": False,
-                                }
-                            ],
-                        }
-                    ],
-                    "signals": [
-                        {
-                            "signal_code": "S1|S2|S3",
-                            "status": "observed|not_observed|unclear",
-                            "score": "0|1|2",
-                            "confidence": "high|medium|low",
-                            "summary": "short signal summary",
-                            "evidence_refs": ["source ids"],
-                            "evidence_findings": [
-                                {
-                                    "source_ref": "source id",
-                                    "fact": "what exactly was found",
-                                    "excerpt": "short source excerpt or paraphrased fragment, not a long quote",
-                                    "excerpt_type": "quote|paraphrase|not_available",
-                                    "why_it_matches_signal": "why this fact is an intent signal",
-                                    "why_score_applies": "why score 0, 1, or 2 applies",
-                                    "evidence_strength": "strong|medium|weak",
-                                    "contradicts_signal": False,
-                                }
-                            ],
-                            "score_evaluation": {
-                                "scale": "0-2",
-                                "applied_score": 0,
-                                "max_score": 2,
-                                "rule_snapshot": "rubric rule used for the score",
-                                "explanation": "short score rationale",
-                            },
-                        }
-                    ],
-                    "review_flags": ["why human review is needed"],
-                }
-            ],
-        },
-        "rules": [
-            "Do not invent candidates without source evidence.",
-            "If evidence is weak, mark it weak/unclear and add a review flag.",
-            "For each qualification item, explain used sources, exact facts, a short reviewable excerpt or paraphrase, and why they match the rule.",
-            "For each signal, explain source-linked facts, a short reviewable excerpt or paraphrase, why it matches the signal, and why the 0-2 score applies.",
-            "Do not include secrets, request headers, or raw tool dumps.",
-        ],
-    }
-    request: dict[str, Any] = {
-        "model": model,
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are an ABM research agent. Return strict JSON only. Use Russian names and summaries when source content is Russian.",
-            },
-            {"role": "user", "content": json.dumps(prompt, ensure_ascii=False)},
-        ],
-        "temperature": 0,
-        "response_format": {"type": "json_object"},
-    }
-    if web_mode == "server_tools":
-        request["tools"] = [
-            {
-                "type": "openrouter:web_search",
-                "parameters": {
-                    "engine": "auto",
-                    "max_results": 5,
-                    "max_total_results": 12,
-                    "search_context_size": "low",
-                },
-            }
-        ]
-    elif web_mode == "plugin_web":
-        request["plugins"] = [{"id": "web"}]
-    elif web_mode == "model_native":
-        request["metadata"] = {"web_mode": "model_native"}
-    else:
-        raise ValueError(f"Unsupported OPENROUTER_WEB_MODE: {web_mode}")
-    return request
 
 
 def normalize_openrouter_response(payload: dict[str, Any], *, fallback_metadata: dict[str, Any]) -> WebSearchProviderResult:

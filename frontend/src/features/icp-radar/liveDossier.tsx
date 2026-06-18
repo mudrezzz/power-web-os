@@ -137,9 +137,15 @@ export function LiveRunDossierPanel({
               <p>{query.purpose || t('icpRadar.live.journal.noSummary')}</p>
               {query.expected_evidence.length > 0 && (
                 <div className="run-dossier-tags">
+                  {query.stage && <span><Mono>stage</Mono>{query.stage}</span>}
+                  {query.subject_id && <span><Mono>subject</Mono>{query.subject_id}</span>}
+                  {query.candidate_scope && query.candidate_scope.length > 0 && (
+                    <span><Mono>scope</Mono>{query.candidate_scope.join(', ')}</span>
+                  )}
                   {query.expected_evidence.map((item) => <span key={item}>{item}</span>)}
                 </div>
               )}
+              {query.rule_snapshot && <p>{query.rule_snapshot}</p>}
               <DossierRefs label={t('icpRadar.live.dossier.sourceRefs')} refs={query.source_refs} />
               <DossierRefs label={t('icpRadar.live.dossier.candidateRefs')} refs={query.candidate_refs} />
             </article>

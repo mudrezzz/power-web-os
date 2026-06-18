@@ -16,6 +16,7 @@ from power_web_os.application.live_radar_contracts import (
     LiveICPRadarRunState,
     LiveRadarPipelineEvent,
     LiveRadarPlanningResult,
+    RadarExecutionPlan,
     LiveRadarRunArtifact,
     LiveRadarValidationResult,
     RadarSearchPlan,
@@ -23,13 +24,23 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProvider,
 )
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition, build_live_mini_radar_search_plan
+from power_web_os.application.live_radar_execution_plan import (
+    compile_radar_execution_plan,
+    execution_plan_to_search_plan,
+)
 from power_web_os.application.live_radar_normalization import (
     _dedupe_sources,
     _rank_candidates,
     normalize_live_candidate,
     validate_live_radar_qualification_contract,
 )
-from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
+from power_web_os.application.live_radar_pipeline_support import (
+    candidate_rejected as _candidate_rejected,
+    planned_event_type as _planned_event_type,
+    rejected_candidate_payload as _rejected_candidate_payload,
+    trace_pipeline_step as _trace,
+)
+from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
 
 
 class LiveRadarRunService:
@@ -68,7 +79,8 @@ class LiveRadarRunService:
             payload={"task_context": state.task_context, "has_existing_radar": state.radar is not None},
         )
         radar = state.radar or build_live_mini_radar_definition()
-        plan = build_live_mini_radar_search_plan(radar)
+        execution_plan = compile_radar_execution_plan(radar)
+        plan = execution_plan_to_search_plan(execution_plan)
         result = LiveRadarPlanningResult(
             radar=radar,
             search_plan=plan,
@@ -78,19 +90,28 @@ class LiveRadarRunService:
                     phase="planning",
                     actor="workflow",
                     node_name="build_search_plan",
-                    summary=f"Live Radar plan prepared with {len(plan.queries)} search queries.",
-                    payload={"query_count": len(plan.queries), "radar_id": plan.radar_id},
+                    summary=f"Qualification-first Radar plan prepared with {len(execution_plan.tasks)} tasks.",
+                    payload={
+                        "query_count": len(plan.queries),
+                        "task_count": len(execution_plan.tasks),
+                        "radar_id": plan.radar_id,
+                        "execution_plan": execution_plan.model_dump(),
+                    },
                 ),
                 *[
                     LiveRadarPipelineEvent(
-                        event_type="search_query_planned",
+                        event_type=_planned_event_type(query.stage),
                         phase="planning",
                         actor="workflow",
                         node_name=query.query_id,
                         summary=query.query,
                         payload={
+                            "stage": query.stage,
+                            "subject_type": query.subject_type,
+                            "subject_id": query.subject_id,
                             "purpose": query.purpose,
                             "expected_evidence": list(query.expected_evidence),
+                            "depends_on": list(query.depends_on),
                         },
                     )
                     for query in plan.queries
@@ -100,13 +121,15 @@ class LiveRadarRunService:
         next_state = state.model_copy(update={
             "radar": result.radar,
             "search_plan": result.search_plan.model_dump(),
+            "execution_plan": execution_plan.model_dump(),
             "pipeline_events": _append_events(state, result.events),
         })
         _trace(
             next_state, "planning", "build_search_plan", "pipeline_output", "Build search plan output",
-            summary=f"Built {len(plan.queries)} search queries.",
+            summary=f"Built {len(execution_plan.tasks)} staged search tasks.",
             payload={
                 "radar_id": plan.radar_id,
+                "execution_plan": execution_plan.model_dump(),
                 "queries": [query.model_dump() for query in plan.queries],
             },
         )
@@ -114,27 +137,34 @@ class LiveRadarRunService:
 
     def run_web_search(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
         radar = state.radar or build_live_mini_radar_definition()
-        plan = RadarSearchPlan.model_validate(state.search_plan or build_live_mini_radar_search_plan(radar))
+        execution_plan = RadarExecutionPlan.model_validate(state.execution_plan or compile_radar_execution_plan(radar))
+        plan = execution_plan_to_search_plan(execution_plan)
         _trace(
             state, "collection", "run_web_search", "pipeline_input", "Web search input",
-            payload={"radar_id": plan.radar_id, "queries": [query.model_dump() for query in plan.queries]},
+            payload={"radar_id": plan.radar_id, "execution_plan": execution_plan.model_dump()},
         )
-        provider_result = self._provider.run_search_plan(radar=radar, search_plan=plan)
+        provider_result, task_events, execution_results = run_staged_radar_execution(
+            radar=radar,
+            execution_plan=execution_plan,
+            provider=self._provider,
+        )
         result = LiveRadarCollectionResult(
             sources=provider_result.sources,
             candidate_observations=provider_result.candidate_observations,
             provider_metadata=provider_result.provider_metadata,
             events=[
+                *task_events,
                 LiveRadarPipelineEvent(
                     event_type="source_collected",
                     phase="collection",
                     actor="provider",
                     node_name="run_web_search",
                     visibility="operator",
-                    summary=f"Provider returned {len(provider_result.sources)} sources and {len(provider_result.candidate_observations)} candidate observations.",
+                    summary=f"Provider returned {len(provider_result.sources)} sources across {execution_results['executed_task_count']} staged tasks.",
                     payload={
                         "source_count": len(provider_result.sources),
                         "candidate_observation_count": len(provider_result.candidate_observations),
+                        "executed_task_count": execution_results["executed_task_count"],
                         "provider": str(provider_result.provider_metadata.get("provider", "")),
                         "model": str(provider_result.provider_metadata.get("model", "")),
                         "web_mode": str(provider_result.provider_metadata.get("web_mode", "")),
@@ -147,15 +177,17 @@ class LiveRadarRunService:
             "sources": [item.model_dump() for item in result.sources],
             "candidate_observations": [dict(item) for item in result.candidate_observations],
             "provider_metadata": dict(result.provider_metadata),
+            "execution_results": execution_results,
             "pipeline_events": _append_events(state, result.events),
         })
         _trace(
             next_state, "collection", "run_web_search", "pipeline_output", "Web search output",
-            summary=f"Provider returned {len(result.sources)} sources.",
+            summary=f"Provider returned {len(result.sources)} sources from qualification-first execution.",
             payload={
                 "provider_metadata": dict(result.provider_metadata),
                 "source_count": len(result.sources),
                 "candidate_observation_count": len(result.candidate_observations),
+                "execution_results": execution_results,
                 "source_refs": [source.evidence_ref for source in result.sources],
             },
         )
@@ -207,34 +239,43 @@ class LiveRadarRunService:
             normalize_live_candidate(item, radar=radar, sources=sources)
             for item in state.candidate_observations
         ])
+        visible_candidates = [candidate for candidate in candidates if not _candidate_rejected(candidate)]
+        rejected_candidates = [_rejected_candidate_payload(candidate) for candidate in candidates if _candidate_rejected(candidate)]
         result = LiveRadarExtractionResult(
             sources=sources,
-            candidates=candidates,
+            candidates=visible_candidates,
             events=[
                 LiveRadarPipelineEvent(
                     event_type="candidate_extracted",
                     phase="extraction",
                     actor="workflow",
                     node_name="extract_candidates",
-                    summary=f"Extracted {len(candidates)} normalized candidates.",
-                    payload={"candidate_count": len(candidates)},
-                    candidate_refs=[candidate.candidate_id for candidate in candidates],
+                    summary=f"Extracted {len(visible_candidates)} visible candidates and filtered {len(rejected_candidates)} rejected candidates.",
+                    payload={"candidate_count": len(visible_candidates), "rejected_candidate_count": len(rejected_candidates)},
+                    candidate_refs=[candidate.candidate_id for candidate in visible_candidates],
                 )
             ],
         )
+        execution_results = {
+            **state.execution_results,
+            "rejected_candidates": rejected_candidates or state.execution_results.get("rejected_candidates", []),
+        }
         next_state = state.model_copy(update={
             "candidates": [item.model_dump() for item in result.candidates],
+            "execution_results": execution_results,
             "pipeline_events": _append_events(state, result.events),
         })
         _trace(
             next_state, "extraction", "extract_candidates", "normalization_result", "Candidate extraction result",
             summary=f"Extracted {len(candidates)} normalized candidates.",
             payload={
-                "candidate_count": len(candidates),
+                "candidate_count": len(visible_candidates),
+                "rejected_candidate_count": len(rejected_candidates),
                 "candidates": [
                     {"candidate_id": item.candidate_id, "legal_name": item.legal_name, "evidence_refs": list(item.evidence_refs)}
-                    for item in candidates
+                    for item in visible_candidates
                 ],
+                "rejected_candidates": rejected_candidates,
             },
         )
         return next_state
@@ -442,6 +483,8 @@ class LiveRadarRunService:
             "query_count": len(state.search_plan["queries"]) if state.search_plan else 0,
             "source_count": len(state.sources),
             "candidate_count": len(state.candidates),
+            "execution_plan": state.execution_plan or {},
+            "execution_results": dict(state.execution_results),
             "run_at": _now_iso(),
         }
 
@@ -452,28 +495,3 @@ def _now_iso() -> str:
 
 def _append_events(state: LiveICPRadarRunState, events: list[LiveRadarPipelineEvent]) -> list[dict[str, Any]]:
     return [*state.pipeline_events, *[event.model_dump() for event in events]]
-
-
-def _trace(
-    state: LiveICPRadarRunState,
-    phase: str,
-    node_name: str,
-    trace_type: str,
-    title: str,
-    payload: dict[str, Any],
-    summary: str = "",
-) -> None:
-    run_id = state.task_context.get("run_id")
-    if not run_id:
-        return
-    append_current_trace(
-        RadarRunTechnicalTraceCommand(
-            run_id=str(run_id),
-            phase=phase,
-            node_name=node_name,
-            trace_type=trace_type,
-            title=title,
-            summary=summary,
-            payload=payload,
-        )
-    )

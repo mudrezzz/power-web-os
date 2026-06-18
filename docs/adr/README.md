@@ -17,6 +17,7 @@ ADRs capture decisions that shape product architecture.
 - `2026-06-15-canonical-icp-radar-ux-contract.md` - Render all fixture-backed and provider-backed ICP Radar shortlists through one canonical table-preview-detail UX contract.
 - `2026-06-16-backend-architecture-guardrails.md` - Guard backend OOP boundaries, long-running job direction, and module-size limits before persistence grows.
 - `2026-06-17-structured-radar-run-journal.md` - Persist structured Radar audit events and sanitized admin technical traces while excluding raw hidden chain-of-thought.
+- `2026-06-18-qualification-first-radar-execution.md` - Make backend application services own qualification-first Radar execution while LLM providers execute bounded tasks.
 
 ## Template
 

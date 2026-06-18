@@ -15,7 +15,11 @@ provider SDK details.
   into records that repositories can persist.
 - `live_radar_contracts.py` defines provider-neutral live Radar DTOs and ports.
 - `live_radar_definition.py` owns the deterministic live mini Radar definition
-  and search plan.
+  and backward-compatible search-plan projection.
+- `live_radar_execution_plan.py` compiles generic Radar definitions into
+  qualification-first staged execution plans.
+- `live_radar_staged_execution.py` executes staged provider tasks and suppresses
+  signal searches for rejected qualification candidates.
 - `live_radar_normalization.py` owns provider-neutral candidate, signal,
   qualification, evidence-card, and score-evaluation normalization.
 - `live_radar_service.py` orchestrates one live Radar execution pass through
@@ -68,7 +72,10 @@ valid application payloads.
 Live Radar pipeline phases emit structured event summaries through application
 contracts. The persisted run service writes those events through
 `RadarRunJournal`. Artifact-derived journal mapping remains a compatibility
-fallback for existing snapshots, not the preferred extension path.
+fallback for existing snapshots, not the preferred extension path. Application
+code owns execution strategy: qualification discovery and gates run before
+signal searches, and providers receive bounded tasks instead of the whole Radar
+as one mixed prompt.
 
 Technical trace persistence follows the same rule: application code emits
 pipeline/provider debug summaries through `RadarRunTechnicalTracer`, which
@@ -82,8 +89,9 @@ hidden chain-of-thought.
    contract.
 2. Add or extend a port protocol for persistence, queue, provider, or scheduler
    behavior.
-3. For live Radar workflow behavior, add or extend the relevant pipeline phase
-   in `live_radar_service.py` before changing workflow wrappers.
+3. For live Radar workflow behavior, add or extend the execution plan compiler,
+   staged execution helper, or relevant pipeline phase before changing workflow
+   wrappers.
 4. Implement adapters in the owning infrastructure package, for example
    `persistence`, `integrations`, or `jobs`.
 5. Add contract tests that prove application code imports without infrastructure

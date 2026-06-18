@@ -19,6 +19,8 @@ QualificationRequirement = Literal["required", "recommended"]
 QualificationSourceOrigin = Literal["global", "local", "additional"]
 QualificationTrustPolicy = Literal["trusted", "cross_checked", "hitl_required"]
 QualificationCrossValidationStatus = Literal["passed", "weak", "failed", "not_required"]
+RadarExecutionStage = Literal["qualification_discovery", "qualification_gate", "signal_search", "evaluation", "validation"]
+RadarExecutionSubjectType = Literal["radar", "qualification", "signal"]
 
 
 class RadarSearchQuery(BaseModel):
@@ -26,11 +28,35 @@ class RadarSearchQuery(BaseModel):
     query: str
     purpose: str
     expected_evidence: list[str] = Field(default_factory=list)
+    stage: RadarExecutionStage | None = None
+    subject_type: RadarExecutionSubjectType | None = None
+    subject_id: str | None = None
+    rule_snapshot: str = ""
+    depends_on: list[str] = Field(default_factory=list)
+    candidate_scope: list[str] = Field(default_factory=list)
 
 
 class RadarSearchPlan(BaseModel):
     radar_id: str
     queries: list[RadarSearchQuery]
+
+
+class RadarExecutionTask(BaseModel):
+    task_id: str
+    stage: RadarExecutionStage
+    subject_type: RadarExecutionSubjectType
+    subject_id: str
+    rule_snapshot: str = ""
+    query: str
+    purpose: str
+    expected_evidence: list[str] = Field(default_factory=list)
+    depends_on: list[str] = Field(default_factory=list)
+    candidate_scope: list[str] = Field(default_factory=list)
+
+
+class RadarExecutionPlan(BaseModel):
+    radar_id: str
+    tasks: list[RadarExecutionTask]
 
 
 class RadarSourceEvidence(BaseModel):
@@ -221,6 +247,8 @@ class LiveICPRadarRunState(BaseModel):
     task_context: dict[str, Any] = Field(default_factory=dict)
     radar: dict[str, Any] = Field(default_factory=dict)
     search_plan: dict[str, Any] | None = None
+    execution_plan: dict[str, Any] | None = None
+    execution_results: dict[str, Any] = Field(default_factory=dict)
     sources: list[dict[str, Any]] = Field(default_factory=list)
     candidate_observations: list[dict[str, Any]] = Field(default_factory=list)
     candidates: list[dict[str, Any]] = Field(default_factory=list)

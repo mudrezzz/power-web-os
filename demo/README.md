@@ -113,6 +113,11 @@ The live mini radar command writes `demo/output/live_mini_icp_radar_run.json` an
 The persisted live mini radar command uses the same provider-backed workflow but
 also creates a `radar_runs` row and a `radar_run_outputs` JSON snapshot in the
 configured database. It still exports the same JSON paths for offline fallback.
+Live execution is qualification-first: the backend first discovers a candidate
+universe, applies required qualification gates in order, and only then runs
+signal searches for candidates that were not rejected by those gates. This is a
+generic execution plan compiled from the active radar definition, not a
+SIBUR-specific script.
 
 The local API can expose the same persisted backend state:
 
@@ -146,10 +151,10 @@ fixture/offline fallback state.
 
 The backend also exposes `GET /api/radar-runs/{run_id}/dossier`. The frontend
 uses it in the live Radar detail `Journal` tab as the product run dossier:
-run context, definition version, task context, real search plan, source usage,
-validation warnings, and non-debug timeline events. This is not the admin
-technical trace; provider prompts, raw requests/responses, and debug payloads
-remain out of this product view.
+run context, definition version, task context, staged qualification-first search
+plan, source usage, validation warnings, and non-debug timeline events. This is
+not the admin technical trace; provider prompts, raw requests/responses, and
+debug payloads remain out of this product view.
 
 For local developer inspection, the backend exposes
 `GET /api/radar-runs/{run_id}/technical-trace`. API-backed live runs show it in a

@@ -5,6 +5,8 @@ CRM tools, and other network-facing infrastructure.
 
 ## Ownership
 
+- `openrouter_request_builder.py` owns bounded OpenRouter prompt/request
+  shaping for one Radar execution task.
 - `live_radar_openrouter.py` owns the OpenRouter request/response adapter for
   the live mini ICP Radar.
 - Recorded provider adapters used by tests may live here when they implement the
@@ -30,6 +32,9 @@ candidate truth, final score semantics, review outcomes, or durable run state.
 When a technical trace context is active, integrations may emit sanitized
 provider request/response/error observations through the application tracer.
 They must never store headers, API keys, or raw hidden chain-of-thought.
+OpenRouter requests must stay scoped to the current execution task: qualification
+tasks must not include intent signals, and signal tasks must not discover new
+candidates.
 
 ## How To Extend
 

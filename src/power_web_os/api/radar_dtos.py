@@ -262,6 +262,12 @@ class RadarRunDossierQueryResponse(BaseModel):
     query: str
     purpose: str = ""
     expected_evidence: list[str] = Field(default_factory=list)
+    stage: str | None = None
+    subject_type: str | None = None
+    subject_id: str | None = None
+    rule_snapshot: str = ""
+    depends_on: list[str] = Field(default_factory=list)
+    candidate_scope: list[str] = Field(default_factory=list)
     source_count: int = 0
     source_refs: list[str] = Field(default_factory=list)
     candidate_refs: list[str] = Field(default_factory=list)
