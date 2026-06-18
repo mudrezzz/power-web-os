@@ -15,6 +15,7 @@ from power_web_os.api.radar_dtos import (
     RadarRunRequest,
     RadarRunReviewsResponse,
     RadarRunSummaryResponse,
+    RadarRunTechnicalTraceResponse,
     RadarReviewDecisionRequest,
     RadarReviewDecisionResponse,
     RadarSummaryResponse,
@@ -28,6 +29,7 @@ from power_web_os.api.radar_mappers import (
     review_response,
     reviews_response,
     run_summary_response,
+    technical_trace_response,
 )
 from power_web_os.application.persisted_live_radar import PersistedLiveRadarRunCommand, QueuedLiveRadarRunService
 from power_web_os.application.radar_run_journal import RadarRunJournal
@@ -117,6 +119,14 @@ def get_radar_run_journal(run_id: str, context: RadarContext) -> RadarRunJournal
     if run is None:
         raise HTTPException(status_code=404, detail=f"Radar run not found: {run_id}")
     return journal_response(run, context.event_repository.list_for_run(run_id))
+
+
+@router.get("/radar-runs/{run_id}/technical-trace", response_model=RadarRunTechnicalTraceResponse)
+def get_radar_run_technical_trace(run_id: str, context: RadarContext) -> RadarRunTechnicalTraceResponse:
+    run = context.run_repository.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"Radar run not found: {run_id}")
+    return technical_trace_response(run, context.technical_trace_repository.list_for_run(run_id))
 
 
 @router.get("/radar-runs/{run_id}/dossier", response_model=RadarRunDossierResponse)

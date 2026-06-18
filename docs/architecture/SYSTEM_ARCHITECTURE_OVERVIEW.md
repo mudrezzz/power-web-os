@@ -85,7 +85,8 @@ settings, sessions, Alembic, Radar catalog/run repositories, persisted live
 Radar output snapshots, and FastAPI contracts for Radar catalog, run state, and
 candidate snapshots. It also has a Celery/Redis job adapter for long-running
 Radar execution, durable human review decisions for live Radar findings, and an
-append-only structured run journal for reasoning/audit summaries.
+append-only structured run journal for reasoning/audit summaries, and an
+append-only sanitized admin technical trace for developer inspection.
 Backend slices should continue in this order:
 
 1. SIBUR contour discovery benchmark over the structured workflow pipeline;
@@ -108,7 +109,7 @@ Backend ownership boundaries:
 
 The current persistence slice stores `radars`, `radar_definitions`,
 `radar_runs`, `radar_run_outputs`, `radar_review_decisions`, and
-`radar_run_events`.
+`radar_run_events`, and `radar_run_technical_traces`.
 `radar_run_outputs` is a JSON snapshot table for the current live Radar artifact
 sections. `radar_review_decisions` is mutable current review state for one
 qualification or signal subject; it does not mutate the output snapshot and is
@@ -189,17 +190,24 @@ output snapshot, source usage links, validation issues, review overlay counts,
 and non-debug journal events into a readable dossier. Queued, running, and
 failed runs can return a partial dossier with `output_state`; the candidates
 endpoint still returns `409` until output exists. The dossier is intentionally
-not a technical trace: provider prompts, raw requests/responses, and admin debug
-payloads belong to the future technical trace surface, and raw hidden
-chain-of-thought remains disallowed.
+not a technical trace.
+
+`GET /api/radar-runs/{run_id}/technical-trace` is the developer/admin
+inspection projection. It reads append-only sanitized traces for pipeline
+inputs/outputs, provider requests/responses/errors, normalization results, and
+validation results. Trace payloads are redacted before persistence: secret-like
+keys/values are masked, long strings are capped with a redaction report, and raw
+hidden reasoning keys such as `chain_of_thought`, `hidden_reasoning`, and
+`internal_thoughts` are rejected. The trace tab is visible in local/dev UI now
+and should be authorization-gated later.
 
 The frontend API adapter is a thin client boundary. `frontend/src/api/` owns
 transport and error normalization, `frontend/src/features/icp-radar/adapters/`
 maps API DTOs into the existing Radar view contracts, and
 `frontend/src/features/icp-radar/application/` owns backend mode, queued run
 polling, fallback selection, and review mutations. Presentation components show
-run controls, status, product dossier sections, and journal events, but do not
-call `fetch` or own persistence.
+run controls, status, product dossier sections, journal events, and the
+dev/admin trace tab, but do not call `fetch` or own persistence.
 
 Architecture contract tests enforce these rules. Existing large legacy modules
 are temporary decomposition follow-ups and not examples for new backend work:

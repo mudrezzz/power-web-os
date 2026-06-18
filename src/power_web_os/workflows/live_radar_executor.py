@@ -9,18 +9,33 @@ from __future__ import annotations
 
 from typing import Any
 
-from power_web_os.application.ports import LiveRadarArtifactExecutor
+from power_web_os.application.ports import LiveRadarArtifactExecutor, RadarRunTechnicalTraceRepository
 from power_web_os.application.live_radar_contracts import WebSearchProvider
+from power_web_os.application.radar_technical_trace import RadarRunTechnicalTracer
 from power_web_os.workflows.live_icp_radar_workflow import build_live_mini_radar_artifact
 
 
 class WorkflowLiveRadarArtifactExecutor(LiveRadarArtifactExecutor):
-    def __init__(self, provider: WebSearchProvider) -> None:
+    def __init__(
+        self,
+        provider: WebSearchProvider,
+        *,
+        technical_trace_repository: RadarRunTechnicalTraceRepository | None = None,
+    ) -> None:
         self._provider = provider
+        self._technical_trace_repository = technical_trace_repository
 
     def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, Any]:
+        technical_tracer = None
+        run_id = task_context.get("run_id")
+        if self._technical_trace_repository is not None and run_id:
+            technical_tracer = RadarRunTechnicalTracer(
+                repository=self._technical_trace_repository,
+                default_run_id=str(run_id),
+            )
         return build_live_mini_radar_artifact(
             provider=self._provider,
             live=live,
             task_context=dict(task_context),
+            technical_tracer=technical_tracer,
         )

@@ -1,0 +1,100 @@
+/* ICP Radar trace owns developer/admin technical trace rows and wrapped payloads. */
+
+.technical-trace,
+.technical-trace-empty {
+  display: grid;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.technical-trace-empty {
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.technical-trace-empty p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.technical-trace-row {
+  min-width: 0;
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.technical-trace-row summary {
+  display: grid;
+  grid-template-columns: minmax(var(--s-5), max-content) minmax(0, 1fr) auto auto;
+  gap: var(--s-3);
+  align-items: center;
+  min-width: 0;
+  padding: var(--s-3);
+  cursor: pointer;
+}
+
+.technical-trace-row summary > span {
+  display: grid;
+  gap: var(--s-1);
+  min-width: 0;
+}
+
+.technical-trace-row summary strong,
+.technical-trace-row summary small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.technical-trace-row summary small {
+  color: var(--fg2);
+}
+
+.technical-trace-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--s-20), 1fr));
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0 var(--s-3) var(--s-3);
+}
+
+.technical-trace-meta div,
+.technical-trace-payload {
+  min-width: 0;
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.technical-trace-meta dt {
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.technical-trace-meta dd {
+  margin: var(--s-1) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.technical-trace-payload {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0 var(--s-3) var(--s-3);
+}
+
+.technical-trace-payload h4 {
+  margin: 0;
+  font: var(--label);
+}
+
+.technical-trace-payload pre {
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--fg2);
+  font: var(--mono-sm);
+}

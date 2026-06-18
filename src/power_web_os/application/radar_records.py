@@ -125,3 +125,21 @@ class RadarRunEventRecord:
     source_refs: list[str] = field(default_factory=list)
     candidate_refs: list[str] = field(default_factory=list)
     created_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RadarRunTechnicalTraceRecord:
+    """Append-only sanitized developer trace for one durable Radar run."""
+
+    trace_id: str
+    run_id: str
+    sequence: int
+    phase: str
+    node_name: str
+    trace_type: str
+    title: str
+    summary: str = ""
+    duration_ms: int | None = None
+    payload: dict[str, Any] = field(default_factory=dict)
+    redaction_report: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime | None = None

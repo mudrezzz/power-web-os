@@ -29,6 +29,7 @@ from power_web_os.application.live_radar_normalization import (
     normalize_live_candidate,
     validate_live_radar_qualification_contract,
 )
+from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 
 
 class LiveRadarRunService:
@@ -62,6 +63,10 @@ class LiveRadarRunService:
         )
 
     def build_search_plan(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
+        _trace(
+            state, "planning", "build_search_plan", "pipeline_input", "Build search plan input",
+            payload={"task_context": state.task_context, "has_existing_radar": state.radar is not None},
+        )
         radar = state.radar or build_live_mini_radar_definition()
         plan = build_live_mini_radar_search_plan(radar)
         result = LiveRadarPlanningResult(
@@ -92,15 +97,28 @@ class LiveRadarRunService:
                 ],
             ],
         )
-        return state.model_copy(update={
+        next_state = state.model_copy(update={
             "radar": result.radar,
             "search_plan": result.search_plan.model_dump(),
             "pipeline_events": _append_events(state, result.events),
         })
+        _trace(
+            next_state, "planning", "build_search_plan", "pipeline_output", "Build search plan output",
+            summary=f"Built {len(plan.queries)} search queries.",
+            payload={
+                "radar_id": plan.radar_id,
+                "queries": [query.model_dump() for query in plan.queries],
+            },
+        )
+        return next_state
 
     def run_web_search(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
         radar = state.radar or build_live_mini_radar_definition()
         plan = RadarSearchPlan.model_validate(state.search_plan or build_live_mini_radar_search_plan(radar))
+        _trace(
+            state, "collection", "run_web_search", "pipeline_input", "Web search input",
+            payload={"radar_id": plan.radar_id, "queries": [query.model_dump() for query in plan.queries]},
+        )
         provider_result = self._provider.run_search_plan(radar=radar, search_plan=plan)
         result = LiveRadarCollectionResult(
             sources=provider_result.sources,
@@ -125,14 +143,29 @@ class LiveRadarRunService:
                 )
             ],
         )
-        return state.model_copy(update={
+        next_state = state.model_copy(update={
             "sources": [item.model_dump() for item in result.sources],
             "candidate_observations": [dict(item) for item in result.candidate_observations],
             "provider_metadata": dict(result.provider_metadata),
             "pipeline_events": _append_events(state, result.events),
         })
+        _trace(
+            next_state, "collection", "run_web_search", "pipeline_output", "Web search output",
+            summary=f"Provider returned {len(result.sources)} sources.",
+            payload={
+                "provider_metadata": dict(result.provider_metadata),
+                "source_count": len(result.sources),
+                "candidate_observation_count": len(result.candidate_observations),
+                "source_refs": [source.evidence_ref for source in result.sources],
+            },
+        )
+        return next_state
 
     def normalize_sources(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
+        _trace(
+            state, "normalization", "normalize_sources", "pipeline_input", "Source normalization input",
+            payload={"source_count": len(state.sources)},
+        )
         sources = _dedupe_sources([RadarSourceEvidence.model_validate(item) for item in state.sources])
         result = LiveRadarExtractionResult(
             sources=sources,
@@ -149,14 +182,27 @@ class LiveRadarRunService:
                 )
             ],
         )
-        return state.model_copy(update={
+        next_state = state.model_copy(update={
             "sources": [item.model_dump() for item in result.sources],
             "pipeline_events": _append_events(state, result.events),
         })
+        _trace(
+            next_state, "normalization", "normalize_sources", "normalization_result", "Source normalization result",
+            summary=f"Normalized {len(sources)} unique sources.",
+            payload={"source_count": len(sources), "source_refs": [source.evidence_ref for source in sources]},
+        )
+        return next_state
 
     def extract_candidates(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
         radar = state.radar or build_live_mini_radar_definition()
         sources = [RadarSourceEvidence.model_validate(item) for item in state.sources]
+        _trace(
+            state, "extraction", "extract_candidates", "pipeline_input", "Candidate extraction input",
+            payload={
+                "candidate_observation_count": len(state.candidate_observations),
+                "source_count": len(sources),
+            },
+        )
         candidates = _rank_candidates([
             normalize_live_candidate(item, radar=radar, sources=sources)
             for item in state.candidate_observations
@@ -176,12 +222,28 @@ class LiveRadarRunService:
                 )
             ],
         )
-        return state.model_copy(update={
+        next_state = state.model_copy(update={
             "candidates": [item.model_dump() for item in result.candidates],
             "pipeline_events": _append_events(state, result.events),
         })
+        _trace(
+            next_state, "extraction", "extract_candidates", "normalization_result", "Candidate extraction result",
+            summary=f"Extracted {len(candidates)} normalized candidates.",
+            payload={
+                "candidate_count": len(candidates),
+                "candidates": [
+                    {"candidate_id": item.candidate_id, "legal_name": item.legal_name, "evidence_refs": list(item.evidence_refs)}
+                    for item in candidates
+                ],
+            },
+        )
+        return next_state
 
     def evaluate_candidates(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
+        _trace(
+            state, "evaluation", "evaluate_candidates", "pipeline_input", "Candidate evaluation input",
+            payload={"candidate_count": len(state.candidates), "source_count": len(state.sources)},
+        )
         candidates = [
             normalize_live_candidate(item, radar=state.radar or build_live_mini_radar_definition(), sources=[
                 RadarSourceEvidence.model_validate(source)
@@ -226,10 +288,28 @@ class LiveRadarRunService:
                 ],
             ],
         )
-        return state.model_copy(update={
+        next_state = state.model_copy(update={
             "candidates": [item.model_dump() for item in result.candidates],
             "pipeline_events": _append_events(state, result.events),
         })
+        _trace(
+            next_state, "evaluation", "evaluate_candidates", "pipeline_output", "Candidate evaluation output",
+            summary=f"Evaluated {len(candidates)} candidates.",
+            payload={
+                "candidates": [
+                    {
+                        "candidate_id": item.candidate_id,
+                        "tier": item.score.tier,
+                        "fit_score": item.score.fit_score,
+                        "intent_score": item.score.intent_score,
+                        "qualification_count": len(item.qualification),
+                        "signal_count": len(item.signals),
+                    }
+                    for item in candidates
+                ],
+            },
+        )
+        return next_state
 
     def validate_artifact(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
         radar = state.radar or build_live_mini_radar_definition()
@@ -272,10 +352,16 @@ class LiveRadarRunService:
                 ),
             ],
         )
-        return state.model_copy(update={
+        next_state = state.model_copy(update={
             "contract_validation": [item.model_dump() for item in result.issues],
             "pipeline_events": _append_events(state, result.events),
         })
+        _trace(
+            next_state, "validation", "validate_artifact", "validation_result", "Artifact validation result",
+            summary=f"Validation completed with {len(issues)} issues.",
+            payload={"issues": [item.model_dump() for item in issues]},
+        )
+        return next_state
 
     def shape_artifact(
         self,
@@ -313,7 +399,7 @@ class LiveRadarRunService:
             candidates=[item.model_dump() for item in candidates],
             contract_validation=list(state.contract_validation),
         )
-        return state.model_copy(update={
+        next_state = state.model_copy(update={
             "radar": radar,
             "search_plan": plan.model_dump(),
             "sources": [item.model_dump() for item in sources],
@@ -322,6 +408,17 @@ class LiveRadarRunService:
             "artifact": artifact.model_dump(),
             "error_message": None,
         })
+        _trace(
+            next_state, "artifact", "shape_artifact", "pipeline_output", "Artifact shaping output",
+            summary=f"Shaped artifact with {len(candidates)} candidates and {len(sources)} sources.",
+            payload={
+                "artifact_version": artifact.run_metadata.get("artifact_version"),
+                "source_count": len(sources),
+                "candidate_count": len(candidates),
+                "validation_issue_count": len(state.contract_validation),
+            },
+        )
+        return next_state
 
     def _runtime_metadata(
         self,
@@ -355,3 +452,28 @@ def _now_iso() -> str:
 
 def _append_events(state: LiveICPRadarRunState, events: list[LiveRadarPipelineEvent]) -> list[dict[str, Any]]:
     return [*state.pipeline_events, *[event.model_dump() for event in events]]
+
+
+def _trace(
+    state: LiveICPRadarRunState,
+    phase: str,
+    node_name: str,
+    trace_type: str,
+    title: str,
+    payload: dict[str, Any],
+    summary: str = "",
+) -> None:
+    run_id = state.task_context.get("run_id")
+    if not run_id:
+        return
+    append_current_trace(
+        RadarRunTechnicalTraceCommand(
+            run_id=str(run_id),
+            phase=phase,
+            node_name=node_name,
+            trace_type=trace_type,
+            title=title,
+            summary=summary,
+            payload=payload,
+        )
+    )

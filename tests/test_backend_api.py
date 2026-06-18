@@ -12,6 +12,7 @@ from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRecord,
     RadarRunRecord,
+    RadarRunTechnicalTraceRecord,
 )
 from power_web_os.jobs.radar_jobs import execute_radar_run_once
 from power_web_os.persistence import (
@@ -19,6 +20,7 @@ from power_web_os.persistence import (
     SqlAlchemyRadarDefinitionRepository,
     SqlAlchemyRadarRepository,
     SqlAlchemyRadarRunRepository,
+    SqlAlchemyRadarRunTechnicalTraceRepository,
     create_database_engine,
     create_session_factory,
     session_scope,
@@ -39,7 +41,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-        "version": "0.7.6",
+        "version": "0.7.6.1.2",
         "environment": "test",
     }
 
@@ -56,7 +58,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.6"
+    assert schema["info"]["version"] == "0.7.6.1.2"
     for path in [
         "/health",
         "/api/health",
@@ -67,6 +69,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
         "/api/radar-runs/{run_id}/candidates",
         "/api/radar-runs/{run_id}/journal",
         "/api/radar-runs/{run_id}/dossier",
+        "/api/radar-runs/{run_id}/technical-trace",
         "/api/radar-runs/{run_id}/reviews",
         "/api/radar-runs/{run_id}/candidates/{candidate_id}/qualification/{rule_id}/review",
         "/api/radar-runs/{run_id}/candidates/{candidate_id}/signals/{signal_code}/review",
@@ -149,6 +152,7 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     candidates = client.get(f"/api/radar-runs/{run['run_id']}/candidates").json()
     journal = client.get(f"/api/radar-runs/{run['run_id']}/journal").json()
     dossier = client.get(f"/api/radar-runs/{run['run_id']}/dossier").json()
+    trace_empty = client.get(f"/api/radar-runs/{run['run_id']}/technical-trace").json()
     assert candidates["radar_id"] == "toir-quick-live"
     assert candidates["sources"][0]["evidence_ref"] == "src_1"
     candidate = candidates["candidates"][0]
@@ -175,6 +179,35 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert {usage["subject_type"] for usage in dossier["sources"][0]["usages"]} == {"candidate", "qualification", "signal"}
     assert [event["event_type"] for event in dossier["timeline"]][0] == "run_queued"
     assert not any(marker in json.dumps(dossier) for marker in ["chain_of_thought", "hidden_reasoning", "internal_thoughts"])
+    assert trace_empty["traces"] == []
+
+    with session_scope(app.state.session_factory) as session:
+        SqlAlchemyRadarRunTechnicalTraceRepository(session).append(
+            RadarRunTechnicalTraceRecord(
+                trace_id=f"{run['run_id']}:trace:000001",
+                run_id=run["run_id"],
+                sequence=1,
+                phase="provider",
+                node_name="openrouter_web_search",
+                trace_type="provider_request",
+                title="OpenRouter request",
+                summary="Sanitized request.",
+                payload={"model": "test-model", "authorization": "[REDACTED]"},
+                redaction_report={"masked_paths": ["$.authorization"]},
+            )
+        )
+    trace = client.get(f"/api/radar-runs/{run['run_id']}/technical-trace").json()
+    assert trace["traces"][0]["trace_type"] == "provider_request"
+    serialized_trace = json.dumps(trace)
+    assert not any(marker in serialized_trace for marker in [
+        "OPENROUTER_API_KEY",
+        "Authorization",
+        "Bearer",
+        "test-secret",
+        "chain_of_thought",
+        "hidden_reasoning",
+        "internal_thoughts",
+    ])
 
     qualification_review = client.put(
         f"/api/radar-runs/{run['run_id']}/candidates/candidate-a/qualification/rule-q1/review",
@@ -243,12 +276,14 @@ def test_api_missing_and_no_output_cases_return_explicit_statuses(tmp_path: Path
     assert client.get("/api/radar-runs/missing/candidates").status_code == 404
     assert client.get("/api/radar-runs/missing/journal").status_code == 404
     assert client.get("/api/radar-runs/missing/dossier").status_code == 404
+    assert client.get("/api/radar-runs/missing/technical-trace").status_code == 404
     assert client.get("/api/radar-runs/queued-run/candidates").status_code == 409
     queued_dossier = client.get("/api/radar-runs/queued-run/dossier")
     assert queued_dossier.status_code == 200
     assert queued_dossier.json()["summary"]["output_state"] == "pending"
     assert client.get("/api/radar-runs/queued-run/reviews").status_code == 200
     assert client.get("/api/radar-runs/queued-run/journal").json()["events"] == []
+    assert client.get("/api/radar-runs/queued-run/technical-trace").json()["traces"] == []
     assert client.put(
         "/api/radar-runs/queued-run/candidates/candidate-a/signals/S1/review",
         json={"status": "confirmed"},

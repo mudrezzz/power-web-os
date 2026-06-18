@@ -15,9 +15,19 @@ export function Metric({ label, value }: { label: string; value: string }) {
 }
 
 
-export function CandidateDetailTabs({ activeTab, onTabChange }: { activeTab: CandidateDetailTab; onTabChange: (tab: CandidateDetailTab) => void }) {
+export function CandidateDetailTabs({
+  activeTab,
+  onTabChange,
+  showTrace = false,
+}: {
+  activeTab: CandidateDetailTab;
+  onTabChange: (tab: CandidateDetailTab) => void;
+  showTrace?: boolean;
+}) {
   const { t } = useTranslation();
-  const tabs: CandidateDetailTab[] = ['overview', 'qualification', 'signals', 'sources', 'journal'];
+  const tabs: CandidateDetailTab[] = showTrace
+    ? ['overview', 'qualification', 'signals', 'sources', 'journal', 'trace']
+    : ['overview', 'qualification', 'signals', 'sources', 'journal'];
   return (
     <div className="icp-candidate-detail-tabs" aria-label={t('icpRadar.canonicalDetail.tabsAria')}>
       {tabs.map((tab) => (

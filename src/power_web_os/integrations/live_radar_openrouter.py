@@ -6,6 +6,7 @@ import json
 import os
 import re
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 from power_web_os.application.live_radar_contracts import (
@@ -15,6 +16,7 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProviderResult,
 )
 from power_web_os.application.live_radar_normalization import _dedupe_sources
+from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 
 
 class RecordedWebSearchProvider(WebSearchProvider):
@@ -92,22 +94,59 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
             model=self.model,
             web_mode=mode,
         )
-        response = httpx.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {self._api_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://github.com/mudrezzz/power-web-os",
-                "X-Title": "Power Web OS Live ICP Radar",
+        _trace_provider(
+            trace_type="provider_request",
+            title="OpenRouter request",
+            summary=f"OpenRouter request using {mode}.",
+            payload={
+                "url": "https://openrouter.ai/api/v1/chat/completions",
+                "model": self.model,
+                "web_mode": mode,
+                "request": payload,
             },
-            json=payload,
-            timeout=self._timeout_seconds,
         )
+        started_at = perf_counter()
+        try:
+            response = httpx.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self._api_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://github.com/mudrezzz/power-web-os",
+                    "X-Title": "Power Web OS Live ICP Radar",
+                },
+                json=payload,
+                timeout=self._timeout_seconds,
+            )
+        except Exception as error:
+            _trace_provider(
+                trace_type="provider_error",
+                title="OpenRouter request error",
+                summary=str(error),
+                duration_ms=_duration_ms(started_at),
+                payload={"error_type": error.__class__.__name__, "message": str(error), "model": self.model, "web_mode": mode},
+            )
+            raise
         if response.status_code >= 400:
+            _trace_provider(
+                trace_type="provider_error",
+                title="OpenRouter response error",
+                summary=f"OpenRouter returned HTTP {response.status_code}.",
+                duration_ms=_duration_ms(started_at),
+                payload={"status_code": response.status_code, "body": response.text[:2000], "model": self.model, "web_mode": mode},
+            )
             raise RuntimeError(f"OpenRouter web search request failed with {response.status_code}: {response.text[:240]}")
 
+        response_payload = response.json()
+        _trace_provider(
+            trace_type="provider_response",
+            title="OpenRouter response",
+            summary="OpenRouter returned a structured response payload.",
+            duration_ms=_duration_ms(started_at),
+            payload=_provider_response_trace_payload(response_payload, model=self.model, web_mode=mode),
+        )
         result = normalize_openrouter_response(
-            response.json(),
+            response_payload,
             fallback_metadata={"provider": "openrouter", "model": self.model, "web_mode": mode},
         )
         return _filter_result_to_verified_sources(result)
@@ -391,6 +430,49 @@ def _parse_json_object(content: str) -> dict[str, Any]:
             return {}
         parsed = json.loads(match.group(0))
     return parsed if isinstance(parsed, dict) else {}
+
+
+def _provider_response_trace_payload(payload: dict[str, Any], *, model: str, web_mode: str) -> dict[str, Any]:
+    message = payload.get("choices", [{}])[0].get("message", {})
+    content = message.get("content") or ""
+    return {
+        "response_id": payload.get("id"),
+        "model": model,
+        "web_mode": web_mode,
+        "usage": payload.get("usage", {}),
+        "message": {
+            "role": message.get("role"),
+            "content": content,
+            "annotations": message.get("annotations", []),
+        },
+        "parser_status": "json_object" if _parse_json_object(str(content)) else "empty_or_unparseable",
+    }
+
+
+def _duration_ms(started_at: float) -> int:
+    return max(0, int((perf_counter() - started_at) * 1000))
+
+
+def _trace_provider(
+    *,
+    trace_type: str,
+    title: str,
+    summary: str,
+    payload: dict[str, Any],
+    duration_ms: int | None = None,
+) -> None:
+    append_current_trace(
+        RadarRunTechnicalTraceCommand(
+            run_id="",
+            phase="provider",
+            node_name="openrouter_web_search",
+            trace_type=trace_type,
+            title=title,
+            summary=summary,
+            duration_ms=duration_ms,
+            payload=payload,
+        )
+    )
 
 
 def _load_env_file(path: Path) -> dict[str, str]:

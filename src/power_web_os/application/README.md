@@ -27,6 +27,8 @@ provider SDK details.
   through a review repository port.
 - `radar_run_journal.py` owns structured run audit event semantics and rejects
   raw hidden chain-of-thought payload keys.
+- `radar_technical_trace.py` owns sanitized developer/admin trace semantics,
+  secret redaction, long-string capping, and hidden-reasoning rejection.
 
 ## Dependency Rules
 
@@ -67,6 +69,12 @@ Live Radar pipeline phases emit structured event summaries through application
 contracts. The persisted run service writes those events through
 `RadarRunJournal`. Artifact-derived journal mapping remains a compatibility
 fallback for existing snapshots, not the preferred extension path.
+
+Technical trace persistence follows the same rule: application code emits
+pipeline/provider debug summaries through `RadarRunTechnicalTracer`, which
+redacts payloads before they reach persistence. Provider adapters may emit
+technical observations, but they must not bypass the redactor or store raw
+hidden chain-of-thought.
 
 ## How To Extend
 

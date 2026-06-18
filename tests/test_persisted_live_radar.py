@@ -19,6 +19,7 @@ from power_web_os.persistence import (
     SqlAlchemyRadarRunEventRepository,
     SqlAlchemyRadarRunOutputRepository,
     SqlAlchemyRadarRunRepository,
+    SqlAlchemyRadarRunTechnicalTraceRepository,
     create_database_engine,
     create_session_factory,
     session_scope,
@@ -47,10 +48,14 @@ def test_persisted_live_radar_run_completes_and_stores_artifact_snapshot(tmp_pat
         run_repo = SqlAlchemyRadarRunRepository(session)
         output_repo = SqlAlchemyRadarRunOutputRepository(session)
         event_repo = SqlAlchemyRadarRunEventRepository(session)
+        trace_repo = SqlAlchemyRadarRunTechnicalTraceRepository(session)
         service = PersistedLiveRadarRunService(
             run_repository=run_repo,
             output_repository=output_repo,
-            executor=WorkflowLiveRadarArtifactExecutor(provider=RecordedWebSearchProvider(_recorded_payload())),
+            executor=WorkflowLiveRadarArtifactExecutor(
+                provider=RecordedWebSearchProvider(_recorded_payload()),
+                technical_trace_repository=trace_repo,
+            ),
             journal=RadarRunJournal(repository=event_repo),
         )
 
@@ -72,6 +77,7 @@ def test_persisted_live_radar_run_completes_and_stores_artifact_snapshot(tmp_pat
         stored_output = output_repo.get("run-live-1")
         stored_run = run_repo.get("run-live-1")
         events = event_repo.list_for_run("run-live-1")
+        traces = trace_repo.list_for_run("run-live-1")
 
     assert result.run.status is RadarRunStatus.COMPLETED
     assert result.output is not None
@@ -95,6 +101,21 @@ def test_persisted_live_radar_run_completes_and_stores_artifact_snapshot(tmp_pat
     assert "candidate_extracted" in {event.event_type for event in events}
     assert "signal_evaluated" in {event.event_type for event in events}
     assert [event.event_type for event in events][-1] == "run_completed"
+    assert {trace.trace_type for trace in traces} >= {
+        "pipeline_input",
+        "pipeline_output",
+        "normalization_result",
+        "validation_result",
+    }
+    assert {trace.node_name for trace in traces} >= {
+        "build_search_plan",
+        "run_web_search",
+        "extract_candidates",
+        "evaluate_candidates",
+        "validate_artifact",
+        "shape_artifact",
+    }
+    assert not any("hidden_reasoning" in json.dumps(trace.payload) for trace in traces)
     assert "Authorization" not in json.dumps(result.output.artifact_payload, ensure_ascii=False)
 
 

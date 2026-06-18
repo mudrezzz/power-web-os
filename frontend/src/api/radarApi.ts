@@ -260,6 +260,27 @@ export type RadarRunDossierDto = {
   summary: RadarRunDossierSummaryDto;
 };
 
+export type RadarRunTechnicalTraceItemDto = {
+  trace_id: string;
+  run_id: string;
+  sequence: number;
+  phase: string;
+  node_name: string;
+  trace_type: string;
+  title: string;
+  summary: string;
+  duration_ms: number | null;
+  payload: Record<string, unknown>;
+  redaction_report: Record<string, unknown>;
+  created_at: string | null;
+};
+
+export type RadarRunTechnicalTraceDto = {
+  run_id: string;
+  radar_id: string;
+  traces: RadarRunTechnicalTraceItemDto[];
+};
+
 export type RadarReviewDecisionRequestDto = {
   status: string;
   reviewer: string;
@@ -324,6 +345,10 @@ export class RadarApiClient {
 
   getRunDossier(runId: string) {
     return this.request<RadarRunDossierDto>(`/api/radar-runs/${encodeURIComponent(runId)}/dossier`);
+  }
+
+  getRunTechnicalTrace(runId: string) {
+    return this.request<RadarRunTechnicalTraceDto>(`/api/radar-runs/${encodeURIComponent(runId)}/technical-trace`);
   }
 
   saveQualificationReview(

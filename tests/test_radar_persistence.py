@@ -16,6 +16,7 @@ from power_web_os.application.radar_records import (
     RadarRunRecord,
     RadarRunStatus,
     RadarReviewDecisionRecord,
+    RadarRunTechnicalTraceRecord,
 )
 from power_web_os.demo import build_icp_radar_catalog_from_workbook
 from power_web_os.persistence import (
@@ -26,6 +27,7 @@ from power_web_os.persistence import (
     SqlAlchemyRadarRunEventRepository,
     SqlAlchemyRadarRunOutputRepository,
     SqlAlchemyRadarRunRepository,
+    SqlAlchemyRadarRunTechnicalTraceRepository,
     create_database_engine,
     create_session_factory,
     session_scope,
@@ -49,6 +51,7 @@ def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> N
         output_repo = SqlAlchemyRadarRunOutputRepository(session)
         review_repo = SqlAlchemyRadarReviewDecisionRepository(session)
         event_repo = SqlAlchemyRadarRunEventRepository(session)
+        trace_repo = SqlAlchemyRadarRunTechnicalTraceRepository(session)
 
         radar = radar_repo.upsert(
             RadarRecord(
@@ -115,6 +118,19 @@ def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> N
                 summary="Run completed.",
             )
         )
+        trace = trace_repo.append(
+            RadarRunTechnicalTraceRecord(
+                trace_id="trace-1",
+                run_id="run-1",
+                sequence=1,
+                phase="provider",
+                node_name="openrouter_web_search",
+                trace_type="provider_request",
+                title="Provider request",
+                payload={"model": "test-model"},
+                redaction_report={"masked_paths": []},
+            )
+        )
         review = review_repo.upsert(
             RadarReviewDecisionRecord(
                 decision_id="review-1",
@@ -155,6 +171,10 @@ def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> N
         assert output_repo.get("run-1") == output
         assert event_repo.list_for_run("run-1") == (first_event, second_event)
         assert [event.sequence for event in event_repo.list_for_run("run-1")] == [1, 2]
+        assert trace_repo.list_for_run("run-1") == (trace,)
+        assert trace_repo.next_sequence("run-1") == 2
+        assert not hasattr(trace_repo, "delete")
+        assert not hasattr(trace_repo, "update")
         assert review.decision_id == replaced.decision_id
         assert replaced.status == "rejected"
         assert review_repo.get(
@@ -213,6 +233,46 @@ def test_radar_run_events_are_append_only_and_unique_by_run_sequence(tmp_path: P
             raise AssertionError("radar_run_events must enforce unique run sequence")
 
 
+def test_radar_run_technical_traces_are_append_only_and_unique_by_run_sequence(tmp_path: Path) -> None:
+    engine = create_database_engine(database_url=sqlite_url(tmp_path / "technical-trace.db"))
+    Base.metadata.create_all(engine)
+    session_factory = create_session_factory(engine)
+
+    with session_scope(session_factory) as session:
+        SqlAlchemyRadarRepository(session).upsert(
+            RadarRecord(radar_id="toir-quick-live", name="Live", status="active", owner="ABM")
+        )
+        SqlAlchemyRadarRunRepository(session).create(RadarRunRecord(run_id="run-1", radar_id="toir-quick-live"))
+        trace_repo = SqlAlchemyRadarRunTechnicalTraceRepository(session)
+        trace_repo.append(
+            RadarRunTechnicalTraceRecord(
+                trace_id="trace-1",
+                run_id="run-1",
+                sequence=1,
+                phase="provider",
+                node_name="openrouter_web_search",
+                trace_type="provider_request",
+                title="Provider request",
+            )
+        )
+        try:
+            trace_repo.append(
+                RadarRunTechnicalTraceRecord(
+                    trace_id="trace-duplicate",
+                    run_id="run-1",
+                    sequence=1,
+                    phase="provider",
+                    node_name="openrouter_web_search",
+                    trace_type="provider_response",
+                    title="Duplicate sequence.",
+                )
+            )
+        except IntegrityError:
+            session.rollback()
+        else:
+            raise AssertionError("radar_run_technical_traces must enforce unique run sequence")
+
+
 def test_seed_radar_catalog_upserts_current_demo_radars(tmp_path: Path) -> None:
     engine = create_database_engine(database_url=sqlite_url(tmp_path / "seed.db"))
     Base.metadata.create_all(engine)
@@ -249,6 +309,7 @@ def test_alembic_initial_migration_creates_radar_tables(tmp_path: Path) -> None:
         "radar_run_outputs",
         "radar_review_decisions",
         "radar_run_events",
+        "radar_run_technical_traces",
         "alembic_version",
     } <= table_names
 
@@ -270,4 +331,5 @@ def test_alembic_respects_database_url_environment_for_seed_command_path(tmp_pat
         "radar_run_outputs",
         "radar_review_decisions",
         "radar_run_events",
+        "radar_run_technical_traces",
     } <= table_names

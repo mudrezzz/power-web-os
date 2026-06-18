@@ -232,6 +232,7 @@ http://127.0.0.1:8000/api/radars
 http://127.0.0.1:8000/api/radars/toir-quick-live
 http://127.0.0.1:8000/api/radar-runs/{run_id}/journal
 http://127.0.0.1:8000/api/radar-runs/{run_id}/dossier
+http://127.0.0.1:8000/api/radar-runs/{run_id}/technical-trace
 http://127.0.0.1:8000/docs
 ```
 
@@ -272,8 +273,10 @@ polls `GET /api/radar-runs/{run_id}`, and reads
 `GET /api/radar-runs/{run_id}/dossier` to show the product run dossier: run
 context, definition version, task context, persisted search plan, source usage,
 validation warnings, and non-debug timeline events. The dossier is safe for the
-normal product UI; provider prompts, request/response bodies, and raw debug
-payloads belong to the future admin technical trace. If the backend is
+normal product UI. API-backed live runs also expose a separate `Trace` tab backed
+by `GET /api/radar-runs/{run_id}/technical-trace`; it is developer/admin
+oriented and contains sanitized pipeline/provider payloads plus redaction
+reports. Do not store or display raw hidden chain-of-thought. If the backend is
 unavailable, the same screen stays in explicit demo fallback mode and reads the
 generated JSON files.
 
@@ -773,8 +776,9 @@ Rules:
   - unsupported score slots render as `—`, not as a changed table shape;
   - preview always has four blocks: summary, tier, qualification, signals;
   - preview never renders source lists or runtime/provider metadata;
-  - detail always uses tabs: overview, qualification, signals, sources, journal;
-  - runtime provider metadata, queries, warnings, and structured trace render only in the journal tab;
+  - detail uses tabs: overview, qualification, signals, sources, journal, and optional API-backed trace;
+  - product runtime context, queries, warnings, and source usage render in the journal/dossier tab;
+  - sanitized provider request/response and pipeline debug payloads render only in the dev/admin trace tab;
   - do not add provider-specific split grids, custom shortlist columns, custom previews, or always-visible side detail panels.
 - Treat candidate signal validation as table-first inside the detail view:
   - C1-C20 initially render as compact rows, not fully expanded evidence cards;

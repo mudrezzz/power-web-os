@@ -647,6 +647,27 @@ export type LiveRadarRunDossier = {
   };
 };
 
+export type LiveRadarTechnicalTraceItem = {
+  trace_id: string;
+  run_id: string;
+  sequence: number;
+  phase: string;
+  node_name: string;
+  trace_type: string;
+  title: string;
+  summary: string;
+  duration_ms: number | null;
+  payload: Record<string, unknown>;
+  redaction_report: Record<string, unknown>;
+  created_at: string | null;
+};
+
+export type LiveRadarTechnicalTrace = {
+  run_id: string;
+  radar_id: string;
+  traces: LiveRadarTechnicalTraceItem[];
+};
+
 export type LiveICPRadarRunArtifact = {
   artifact_type: 'icp_radar_live_run';
   artifact_version: '0.6.3.1' | '0.6.3.4';
@@ -686,6 +707,7 @@ export type LiveICPRadarRunArtifact = {
   candidates: LiveRadarCandidate[];
   journal_events?: LiveRadarJournalEvent[];
   dossier?: LiveRadarRunDossier;
+  technical_trace?: LiveRadarTechnicalTrace;
   contract_validation?: Array<{ severity: 'error' | 'warning'; path: string; message: string }>;
 };
 

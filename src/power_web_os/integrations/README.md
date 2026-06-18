@@ -27,6 +27,9 @@ Forbidden imports:
 
 Integrations return typed observations and provider metadata. They do not decide
 candidate truth, final score semantics, review outcomes, or durable run state.
+When a technical trace context is active, integrations may emit sanitized
+provider request/response/error observations through the application tracer.
+They must never store headers, API keys, or raw hidden chain-of-thought.
 
 ## How To Extend
 

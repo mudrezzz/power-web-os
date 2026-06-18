@@ -17,6 +17,8 @@ from power_web_os.api.radar_dtos import (
     RadarRunOutputSummaryResponse,
     RadarRunReviewsResponse,
     RadarRunSummaryResponse,
+    RadarRunTechnicalTraceItemResponse,
+    RadarRunTechnicalTraceResponse,
     RadarReviewDecisionResponse,
     RadarSourceResponse,
     RadarSummaryResponse,
@@ -30,6 +32,7 @@ from power_web_os.application.radar_records import (
     RadarRunOutputRecord,
     RadarRunEventRecord,
     RadarRunRecord,
+    RadarRunTechnicalTraceRecord,
 )
 
 
@@ -158,6 +161,33 @@ def journal_event_response(record: RadarRunEventRecord) -> RadarRunJournalEventR
         source_refs=record.source_refs,
         candidate_refs=record.candidate_refs,
         created_at=record.created_at,
+    )
+
+
+def technical_trace_response(
+    run: RadarRunRecord,
+    traces: tuple[RadarRunTechnicalTraceRecord, ...],
+) -> RadarRunTechnicalTraceResponse:
+    return RadarRunTechnicalTraceResponse(
+        run_id=run.run_id,
+        radar_id=run.radar_id,
+        traces=[
+            RadarRunTechnicalTraceItemResponse(
+                trace_id=trace.trace_id,
+                run_id=trace.run_id,
+                sequence=trace.sequence,
+                phase=trace.phase,
+                node_name=trace.node_name,
+                trace_type=trace.trace_type,
+                title=trace.title,
+                summary=trace.summary,
+                duration_ms=trace.duration_ms,
+                payload=trace.payload,
+                redaction_report=trace.redaction_report,
+                created_at=trace.created_at,
+            )
+            for trace in traces
+        ],
     )
 
 

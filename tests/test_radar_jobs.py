@@ -81,7 +81,7 @@ def test_celery_eager_task_executes_without_redis(tmp_path: Path, monkeypatch) -
     database_url = sqlite_url(tmp_path / "celery-eager.db")
     _seed_database(tmp_path, database_url=database_url, run_id="run-eager")
     monkeypatch.setenv("POWER_WEB_OS_DATABASE_URL", database_url)
-    monkeypatch.setattr(radar_jobs, "default_live_executor", lambda: _FakeExecutor(_artifact()))
+    monkeypatch.setattr(radar_jobs, "default_live_executor", lambda **_: _FakeExecutor(_artifact()))
     radar_jobs.radar_celery_app.conf.task_always_eager = True
     radar_jobs.radar_celery_app.conf.task_eager_propagates = True
 

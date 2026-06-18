@@ -642,18 +642,21 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     ]:
         assert canonical_key in screen or canonical_key in i18n
     assert "icpRadar.canonicalDetail.tabs.${tab}" in screen
-    assert "const tabs: CandidateDetailTab[] = ['overview', 'qualification', 'signals', 'sources', 'journal']" in screen
+    assert "showTrace" in screen
+    assert "['overview', 'qualification', 'signals', 'sources', 'journal', 'trace']" in screen
     for tab_label in [
         "overview: 'Overview'",
         "qualification: 'Qualification'",
         "signals: 'Signals'",
         "sources: 'Sources'",
         "journal: 'Journal'",
+        "trace: 'Trace'",
         "overview: 'Основная информация'",
         "qualification: 'Квалификация'",
         "signals: 'Сигналы'",
         "sources: 'Источники'",
         "journal: 'Журнал'",
+        "trace: 'Trace'",
     ]:
         assert tab_label in i18n
 
@@ -681,7 +684,9 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert "CandidateDetailTabs" in live_detail_segment
     assert "activeTab === 'journal'" in live_detail_segment
     assert "LiveRunDossierPanel" in live_detail_segment
+    assert "LiveRunTechnicalTracePanel" in live_detail_segment
     assert "artifact.dossier" in live_detail_segment
+    assert "artifact.technical_trace" in live_detail_segment
     assert "artifact.run_metadata.model" in live_detail_segment
     assert "artifact.run_metadata.query_count" in live_detail_segment
     assert "icpRadar.live.dossier.plan" in live_detail_segment
@@ -727,7 +732,9 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
     assert "/demo/live_mini_icp_radar_run.json" in catalog
     assert "fetch(liveMiniRadarArtifactUrl)" in app
     assert "getRunDossier" in api_client
+    assert "getRunTechnicalTrace" in api_client
     assert "RadarRunDossierDto" in api_client
+    assert "RadarRunTechnicalTraceDto" in api_client
     assert "normalizedDossier?.search_plan.map" in api_adapter
     assert "queries: []" not in api_adapter
     assert "return null" in app
@@ -755,6 +762,7 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
         "SignalEvidenceFinding",
         "SignalScoreEvaluation",
         "LiveRadarRunDossier",
+        "LiveRadarTechnicalTrace",
     ]:
         assert type_name in types
     for screen_token in [
@@ -795,6 +803,9 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
         "reviewAction === 'corrected'",
         "onSignalDecisionChange",
         "onSignalDecisionReset",
+        "LiveRunTechnicalTracePanel",
+        "technical-trace-row",
+        "icpRadar.live.trace.policy",
     ]:
         assert screen_token in screen
     qualification_header = screen.split('<div className="qualification-review-head">', 1)[1].split("</div>", 1)[0]
@@ -834,5 +845,7 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
         "corrected",
         "correctedAssessment",
         "commentRequired",
+        "provider_request",
+        "technical trace",
     ]:
         assert i18n_key in i18n

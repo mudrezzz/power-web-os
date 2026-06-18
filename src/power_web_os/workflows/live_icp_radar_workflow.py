@@ -12,6 +12,7 @@ from typing import Any
 from power_web_os.application.live_radar_contracts import LiveICPRadarRunState, WebSearchProvider
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition
 from power_web_os.application.live_radar_service import LiveRadarRunService
+from power_web_os.application.radar_technical_trace import RadarRunTechnicalTracer, technical_trace_context
 from power_web_os.integrations.live_radar_openrouter import RecordedWebSearchProvider
 
 try:  # pragma: no cover - covered only when langgraph-dai is installed.
@@ -30,6 +31,7 @@ def build_live_mini_radar_artifact(
     provider: WebSearchProvider,
     live: bool,
     task_context: dict[str, Any] | None = None,
+    technical_tracer: RadarRunTechnicalTracer | None = None,
 ) -> dict[str, Any]:
     workflow = LiveICPRadarRunWorkflow(provider=provider)
     state = LiveICPRadarRunState(
@@ -41,7 +43,8 @@ def build_live_mini_radar_artifact(
         radar=build_live_mini_radar_definition(),
         live=live,
     )
-    result = workflow.invoke(state)
+    with technical_trace_context(technical_tracer):
+        result = workflow.invoke(state)
     if result.artifact is None:
         raise RuntimeError("LiveICPRadarRunWorkflow did not produce an artifact")
     return result.artifact

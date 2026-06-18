@@ -16,6 +16,7 @@ from power_web_os.persistence import (
     SqlAlchemyRadarRunEventRepository,
     SqlAlchemyRadarRunOutputRepository,
     SqlAlchemyRadarRunRepository,
+    SqlAlchemyRadarRunTechnicalTraceRepository,
     session_scope,
 )
 
@@ -28,6 +29,7 @@ class RadarApiContext:
     output_repository: SqlAlchemyRadarRunOutputRepository
     review_repository: SqlAlchemyRadarReviewDecisionRepository
     event_repository: SqlAlchemyRadarRunEventRepository
+    technical_trace_repository: SqlAlchemyRadarRunTechnicalTraceRepository
     job_queue: JobQueue
 
 
@@ -46,5 +48,6 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
             output_repository=SqlAlchemyRadarRunOutputRepository(session),
             review_repository=SqlAlchemyRadarReviewDecisionRepository(session),
             event_repository=SqlAlchemyRadarRunEventRepository(session),
+            technical_trace_repository=SqlAlchemyRadarRunTechnicalTraceRepository(session),
             job_queue=job_queue_factory(),
         )

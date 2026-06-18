@@ -27,6 +27,7 @@ from power_web_os.persistence import (
     SqlAlchemyRadarRunOutputRepository,
     SqlAlchemyRadarRunEventRepository,
     SqlAlchemyRadarRunRepository,
+    SqlAlchemyRadarRunTechnicalTraceRepository,
     create_database_engine,
     create_session_factory,
     session_scope,
@@ -52,8 +53,14 @@ def _celery_app() -> Celery:
 radar_celery_app = _celery_app()
 
 
-def default_live_executor() -> LiveRadarArtifactExecutor:
-    return WorkflowLiveRadarArtifactExecutor(provider=OpenRouterWebSearchProvider())
+def default_live_executor(
+    *,
+    technical_trace_repository: SqlAlchemyRadarRunTechnicalTraceRepository | None = None,
+) -> LiveRadarArtifactExecutor:
+    return WorkflowLiveRadarArtifactExecutor(
+        provider=OpenRouterWebSearchProvider(),
+        technical_trace_repository=technical_trace_repository,
+    )
 
 
 class CeleryJobQueue(JobQueue):
@@ -66,22 +73,26 @@ class CeleryJobQueue(JobQueue):
 
 @radar_celery_app.task(name="power_web_os.execute_radar_run")
 def execute_radar_run_task(run_id: str) -> dict[str, object]:
-    run = execute_radar_run_once(run_id=run_id, live_executor=default_live_executor())
+    run = execute_radar_run_once(run_id=run_id)
     return {"run_id": run.run_id, "radar_id": run.radar_id, "status": run.status.value}
 
 
 def execute_radar_run_once(
     *,
     run_id: str,
-    live_executor: LiveRadarArtifactExecutor,
+    live_executor: LiveRadarArtifactExecutor | None = None,
     session_factory: Any | None = None,
 ) -> RadarRunRecord:
     resolved_session_factory = session_factory or create_session_factory(create_database_engine())
     with session_scope(resolved_session_factory) as session:
+        technical_trace_repository = SqlAlchemyRadarRunTechnicalTraceRepository(session)
+        resolved_live_executor = live_executor or default_live_executor(
+            technical_trace_repository=technical_trace_repository,
+        )
         executor = PersistedLiveRadarRunExecutor(
             run_repository=SqlAlchemyRadarRunRepository(session),
             output_repository=SqlAlchemyRadarRunOutputRepository(session),
-            executor=live_executor,
+            executor=resolved_live_executor,
             journal=RadarRunJournal(repository=SqlAlchemyRadarRunEventRepository(session)),
         )
         return executor.execute(run_id)

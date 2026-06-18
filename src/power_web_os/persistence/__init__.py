@@ -10,6 +10,7 @@ from power_web_os.persistence.repositories import (
     SqlAlchemyRadarRunEventRepository,
     SqlAlchemyRadarRunRepository,
     SqlAlchemyRadarRunOutputRepository,
+    SqlAlchemyRadarRunTechnicalTraceRepository,
 )
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "SqlAlchemyRadarRunEventRepository",
     "SqlAlchemyRadarRunRepository",
     "SqlAlchemyRadarRunOutputRepository",
+    "SqlAlchemyRadarRunTechnicalTraceRepository",
     "create_database_engine",
     "create_session_factory",
     "session_scope",

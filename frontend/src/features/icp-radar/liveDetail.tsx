@@ -15,6 +15,7 @@ import type {
 import { CandidateDetailTabs, Metric, ScoreBox } from './detailPrimitives';
 import { LiveRunDossierPanel, LiveRunJournalFallback } from './liveDossier';
 import { LiveSignalReviewTable } from './liveSignalReview';
+import { LiveRunTechnicalTracePanel } from './liveTrace';
 import {
   type CandidateDetailTab,
   type QualificationReviewOverlay,
@@ -106,7 +107,7 @@ export function LiveRadarCandidateDetailView({
             <Mono>{t('icpRadar.intent')} {candidate.score.intent_score}</Mono>
           </div>
         </header>
-        <CandidateDetailTabs activeTab={activeTab} onTabChange={onTabChange} />
+        <CandidateDetailTabs activeTab={activeTab} showTrace={Boolean(artifact.technical_trace)} onTabChange={onTabChange} />
       </div>
 
       <div className="icp-candidate-detail-panel">
@@ -212,6 +213,15 @@ export function LiveRadarCandidateDetailView({
                   ))}
                 </div>
               )}
+            </section>
+          </Card>
+        )}
+
+        {activeTab === 'trace' && artifact.technical_trace && (
+          <Card>
+            <section className="icp-detail-section">
+              <Eyebrow>{t('icpRadar.canonicalDetail.trace')}</Eyebrow>
+              <LiveRunTechnicalTracePanel trace={artifact.technical_trace} />
             </section>
           </Card>
         )}

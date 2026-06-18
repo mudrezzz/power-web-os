@@ -20,6 +20,9 @@ changes through Alembic migrations.
 - `radar_run_events` stores append-only structured audit events for one durable
   Radar run. It is the place for product-facing plans, observations, source
   outcomes, score summaries, warnings, and self-check summaries.
+- `radar_run_technical_traces` stores append-only sanitized developer/admin
+  trace records for pipeline inputs/outputs, provider request/response/error
+  payloads, normalization results, and validation results.
 
 ## Dependency Rules
 
@@ -43,6 +46,8 @@ methods.
 Journal event semantics and hidden reasoning policy also belong in the
 application layer. Persistence stores approved event records and must not infer
 planner, scoring, provider, or review meaning.
+Technical trace redaction also belongs in the application layer. Persistence
+stores only sanitized trace records and must not decide what is secret or safe.
 
 ## Transaction Boundary
 
@@ -80,3 +85,4 @@ must not replace persisted run status, timestamps, idempotency, correlation, or
 errors.
 `radar_run_events` is append-only in the repository API: add new events, list
 events by run, and do not expose update/delete operations.
+`radar_run_technical_traces` follows the same append-only API.

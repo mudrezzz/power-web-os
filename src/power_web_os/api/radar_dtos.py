@@ -212,6 +212,27 @@ class RadarRunJournalResponse(BaseModel):
     events: list[RadarRunJournalEventResponse] = Field(default_factory=list)
 
 
+class RadarRunTechnicalTraceItemResponse(BaseModel):
+    trace_id: str
+    run_id: str
+    sequence: int
+    phase: str
+    node_name: str
+    trace_type: str
+    title: str
+    summary: str = ""
+    duration_ms: int | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+    redaction_report: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime | None = None
+
+
+class RadarRunTechnicalTraceResponse(BaseModel):
+    run_id: str
+    radar_id: str
+    traces: list[RadarRunTechnicalTraceItemResponse] = Field(default_factory=list)
+
+
 class RadarRunDossierContextResponse(BaseModel):
     run_id: str
     radar_id: str

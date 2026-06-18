@@ -97,6 +97,7 @@ class RadarRunModel(Base):
     radar: Mapped[RadarModel] = relationship(back_populates="runs")
     output: Mapped[RadarRunOutputModel | None] = relationship(back_populates="run", uselist=False)
     events: Mapped[list[RadarRunEventModel]] = relationship(back_populates="run")
+    technical_traces: Mapped[list[RadarRunTechnicalTraceModel]] = relationship(back_populates="run")
 
 
 class RadarRunOutputModel(Base):
@@ -177,3 +178,29 @@ class RadarRunEventModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
 
     run: Mapped[RadarRunModel] = relationship(back_populates="events")
+
+
+class RadarRunTechnicalTraceModel(Base):
+    __tablename__ = "radar_run_technical_traces"
+    __table_args__ = (
+        CheckConstraint(
+            "trace_type in ('pipeline_input', 'pipeline_output', 'provider_request', 'provider_response', 'provider_error', 'normalization_result', 'validation_result')",
+            name="ck_radar_run_technical_traces_type",
+        ),
+        UniqueConstraint("run_id", "sequence", name="uq_radar_run_technical_traces_run_sequence"),
+    )
+
+    trace_id: Mapped[str] = mapped_column(String(220), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("radar_runs.run_id"), nullable=False, index=True)
+    sequence: Mapped[int] = mapped_column(nullable=False)
+    phase: Mapped[str] = mapped_column(String(80), nullable=False)
+    node_name: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    trace_type: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(240), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    duration_ms: Mapped[int | None] = mapped_column(nullable=True)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    redaction_report_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+    run: Mapped[RadarRunModel] = relationship(back_populates="technical_traces")

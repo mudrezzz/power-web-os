@@ -5,6 +5,7 @@ import type {
   RadarRunDossierDto,
   RadarRunJournalDto,
   RadarRunSummaryDto,
+  RadarRunTechnicalTraceDto,
   SourceUsageDto,
 } from '../../../api/radarApi';
 import type {
@@ -12,6 +13,7 @@ import type {
   ICPRadarCatalogItem,
   LiveICPRadarRunArtifact,
   LiveRadarRunDossier,
+  LiveRadarTechnicalTrace,
   LiveRadarSignalResult,
   QualificationAssessmentStatus,
   QualificationCrossValidation,
@@ -79,6 +81,7 @@ export function apiRunToLiveArtifact(
   radar: ICPRadarCatalogItem,
   journal?: RadarRunJournalDto,
   dossier?: RadarRunDossierDto,
+  technicalTrace?: RadarRunTechnicalTraceDto,
 ): LiveICPRadarRunArtifact {
   const normalizedDossier = dossier ? runDossier(dossier) : undefined;
   return {
@@ -180,10 +183,32 @@ export function apiRunToLiveArtifact(
       created_at: event.created_at,
     })) ?? [],
     dossier: normalizedDossier,
+    technical_trace: technicalTrace ? runTechnicalTrace(technicalTrace) : undefined,
     contract_validation: candidates.contract_validation.map((item) => ({
       severity: item.severity === 'error' ? 'error' : 'warning',
       path: stringField(item.path, ''),
       message: stringField(item.message, ''),
+    })),
+  };
+}
+
+function runTechnicalTrace(trace: RadarRunTechnicalTraceDto): LiveRadarTechnicalTrace {
+  return {
+    run_id: trace.run_id,
+    radar_id: trace.radar_id,
+    traces: trace.traces.map((item) => ({
+      trace_id: item.trace_id,
+      run_id: item.run_id,
+      sequence: item.sequence,
+      phase: item.phase,
+      node_name: item.node_name,
+      trace_type: item.trace_type,
+      title: item.title,
+      summary: item.summary,
+      duration_ms: item.duration_ms,
+      payload: item.payload,
+      redaction_report: item.redaction_report,
+      created_at: item.created_at,
     })),
   };
 }

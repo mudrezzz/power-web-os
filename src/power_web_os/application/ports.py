@@ -17,6 +17,7 @@ from power_web_os.application.radar_records import (
     RadarRunRecord,
     RadarRunStatus,
     RadarReviewDecisionRecord,
+    RadarRunTechnicalTraceRecord,
 )
 
 
@@ -104,6 +105,16 @@ class RadarRunEventRepository(Protocol):
     def append(self, record: RadarRunEventRecord) -> RadarRunEventRecord: ...
 
     def list_for_run(self, run_id: str) -> tuple[RadarRunEventRecord, ...]: ...
+
+    def next_sequence(self, run_id: str) -> int: ...
+
+
+class RadarRunTechnicalTraceRepository(Protocol):
+    """Application port for append-only sanitized Radar run technical traces."""
+
+    def append(self, record: RadarRunTechnicalTraceRecord) -> RadarRunTechnicalTraceRecord: ...
+
+    def list_for_run(self, run_id: str) -> tuple[RadarRunTechnicalTraceRecord, ...]: ...
 
     def next_sequence(self, run_id: str) -> int: ...
 

@@ -33,6 +33,9 @@ Forbidden imports:
 Workflows orchestrate and annotate execution. They do not own provider
 normalization, scoring rules, durable run state, journal semantics, or API
 transport.
+When a technical trace repository is wired by a worker, workflow adapters pass
+the application tracer into execution context. Redaction and trace semantics
+still belong to `application`, not to workflow nodes.
 
 ## How To Extend
 

@@ -12,6 +12,8 @@ OS tasks. It is execution infrastructure, not product state.
 - Worker tasks open their own database session and call application services.
 - Worker tasks emit run journal events only through application journal
   services.
+- Worker tasks wire the technical trace repository into the workflow adapter so
+  provider and pipeline debug traces are redacted and persisted with the run.
 
 ## Dependency Rules
 
@@ -30,8 +32,9 @@ Forbidden behavior:
 - journal event semantics invented inside worker tasks;
 - trusting Celery result state as product truth.
 
-`radar_runs`, `radar_run_outputs`, and `radar_run_events` remain the source of
-truth. Redis/Celery only transport execution requests.
+`radar_runs`, `radar_run_outputs`, `radar_run_events`, and
+`radar_run_technical_traces` remain the source of truth. Redis/Celery only
+transport execution requests.
 
 ## How To Run
 

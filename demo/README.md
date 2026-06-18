@@ -140,9 +140,9 @@ read `GET /api/radar-runs/{run_id}/candidates` after output exists. The
 backend API also exposes `GET /api/radar-runs/{run_id}/journal` for structured
 run audit events and can persist current qualification and signal review
 decisions for that output. The frontend uses these API contracts for live Radar
-catalog, manual run, candidates, journal, and review decisions when the backend
-is available. Browser-local overlays remain only for fixture/offline fallback
-state.
+catalog, manual run, candidates, journal, technical trace, and review decisions
+when the backend is available. Browser-local overlays remain only for
+fixture/offline fallback state.
 
 The backend also exposes `GET /api/radar-runs/{run_id}/dossier`. The frontend
 uses it in the live Radar detail `Journal` tab as the product run dossier:
@@ -150,6 +150,12 @@ run context, definition version, task context, real search plan, source usage,
 validation warnings, and non-debug timeline events. This is not the admin
 technical trace; provider prompts, raw requests/responses, and debug payloads
 remain out of this product view.
+
+For local developer inspection, the backend exposes
+`GET /api/radar-runs/{run_id}/technical-trace`. API-backed live runs show it in a
+separate `Trace` tab. The trace stores sanitized provider request/response and
+pipeline input/output payloads with redaction reports. It must not contain
+secrets or raw hidden chain-of-thought.
 
 When the backend API is running, inspect `ТОиР Quick Live Radar` and click
 `Run radar`. The UI creates a queued run, shows `queued/running/completed/failed`

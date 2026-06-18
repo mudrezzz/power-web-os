@@ -2209,7 +2209,7 @@ Principles:
 
 ### Slice 0.7.6.1.2: Admin technical trace for Radar runs
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Add a separate developer/admin trace surface for inspecting sanitized
   provider prompts, requests, responses, and pipeline step inputs/outputs.
 - User value: A developer can debug whether the agent workflow, prompt,
@@ -2255,6 +2255,19 @@ Principles:
 - Demo impact:
   - In local/dev mode a developer can inspect what was sent to the provider and
     how the response moved through the pipeline.
+- Completed:
+  - Added append-only `radar_run_technical_traces` persistence with SQLAlchemy,
+    Alembic, repository port/adapter, and SQLite migration coverage.
+  - Added application-owned `RadarRunTechnicalTracer` and
+    `TechnicalTraceRedactor` that mask secret-like fields, cap long strings, and
+    reject `chain_of_thought`, `hidden_reasoning`, and `internal_thoughts`.
+  - Instrumented live Radar pipeline phases and OpenRouter provider
+    request/response/error paths through sanitized technical traces.
+  - Added `GET /api/radar-runs/{run_id}/technical-trace` and bumped API version
+    to `0.7.6.1.2`.
+  - Added an API-backed live Radar `Trace` tab separate from the product
+    `Journal`/dossier tab, with wrapped payload/redaction rows and no direct
+    `fetch` calls in presentation components.
 - Acceptance criteria:
   - Technical trace can explain prompt/request/response/normalization behavior
     for a run.
@@ -2914,4 +2927,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.2: Admin technical trace for Radar runs`.
+Implement `Slice 0.7.6.2: SIBUR contour discovery benchmark`.

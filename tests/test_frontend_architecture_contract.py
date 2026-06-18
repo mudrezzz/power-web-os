@@ -29,6 +29,7 @@ def test_icp_radar_feature_is_decomposed_by_responsibility() -> None:
         "fixturePreview.tsx",
         "fixtureShortlist.tsx",
         "liveDetail.tsx",
+        "liveTrace.tsx",
         "liveCandidateViews.tsx",
         "liveShortlist.tsx",
         "settings.tsx",
@@ -123,7 +124,7 @@ def test_icp_radar_has_application_and_adapter_boundaries() -> None:
         "useRadarConfigOverrides.ts": ["radarConfigStorageKey", "window.localStorage"],
         "useSignalValidationOverlay.ts": ["signalValidationStorageKey", "window.localStorage"],
         "useQualificationReviewOverlay.ts": ["qualificationReviewStorageKey", "window.localStorage"],
-        "useRadarBackend.ts": ["RadarApiClient", "queueRadarRun", "getRunCandidates", "getRunDossier"],
+        "useRadarBackend.ts": ["RadarApiClient", "queueRadarRun", "getRunCandidates", "getRunDossier", "getRunTechnicalTrace"],
     }
 
     for file_name, expected_symbols in adapters.items():
@@ -183,6 +184,7 @@ def test_icp_radar_presentation_does_not_own_api_transport() -> None:
         feature_dir / "ICPRadarScreen.tsx",
         feature_dir / "liveShortlist.tsx",
         feature_dir / "liveDetail.tsx",
+        feature_dir / "liveTrace.tsx",
         *list((feature_dir / "components").glob("*.tsx")),
     ]
 
@@ -267,6 +269,7 @@ def test_icp_radar_css_is_owned_by_feature_module() -> None:
         "shortlist.css",
         "preview.css",
         "detail.css",
+        "trace.css",
         "settings.css",
         "settings-editors.css",
         "criteria.css",
