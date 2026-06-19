@@ -38,14 +38,23 @@ Useful Docker stack URLs:
 
 ```text
 http://127.0.0.1:5173
-http://127.0.0.1:8000/health
-http://127.0.0.1:8000/docs
+http://127.0.0.1:8001/health
+http://127.0.0.1:8001/docs
+```
+
+The Docker stack publishes host ports that avoid the neighboring Glavred dev
+stack defaults: API on `8001` and Redis on `6380`. Containers still use API
+port `8000` and Redis port `6379` internally. Override the host ports only when
+needed:
+
+```bash
+POWER_WEB_OS_API_HOST_PORT=8010 POWER_WEB_OS_REDIS_HOST_PORT=6381 docker compose up --build
 ```
 
 Troubleshooting:
 
 - If the UI stays in `Demo fallback`, check that the `api` service is healthy
-  and `VITE_POWER_WEB_OS_API_BASE_URL` points to `http://127.0.0.1:8000`.
+  and `VITE_POWER_WEB_OS_API_BASE_URL` points to `http://127.0.0.1:8001`.
 - If a run stays `queued`, check the `worker` service logs and Redis service.
 - If a run becomes `failed`, inspect `worker` logs and `.env` OpenRouter
   credentials/model settings.
@@ -61,9 +70,11 @@ http://127.0.0.1:8000/docs
 ```
 
 The browser frontend reads this API from `VITE_POWER_WEB_OS_API_BASE_URL`.
-If the variable is omitted, the default is `http://127.0.0.1:8000`. The API
-allows local Vite origins by default; set `POWER_WEB_OS_CORS_ORIGINS` to a
-comma-separated list when using a different frontend host.
+For the Docker stack the default is `http://127.0.0.1:8001`; for manual local
+processes use `http://127.0.0.1:8000` unless you started uvicorn on another
+port. The API allows local Vite origins by default; set
+`POWER_WEB_OS_CORS_ORIGINS` to a comma-separated list when using a different
+frontend host.
 
 Run Radar persistence migrations and seed the current demo catalog:
 
@@ -353,6 +364,12 @@ Rules:
 - Qualification tasks and signal tasks must remain separate. Provider adapters
   execute one bounded task at a time; application services own stage ordering
   and rejected-candidate signal suppression.
+- Candidate discovery is iterative. Application services execute coverage
+  checks before signal search, merge source-backed gap candidates into the
+  universe, re-run qualification gates for new candidates, and freeze the final
+  universe before any signal task starts. Signal tasks must not add candidates;
+  late-mentioned entities become `candidate_universe_gap` metadata for dossier
+  and trace inspection.
 - Product source lists must contain only evidence-bearing used sources. Keep
   analyzed/skipped sources in execution metadata or sanitized technical trace so
   users see clean evidence while developers can debug source selection.
@@ -594,11 +611,29 @@ Environment variables are loaded from the process environment or local `.env`:
 
 ```text
 OPENROUTER_API_KEY=
-OPENROUTER_MODEL=
-OPENROUTER_WEB_MODE=auto
+OPENROUTER_MODEL=openai/gpt-4.1-mini
+OPENROUTER_ADVANCED_MODEL=deepseek/deepseek-v3.2
+OPENROUTER_PLANNER_MODEL=deepseek/deepseek-v3.2
+OPENROUTER_EXTRACTOR_MODEL=deepseek/deepseek-v3.2
+OPENROUTER_WEB_MODE=server_tools
+POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=1
 ```
 
 For local CLI demo runs, explicit constructor arguments are strongest, then project `.env`, then ambient OS environment variables. This prevents an old Windows/user `OPENROUTER_API_KEY` from silently overriding the key in the repository-local `.env`.
+
+Model routing is role-specific. `OPENROUTER_MODEL` is the fast/default model for
+simple bounded tasks such as signal checks. Planner calls use
+`OPENROUTER_PLANNER_MODEL`; discovery, qualification, and coverage extraction
+use `OPENROUTER_EXTRACTOR_MODEL`. If a specific model is absent, planner and
+extractor fall back to `OPENROUTER_ADVANCED_MODEL`, then to `OPENROUTER_MODEL`.
+
+`POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` limits backend-controlled live
+Radar web/provider tasks per qualification rule or signal. The checked-in
+`.env.example` uses a smoke-safe value of `1` so Docker/dev manual runs can
+finish quickly while the pipeline is still being tuned. The code fallback is
+`20` when no environment value is configured. Exhausted budgets produce
+dossier/journal warnings instead of allowing a manual run to expand without
+bounds.
 
 Supported web modes are `auto`, `server_tools`, `plugin_web`, and `model_native`. `auto` tries OpenRouter server-side web search first and falls back to the OpenRouter web plugin if server tools are unsupported.
 
@@ -623,6 +658,21 @@ stores the `icp_radar_live_run` snapshot in `radar_run_outputs`, and exports the
 same JSON artifact paths for the current frontend fallback.
 
 Live artifacts must never contain API keys, authorization headers, bearer tokens, or raw provider dumps. Model-supplied URLs are filtered by HTTP reachability before they can support candidates. If OpenRouter rejects the credentials or no usable sources are returned, the frontend should show the live radar empty state rather than fabricated candidates.
+
+Source and score debugging has three planned hardening steps before broad
+quality benchmarking:
+
+1. Source lifecycle visibility: dossier should explain how many sources were
+   collected, parsed, verified, linked to candidate evidence, used in product,
+   or discarded.
+2. Evidence linking and verification hardening: verification should preserve
+   evidence-bearing sources with explicit risk state instead of silently losing
+   useful sources because a site blocks `HEAD`/`GET`; confirmed/observed
+   findings must still require valid evidence refs.
+3. Score contract and quality smoke: recorded fixtures should prove that
+   source-backed confirmed qualification and observed signals survive
+   persistence/API/frontend mapping and produce nonzero scores before live
+   multi-radar benchmarks are treated as meaningful.
 
 Frontend rendering for live radar results must go through the canonical ICP Radar UX contract. Treat `icp_radar_live_run` as a different data adapter, not as permission to create a separate live-only grid, side panel, table column set, preview, or detail surface. Runtime provider metadata belongs in the candidate `Journal` tab.
 

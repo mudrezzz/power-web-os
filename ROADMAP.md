@@ -2447,6 +2447,215 @@ Principles:
     source counts.
   - Added ADR `2026-06-18-llm-planned-radar-discovery.md`.
 
+### Slice 0.7.6.1.5: Iterative candidate universe expansion and coverage enforcement
+
+- Status: `Done`
+- Goal: Make live Radar discovery iterative instead of closing the candidate
+  universe after one discovery query.
+- User value: A user can rerun the live Radar and inspect not only the final
+  candidates, but also which candidates were discovered, qualified, rejected,
+  added by coverage checks, or left as unresolved universe gaps.
+- Backend changes:
+  - Added model routing for OpenRouter:
+    `OPENROUTER_MODEL` stays the fast/default signal-task model,
+    `OPENROUTER_ADVANCED_MODEL` is the shared advanced fallback, and
+    `OPENROUTER_PLANNER_MODEL` / `OPENROUTER_EXTRACTOR_MODEL` route planning
+    and discovery/qualification/coverage extraction.
+  - Made `coverage_check` an executable `RadarExecutionStage`.
+  - Added application-level candidate universe and coverage records without a
+    DB migration; metadata is stored in the existing live output snapshot,
+    dossier, journal, and trace surfaces.
+  - Execution now runs discovery, qualification gates, coverage checks,
+    candidate merge/dedupe, repeated qualification for new candidates, and only
+    then signal searches.
+  - Signal tasks are scoped to the frozen candidate universe. New entities
+    mentioned during signal search become `candidate_universe_gap` metadata,
+    not candidates.
+  - Planner validation now rejects configured global source ids presented as
+    local sources and requires coverage or low-risk coverage rationale for
+    single-step discovery plans.
+- Frontend/API changes:
+  - API version bumped to `0.7.6.1.5`.
+  - Dossier response now exposes `candidate_universe`, `coverage_checks`,
+    `coverage_warnings`, `unresolved_candidate_gaps`, and
+    `discovery_iteration_count`.
+  - Live Radar Journal/Dossier tab renders candidate universe lifecycle and
+    executed coverage checks with wrapped cards, not raw JSON.
+- Docs:
+  - Added ADR `2026-06-18-candidate-universe-expansion-before-signals.md`.
+  - Updated SAO, Developer Guide, demo docs, and `.env.example` model settings.
+- Validation:
+  - `python -m pytest tests/test_live_icp_radar.py`
+  - `python -m pytest tests/test_backend_api.py`
+  - `npm --prefix ./frontend run build`
+- Post-implementation hardening:
+  - Fixed Docker dev stack env propagation with `env_file: .env`, so API and
+    worker receive local OpenRouter model, web mode, and search budget settings.
+  - Set `.env.example` to a smoke-safe live budget:
+    `OPENROUTER_WEB_MODE=server_tools` and
+    `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=1`.
+  - Added controlled fallback to deterministic discovery planning when the LLM
+    planner remains invalid after one revision, instead of failing or drifting
+    into unbounded search.
+  - Tightened planner validation so discovery/gate tasks must target exactly
+    one known qualification rule and cannot create arbitrary per-step subject
+    budgets.
+  - Normalized localized planner risk labels such as `низкий` to the canonical
+    API enum before validation.
+  - Verified a real Docker API/worker live run reached terminal `completed`
+    state in about 67 seconds with the smoke budget. The resulting candidate
+    quality is intentionally not representative while the budget is `1`.
+- Remaining risk:
+  - This changes execution strategy but does not yet prove discovery quality on
+    real benchmark radars. That remains the job of `Slice 0.7.6.2`.
+
+### Slice 0.7.6.1.6: Source lifecycle visibility
+
+- Status: `Ready`
+- Goal: Make it clear why a live Radar run can show provider calls and search
+  activity while product `sources` remains empty.
+- User value: A user or developer can inspect a run and understand how many
+  sources were collected, parsed, verified, linked to candidates, used in the
+  product output, or discarded with a reason.
+- Scope:
+  - Add a source lifecycle projection without a DB migration:
+    `collected`, `parsed`, `reachable`, `linked_to_candidate`,
+    `used_in_product`, and `discarded`.
+  - Extend run dossier summary with source lifecycle counts and discard reasons.
+  - Keep product `sources` as evidence-bearing used sources only.
+  - Keep analyzed/skipped/unreachable sources in technical trace and execution
+    metadata.
+  - Add backend tests that a run with analyzed but unused sources explains why
+    product source count is zero.
+- Out of scope:
+  - Changing scoring semantics.
+  - Relaxing URL verification.
+  - Increasing live search budget.
+  - Benchmarking SIBUR or other real radars.
+- Implementation notes:
+  - The lifecycle projection should be composed from existing output snapshot,
+    execution metadata, provider `source_outcomes`, and technical trace.
+  - Do not expose raw provider dumps or hidden chain-of-thought in the product
+    dossier.
+  - Treat this as observability and explanation, not as a quality fix.
+- Tests:
+  - Unit/API test for dossier source lifecycle counts.
+  - Contract test that product sources remain used/evidence-bearing only.
+  - Regression for technical trace redaction.
+- Docs:
+  - Update SAO, Developer Guide, demo docs, and ADR notes for source lifecycle
+    semantics.
+- Demo impact:
+  - The Journal/Dossier tab can explain `0 product sources` without requiring a
+    developer to inspect raw trace rows.
+- Acceptance criteria:
+  - A completed run with zero product sources shows collected/analyzed/discarded
+    source counts and reasons.
+  - Product candidate/source DTOs remain backward compatible.
+  - No raw secrets, raw hidden CoT, or unredacted provider payloads appear in
+    product API responses.
+- Risks:
+  - Lifecycle counts may initially be approximate because normalized source
+    tables do not exist yet; record this in dossier copy and technical docs.
+
+### Slice 0.7.6.1.7: Evidence linking and source verification hardening
+
+- Status: `Backlog`
+- Goal: Stop losing usable sources because source verification and evidence
+  linking are too brittle.
+- User value: A live Radar can keep source-backed evidence in the product
+  artifact when the source is structurally usable, even if the target website
+  blocks `HEAD` requests or behaves inconsistently.
+- Scope:
+  - Replace binary source verification with explicit verification states such
+    as `reachable`, `blocked`, `timeout`, `unverified`, and `invalid_url`.
+  - Allow product-used sources when they are linked to candidate evidence and
+    come from structured provider citations/sources, even if reachability is
+    degraded but not invalid.
+  - Require extractor output to link qualification and signal findings to
+    `evidence_refs`; confirmed/observed findings without valid evidence refs
+    must be downgraded to `unknown` / `not_observed` with review warnings.
+  - Keep candidates without source-backed qualification as
+    `unknown_review_needed` or universe gaps, not as confident matches.
+  - Add tests proving `source -> evidence_ref -> qualification/signal -> product
+    source` survives normalization.
+- Out of scope:
+  - Normalized source/evidence database tables.
+  - Full crawler/browser verification.
+  - Raising search budget for quality runs.
+- Implementation notes:
+  - Verification should preserve evidence-bearing sources with explicit risk
+    metadata instead of silently discarding them.
+  - Product DTOs should show verification state/risk where useful, while Trace
+    keeps the detailed provider/source outcome.
+  - The source verifier remains infrastructure; scoring rules stay in
+    application/domain normalization.
+- Tests:
+  - Unit tests for verifier state transitions.
+  - Recorded-provider tests for evidence-linked sources surviving to product
+    sources.
+  - Negative tests where unlinked sources remain analyzed-only.
+- Docs:
+  - Update SAO and Developer Guide with verification states and evidence-linking
+    rules.
+- Demo impact:
+  - Manual runs should start showing nonzero product sources when the provider
+    returns valid evidence references.
+- Acceptance criteria:
+  - A source-backed confirmed qualification produces a visible product source.
+  - A source-backed observed signal can produce a nonzero signal score.
+  - Sources without evidence usage do not pollute the product source list.
+- Risks:
+  - Over-relaxing verification could admit weak sources; mitigate by exposing
+    verification state and keeping review warnings.
+
+### Slice 0.7.6.1.8: Score contract and minimal quality-mode smoke
+
+- Status: `Backlog`
+- Goal: Prove that evidence-backed live findings produce nonzero scores before
+  running broad multi-radar benchmarks.
+- User value: A user can run one small live Radar and see a minimal meaningful
+  result: product sources, evidence refs, qualification/signal findings, and
+  score changes that match the scoring contract.
+- Scope:
+  - Make the score contract explicit in tests:
+    `confirmed` qualification contributes to `fit_score`; `observed` signal
+    with score contributes to `intent_score`.
+  - Add recorded fixtures for source-backed qualification and signal findings.
+  - Add a small quality-mode smoke configuration that raises
+    `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` above the terminal-only
+    smoke value, for example `3`, without making it the default Docker setting.
+  - Run one manual/API-backed live smoke and inspect:
+    `sources > 0`, `evidence_refs > 0`, and at least one nonzero score when
+    evidence supports it.
+- Out of scope:
+  - Full SIBUR contour completeness.
+  - Multi-radar benchmark.
+  - Changing scoring weights or tier formulas.
+- Implementation notes:
+  - Keep `.env.example` conservative for terminal smoke; document quality-mode
+    overrides separately.
+  - Do not use quality smoke as product truth. It validates wiring, not market
+    coverage.
+- Tests:
+  - Unit tests for score contract from normalized candidates.
+  - API/persistence regression for evidence-backed candidate DTOs.
+  - Manual smoke checklist for quality-mode run.
+- Docs:
+  - Update Developer Guide and demo docs with terminal-smoke vs quality-smoke
+    profiles.
+- Demo impact:
+  - The UI should be able to show at least one source-backed nonzero score in a
+    controlled live/manual verification path.
+- Acceptance criteria:
+  - Recorded tests prove nonzero scores survive persistence/API/frontend mapping.
+  - Manual quality smoke reaches terminal state and produces product sources and
+    nonzero score when provider output supports it.
+  - The next benchmark slice has a stable quality baseline to compare against.
+- Risks:
+  - Live provider variability may still make manual quality smoke flaky; keep
+    recorded tests as the primary gate and treat live smoke as diagnostic.
+
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 
 - Status: `Backlog`
@@ -2477,13 +2686,14 @@ Principles:
   - Normalized candidate/evidence tables beyond the existing output snapshot.
   - Automated scheduled benchmark runs.
 - Implementation notes:
-  - Run this only after `Slice 0.7.6.1.4`, so the benchmark tests the
-    LLM-planned discovery strategy rather than the older one-query discovery
-    fallback.
+  - Run this only after `Slice 0.7.6.1.5`, so the benchmark tests the
+    LLM-planned, coverage-enforced iterative discovery strategy rather than the
+    older one-query discovery fallback.
   - The benchmark should use the qualification-first execution plan from
-    `Slice 0.7.6.1.3` plus the LLM-planned discovery strategy from
-    `Slice 0.7.6.1.4`; failures should be diagnosed per planner step, source
-    policy decision, and execution stage before changing model policy.
+    `Slice 0.7.6.1.3`, LLM-planned discovery from `Slice 0.7.6.1.4`, and
+    coverage-enforced candidate universe expansion from `Slice 0.7.6.1.5`;
+    failures should be diagnosed per planner step, source policy decision,
+    coverage check, and execution stage before changing model policy.
   - Treat this as a model-quality experiment, not as accepted product truth.
   - Use structured reasoning artifacts: plans, search hypotheses, source
     outcomes, rationale summaries, warnings, and self-check summaries.
@@ -3110,4 +3320,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.2: SIBUR contour discovery benchmark`.
+Implement `Slice 0.7.6.1.6: Source lifecycle visibility`.

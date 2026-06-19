@@ -38,12 +38,16 @@ docker compose up --build
 ```
 
 Open `http://127.0.0.1:5173` for the UI and
-`http://127.0.0.1:8000/health` for the API health check. The stack starts
+`http://127.0.0.1:8001/health` for the API health check. The stack starts
 Redis, runs Alembic migrations plus `seed-radar-db`, then starts the API,
 Celery worker, and Vite frontend. It uses shared SQLite state under
 `demo/output/power_web_os.sqlite3`, so API and worker see the same durable Radar
 runs. Keep OpenRouter credentials in local `.env`; Compose mounts it read-only
 into backend containers, and it is not copied into the Docker image.
+The Docker stack publishes API host port `8001` and Redis host port `6380` by
+default so it can run next to other local projects that use `8000` or `6379`.
+Override `POWER_WEB_OS_API_HOST_PORT`, `POWER_WEB_OS_REDIS_HOST_PORT`, and
+`VITE_POWER_WEB_OS_API_BASE_URL` only when you need different host bindings.
 
 Manual local process setup:
 
@@ -65,7 +69,7 @@ Optional live mini ICP Radar:
 ```bash
 python -m pip install -e ".[agent,dev]"
 copy .env.example .env
-# Fill OPENROUTER_API_KEY and OPENROUTER_MODEL locally.
+# Fill OPENROUTER_API_KEY locally. Keep default model routing and search budget unless testing another model.
 python -m power_web_os.demo run-live-mini-icp-radar --dry-run-plan
 python -m power_web_os.demo run-live-mini-icp-radar --live
 python -m alembic upgrade head
@@ -74,6 +78,20 @@ python -m power_web_os.demo run-live-mini-icp-radar-persisted --live
 celery -A power_web_os.jobs.radar_jobs.radar_celery_app worker --loglevel=INFO --pool=solo
 power-web-os-api
 ```
+
+The committed `.env.example` uses a smoke-safe live Radar budget:
+`POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=1` and
+`OPENROUTER_WEB_MODE=server_tools`. This is intentionally conservative so a
+manual Docker run should reach a terminal state quickly before quality tuning.
+Increase the budget only when validating discovery quality; exhausted budgets
+produce dossier/journal warnings instead of allowing a run to expand without
+bounds.
+
+With the smoke budget, a completed run may still show `0` product sources and
+zero scores. That means the runner reached a terminal state, not that discovery
+quality is acceptable. The next backend slices make the source lifecycle visible
+in the dossier, harden evidence linking/source verification, and then add a
+small quality-mode smoke profile before multi-radar benchmarking.
 
 To refresh documentation screenshots:
 
@@ -121,18 +139,25 @@ SIBUR-specific script.
 Discovery is also planned before execution. The backend asks the planner for a
 structured candidate-universe strategy, validates it against the radar source
 policy, allows one revision if needed, and executes only accepted bounded tasks.
+Discovery is iterative: coverage checks run before signal search, source-backed
+gap candidates are merged into the universe, qualification gates are re-run for
+new candidates, and the final universe is frozen before signals start. Signal
+tasks cannot add candidates; late-mentioned entities remain coverage gaps for
+inspection.
 The normal product source list shows only sources that went into candidate,
 qualification, signal, validation, or scoring evidence. Analyzed-but-unused
 sources remain in the technical trace for debugging.
 
-The local API can expose the same persisted backend state:
+The API can expose the same persisted backend state. With Docker Compose use
+host port `8001`; with the manual local `power-web-os-api` process use `8000`
+unless you changed the uvicorn port.
 
 ```text
-http://127.0.0.1:8000/api/radars
-http://127.0.0.1:8000/api/radars/toir-quick-live
-http://127.0.0.1:8000/api/radar-runs/{run_id}
-http://127.0.0.1:8000/api/radar-runs/{run_id}/candidates
-http://127.0.0.1:8000/api/radar-runs/{run_id}/reviews
+http://127.0.0.1:8001/api/radars
+http://127.0.0.1:8001/api/radars/toir-quick-live
+http://127.0.0.1:8001/api/radar-runs/{run_id}
+http://127.0.0.1:8001/api/radar-runs/{run_id}/candidates
+http://127.0.0.1:8001/api/radar-runs/{run_id}/reviews
 ```
 
 Start Redis before using the non-eager Celery worker. Default local URLs are
@@ -140,9 +165,10 @@ Start Redis before using the non-eager Celery worker. Default local URLs are
 result backend.
 
 In Docker Compose, services use `redis://redis:6379/0` and
-`redis://redis:6379/1` internally. A Postgres Compose profile is not included in
-this slice; the default one-command stack is intentionally SQLite-based for
-local manual smoke testing.
+`redis://redis:6379/1` internally; the host Redis port is published as `6380`
+by default. A Postgres Compose profile is not included in this slice; the
+default one-command stack is intentionally SQLite-based for local manual smoke
+testing.
 
 `POST /api/radars/{radar_id}/runs` creates a queued backend run and returns a
 `run_id`. A Celery worker executes the run in the background. API clients poll
@@ -159,9 +185,10 @@ The backend also exposes `GET /api/radar-runs/{run_id}/dossier`. The frontend
 uses it in the live Radar detail `Journal` tab as the product run dossier:
 run context, definition version, task context, discovery strategy, selected or
 skipped source bases, coverage summary, staged qualification-first search plan,
-source usage, validation warnings, and non-debug timeline events. This is not
-the admin technical trace; provider prompts, raw requests/responses, analyzed
-unused sources, and debug payloads remain out of this product view.
+candidate universe lifecycle, executed coverage checks, unresolved gaps, source
+usage, validation warnings, and non-debug timeline events. This is not the admin
+technical trace; provider prompts, raw requests/responses, analyzed unused
+sources, and debug payloads remain out of this product view.
 
 For local developer inspection, the backend exposes
 `GET /api/radar-runs/{run_id}/technical-trace`. API-backed live runs show it in a

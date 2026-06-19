@@ -90,7 +90,7 @@ sanitized admin technical trace for developer inspection, and a
 qualification-first live Radar execution plan.
 Backend slices should continue in this order:
 
-1. SIBUR contour discovery benchmark over the qualification-first workflow pipeline;
+1. Multi-radar discovery benchmark over the qualification-first, coverage-enforced workflow pipeline;
 2. normalized candidate/evidence query tables when API usage needs them;
 3. production schedule/cadence controls.
 
@@ -196,12 +196,43 @@ invalid revised plan fails clearly rather than falling back to a broad search.
 This keeps the logic generic for holding-contour, industry/region/revenue, and
 registry/source-constrained radars without hardcoding the SIBUR case.
 
+Candidate universe execution is now iterative. Accepted discovery plans may
+contain executable `coverage_check` stages. The application service runs initial
+candidate discovery, applies qualification gates, executes coverage checks,
+merges source-backed gap candidates, re-runs qualification gates for new
+candidates, and freezes the candidate universe before signal search. Signal
+tasks are scoped to that frozen universe; any new entity mentioned during signal
+search is stored as a `candidate_universe_gap` for dossier/trace inspection, not
+as a candidate. Runtime defaults cap discovery at two iterations and fifty
+candidates until benchmark data justifies different limits.
+`POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` limits backend-controlled
+provider/search tasks per qualification rule or signal. The repository
+`.env.example` uses a smoke-safe value of `1`; the code fallback remains `20`
+when no environment value is configured. Budget exhaustion is surfaced as
+coverage/review warnings.
+
+OpenRouter model routing is role-specific. `OPENROUTER_MODEL` is the fast
+default for simple bounded tasks such as signal checks.
+`OPENROUTER_ADVANCED_MODEL` is the shared advanced fallback, while
+`OPENROUTER_PLANNER_MODEL` and `OPENROUTER_EXTRACTOR_MODEL` route discovery
+planning and discovery/qualification/coverage extraction respectively. The
+fallback order is explicit constructor argument, specific environment variable,
+advanced model for planner/extractor, then default model.
+
 Source visibility is split by audience. Product APIs and dossier source lists
 use only evidence-bearing `used_sources`: sources used for candidate identity,
 qualification evidence, signal evidence, validation warnings, or score
 rationale. Sources analyzed but not used stay in execution metadata and the
 sanitized technical trace with reasons such as duplicate, irrelevant,
 policy-skipped, insufficient evidence, unreachable, or not used by a candidate.
+Before broad quality benchmarking, the backend must make this lifecycle explicit
+in the dossier: collected, parsed, reachable, linked to candidate evidence,
+used in product, or discarded with a reason. Source verification should evolve
+from a binary drop into a verification-state/risk signal, because many useful
+business sites block `HEAD` requests, time out, or return inconsistent HTTP
+behavior. Scores should only become nonzero when qualification or signal
+findings are connected to evidence refs that resolve to product-used or
+explicitly risk-marked sources.
 
 `GET /api/radar-runs/{run_id}/journal` returns ordered structured audit events.
 The journal is not raw hidden chain-of-thought. Application services reject
@@ -218,8 +249,9 @@ failed runs can return a partial dossier with `output_state`; the candidates
 endpoint still returns `409` until output exists. The dossier is intentionally
 not a technical trace. For completed API-backed runs, it also exposes the
 accepted discovery plan, selected/skipped source-base decisions, coverage
-summary, and used/analyzed/skipped source counts so users can inspect why the
-Radar searched the way it did.
+summary, candidate universe lifecycle, executed coverage checks, unresolved
+candidate gaps, and used/analyzed/skipped source counts so users can inspect why
+the Radar searched the way it did.
 
 `GET /api/radar-runs/{run_id}/technical-trace` is the developer/admin
 inspection projection. It reads append-only sanitized traces for pipeline
