@@ -319,6 +319,14 @@ reports. Do not store or display raw hidden chain-of-thought. If the backend is
 unavailable, the same screen stays in explicit demo fallback mode and reads the
 generated JSON files.
 
+Use `Inspect run` / `Диагностика запуска` from the live run status, empty state,
+failed state, completed state, or zero-candidate state when you need run-level
+inspection without selecting a candidate. The diagnostics panel shows run
+context, execution counts, coverage warnings, candidate-universe lifecycle,
+source lifecycle, product-safe dossier/journal sections, and trace availability.
+Candidate detail tabs remain the place for candidate-specific evidence, review
+decisions, and signal rows.
+
 Default queue settings:
 
 ```text

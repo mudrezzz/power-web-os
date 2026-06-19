@@ -1,7 +1,8 @@
-import { ArrowRight, ChevronDown, ChevronRight, Play, Radar, RotateCw, Settings, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronRight, Eye, Play, Radar, RotateCw, Settings, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../../components/primitives';
 import type { LiveICPRadarRunArtifact, LiveRadarCandidate } from '../../types';
+import { LiveRadarRunDiagnosticsView } from './liveRunDiagnostics';
 import { liveTotalScore, qualificationAssessmentTone, qualificationRuleText, qualificationStatusToAssessment } from './model';
 import type { RadarRunControlState } from './application/useRadarBackend';
 
@@ -10,7 +11,9 @@ import type { RadarRunControlState } from './application/useRadarBackend';
 export function LiveRadarShortlistTable({
   artifact,
   expandedCandidateId,
+  diagnosticsOpen,
   onOpenDetails,
+  onToggleDiagnostics,
   onOpenSettings,
   onRunRadar,
   onToggleCandidate,
@@ -18,7 +21,9 @@ export function LiveRadarShortlistTable({
 }: {
   artifact: LiveICPRadarRunArtifact | null;
   expandedCandidateId: string | null;
+  diagnosticsOpen: boolean;
   onOpenDetails: (candidateId: string) => void;
+  onToggleDiagnostics: () => void;
   onOpenSettings: () => void;
   onRunRadar: () => void;
   onToggleCandidate: (candidateId: string) => void;
@@ -28,28 +33,36 @@ export function LiveRadarShortlistTable({
 
   if (!artifact) {
     return (
-      <Card>
-        <div className="icp-empty-shortlist live-radar-empty">
-          <span className="section-icon">
-            <Radar aria-hidden="true" />
-          </span>
-          <div>
-            <Eyebrow>{t('icpRadar.live.emptyEyebrow')}</Eyebrow>
-            <h2>{t('icpRadar.live.emptyTitle')}</h2>
-            <p>{t('icpRadar.live.emptyCopy')}</p>
-            <code>python -m power_web_os.demo run-live-mini-icp-radar --live</code>
-            <LiveRunStatus state={runState} />
+      <>
+        <Card>
+          <div className="icp-empty-shortlist live-radar-empty">
+            <span className="section-icon">
+              <Radar aria-hidden="true" />
+            </span>
+            <div>
+              <Eyebrow>{t('icpRadar.live.emptyEyebrow')}</Eyebrow>
+              <h2>{t('icpRadar.live.emptyTitle')}</h2>
+              <p>{t('icpRadar.live.emptyCopy')}</p>
+              <code>python -m power_web_os.demo run-live-mini-icp-radar --live</code>
+              <LiveRunStatus state={runState} />
+            </div>
+            <div className="live-radar-actions">
+              <Button disabled={runState.busy || runState.mode === 'loading'} icon={<Play aria-hidden="true" />} variant="primary" onClick={onRunRadar}>
+                {runState.busy ? t('icpRadar.live.runInProgress') : t('icpRadar.live.runRadar')}
+              </Button>
+              {runState.runId && (
+                <Button icon={<Eye aria-hidden="true" />} variant="default" onClick={onToggleDiagnostics}>
+                  {diagnosticsOpen ? t('icpRadar.live.diagnostics.hideRun') : t('icpRadar.live.diagnostics.inspectRun')}
+                </Button>
+              )}
+              <Button icon={<Settings aria-hidden="true" />} variant="quiet" onClick={onOpenSettings}>
+                {t('icpRadar.openSettings')}
+              </Button>
+            </div>
           </div>
-          <div className="live-radar-actions">
-            <Button disabled={runState.busy || runState.mode === 'loading'} icon={<Play aria-hidden="true" />} variant="primary" onClick={onRunRadar}>
-              {runState.busy ? t('icpRadar.live.runInProgress') : t('icpRadar.live.runRadar')}
-            </Button>
-            <Button icon={<Settings aria-hidden="true" />} variant="quiet" onClick={onOpenSettings}>
-              {t('icpRadar.openSettings')}
-            </Button>
-          </div>
-        </div>
-      </Card>
+        </Card>
+        {diagnosticsOpen && <LiveRadarRunDiagnosticsView artifact={artifact} runState={runState} />}
+      </>
     );
   }
 
@@ -64,8 +77,12 @@ export function LiveRadarShortlistTable({
           <Button disabled={runState.busy || runState.mode === 'loading'} icon={<RotateCw aria-hidden="true" />} variant="default" onClick={onRunRadar}>
             {runState.busy ? t('icpRadar.live.runInProgress') : t('icpRadar.live.runAgain')}
           </Button>
+          <Button icon={<Eye aria-hidden="true" />} variant="default" onClick={onToggleDiagnostics}>
+            {diagnosticsOpen ? t('icpRadar.live.diagnostics.hideRun') : t('icpRadar.live.diagnostics.inspectRun')}
+          </Button>
         </div>
       </Card>
+      {diagnosticsOpen && <LiveRadarRunDiagnosticsView artifact={artifact} runState={runState} />}
       {artifact.candidates.length === 0 ? (
         <Card>
           <div className="icp-empty-shortlist">
@@ -77,6 +94,9 @@ export function LiveRadarShortlistTable({
               <h2>{t('icpRadar.live.noCandidatesTitle')}</h2>
               <p>{t('icpRadar.live.noCandidatesCopy')}</p>
             </div>
+            <Button icon={<Eye aria-hidden="true" />} variant="default" onClick={onToggleDiagnostics}>
+              {diagnosticsOpen ? t('icpRadar.live.diagnostics.hideRun') : t('icpRadar.live.diagnostics.inspectRun')}
+            </Button>
           </div>
         </Card>
       ) : (

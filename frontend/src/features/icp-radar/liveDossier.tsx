@@ -67,7 +67,7 @@ export function LiveRunDossierPanel({
   dossier,
 }: {
   artifact: LiveICPRadarRunArtifact;
-  candidate: LiveRadarCandidate;
+  candidate?: LiveRadarCandidate;
   dossier: LiveRadarRunDossier;
 }) {
   const { t } = useTranslation();
@@ -124,7 +124,7 @@ export function LiveRunDossierPanel({
         </div>
         <div className="run-dossier-card">
           <strong>{artifact.radar.name}</strong>
-          <p>{artifact.radar.description || candidate.description || t('icpRadar.live.noDescription')}</p>
+          <p>{artifact.radar.description || candidate?.description || t('icpRadar.live.noDescription')}</p>
         </div>
         <div className="run-dossier-tags">
           {taskContextEntries.length > 0 ? taskContextEntries.map(([key, value]) => (

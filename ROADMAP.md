@@ -2786,7 +2786,7 @@ Principles:
 
 ### Slice 0.7.6.1.7.3: Run-level diagnostics and source lifecycle UI
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Make a live Radar run inspectable from the run itself, not only from
   candidate detail screens, and make budget/source/candidate lifecycle visible.
 - User value: A user or developer can answer "what happened in this run?" even
@@ -2820,6 +2820,16 @@ Principles:
     remains visible in dev until auth exists.
   - The UI must explicitly show when signal search was limited to N of M
     candidates by budget.
+- Completion notes:
+  - Done: added run-level `Inspect run` / `Diagnostics` entry points beside
+    live run status, empty state, completed runs, failed runs, and zero-candidate
+    output.
+  - Done: added `LiveRadarRunDiagnosticsView` with overview, candidate universe,
+    source lifecycle, product dossier/journal, and compact trace entry tabs.
+  - Done: candidate detail remains candidate-specific; product-safe run dossier
+    can now be read without selecting a candidate.
+  - Done: frontend state, i18n, feature CSS, and architecture/demo contract tests
+    were updated for the new run-level diagnostics surface.
 - Tests:
   - Frontend tests for run-level dossier/journal/trace actions when candidates
     exist and when there are zero candidates.
@@ -3673,4 +3683,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.7.3: Run-level diagnostics and source lifecycle UI`.
+Implement `Slice 0.7.6.1.7.4: Readable Radar technical trace viewer`.

@@ -168,10 +168,12 @@ function RadarShortlist({ workspace }: { workspace: ReturnType<typeof useRadarWo
     return (
       <LiveRadarShortlistTable
         artifact={workspace.selectedLiveArtifact}
+        diagnosticsOpen={navigation.runDiagnosticsOpen}
         expandedCandidateId={navigation.expandedLiveCandidateId}
         onOpenDetails={navigation.setDetailLiveCandidateId}
         onOpenSettings={() => navigation.setSelectedTab('settings')}
         onRunRadar={() => workspace.runRadar(workspace.selectedRadar!.radar_id)}
+        onToggleDiagnostics={() => navigation.setRunDiagnosticsOpen(!navigation.runDiagnosticsOpen)}
         onToggleCandidate={(candidateId) => navigation.setExpandedLiveCandidateId(
           navigation.expandedLiveCandidateId === candidateId ? null : candidateId,
         )}

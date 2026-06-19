@@ -330,6 +330,7 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "local_draft",
         "modified_locally",
         "LiveRadarShortlistTable",
+        "LiveRadarRunDiagnosticsView",
         "LiveRadarCandidatePreview",
         "LiveRadarCandidateDetailView",
         "CandidateDetailTabs",
@@ -695,6 +696,15 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert "source_lifecycle_summary" in live_detail_segment
     assert "source_lifecycle.map" in live_detail_segment
 
+    live_run_diagnostics_segment = screen.split("function LiveRadarRunDiagnosticsView", 1)[1].split("function RunDiagnosticsStatus", 1)[0]
+    assert "icpRadar.live.diagnostics.inspectRun" in screen
+    assert "runDiagnosticsOpen" in screen
+    assert "LiveRunDossierPanel artifact={artifact} dossier={artifact.dossier}" in screen
+    assert "LiveRunTechnicalTracePanel trace={artifact?.technical_trace}" in screen
+    assert "CandidateUniverseDiagnostics" in live_run_diagnostics_segment
+    assert "SourceLifecycleDiagnostics" in live_run_diagnostics_segment
+    assert "fetch(" not in live_run_diagnostics_segment
+
     for ru_label in [
         "Соответствие",
         "Интент",
@@ -712,6 +722,7 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     for lifecycle_label in [
         "sourceLifecycle: 'Source lifecycle'",
         "sourceLifecycle: 'Жизненный цикл источников'",
+        "inspectRun: 'Диагностика запуска'",
         "used_in_product: 'Used in product'",
         "used_in_product: 'В зачете'",
         "not_used_by_candidate: 'Analyzed but not linked to candidate evidence.'",

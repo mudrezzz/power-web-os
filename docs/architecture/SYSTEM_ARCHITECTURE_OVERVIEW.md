@@ -88,14 +88,16 @@ Radar execution, durable human review decisions for live Radar findings, an
 append-only structured run journal for reasoning/audit summaries, an append-only
 sanitized admin technical trace for developer inspection, and a
 qualification-first live Radar execution plan.
-Backend slices should continue in this order:
+The frontend now exposes run-level diagnostics for queued, running, completed,
+failed, and zero-candidate live Radar runs, including candidate-universe and
+source-lifecycle inspection without selecting a candidate. Backend/frontend
+slices should continue in this order:
 
-1. run-level diagnostics and source lifecycle UI;
-2. readable technical trace viewer;
-3. provider-neutral web retrieval abstraction with OpenRouter/Perplexity-style adapters;
-4. multi-radar discovery benchmark over the qualification-first, coverage-enforced workflow pipeline;
-5. normalized candidate/evidence query tables when API usage needs them;
-6. production schedule/cadence controls.
+1. readable technical trace viewer;
+2. provider-neutral web retrieval abstraction with OpenRouter/Perplexity-style adapters;
+3. multi-radar discovery benchmark over the qualification-first, coverage-enforced workflow pipeline;
+4. normalized candidate/evidence query tables when API usage needs them;
+5. production schedule/cadence controls.
 
 JSON artifacts remain useful as demo exports and offline fallback, but they are
 not the long-term source of truth. The frontend now prefers the Radar API for
@@ -300,8 +302,8 @@ transport and error normalization, `frontend/src/features/icp-radar/adapters/`
 maps API DTOs into the existing Radar view contracts, and
 `frontend/src/features/icp-radar/application/` owns backend mode, queued run
 polling, fallback selection, and review mutations. Presentation components show
-run controls, status, product dossier sections, journal events, and the
-dev/admin trace tab, but do not call `fetch` or own persistence.
+run controls, status, run-level diagnostics, product dossier sections, journal
+events, and the dev/admin trace tab, but do not call `fetch` or own persistence.
 
 Architecture contract tests enforce these rules. Existing large legacy modules
 are temporary decomposition follow-ups and not examples for new backend work:

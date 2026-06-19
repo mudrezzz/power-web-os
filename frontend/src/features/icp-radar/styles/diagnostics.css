@@ -1,0 +1,191 @@
+/* ICP Radar run diagnostics owns run-level dossier, source lifecycle, and zero-candidate inspection. */
+
+.run-diagnostics,
+.run-diagnostics-panel {
+  display: grid;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.run-diagnostics-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.run-diagnostics-head h2,
+.run-diagnostics-head p,
+.run-diagnostics-head > div {
+  min-width: 0;
+}
+
+.run-diagnostics-head h2 {
+  margin: var(--s-1) 0;
+  font: var(--h3);
+}
+
+.run-diagnostics-head p,
+.run-diagnostics-empty p,
+.run-diagnostics-warning p,
+.run-diagnostics-source p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.run-diagnostics-status,
+.run-diagnostics-warning-list,
+.run-diagnostics-reasons,
+.run-diagnostics-source-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.run-diagnostics-status {
+  justify-content: flex-end;
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.run-diagnostics-status .mono {
+  max-width: calc(var(--s-20) * 4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.run-diagnostics-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--s-20) * 1.45), 1fr));
+  gap: var(--s-3);
+}
+
+.run-diagnostics-metric,
+.run-diagnostics-warning,
+.run-diagnostics-empty,
+.run-diagnostics-source {
+  min-width: 0;
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.run-diagnostics-metric {
+  display: grid;
+  gap: var(--s-1);
+}
+
+.run-diagnostics-metric span {
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.run-diagnostics-metric .mono {
+  color: var(--ink);
+  font: var(--h4);
+}
+
+.run-diagnostics-warning,
+.run-diagnostics-empty,
+.run-diagnostics-source {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.run-diagnostics-empty {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+
+.run-diagnostics-empty strong,
+.run-diagnostics-source strong,
+.run-diagnostics-table-row strong,
+.run-diagnostics-table-row small,
+.run-diagnostics-source a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.run-diagnostics-table {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+}
+
+.run-diagnostics-table-head,
+.run-diagnostics-table-row {
+  display: grid;
+  gap: var(--s-3);
+  align-items: start;
+  min-width: 0;
+}
+
+.run-diagnostics-table--candidates .run-diagnostics-table-head,
+.run-diagnostics-table--candidates .run-diagnostics-table-row {
+  grid-template-columns: minmax(calc(var(--s-20) * 2), 1.2fr) minmax(var(--s-20), 0.45fr) minmax(var(--s-20), 0.55fr) minmax(calc(var(--s-20) * 1.25), 0.65fr) minmax(calc(var(--s-20) * 1.7), 1fr);
+}
+
+.run-diagnostics-table-head {
+  padding: var(--s-3);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-faint);
+  color: var(--fg3);
+  font: var(--mono-sm);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.run-diagnostics-table-row {
+  padding: var(--s-3);
+  border-bottom: 1px solid var(--border-faint);
+  background: var(--surface);
+}
+
+.run-diagnostics-table-row:last-child {
+  border-bottom: none;
+}
+
+.run-diagnostics-table-row > span {
+  display: grid;
+  gap: var(--s-1);
+  min-width: 0;
+}
+
+.run-diagnostics-table-row small {
+  color: var(--fg3);
+}
+
+.run-diagnostics-source-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--s-20) * 3), 1fr));
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.run-diagnostics-source {
+  background: var(--surface);
+}
+
+.run-diagnostics-source header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.run-diagnostics-source a {
+  color: var(--link);
+  font: var(--mono-sm);
+}
+
+.run-diagnostics-source-meta {
+  color: var(--fg3);
+}

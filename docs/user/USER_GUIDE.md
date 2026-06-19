@@ -100,6 +100,12 @@ Settings are intentionally business-facing:
 
 The catalog also includes `РўРћРёР  Quick Live Radar`. This is the first live experimental radar. In API mode, use `Run radar` to create a queued backend run, watch `queued/running/completed/failed` status, and load candidates after output exists. In fallback mode, its `Found accounts` tab can still show the exported `live_mini_icp_radar_run.json` artifact. After a successful run, the radar is reviewed through the same canonical table-first flow as `РўРћРёР  / SIBUR`: candidates stay in the same sticky-column shortlist, row click opens the same four-block preview, and `Open details` opens the same tabbed in-shell detail view. Runtime/provider metadata is available in the candidate `Journal` tab, not on the main shortlist. Live findings always require human review and do not flow into `Accounts` automatically.
 
+Use `Inspect run` / `Диагностика запуска` when you need to understand the run
+itself, especially if it failed or returned no candidates. The diagnostics view
+shows run context, output state, coverage warnings, candidate-universe lifecycle,
+source lifecycle, product-safe journal/dossier sections, and trace availability
+without requiring a selected candidate.
+
 Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. The main surface is a wide table: the company column stays fixed while score, tier, evidence, and criteria-related columns can scroll horizontally inside the table. Click a candidate row to open a bounded inline preview with the main signal, short recommendation, top evidence refs, and top criteria. Open the candidate detail view when you need the full C1-C20 signal breakdown, source refs, and local signal validation controls. Take-into-work is still a planned follow-up slice.
 
 ![ICP Radar catalog](../qa/screenshots/visual-smoke/icp-radar-1366x768.png)

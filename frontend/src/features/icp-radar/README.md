@@ -16,7 +16,7 @@ application/            Navigation, backend mode, browser-local fallback overlay
 domain/                 Pure score, status, validation, qualification, and metadata helpers.
 components/             Presentation-only catalog/header components.
 fixture*                Fixture-backed shortlist, preview, and detail surfaces.
-live*                   Live-run shortlist, preview, and detail surfaces through the same UX contract.
+live*                   Live-run shortlist, diagnostics, preview, and detail surfaces through the same UX contract.
 settings*               Block-editable radar configuration surfaces.
 styles/                 Feature CSS split by UI surface.
 ```
@@ -30,7 +30,7 @@ flowchart TD
     Adapters["adapters/<br/>catalogAdapter<br/>fixtureRadarAdapter<br/>liveRadarAdapter"]
     ViewModels["Canonical view models<br/>RadarViewModel<br/>RadarCandidateViewModel"]
     AppHooks["application hooks<br/>useRadarBackend<br/>useRadarWorkspace<br/>navigation and overlays"]
-    UI["UI surfaces<br/>catalog -> shortlist -> preview -> detail tabs -> settings"]
+    UI["UI surfaces<br/>catalog -> shortlist -> run diagnostics -> preview -> detail tabs -> settings"]
     LocalOverlays["localStorage overlays<br/>config drafts<br/>signal validation<br/>qualification review"]
 
     Api --> AppHooks
@@ -58,8 +58,9 @@ generated JSON.
    presentation component.
 4. Reuse the canonical table -> preview -> detail-tabs flow. Do not create a new
    visual paradigm, side panel, or provider-specific shortlist column set.
-5. Put runtime/provider metadata into the candidate `Journal` tab, not above the
-   shortlist table.
+5. Put run-level runtime/provider metadata into run diagnostics, and
+   candidate-specific evidence/runtime context into the candidate `Journal` tab.
+   Do not put either above the shortlist table.
 6. Map qualification rows into the shared review contract before rendering:
    source refs, source origin, trust/check policy, evidence, requirement fit,
    optional excerpt, and local approve/reject/correct decisions are domain

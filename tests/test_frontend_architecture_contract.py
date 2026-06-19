@@ -29,6 +29,7 @@ def test_icp_radar_feature_is_decomposed_by_responsibility() -> None:
         "fixturePreview.tsx",
         "fixtureShortlist.tsx",
         "liveDetail.tsx",
+        "liveRunDiagnostics.tsx",
         "liveTrace.tsx",
         "liveCandidateViews.tsx",
         "liveShortlist.tsx",
@@ -65,6 +66,7 @@ def test_icp_radar_feature_is_decomposed_by_responsibility() -> None:
     assert line_count(feature_dir / "fixturePreview.tsx") <= 160
     assert line_count(feature_dir / "fixtureShortlist.tsx") <= 180
     assert line_count(feature_dir / "liveDetail.tsx") <= 600
+    assert line_count(feature_dir / "liveRunDiagnostics.tsx") <= 400
     assert line_count(feature_dir / "liveShortlist.tsx") <= 260
     assert line_count(feature_dir / "model.tsx") <= 10
     assert line_count(feature_dir / "settingsModel.ts") <= 700
@@ -184,6 +186,7 @@ def test_icp_radar_presentation_does_not_own_api_transport() -> None:
         feature_dir / "ICPRadarScreen.tsx",
         feature_dir / "liveShortlist.tsx",
         feature_dir / "liveDetail.tsx",
+        feature_dir / "liveRunDiagnostics.tsx",
         feature_dir / "liveTrace.tsx",
         *list((feature_dir / "components").glob("*.tsx")),
     ]
@@ -211,6 +214,7 @@ def test_icp_radar_feature_modules_document_non_obvious_boundaries() -> None:
         "fixtureDetail.tsx": "Fixture detail hosts signal validation",
         "liveShortlist.tsx": "Live shortlist deliberately mirrors fixture shortlist",
         "liveDetail.tsx": "Detail tabs keep runtime/provider evidence separate",
+        "liveRunDiagnostics.tsx": "Run diagnostics is intentionally run-scoped",
         "settings.tsx": "Settings is block-editable by design",
     }
 
@@ -270,6 +274,7 @@ def test_icp_radar_css_is_owned_by_feature_module() -> None:
         "preview.css",
         "detail.css",
         "trace.css",
+        "diagnostics.css",
         "settings.css",
         "settings-editors.css",
         "criteria.css",
