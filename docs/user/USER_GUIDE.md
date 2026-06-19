@@ -104,7 +104,9 @@ Use `Inspect run` / `Диагностика запуска` when you need to und
 itself, especially if it failed or returned no candidates. The diagnostics view
 shows run context, output state, coverage warnings, candidate-universe lifecycle,
 source lifecycle, product-safe journal/dossier sections, and trace availability
-without requiring a selected candidate.
+without requiring a selected candidate. The `Trace` tab is for developer/admin
+inspection: it groups sanitized technical records by phase and keeps raw JSON
+collapsed by default.
 
 Start with `ICP Radar`. This is the upstream ABM radar view: it ranks candidate legal entities before they are accepted into Power Web work. The main surface is a wide table: the company column stays fixed while score, tier, evidence, and criteria-related columns can scroll horizontally inside the table. Click a candidate row to open a bounded inline preview with the main signal, short recommendation, top evidence refs, and top criteria. Open the candidate detail view when you need the full C1-C20 signal breakdown, source refs, and local signal validation controls. Take-into-work is still a planned follow-up slice.
 

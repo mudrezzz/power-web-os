@@ -46,6 +46,7 @@ def test_icp_radar_feature_is_decomposed_by_responsibility() -> None:
     }
     expected_model_modules = {
         "liveModel.ts",
+        "liveTraceModel.ts",
         "model.tsx",
         "modelTypes.ts",
         "radarMetaModel.ts",
@@ -72,6 +73,7 @@ def test_icp_radar_feature_is_decomposed_by_responsibility() -> None:
     assert line_count(feature_dir / "settingsModel.ts") <= 700
     assert line_count(feature_dir / "validationModel.ts") <= 300
     assert line_count(feature_dir / "liveModel.ts") <= 250
+    assert line_count(feature_dir / "liveTraceModel.ts") <= 300
 
     entrypoint = read("frontend/src/features/icp-radar/ICPRadarScreen.tsx")
     for component_name in [
@@ -230,6 +232,7 @@ def test_icp_radar_model_barrel_has_responsibility_boundaries() -> None:
         "validationModel",
         "radarMetaModel",
         "liveModel",
+        "liveTraceModel",
         "settingsModel",
     ]:
         assert f"export * from './{boundary}';" in model

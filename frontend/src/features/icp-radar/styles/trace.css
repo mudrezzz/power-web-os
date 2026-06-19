@@ -1,67 +1,221 @@
-/* ICP Radar trace owns developer/admin technical trace rows and wrapped payloads. */
+/* ICP Radar trace owns readable developer/admin technical trace inspection. */
 
 .technical-trace,
-.technical-trace-empty {
+.technical-trace-empty,
+.technical-trace-detail,
+.technical-trace-section-list {
   display: grid;
   gap: var(--s-3);
   min-width: 0;
 }
 
-.technical-trace-empty {
-  padding: var(--s-3);
-  border: 1px solid var(--border-faint);
-  border-radius: var(--r-md);
-  background: var(--surface-2);
-}
-
-.technical-trace-empty p {
-  margin: 0;
-  color: var(--fg2);
-}
-
-.technical-trace-row {
-  min-width: 0;
+.technical-trace-empty,
+.technical-trace-header,
+.technical-trace-section,
+.technical-trace-step,
+.technical-trace-search,
+.technical-trace-group {
   border: 1px solid var(--border-faint);
   border-radius: var(--r-md);
   background: var(--surface);
 }
 
-.technical-trace-row summary {
-  display: grid;
-  grid-template-columns: minmax(var(--s-5), max-content) minmax(0, 1fr) auto auto;
-  gap: var(--s-3);
-  align-items: center;
-  min-width: 0;
+.technical-trace-empty,
+.technical-trace-header,
+.technical-trace-section {
   padding: var(--s-3);
-  cursor: pointer;
 }
 
-.technical-trace-row summary > span {
+.technical-trace-empty {
+  background: var(--surface-2);
+}
+
+.technical-trace-empty p,
+.technical-trace-header p,
+.technical-trace-detail p,
+.technical-trace-step small {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.technical-trace-header {
   display: grid;
-  gap: var(--s-1);
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s-3);
+  align-items: start;
+  background: var(--surface-2);
+}
+
+.technical-trace-header > div,
+.technical-trace-detail header,
+.technical-trace-step > span {
   min-width: 0;
 }
 
-.technical-trace-row summary strong,
-.technical-trace-row summary small {
-  min-width: 0;
+.technical-trace-header strong,
+.technical-trace-detail h3,
+.technical-trace-step strong,
+.technical-trace-step small {
   overflow-wrap: anywhere;
 }
 
-.technical-trace-row summary small {
-  color: var(--fg2);
+.technical-trace-toolbar {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) auto;
+  gap: var(--s-3);
+  align-items: center;
+  min-width: 0;
+}
+
+.technical-trace-search {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: 0 var(--s-3);
+  background: var(--surface);
+}
+
+.technical-trace-search svg {
+  width: var(--s-4);
+  height: var(--s-4);
+  color: var(--fg3);
+  flex-shrink: 0;
+}
+
+.technical-trace-search input {
+  min-width: 0;
+  width: 100%;
+  height: 2.4rem;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: var(--body);
+}
+
+.technical-trace-search:focus-within {
+  border-color: var(--cobalt);
+  box-shadow: var(--shadow-focus);
+}
+
+.technical-trace-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.technical-trace-viewer {
+  display: grid;
+  grid-template-columns: minmax(16rem, 0.75fr) minmax(0, 1.6fr);
+  gap: var(--s-3);
+  align-items: start;
+  min-width: 0;
+}
+
+.technical-trace-sidebar {
+  display: grid;
+  gap: var(--s-3);
+  min-width: 0;
+  max-height: 46rem;
+  overflow: auto;
+}
+
+.technical-trace-group {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-2);
+}
+
+.technical-trace-group h4 {
+  margin: 0;
+  color: var(--fg3);
+  font: var(--mono-sm);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.technical-trace-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--s-2);
+  align-items: start;
+  min-width: 0;
+  padding: var(--s-2);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.technical-trace-step:hover,
+.technical-trace-step-active {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.technical-trace-step-active {
+  box-shadow: inset 0 0 0 1px var(--cobalt-200);
+}
+
+.technical-trace-step svg {
+  width: var(--s-4);
+  height: var(--s-4);
+  color: var(--fg3);
+}
+
+.technical-trace-step-active svg {
+  color: var(--cobalt-600);
+}
+
+.technical-trace-step > span {
+  display: grid;
+  gap: var(--s-1);
+}
+
+.technical-trace-detail {
+  min-width: 0;
+  padding: var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.technical-trace-detail > header {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.technical-trace-detail > header > div,
+.technical-trace-section header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.technical-trace-detail h3,
+.technical-trace-section h4 {
+  margin: 0;
+}
+
+.technical-trace-detail h3 {
+  font: var(--h3);
 }
 
 .technical-trace-meta {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--s-20), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: var(--s-2);
   margin: 0;
-  padding: 0 var(--s-3) var(--s-3);
 }
 
-.technical-trace-meta div,
-.technical-trace-payload {
+.technical-trace-meta div {
   min-width: 0;
   padding: var(--s-3);
   border-radius: var(--r-md);
@@ -78,18 +232,18 @@
   overflow-wrap: anywhere;
 }
 
-.technical-trace-payload {
+.technical-trace-section {
   display: grid;
   gap: var(--s-2);
-  margin: 0 var(--s-3) var(--s-3);
+  min-width: 0;
+  background: var(--surface-2);
 }
 
-.technical-trace-payload h4 {
-  margin: 0;
-  font: var(--label);
+.technical-trace-section header {
+  justify-content: space-between;
 }
 
-.technical-trace-payload pre {
+.technical-trace-section pre {
   min-width: 0;
   max-width: 100%;
   margin: 0;
@@ -97,4 +251,29 @@
   overflow-wrap: anywhere;
   color: var(--fg2);
   font: var(--mono-sm);
+}
+
+.technical-trace-section details {
+  min-width: 0;
+}
+
+.technical-trace-section summary {
+  cursor: pointer;
+  color: var(--cobalt-600);
+  font: var(--label);
+}
+
+@media (max-width: 980px) {
+  .technical-trace-toolbar,
+  .technical-trace-viewer {
+    grid-template-columns: 1fr;
+  }
+
+  .technical-trace-filters {
+    justify-content: flex-start;
+  }
+
+  .technical-trace-sidebar {
+    max-height: none;
+  }
 }

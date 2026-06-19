@@ -212,7 +212,10 @@ For local developer inspection, the backend exposes
 `GET /api/radar-runs/{run_id}/technical-trace`. API-backed live runs show it in a
 separate `Trace` tab. The trace stores sanitized provider request/response and
 pipeline input/output payloads with redaction reports. It must not contain
-secrets or raw hidden chain-of-thought.
+secrets or raw hidden chain-of-thought. The Trace tab renders those records as a
+readable phase-grouped viewer with search, error/provider/planning/validation
+filters, copyable readable sections, and collapsed raw JSON for deeper
+developer inspection.
 
 When the backend API is running, inspect `ТОиР Quick Live Radar` and click
 `Run radar`. The UI creates a queued run, shows `queued/running/completed/failed`

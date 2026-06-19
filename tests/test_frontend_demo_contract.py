@@ -827,8 +827,14 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
         "onSignalDecisionChange",
         "onSignalDecisionReset",
         "LiveRunTechnicalTracePanel",
-        "technical-trace-row",
+        "technical-trace-viewer",
+        "technical-trace-step",
+        "technical-trace-section",
+        "filterReadableTraceGroups",
+        "readableTraceGroups",
+        "showRaw",
         "icpRadar.live.trace.policy",
+        "icpRadar.live.trace.searchPlaceholder",
     ]:
         assert screen_token in screen
     qualification_header = screen.split('<div className="qualification-review-head">', 1)[1].split("</div>", 1)[0]
@@ -869,6 +875,9 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
         "correctedAssessment",
         "commentRequired",
         "provider_request",
+        "viewerTitle",
+        "filters",
+        "section",
         "technical trace",
     ]:
         assert i18n_key in i18n

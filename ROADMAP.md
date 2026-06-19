@@ -2853,7 +2853,7 @@ Principles:
 
 ### Slice 0.7.6.1.7.4: Readable Radar technical trace viewer
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Replace the current raw-JSON-oriented Trace tab with a developer/admin
   trace viewer that is usable for debugging planner/executor/retrieval behavior.
 - User value: A developer can inspect prompts, requests, provider results,
@@ -2888,6 +2888,15 @@ Principles:
     API mappers without exposing persistence internals.
   - The trace viewer should make OpenRouter-like prompt inspection possible, but
     with our own Radar phase semantics.
+- Completion notes:
+  - Done: replaced the raw details-list trace with a grouped developer/admin
+    viewer over the existing sanitized technical trace DTO.
+  - Done: added phase grouping, status derivation, search, quick filters,
+    readable sections, copy actions, and collapsed raw JSON.
+  - Done: added a frontend trace view-model boundary so presentation components
+    do not own grouping, status, or safety filtering.
+  - Done: kept the existing backend API, DB schema, provider adapters, and trace
+    persistence unchanged.
 - Tests:
   - Frontend architecture tests that presentation components do not call
     `fetch`.
@@ -3683,4 +3692,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.7.4: Readable Radar technical trace viewer`.
+Implement `Slice 0.7.6.1.8: Web retrieval provider abstraction and Perplexity adapter`.

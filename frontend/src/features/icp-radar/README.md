@@ -61,16 +61,19 @@ generated JSON.
 5. Put run-level runtime/provider metadata into run diagnostics, and
    candidate-specific evidence/runtime context into the candidate `Journal` tab.
    Do not put either above the shortlist table.
-6. Map qualification rows into the shared review contract before rendering:
+6. Map technical trace records through `liveTraceModel.ts` before rendering:
+   grouping, status, filtering, and safety cleanup are view-model concerns, not
+   ad hoc JSX logic.
+7. Map qualification rows into the shared review contract before rendering:
    source refs, source origin, trust/check policy, evidence, requirement fit,
    optional excerpt, and local approve/reject/correct decisions are domain
    view-model concerns, not ad hoc JSX fields. Expanded qualification rows use
    evidence cards; the full source inventory belongs in the `Sources` tab.
-7. Map live signal rows into score-evaluation plus evidence-card view models
+8. Map live signal rows into score-evaluation plus evidence-card view models
    before rendering. Expanded signal rows must show score evaluation, source
    linked evidence cards, and local signal review; do not render provider output
    as a raw summary plus source list.
-8. Add focused tests for the adapter and architecture boundary before changing
+9. Add focused tests for the adapter and architecture boundary before changing
    UI behavior.
 
 ## Where Code Should Not Go

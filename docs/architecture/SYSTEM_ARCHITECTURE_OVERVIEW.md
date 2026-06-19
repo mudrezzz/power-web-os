@@ -90,14 +90,15 @@ sanitized admin technical trace for developer inspection, and a
 qualification-first live Radar execution plan.
 The frontend now exposes run-level diagnostics for queued, running, completed,
 failed, and zero-candidate live Radar runs, including candidate-universe and
-source-lifecycle inspection without selecting a candidate. Backend/frontend
+source-lifecycle inspection without selecting a candidate. It also renders the
+sanitized developer/admin technical trace as a readable phase-grouped viewer
+with search, filters, copyable sections, and collapsed raw JSON. Backend/frontend
 slices should continue in this order:
 
-1. readable technical trace viewer;
-2. provider-neutral web retrieval abstraction with OpenRouter/Perplexity-style adapters;
-3. multi-radar discovery benchmark over the qualification-first, coverage-enforced workflow pipeline;
-4. normalized candidate/evidence query tables when API usage needs them;
-5. production schedule/cadence controls.
+1. provider-neutral web retrieval abstraction with OpenRouter/Perplexity-style adapters;
+2. multi-radar discovery benchmark over the qualification-first, coverage-enforced workflow pipeline;
+3. normalized candidate/evidence query tables when API usage needs them;
+4. production schedule/cadence controls.
 
 JSON artifacts remain useful as demo exports and offline fallback, but they are
 not the long-term source of truth. The frontend now prefers the Radar API for

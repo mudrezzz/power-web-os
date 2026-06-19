@@ -315,9 +315,12 @@ dossier is safe for the normal product UI. API-backed live runs also expose a
 separate `Trace` tab backed by
 `GET /api/radar-runs/{run_id}/technical-trace`; it is developer/admin oriented
 and contains sanitized per-task pipeline/provider payloads plus redaction
-reports. Do not store or display raw hidden chain-of-thought. If the backend is
-unavailable, the same screen stays in explicit demo fallback mode and reads the
-generated JSON files.
+reports. The UI groups trace steps by Radar phase, highlights error/warning
+steps, provides search and quick filters, shows readable request/provider/
+parsed/validation sections, and keeps raw JSON collapsed by default with copy
+actions for sanitized payloads. Do not store or display raw hidden
+chain-of-thought. If the backend is unavailable, the same screen stays in
+explicit demo fallback mode and reads the generated JSON files.
 
 Use `Inspect run` / `Диагностика запуска` from the live run status, empty state,
 failed state, completed state, or zero-candidate state when you need run-level
