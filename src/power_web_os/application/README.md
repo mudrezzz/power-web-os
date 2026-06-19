@@ -21,6 +21,10 @@ provider SDK details.
 - `live_radar_discovery_planning.py` owns the discovery planner contracts,
   deterministic fallback planner, source-policy validation, and product-source
   visibility helpers.
+- `live_radar_plan_acceptance.py` owns criterion-role inference and safe
+  planner-output repair before execution compilation. It may normalize
+  configured global sources used in rule-scoped tasks and split multi-rule
+  strategic steps, but hard source-policy violations still fail validation.
 - `live_radar_planning_pipeline.py` builds the accepted discovery plan through
   a planner/validator/revision loop before compiling execution tasks.
 - `live_radar_staged_execution.py` executes staged provider tasks, expands the
@@ -87,12 +91,13 @@ receive bounded tasks instead of the whole Radar as one mixed prompt.
 
 Discovery planning follows the same rule. A `RadarDiscoveryPlanner` may propose
 candidate-universe, source-probe, qualification-gate, and coverage-check steps,
-but `RadarDiscoveryPlanValidator` is the backend authority for source policy,
-stage ordering, and accepted execution. If configured global or local source
-bases are present, the accepted plan must select them or explicitly skip them
-with a product-safe reason. Signal search steps are compiled only after the
-accepted qualification and coverage plan, and signal-stage new entities are
-retained as universe gaps instead of becoming candidates.
+but `RadarDiscoveryPlanAcceptanceService` and `RadarDiscoveryPlanValidator` are
+the backend authority for criterion roles, source policy, stage ordering, safe
+repairs, and accepted execution. If configured global or local source bases are
+present, the accepted plan must select them or explicitly skip them with a
+product-safe reason. Signal search steps are compiled only after the accepted
+qualification and coverage plan, and signal-stage new entities are retained as
+universe gaps instead of becoming candidates.
 
 Technical trace persistence follows the same rule: application code emits
 pipeline/provider debug summaries through `RadarRunTechnicalTracer`, which

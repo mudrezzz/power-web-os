@@ -158,8 +158,10 @@ export function LiveRunDossierPanel({
               <p>{step.purpose || t('icpRadar.live.journal.noSummary')}</p>
               <div className="run-dossier-tags">
                 {step.source_scope && <span><Mono>{t('icpRadar.live.dossier.sourceScope')}</Mono>{step.source_scope}</span>}
+                {step.source_base && <span><Mono>{t('icpRadar.live.dossier.sourceBase')}</Mono>{step.source_base}</span>}
+                {step.application_scope && <span><Mono>{t('icpRadar.live.dossier.applicationScope')}</Mono>{step.application_scope}</span>}
                 {step.subject_rule_ids?.map((ruleId) => <span key={`${step.step_id}-${ruleId}`}><Mono>{t('icpRadar.live.dossier.rule')}</Mono>{ruleId}</span>)}
-                {step.source_ids?.map((sourceId) => <span key={`${step.step_id}-${sourceId}`}><Mono>{t('icpRadar.live.dossier.sourceBase')}</Mono>{sourceId}</span>)}
+                {step.source_ids?.map((sourceId) => <span key={`${step.step_id}-${sourceId}`}><Mono>{t('icpRadar.live.dossier.sourceId')}</Mono>{sourceId}</span>)}
               </div>
               <DossierRefs label={t('icpRadar.live.dossier.expectedEvidence')} refs={step.expected_evidence ?? []} />
               <DossierRefs label={t('icpRadar.live.dossier.acceptanceCriteria')} refs={step.acceptance_criteria ?? []} />
@@ -267,12 +269,14 @@ export function LiveRunDossierPanel({
               <p>{query.purpose || t('icpRadar.live.journal.noSummary')}</p>
               {query.expected_evidence.length > 0 && (
                 <div className="run-dossier-tags">
-                  {query.stage && <span><Mono>stage</Mono>{query.stage}</span>}
-                  {query.subject_id && <span><Mono>subject</Mono>{query.subject_id}</span>}
+                  {query.stage && <span><Mono>{t('icpRadar.live.dossier.stageLabel')}</Mono>{query.stage}</span>}
+                  {query.subject_id && <span><Mono>{t('icpRadar.live.dossier.subject')}</Mono>{query.subject_id}</span>}
                   {query.source_scope && <span><Mono>{t('icpRadar.live.dossier.sourceScope')}</Mono>{query.source_scope}</span>}
-                  {query.source_ids?.map((sourceId) => <span key={`${query.query_id}-${sourceId}`}><Mono>{t('icpRadar.live.dossier.sourceBase')}</Mono>{sourceId}</span>)}
+                  {query.source_base && <span><Mono>{t('icpRadar.live.dossier.sourceBase')}</Mono>{query.source_base}</span>}
+                  {query.application_scope && <span><Mono>{t('icpRadar.live.dossier.applicationScope')}</Mono>{query.application_scope}</span>}
+                  {query.source_ids?.map((sourceId) => <span key={`${query.query_id}-${sourceId}`}><Mono>{t('icpRadar.live.dossier.sourceId')}</Mono>{sourceId}</span>)}
                   {query.candidate_scope && query.candidate_scope.length > 0 && (
-                    <span><Mono>scope</Mono>{query.candidate_scope.join(', ')}</span>
+                    <span><Mono>{t('icpRadar.live.dossier.candidateScope')}</Mono>{query.candidate_scope.join(', ')}</span>
                   )}
                   {query.expected_evidence.map((item) => <span key={item}>{item}</span>)}
                 </div>

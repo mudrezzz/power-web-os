@@ -267,6 +267,8 @@ class RadarRunDossierQueryResponse(BaseModel):
     subject_id: str | None = None
     rule_snapshot: str = ""
     source_scope: str = "additional"
+    source_base: str | None = None
+    application_scope: str | None = None
     source_ids: list[str] = Field(default_factory=list)
     external_source_hints: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)

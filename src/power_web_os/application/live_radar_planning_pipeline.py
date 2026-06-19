@@ -17,6 +17,7 @@ from power_web_os.application.live_radar_discovery_planning import (
     discovery_plan_to_execution_plan,
 )
 from power_web_os.application.live_radar_execution_plan import execution_plan_to_search_plan
+from power_web_os.application.live_radar_plan_acceptance import RadarDiscoveryPlanAcceptanceService
 from power_web_os.application.live_radar_pipeline_support import planned_event_type, trace_pipeline_step
 
 
@@ -40,7 +41,7 @@ def build_planned_state(
         state, "planning", "discovery_planner", "pipeline_input", "Discovery planner input",
         payload={"planning_input": planning_input.model_dump()},
     )
-    validator = RadarDiscoveryPlanValidator()
+    acceptance_service = RadarDiscoveryPlanAcceptanceService(RadarDiscoveryPlanValidator())
     events: list[LiveRadarPipelineEvent] = [
         LiveRadarPipelineEvent(
             event_type="discovery_plan_requested",
@@ -54,8 +55,10 @@ def build_planned_state(
     ]
 
     plan = planner.propose_plan(planning_input=planning_input)
-    validation = validator.validate(planning_input=planning_input, plan=plan)
-    events.extend(_plan_events(plan, validation=validation, revised=False))
+    acceptance = acceptance_service.accept(planning_input=planning_input, plan=plan)
+    validation = acceptance.validation
+    accepted_plan = acceptance.accepted_plan
+    events.extend(_plan_events(plan, accepted_plan=accepted_plan, validation=validation, revised=False))
     if not validation.accepted and planning_input.max_iterations > 1:
         events.append(LiveRadarPipelineEvent(
             event_type="discovery_plan_revised",
@@ -67,20 +70,29 @@ def build_planned_state(
             payload=validation.model_dump(),
         ))
         plan = planner.propose_plan(planning_input=planning_input, previous_validation=validation)
-        validation = validator.validate(planning_input=planning_input, plan=plan)
-        events.extend(_plan_events(plan, validation=validation, revised=True))
+        acceptance = acceptance_service.accept(planning_input=planning_input, plan=plan)
+        validation = acceptance.validation
+        accepted_plan = acceptance.accepted_plan
+        events.extend(_plan_events(plan, accepted_plan=accepted_plan, validation=validation, revised=True))
 
     trace_pipeline_step(
         state, "planning", "discovery_planner", "validation_result", "Discovery plan validation",
         summary="Discovery plan validation completed.",
-        payload={"plan": plan.model_dump(), "validation": validation.model_dump()},
+        payload={
+            "original_plan": plan.model_dump(),
+            "accepted_plan": accepted_plan.model_dump(),
+            "validation": validation.model_dump(),
+            "corrections": acceptance.corrections,
+        },
     )
     if not validation.accepted:
         fallback_planner = DeterministicRadarDiscoveryPlanner()
         fallback_plan = fallback_planner.propose_plan(planning_input=planning_input)
-        fallback_validation = validator.validate(planning_input=planning_input, plan=fallback_plan)
+        fallback_acceptance = acceptance_service.accept(planning_input=planning_input, plan=fallback_plan, fallback_used=True)
+        fallback_plan = fallback_acceptance.accepted_plan
+        fallback_validation = fallback_acceptance.validation
         events.append(LiveRadarPipelineEvent(
-            event_type="validation_warning",
+            event_type="discovery_plan_fallback_used",
             phase="planning",
             actor="application",
             node_name="discovery_plan_validator",
@@ -89,6 +101,7 @@ def build_planned_state(
             payload={
                 "llm_validation": validation.model_dump(),
                 "fallback_validation": fallback_validation.model_dump(),
+                "fallback_corrections": fallback_acceptance.corrections,
             },
         ))
         trace_pipeline_step(
@@ -100,6 +113,7 @@ def build_planned_state(
             summary="LLM discovery plan stayed invalid; backend deterministic fallback plan will be used.",
             payload={
                 "invalid_plan": plan.model_dump(),
+                "invalid_accepted_plan": accepted_plan.model_dump(),
                 "validation": validation.model_dump(),
                 "fallback_plan": fallback_plan.model_dump(),
                 "fallback_validation": fallback_validation.model_dump(),
@@ -107,9 +121,12 @@ def build_planned_state(
         )
         plan = fallback_plan
         validation = fallback_validation
+        acceptance = fallback_acceptance
+        accepted_plan = fallback_plan
     if not validation.accepted:
         raise RuntimeError(f"Discovery plan validation failed: {'; '.join(validation.errors)}")
 
+    plan = accepted_plan
     execution_plan = discovery_plan_to_execution_plan(radar=radar, plan=plan)
     search_plan = execution_plan_to_search_plan(execution_plan)
     events.extend([
@@ -166,7 +183,7 @@ def build_planned_state(
     return next_state
 
 
-def _plan_events(plan, *, validation, revised: bool) -> list[LiveRadarPipelineEvent]:
+def _plan_events(plan, *, accepted_plan, validation, revised: bool) -> list[LiveRadarPipelineEvent]:
     prefix = "Revised discovery plan" if revised else "Discovery plan"
     events = [
         LiveRadarPipelineEvent(
@@ -188,6 +205,26 @@ def _plan_events(plan, *, validation, revised: bool) -> list[LiveRadarPipelineEv
             payload=validation.model_dump(),
         ),
     ]
+    events.insert(1, LiveRadarPipelineEvent(
+        event_type="criterion_roles_inferred",
+        phase="planning",
+        actor="validator",
+        node_name="discovery_plan_acceptance",
+        visibility="operator",
+        summary=f"{len(accepted_plan.criterion_role_decisions)} qualification criterion roles are available for execution planning.",
+        payload={"criterion_role_decisions": [item.model_dump() for item in accepted_plan.criterion_role_decisions]},
+    ))
+    for correction in validation.corrections:
+        correction_type = str(correction.get("type") or "discovery_plan_corrected")
+        events.append(LiveRadarPipelineEvent(
+            event_type="source_scope_corrected" if correction_type == "source_scope_corrected" else "discovery_plan_corrected",
+            phase="planning",
+            actor="validator",
+            node_name="discovery_plan_acceptance",
+            visibility="operator",
+            summary=str(correction.get("reason") or correction_type),
+            payload=correction,
+        ))
     for decision in plan.source_policy_decisions:
         events.append(LiveRadarPipelineEvent(
             event_type="source_base_selected" if decision.decision == "selected" else "source_base_skipped",

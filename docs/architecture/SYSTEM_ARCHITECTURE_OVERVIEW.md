@@ -90,9 +90,9 @@ sanitized admin technical trace for developer inspection, and a
 qualification-first live Radar execution plan.
 Backend slices should continue in this order:
 
-1. soft source verification and useful-result budgets for live Radar retrieval;
-2. provider-neutral web retrieval abstraction with OpenRouter/Perplexity-style adapters;
-3. run-level empty-result diagnostics in the UI;
+1. run-level diagnostics and source lifecycle UI;
+2. readable technical trace viewer;
+3. provider-neutral web retrieval abstraction with OpenRouter/Perplexity-style adapters;
 4. multi-radar discovery benchmark over the qualification-first, coverage-enforced workflow pipeline;
 5. normalized candidate/evidence query tables when API usage needs them;
 6. production schedule/cadence controls.
@@ -198,6 +198,19 @@ If the first plan is invalid, one sanitized revision attempt is allowed; an
 invalid revised plan fails clearly rather than falling back to a broad search.
 This keeps the logic generic for holding-contour, industry/region/revenue, and
 registry/source-constrained radars without hardcoding the SIBUR case.
+
+Planning acceptance now separates criterion roles from executable search tasks.
+Qualification criteria can have different roles: `upstream_discovery` criteria
+define the candidate universe, `downstream_gate` criteria filter known
+candidates, enrichment criteria add facts such as revenue/region/industry, and
+exclusion criteria remove candidates. The LLM may propose those roles, but
+`RadarDiscoveryPlanAcceptanceService` infers missing roles, applies safe repairs,
+and keeps backend validation authoritative. Source configuration scope is also
+separate from application scope: a source configured globally can be applied to
+a rule-scoped or candidate-scoped task without being reclassified as a local
+source. Safe source-scope mismatches are normalized with explicit corrections
+instead of forcing a fallback plan. Hard source-policy violations, signal search
+inside discovery, and invalid rule references still force revision or fallback.
 
 Candidate universe execution is now iterative. Accepted discovery plans may
 contain executable `coverage_check` stages. The application service runs initial

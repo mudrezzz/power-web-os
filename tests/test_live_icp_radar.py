@@ -21,7 +21,9 @@ from power_web_os.application.live_radar_discovery_planning import (
     DeterministicRadarDiscoveryPlanner,
     RadarDiscoveryPlanValidator,
     build_discovery_planning_input,
+    discovery_plan_to_execution_plan,
 )
+from power_web_os.application.live_radar_plan_acceptance import RadarDiscoveryPlanAcceptanceService
 from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_task_to_search_plan
 from power_web_os.application.live_radar_normalization import normalize_live_candidate
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
@@ -418,7 +420,7 @@ def test_live_radar_service_executes_explicit_pipeline_phases() -> None:
     assert shaped.artifact is not None
     assert shaped.artifact["artifact_type"] == "icp_radar_live_run"
     event_types = [event["event_type"] for event in shaped.workflow_metadata["pipeline_events"]]
-    assert event_types[:3] == ["discovery_plan_requested", "discovery_plan_created", "discovery_plan_validated"]
+    assert event_types[:4] == ["discovery_plan_requested", "discovery_plan_created", "criterion_roles_inferred", "discovery_plan_validated"]
     assert "plan_created" in event_types
     assert "qualification_discovery_planned" in event_types
     assert "qualification_gate_applied" in event_types
@@ -484,7 +486,7 @@ def test_discovery_planning_input_and_validator_apply_source_policy() -> None:
     assert any("Global source registry" in error for error in validation.errors)
 
 
-def test_discovery_plan_validator_rejects_global_source_id_marked_local() -> None:
+def test_discovery_plan_acceptance_repairs_global_source_id_marked_local() -> None:
     radar = _generic_definition(
         radar_id="registry-policy",
         rules=[("Q1", "Registry criterion", "Find companies through a configured registry.")],
@@ -529,10 +531,72 @@ def test_discovery_plan_validator_rejects_global_source_id_marked_local() -> Non
         ],
     )
 
-    validation = RadarDiscoveryPlanValidator().validate(planning_input=planning_input, plan=plan)
+    acceptance = RadarDiscoveryPlanAcceptanceService().accept(planning_input=planning_input, plan=plan)
+    validation = acceptance.validation
 
-    assert not validation.accepted
-    assert any("global source ids as local" in error for error in validation.errors)
+    assert validation.accepted
+    assert acceptance.accepted_plan.steps[0].source_scope == "global"
+    assert acceptance.accepted_plan.steps[0].source_base == "global_configured"
+    assert acceptance.accepted_plan.steps[0].application_scope == "rule_scope"
+    assert any(correction["type"] == "source_scope_corrected" for correction in validation.corrections)
+
+
+def test_discovery_plan_acceptance_splits_multi_rule_strategic_step() -> None:
+    radar = _generic_definition(
+        radar_id="multi-rule-strategy",
+        rules=[
+            ("Q1", "Holding contour", "Find legal entities in the holding."),
+            ("Q2", "Industrial profile", "Filter for industrial assets."),
+        ],
+        global_sources=[{"source_id": "official-site", "label": "Official site"}],
+    )
+    planning_input = build_discovery_planning_input(radar=radar, task_context={}, live=True, provider_metadata={})
+    plan = RadarDiscoveryPlan(
+        plan_summary="Strategic multi-rule plan.",
+        steps=[
+            RadarDiscoveryPlanStep(
+                step_id="discover-contour-and-profile",
+                stage="candidate_universe_discovery",
+                subject_rule_ids=["Q1", "Q2"],
+                source_scope="global",
+                source_ids=["official-site"],
+                query="Find holding legal entities and note industrial profile.",
+                purpose="Shared search strategy before executable checks.",
+                expected_evidence=["Q1", "Q2"],
+                acceptance_criteria=["Q1", "Q2"],
+            ),
+            RadarDiscoveryPlanStep(
+                step_id="coverage-q2",
+                stage="coverage_check",
+                subject_rule_ids=[],
+                source_scope="additional",
+                query="Check coverage.",
+                purpose="Check gaps.",
+                expected_evidence=["candidate_universe_gaps"],
+                acceptance_criteria=["Coverage checked."],
+                depends_on=["discover-contour-and-profile"],
+            ),
+        ],
+        source_policy_decisions=[
+            RadarDiscoverySourcePolicyDecision(
+                source_id="official-site",
+                source_label="Official site",
+                decision="selected",
+                reason="Official site is configured and relevant.",
+                rule_ids=["Q1", "Q2"],
+            )
+        ],
+    )
+
+    acceptance = RadarDiscoveryPlanAcceptanceService().accept(planning_input=planning_input, plan=plan)
+    execution_plan = discovery_plan_to_execution_plan(radar=radar, plan=acceptance.accepted_plan)
+
+    assert acceptance.validation.accepted
+    assert [step.subject_rule_ids for step in acceptance.accepted_plan.steps[:2]] == [["Q1"], ["Q2"]]
+    assert acceptance.accepted_plan.steps[1].stage == "qualification_gate"
+    assert acceptance.accepted_plan.steps[2].depends_on == [acceptance.accepted_plan.steps[1].step_id]
+    assert [task.stage for task in execution_plan.tasks[:3]] == ["qualification_discovery", "qualification_gate", "coverage_check"]
+    assert any(correction["type"] == "multi_rule_step_split" for correction in acceptance.corrections)
 
 
 def test_discovery_plan_accepts_llm_nulls_for_optional_step_fields() -> None:
@@ -593,7 +657,7 @@ def test_discovery_plan_validator_rejects_unscoped_qualification_steps() -> None
     validation = RadarDiscoveryPlanValidator().validate(planning_input=planning_input, plan=plan)
 
     assert not validation.accepted
-    assert any("exactly one qualification rule" in error for error in validation.errors)
+    assert any("at least one qualification rule" in error for error in validation.errors)
 
 
 def test_discovery_planner_accepts_three_generic_radar_shapes() -> None:
@@ -671,8 +735,8 @@ def test_live_radar_service_falls_back_when_revised_discovery_plan_is_invalid() 
     assert planned.discovery_plan["plan_summary"].startswith("Discovery plan for")
     assert any(query["stage"] == "coverage_check" for query in planned.search_plan["queries"])
     assert any(
-        event["event_type"] == "validation_warning"
-        and "deterministic fallback" in event["summary"]
+            event["event_type"] == "discovery_plan_fallback_used"
+            and "deterministic fallback" in event["summary"]
         for event in planned.pipeline_events
     )
 
@@ -719,6 +783,9 @@ def test_openrouter_discovery_planner_request_uses_planning_scope_only() -> None
     assert "discovery plan" in prompt["task"]
     assert "qualification_rules" in prompt["planning_input"]
     assert "intent_signals" not in prompt["planning_input"]
+    assert "criterion_role_decisions" in prompt["output_schema"]
+    assert "source_base" in prompt["output_schema"]["steps"][0]
+    assert "application_scope" in prompt["output_schema"]["steps"][0]
     assert prompt["planning_input"]["max_iterations"] == 2
     assert request["metadata"]["planner_role"] == "discovery_strategy"
 

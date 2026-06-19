@@ -99,13 +99,17 @@ The dossier source lifecycle shows verification state, reason, mode, and HTTP
 status code where available. Useful-result budgets can trigger bounded retries
 when discovery or coverage tasks return too few useful sources/candidates.
 
-The next live Radar hardening slices focus on the web retrieval boundary before
-quality benchmarking:
+The next live Radar hardening slices focus on planning and observability before
+provider comparison or quality benchmarking:
 
-1. provider-neutral retrieval with a Perplexity-shaped adapter, so retrieved
-   URLs/snippets/citations can be inspected separately from extraction;
-2. run-level dossier/journal/trace actions for empty-result runs, so logs are
-   not reachable only through candidate detail.
+1. criterion role inference and plan acceptance repair, so the system separates
+   upstream discovery criteria from downstream gates and does not reject useful
+   LLM plans because of repairable source-scope wording;
+2. run-level dossier/journal/trace actions, so logs are reachable from the run
+   itself and not only through candidate detail;
+3. readable technical trace viewer, so prompts, provider responses, parsed
+   outputs, validation errors, budgets, and durations are grouped by logical
+   Radar phase before Perplexity/OpenRouter retrieval quality is compared.
 
 To refresh documentation screenshots:
 

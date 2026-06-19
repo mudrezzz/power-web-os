@@ -193,6 +193,8 @@ def _dossier_queries(
                 subject_id=str(item.get("subject_id")) if item.get("subject_id") is not None else None,
                 rule_snapshot=str(item.get("rule_snapshot") or ""),
                 source_scope=str(item.get("source_scope") or "additional"),
+                source_base=str(item.get("source_base")) if item.get("source_base") is not None else None,
+                application_scope=str(item.get("application_scope")) if item.get("application_scope") is not None else None,
                 source_ids=[str(value) for value in item.get("source_ids", []) if isinstance(value, str)],
                 external_source_hints=[str(value) for value in item.get("external_source_hints", []) if isinstance(value, str)],
                 depends_on=[str(value) for value in item.get("depends_on", []) if isinstance(value, str)],

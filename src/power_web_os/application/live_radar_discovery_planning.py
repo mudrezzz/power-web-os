@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from power_web_os.application.live_radar_contracts import (
+    RadarCriterionRoleDecision,
     RadarDiscoveryCoverageHypothesis,
     RadarDiscoveryPlanner,
     RadarDiscoveryPlanningInput,
@@ -61,7 +62,7 @@ class DeterministicRadarDiscoveryPlanner(RadarDiscoveryPlanner):
                 stage="coverage_check",
                 subject_rule_ids=[],
                 source_scope="additional" if planning_input.global_search_policy.get("allow_system_sources", True) else "global",
-                source_ids=[] if planning_input.global_search_policy.get("allow_system_sources", True) else _global_source_ids(planning_input.global_search_policy),
+                source_ids=[] if planning_input.global_search_policy.get("allow_system_sources", True) else global_source_ids_for_policy(planning_input.global_search_policy),
                 query=_compact_query([planning_input.name, "candidate universe coverage check"]),
                 purpose="Check whether the candidate universe has obvious source-backed gaps before signal search.",
                 expected_evidence=["candidate_universe_gaps", "coverage_findings"],
@@ -72,6 +73,10 @@ class DeterministicRadarDiscoveryPlanner(RadarDiscoveryPlanner):
         decisions = _source_policy_decisions(planning_input)
         return RadarDiscoveryPlan(
             plan_summary=f"Discovery plan for {planning_input.name} with {len(steps)} qualification steps.",
+            criterion_role_decisions=[
+                _criterion_role_decision(rule, index=index)
+                for index, rule in enumerate(planning_input.qualification_rules)
+            ],
             steps=steps,
             source_policy_decisions=decisions,
             coverage_hypotheses=[
@@ -91,8 +96,9 @@ class RadarDiscoveryPlanValidator:
     def validate(self, *, planning_input: RadarDiscoveryPlanningInput, plan: RadarDiscoveryPlan) -> RadarDiscoveryPlanValidationResult:
         errors: list[str] = []
         warnings: list[str] = []
+        corrections: list[dict[str, Any]] = []
         rule_ids = {_rule_id(rule, fallback=f"Q{index + 1}") for index, rule in enumerate(planning_input.qualification_rules)}
-        global_source_ids = _global_source_ids(planning_input.global_search_policy)
+        global_source_ids = global_source_ids_for_policy(planning_input.global_search_policy)
 
         if not plan.steps:
             errors.append("Discovery plan must contain at least one step.")
@@ -101,13 +107,28 @@ class RadarDiscoveryPlanValidator:
 
         for step in plan.steps:
             if step.stage in {"candidate_universe_discovery", "source_probe", "qualification_gate"}:
-                if len(step.subject_rule_ids) != 1:
-                    errors.append(f"Step {step.step_id} must reference exactly one qualification rule.")
+                if not step.subject_rule_ids:
+                    errors.append(f"Step {step.step_id} must reference at least one qualification rule.")
+                elif len(step.subject_rule_ids) > 1:
+                    warnings.append(f"Step {step.step_id} references multiple qualification rules and will be split before execution.")
+                    corrections.append({
+                        "type": "multi_rule_step_split",
+                        "step_id": step.step_id,
+                        "rule_ids": list(step.subject_rule_ids),
+                    })
             unknown_rules = [rule_id for rule_id in step.subject_rule_ids if rule_id not in rule_ids]
             if unknown_rules:
                 errors.append(f"Step {step.step_id} references non-qualification rules: {', '.join(unknown_rules)}.")
             if step.source_scope == "local" and any(source_id in global_source_ids for source_id in step.source_ids):
-                errors.append(f"Step {step.step_id} marks configured global source ids as local sources.")
+                warnings.append(f"Step {step.step_id} applies configured global source ids to a rule-local task.")
+                corrections.append({
+                    "type": "source_scope_corrected",
+                    "step_id": step.step_id,
+                    "from": "local",
+                    "to": "global",
+                    "source_base": "global_configured",
+                    "application_scope": "rule_scope",
+                })
             if step.source_scope in {"additional", "system"} and not _additional_sources_allowed(planning_input, step.subject_rule_ids):
                 errors.append(f"Step {step.step_id} uses {step.source_scope} sources while additional sources are disabled.")
             if step.source_scope == "global" and global_source_ids and not step.source_ids:
@@ -134,7 +155,7 @@ class RadarDiscoveryPlanValidator:
         if not plan.coverage_hypotheses:
             warnings.append("Discovery plan does not explain candidate universe coverage.")
 
-        return RadarDiscoveryPlanValidationResult(accepted=not errors, errors=errors, warnings=warnings)
+        return RadarDiscoveryPlanValidationResult(accepted=not errors, errors=errors, warnings=warnings, corrections=corrections)
 
 
 def build_discovery_planning_input(
@@ -184,6 +205,8 @@ def discovery_plan_to_execution_plan(*, radar: dict[str, Any], plan: RadarDiscov
             purpose=step.purpose,
             expected_evidence=list(step.expected_evidence),
             source_scope=step.source_scope,
+            source_base=step.source_base,
+            application_scope=step.application_scope,
             source_ids=list(step.source_ids),
             external_source_hints=list(step.external_source_hints),
             depends_on=[item for item in depends_on if item],
@@ -281,7 +304,7 @@ def _preferred_source_scope(rule: dict[str, Any], global_policy: dict[str, Any])
     source_ids = [str(item) for item in policy.get("source_ids", []) if str(item).strip()]
     if source_ids:
         return "global", source_ids
-    global_ids = _global_source_ids(global_policy)
+    global_ids = global_source_ids_for_policy(global_policy)
     if policy.get("use_global_search_policy", True) and global_ids:
         return "global", global_ids
     if policy.get("local_sources"):
@@ -311,6 +334,25 @@ def _source_policy_decisions(planning_input: RadarDiscoveryPlanningInput) -> lis
     return decisions
 
 
+def _criterion_role_decision(rule: dict[str, Any], *, index: int) -> RadarCriterionRoleDecision:
+    current_rule_id = _rule_id(rule, fallback=f"Q{index + 1}")
+    operator = str(rule.get("operator") or "AND").upper()
+    requirement = str(rule.get("requirement_level") or "required").lower()
+    if "NOT" in operator:
+        role = "exclusion"
+        reason = "Negative qualification operator makes this an exclusion gate."
+    elif requirement != "required":
+        role = "attribute_enrichment"
+        reason = "Non-required qualification criterion enriches or flags candidates."
+    elif index == 0:
+        role = "upstream_discovery"
+        reason = "First required positive qualification criterion defines the initial candidate universe."
+    else:
+        role = "downstream_gate"
+        reason = "Required positive qualification criterion filters the discovered candidate universe."
+    return RadarCriterionRoleDecision(rule_id=current_rule_id, role=role, reason=reason)
+
+
 def _additional_sources_allowed(planning_input: RadarDiscoveryPlanningInput, rule_ids: list[str]) -> bool:
     if not rule_ids:
         return bool(planning_input.global_search_policy.get("allow_system_sources", True))
@@ -318,12 +360,20 @@ def _additional_sources_allowed(planning_input: RadarDiscoveryPlanningInput, rul
     return all(_source_policy(rules.get(rule_id, {})).get("allow_additional_sources", True) for rule_id in rule_ids)
 
 
-def _global_source_ids(global_policy: dict[str, Any]) -> list[str]:
+def global_source_ids_for_policy(global_policy: dict[str, Any]) -> list[str]:
     return [
         str(item.get("source_id") or item.get("reference") or item.get("label"))
         for item in global_policy.get("sources", [])
         if isinstance(item, dict) and str(item.get("source_id") or item.get("reference") or item.get("label") or "").strip()
     ]
+
+
+def rule_id(rule: dict[str, Any], *, fallback: str) -> str:
+    return _rule_id(rule, fallback=fallback)
+
+
+def global_source_ids(global_policy: dict[str, Any]) -> list[str]:
+    return global_source_ids_for_policy(global_policy)
 
 
 def _candidate_source_refs(candidates: list[dict[str, Any]]) -> set[str]:

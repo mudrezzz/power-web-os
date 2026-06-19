@@ -23,6 +23,9 @@ RadarExecutionStage = Literal["qualification_discovery", "qualification_gate", "
 RadarExecutionSubjectType = Literal["radar", "qualification", "signal"]
 RadarDiscoveryPlanStepStage = Literal["candidate_universe_discovery", "source_probe", "qualification_gate", "coverage_check"]
 RadarDiscoverySourceScope = Literal["global", "local", "additional", "system"]
+RadarCriterionRole = Literal["upstream_discovery", "downstream_gate", "attribute_enrichment", "exclusion"]
+RadarSourceBase = Literal["global_configured", "rule_local", "additional", "system"]
+RadarSourceApplicationScope = Literal["whole_universe", "rule_scope", "candidate_scope"]
 
 
 class RadarSearchQuery(BaseModel):
@@ -35,6 +38,8 @@ class RadarSearchQuery(BaseModel):
     subject_id: str | None = None
     rule_snapshot: str = ""
     source_scope: RadarDiscoverySourceScope = "additional"
+    source_base: RadarSourceBase | None = None
+    application_scope: RadarSourceApplicationScope | None = None
     source_ids: list[str] = Field(default_factory=list)
     external_source_hints: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)
@@ -56,6 +61,8 @@ class RadarExecutionTask(BaseModel):
     purpose: str
     expected_evidence: list[str] = Field(default_factory=list)
     source_scope: RadarDiscoverySourceScope = "additional"
+    source_base: RadarSourceBase | None = None
+    application_scope: RadarSourceApplicationScope | None = None
     source_ids: list[str] = Field(default_factory=list)
     external_source_hints: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)
@@ -97,6 +104,8 @@ class RadarDiscoveryPlanStep(BaseModel):
     stage: RadarDiscoveryPlanStepStage
     subject_rule_ids: list[str] = Field(default_factory=list)
     source_scope: RadarDiscoverySourceScope = "additional"
+    source_base: RadarSourceBase | None = None
+    application_scope: RadarSourceApplicationScope | None = None
     source_ids: list[str] = Field(default_factory=list)
     external_source_hints: list[str] = Field(default_factory=list)
     query: str
@@ -127,6 +136,25 @@ class RadarDiscoveryPlanStep(BaseModel):
         return [] if value is None else value
 
 
+class RadarCriterionRoleDecision(BaseModel):
+    rule_id: str
+    role: RadarCriterionRole
+    depends_on: list[str] = Field(default_factory=list)
+    confidence: Literal["low", "medium", "high"] = "medium"
+    reason: str = ""
+    warnings: list[str] = Field(default_factory=list)
+
+    @field_validator("depends_on", "warnings", mode="before")
+    @classmethod
+    def _empty_list_for_null(cls, value: Any) -> Any:
+        return [] if value is None else value
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _empty_string_for_null(cls, value: Any) -> Any:
+        return "" if value is None else value
+
+
 class RadarDiscoverySourcePolicyDecision(BaseModel):
     source_id: str
     source_label: str = ""
@@ -143,10 +171,12 @@ class RadarDiscoveryCoverageHypothesis(BaseModel):
 
 class RadarDiscoveryPlan(BaseModel):
     plan_summary: str
+    criterion_role_decisions: list[RadarCriterionRoleDecision] = Field(default_factory=list)
     steps: list[RadarDiscoveryPlanStep] = Field(default_factory=list)
     source_policy_decisions: list[RadarDiscoverySourcePolicyDecision] = Field(default_factory=list)
     coverage_hypotheses: list[RadarDiscoveryCoverageHypothesis] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    acceptance_metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class RadarDiscoveryPlanningInput(BaseModel):
@@ -169,6 +199,7 @@ class RadarDiscoveryPlanValidationResult(BaseModel):
     accepted: bool
     errors: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    corrections: list[dict[str, Any]] = Field(default_factory=list)
 
 
 SourceVerificationState = Literal["reachable", "blocked", "timeout", "unverified_url", "invalid_url", "not_checked"]

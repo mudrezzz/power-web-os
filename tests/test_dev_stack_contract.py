@@ -36,7 +36,10 @@ def test_docker_compose_uses_shared_sqlite_and_redis_contract() -> None:
         "VITE_POWER_WEB_OS_API_BASE_URL: "
         "${VITE_POWER_WEB_OS_API_BASE_URL:-http://127.0.0.1:8001}"
     ) in compose
-    assert "POWER_WEB_OS_CORS_ORIGINS: http://127.0.0.1:5173,http://localhost:5173" in compose
+    assert (
+        "POWER_WEB_OS_CORS_ORIGINS: "
+        "${POWER_WEB_OS_CORS_ORIGINS:-http://127.0.0.1:5173,http://localhost:5173}"
+    ) in compose
 
 
 def test_docker_build_context_does_not_include_local_secrets_or_artifacts() -> None:

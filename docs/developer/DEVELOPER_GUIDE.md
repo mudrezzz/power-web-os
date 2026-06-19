@@ -723,7 +723,7 @@ vanishing. If OpenRouter rejects the credentials or no usable sources are
 returned, the frontend should show the live radar empty state rather than
 fabricated candidates.
 
-Source, retrieval, and score debugging now has five hardening steps before
+Source, retrieval, and score debugging now has eight hardening steps before
 broad quality benchmarking:
 
 1. Source lifecycle visibility: dossier exposes `source_lifecycle` and
@@ -735,16 +735,31 @@ broad quality benchmarking:
    preserve evidence-bearing sources with explicit risk state instead of
    silently losing useful sources because a site blocks `HEAD`/`GET`; discovery
    tasks that return no useful material should retry within bounded limits.
-3. Web retrieval provider abstraction and Perplexity adapter: retrieval records,
+3. Criterion role inference and plan acceptance repair: implemented through
+   `RadarDiscoveryPlanAcceptanceService`. Planner output may include criterion
+   roles, source base, and application scope; missing roles are inferred,
+   configured global sources applied to rule-scoped tasks are corrected, and
+   multi-rule strategic steps are split before execution. Dossier/trace payloads
+   expose accepted corrections and fallback metadata.
+4. Run-level diagnostics and source lifecycle UI: dossier, journal, and
+   technical trace should be reachable from the run itself even when there are
+   no candidates, and candidate universe tables should show budget-limited,
+   skipped, rejected, unknown, and signal-searched states.
+5. Readable technical trace viewer: technical traces should be grouped by
+   planning, discovery, gate, coverage, signal, normalization, scoring, and
+   validation phases, with wrapped JSON, summaries, filters, and copy/raw
+   controls.
+6. Web retrieval provider abstraction and Perplexity adapter: retrieval records,
    provider citations, snippets, verification state, extraction output, and
    source usage should be visible separately so provider quality can be
    compared before scoring.
-4. Run-level logs and empty-result UX: dossier, journal, and technical trace
-   should be reachable from the run itself even when there are no candidates.
-5. Score contract and quality smoke: recorded fixtures should prove that
+7. Score contract and quality smoke: recorded fixtures should prove that
    source-backed confirmed qualification and observed signals survive
    persistence/API/frontend mapping and produce nonzero scores before live
    multi-radar benchmarks are treated as meaningful.
+8. Multi-radar benchmark: only after the planning and observability path can
+   explain failures should real-model SIBUR, industry/region/revenue, and
+   source-constrained discovery scenarios be used as quality evidence.
 
 Frontend rendering for live radar results must go through the canonical ICP Radar UX contract. Treat `icp_radar_live_run` as a different data adapter, not as permission to create a separate live-only grid, side panel, table column set, preview, or detail surface. Runtime provider metadata belongs in the candidate `Journal` tab.
 

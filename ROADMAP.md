@@ -2714,6 +2714,192 @@ Principles:
     files are deleted locally. Mitigate later with release directories or rsync
     if this contour becomes long-lived.
 
+### Slice 0.7.6.1.7.2: Criterion role inference and plan acceptance repair
+
+- Status: `Done`
+- Goal: Make live Radar planning understand which qualification criteria define
+  the upstream candidate universe, which are downstream gates, and which are
+  enrichment/exclusion checks, while avoiding unnecessary fallback when the LLM
+  proposes a reasonable plan with minor schema/scope mistakes.
+- User value: A user can understand how the Radar decided to approach an open
+  discovery task such as "find all companies in a holding" before it starts
+  checking downstream attributes or signals.
+- Scope:
+  - Add an application-level criterion role inference step before discovery plan
+    compilation.
+  - Support criterion roles:
+    `upstream_discovery`, `downstream_gate`, `attribute_enrichment`,
+    `exclusion`, and `signal`.
+  - Let the LLM propose criterion roles and strategy summaries, but keep backend
+    validation authoritative.
+  - Split source configuration from source application:
+    - `source_base`: `global_configured`, `rule_local`, `additional`, `system`;
+    - `application_scope`: `whole_universe`, `rule_scope`,
+      `candidate_scope`.
+  - Make the validator normalize safe source-scope mismatches, for example
+    `sibur.ru` configured globally but applied to a rule-local task, instead of
+    rejecting the whole plan.
+  - Allow strategic planning steps to mention multiple criteria when the search
+    purpose is shared, while compiling them into separate executable truth
+    checks.
+  - Surface accepted/rejected/corrected planner decisions in dossier, journal,
+    and technical trace.
+- Out of scope:
+  - New retrieval provider.
+  - Multi-radar benchmark execution.
+  - Raw hidden chain-of-thought storage.
+  - Normalized candidate/evidence tables.
+- Implementation notes:
+  - The validator should distinguish dangerous violations from repairable
+    contract mismatches.
+  - If fallback is used, product dossier must say that explicitly and show why
+    the LLM plan was rejected.
+  - This slice should remain generic; SIBUR is only a checked example of a
+    holding-contour upstream discovery criterion.
+- Tests:
+  - Unit tests for criterion role inference over generic holding-contour,
+    industry/region/revenue, and source-constrained definitions.
+  - Validator tests for global configured source used in rule/candidate scope.
+  - Tests that multi-criterion strategic planning steps compile to separate
+    executable checks.
+  - Regression tests that signals still run only after candidate universe
+    freeze.
+- Docs:
+  - Update SAO, Developer Guide, and ADR notes with criterion roles and
+    source-base/application-scope terminology.
+- Demo impact:
+  - Manual live runs should show whether the accepted plan came from LLM
+    planning or deterministic fallback.
+- Acceptance criteria:
+  - Done: a reasonable LLM plan is not rejected solely because a configured
+    global source is applied to a rule-scoped task.
+  - Done: product dossier metadata includes criterion roles and accepted planner
+    corrections through the accepted discovery plan.
+  - Done: technical trace preserves the original planner output, normalized
+    accepted plan, validation result, and corrections after redaction.
+  - Done: fallback use is explicit through `discovery_plan_fallback_used` and
+    `acceptance_metadata.fallback_used`.
+- Risks:
+  - Over-repairing bad plans could hide real policy violations; mitigate by
+    keeping hard errors for source-policy violations, signal/qualification
+    mixing in executable tasks, and out-of-budget plans.
+
+### Slice 0.7.6.1.7.3: Run-level diagnostics and source lifecycle UI
+
+- Status: `Backlog`
+- Goal: Make a live Radar run inspectable from the run itself, not only from
+  candidate detail screens, and make budget/source/candidate lifecycle visible.
+- User value: A user or developer can answer "what happened in this run?" even
+  when some candidates were not searched for signals, when no candidates were
+  returned, or when sources were analyzed but not used.
+- Scope:
+  - Add run-level UI entry points for dossier, journal, and technical trace from
+    the Radar run state and empty-result surface.
+  - Add an execution overview:
+    planned tasks, executed tasks, provider calls, analyzed sources, used
+    sources, discovered candidates, gated candidates, signal-searched
+    candidates, budget-limited candidates, warnings, and terminal status.
+  - Add a candidate universe table:
+    candidate identity, origin task, current status, qualification gate states,
+    signal searched yes/no, and reason if not searched.
+  - Add a source lifecycle table/card set:
+    collected -> verified -> parsed -> linked -> used/analyzed-only/skipped,
+    with reasons such as duplicate, not linked, policy skipped, insufficient
+    evidence, provider error, verification risk, or budget limit.
+  - Keep candidate detail tabs for candidate-specific review, but stop making
+    them the only route into run logs.
+  - Add EN/RU strings and responsive no-horizontal-scroll checks.
+- Out of scope:
+  - Changing provider execution behavior.
+  - New database schema.
+  - Auth/admin gating.
+  - Full trace viewer redesign; this slice can link to existing Trace rows.
+- Implementation notes:
+  - Use existing dossier/journal/technical-trace endpoints where possible.
+  - Dossier is product-safe; technical trace is developer/admin-intended but
+    remains visible in dev until auth exists.
+  - The UI must explicitly show when signal search was limited to N of M
+    candidates by budget.
+- Tests:
+  - Frontend tests for run-level dossier/journal/trace actions when candidates
+    exist and when there are zero candidates.
+  - Adapter tests for candidate universe diagnostics and budget-limited state.
+  - Backend/API tests only if dossier DTOs need more projected fields.
+  - Visual smoke for run-level diagnostics at desktop viewport.
+- Docs:
+  - Update User Guide, Developer Guide, demo docs, and frontend feature README.
+- Demo impact:
+  - A manual live run with partial results becomes explainable without opening
+    individual candidate details.
+- Acceptance criteria:
+  - UI shows which candidates were not searched for signals and why.
+  - UI shows source lifecycle counts and reasons at run level.
+  - A zero-candidate run still exposes dossier/journal/trace.
+  - No raw secrets, raw hidden CoT, or unwrapped JSON dumps appear in product
+    dossier.
+- Risks:
+  - The first projection may still be approximate because normalized source
+    tables do not exist yet; label derived counts clearly.
+
+### Slice 0.7.6.1.7.4: Readable Radar technical trace viewer
+
+- Status: `Backlog`
+- Goal: Replace the current raw-JSON-oriented Trace tab with a developer/admin
+  trace viewer that is usable for debugging planner/executor/retrieval behavior.
+- User value: A developer can inspect prompts, requests, provider results,
+  parsed outputs, validation errors, budgets, durations, and model usage by
+  logical Radar phase instead of reading disconnected JSON blobs.
+- Scope:
+  - Render technical trace entries grouped by logical phase:
+    planning, plan validation, discovery, qualification gate, coverage, signal
+    search, normalization, extraction, scoring, validation, and artifact
+    shaping.
+  - Add a left-side trace step list with status, phase, title, duration, model,
+    provider, token/useful-source/candidate summaries when available.
+  - Add a detail pane with sections:
+    input summary, prompt/request, provider/tool results, parsed output,
+    validation/errors, redaction report, and raw JSON.
+  - Wrap long JSON/text values, provide copy buttons, and keep raw JSON behind a
+    collapsible control.
+  - Add filters/search:
+    errors only, provider calls, planner, candidate, source ref, task id,
+    phase/type.
+  - Preserve redaction and hidden-CoT blocking.
+  - Keep the visual design inside Power Web OS tokens and avoid horizontal page
+    scrolling.
+- Out of scope:
+  - Production auth/role gating.
+  - Changing trace persistence schema unless a small DTO projection is required.
+  - Provider adapter changes.
+  - Benchmark execution.
+- Implementation notes:
+  - This is a UI/adapter slice over existing sanitized technical trace records.
+  - If backend DTOs are insufficient for grouping, add a stable projection in
+    API mappers without exposing persistence internals.
+  - The trace viewer should make OpenRouter-like prompt inspection possible, but
+    with our own Radar phase semantics.
+- Tests:
+  - Frontend architecture tests that presentation components do not call
+    `fetch`.
+  - API client/adapter tests for grouped trace view models.
+  - UI tests for filters, wrapped JSON, collapsible raw payload, and no
+    horizontal scroll.
+  - Backend API tests if trace DTO projection changes.
+- Docs:
+  - Update Developer Guide and demo docs with trace viewer purpose and hidden
+    CoT policy.
+- Demo impact:
+  - Developers can debug live Radar runs from the UI without opening SQLite or
+    raw DB rows.
+- Acceptance criteria:
+  - Trace tab shows phase-grouped steps with readable summaries.
+  - Prompt/request/response payloads are readable, wrapped, and copyable.
+  - Errors and validator rejections are easy to filter.
+  - Hidden CoT fields and secrets remain absent from API responses and UI.
+- Risks:
+  - Trace UI can become too heavy; keep the first version focused on inspection,
+    filtering, and wrapping, not full observability-platform features.
+
 ### Slice 0.7.6.1.8: Web retrieval provider abstraction and Perplexity adapter
 
 - Status: `Backlog`
@@ -2744,6 +2930,9 @@ Principles:
   - Normalized source/evidence tables.
   - Full benchmark quality claims.
 - Implementation notes:
+  - Run after `Slice 0.7.6.1.7.2`, `Slice 0.7.6.1.7.3`, and
+    `Slice 0.7.6.1.7.4`, so provider comparison has readable planning,
+    budget, source lifecycle, and trace diagnostics.
   - Web search is a key product capability and must be observable: task input,
     retrieval query, retrieved URLs, snippets, provider metadata, verification
     state, extraction result, and final usage must be traceable separately.
@@ -2849,10 +3038,10 @@ Principles:
   - Normalized candidate/evidence tables beyond the existing output snapshot.
   - Automated scheduled benchmark runs.
 - Implementation notes:
-  - Run this only after `Slice 0.7.6.1.7`, `Slice 0.7.6.1.8`, and
-    `Slice 0.7.6.1.9`, so the benchmark tests a source-verification-aware,
-    observable retrieval/extraction pipeline rather than an opaque web-search
-    prompt path.
+  - Run this only after `Slice 0.7.6.1.7.2`, `Slice 0.7.6.1.7.3`,
+    `Slice 0.7.6.1.7.4`, `Slice 0.7.6.1.8`, and `Slice 0.7.6.1.9`, so the
+    benchmark tests a source-verification-aware, observable
+    retrieval/extraction pipeline rather than an opaque web-search prompt path.
   - The benchmark should use the qualification-first execution plan from
     `Slice 0.7.6.1.3`, LLM-planned discovery from `Slice 0.7.6.1.4`, and
     coverage-enforced candidate universe expansion from `Slice 0.7.6.1.5`;
@@ -3484,4 +3673,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.8: Web retrieval provider abstraction and Perplexity adapter`.
+Implement `Slice 0.7.6.1.7.3: Run-level diagnostics and source lifecycle UI`.

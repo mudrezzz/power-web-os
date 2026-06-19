@@ -590,6 +590,8 @@ export type LiveRadarDiscoveryPlanStep = {
   stage: string;
   subject_rule_ids?: string[];
   source_scope?: string;
+  source_base?: string | null;
+  application_scope?: string | null;
   source_ids?: string[];
   query: string;
   purpose: string;
@@ -675,6 +677,8 @@ export type LiveRadarRunDossier = {
     subject_id?: string | null;
     rule_snapshot?: string;
     source_scope?: string;
+    source_base?: string | null;
+    application_scope?: string | null;
     source_ids?: string[];
     external_source_hints?: string[];
     depends_on?: string[];
