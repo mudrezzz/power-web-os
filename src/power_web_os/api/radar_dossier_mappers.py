@@ -39,6 +39,10 @@ def dossier_response(
     execution_results = _dict(run_metadata.get("execution_results"))
     source_policy_decisions = _list(discovery_plan.get("source_policy_decisions"))
     coverage_summary = _coverage_summary(discovery_plan, execution_results)
+    candidate_universe = _list(execution_results.get("candidate_universe"))
+    coverage_checks = _list(execution_results.get("coverage_checks"))
+    coverage_warnings = [str(value) for value in execution_results.get("coverage_warnings", []) if isinstance(value, str)]
+    unresolved_candidate_gaps = _list(execution_results.get("unresolved_candidate_gaps"))
     source_usage_index = _source_usage_index(candidates)
     queries = _dossier_queries(output.search_plan_payload if output is not None else {}, sources, source_usage_index)
     source_responses = [_dossier_source_response(item, source_usage_index=source_usage_index) for item in sources]
@@ -56,6 +60,11 @@ def dossier_response(
         discovery_plan=discovery_plan,
         source_policy_decisions=source_policy_decisions,
         coverage_summary=coverage_summary,
+        candidate_universe=candidate_universe,
+        coverage_checks=coverage_checks,
+        coverage_warnings=coverage_warnings,
+        unresolved_candidate_gaps=unresolved_candidate_gaps,
+        discovery_iteration_count=_int(execution_results.get("discovery_iteration_count"), default=0),
         search_plan=queries,
         sources=source_responses,
         validation=validation,
@@ -70,6 +79,7 @@ def dossier_response(
             candidate_count=len(candidates),
             validation_issue_count=len(validation),
             review_flag_count=review_flag_count + len(reviews),
+            coverage_warning_count=len(coverage_warnings) + len(unresolved_candidate_gaps),
         ),
     )
 
@@ -128,12 +138,18 @@ def _coverage_summary(discovery_plan: dict[str, Any], execution_results: dict[st
     ]
     analyzed_sources = _list(execution_results.get("analyzed_sources"))
     rejected_candidates = _list(execution_results.get("rejected_candidates"))
+    coverage_checks = _list(execution_results.get("coverage_checks"))
+    coverage_warnings = [str(value) for value in execution_results.get("coverage_warnings", []) if isinstance(value, str)]
+    unresolved_candidate_gaps = _list(execution_results.get("unresolved_candidate_gaps"))
     return {
         "hypotheses": hypotheses,
-        "warnings": warnings,
+        "warnings": [*warnings, *coverage_warnings],
         "analyzed_source_count": _int(execution_results.get("analyzed_source_count"), default=len(analyzed_sources)),
         "used_source_count": _int(execution_results.get("used_source_count"), default=0),
         "rejected_candidate_count": len(rejected_candidates),
+        "coverage_check_count": len(coverage_checks),
+        "unresolved_candidate_gap_count": len(unresolved_candidate_gaps),
+        "discovery_iteration_count": _int(execution_results.get("discovery_iteration_count"), default=0),
         "analyzed_source_reasons": sorted({
             str(item.get("reason"))
             for item in analyzed_sources

@@ -9,7 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 QualificationStatus = Literal["confirmed", "weak", "unknown", "rejected"]
 SignalStatus = Literal["observed", "not_observed", "unclear"]
@@ -19,7 +19,7 @@ QualificationRequirement = Literal["required", "recommended"]
 QualificationSourceOrigin = Literal["global", "local", "additional"]
 QualificationTrustPolicy = Literal["trusted", "cross_checked", "hitl_required"]
 QualificationCrossValidationStatus = Literal["passed", "weak", "failed", "not_required"]
-RadarExecutionStage = Literal["qualification_discovery", "qualification_gate", "signal_search", "evaluation", "validation"]
+RadarExecutionStage = Literal["qualification_discovery", "qualification_gate", "coverage_check", "signal_search", "evaluation", "validation"]
 RadarExecutionSubjectType = Literal["radar", "qualification", "signal"]
 RadarDiscoveryPlanStepStage = Literal["candidate_universe_discovery", "source_probe", "qualification_gate", "coverage_check"]
 RadarDiscoverySourceScope = Literal["global", "local", "additional", "system"]
@@ -67,6 +67,31 @@ class RadarExecutionPlan(BaseModel):
     tasks: list[RadarExecutionTask]
 
 
+RadarCandidateUniverseStatus = Literal["discovered", "qualified", "rejected", "unknown_review_needed", "gap"]
+
+
+class RadarCandidateUniverseEntry(BaseModel):
+    candidate_id: str
+    legal_name: str
+    status: RadarCandidateUniverseStatus
+    origin_task_id: str = ""
+    source_refs: list[str] = Field(default_factory=list)
+    gate_results: list[dict[str, Any]] = Field(default_factory=list)
+    rejection_reasons: list[str] = Field(default_factory=list)
+    coverage_flags: list[str] = Field(default_factory=list)
+
+
+class RadarCoverageCheckRecord(BaseModel):
+    task_id: str
+    iteration: int
+    source_count: int = 0
+    candidate_observation_count: int = 0
+    new_candidate_count: int = 0
+    gap_count: int = 0
+    completeness_risk: Literal["low", "medium", "high"] = "medium"
+    warnings: list[str] = Field(default_factory=list)
+
+
 class RadarDiscoveryPlanStep(BaseModel):
     step_id: str
     stage: RadarDiscoveryPlanStepStage
@@ -81,6 +106,25 @@ class RadarDiscoveryPlanStep(BaseModel):
     skip_rationale: str = ""
     depends_on: list[str] = Field(default_factory=list)
     candidate_scope: list[str] = Field(default_factory=list)
+
+    @field_validator("query", "purpose", "skip_rationale", mode="before")
+    @classmethod
+    def _empty_string_for_null(cls, value: Any) -> Any:
+        return "" if value is None else value
+
+    @field_validator(
+        "subject_rule_ids",
+        "source_ids",
+        "external_source_hints",
+        "expected_evidence",
+        "acceptance_criteria",
+        "depends_on",
+        "candidate_scope",
+        mode="before",
+    )
+    @classmethod
+    def _empty_list_for_null(cls, value: Any) -> Any:
+        return [] if value is None else value
 
 
 class RadarDiscoverySourcePolicyDecision(BaseModel):

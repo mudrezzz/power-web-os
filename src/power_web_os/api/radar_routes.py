@@ -91,7 +91,10 @@ def queue_radar_run(radar_id: str, request: RadarRunRequest, context: RadarConte
             idempotency_key=request.idempotency_key,
             correlation_id=request.correlation_id,
             requester=request.requester,
-            task_context=request.task_context,
+            task_context={
+                **request.task_context,
+                "max_web_tasks_per_subject": context.radar_max_web_tasks_per_subject,
+            },
         )
     )
     if result.should_enqueue:

@@ -646,8 +646,25 @@ export type LiveRadarRunDossier = {
     analyzed_source_count?: number;
     used_source_count?: number;
     rejected_candidate_count?: number;
+    coverage_check_count?: number;
+    unresolved_candidate_gap_count?: number;
+    discovery_iteration_count?: number;
     analyzed_source_reasons?: string[];
   };
+  candidate_universe: Array<{
+    candidate_id: string;
+    legal_name: string;
+    status: 'discovered' | 'qualified' | 'rejected' | 'unknown_review_needed' | 'gap' | string;
+    origin_task_id: string;
+    source_refs: string[];
+    gate_results: Array<Record<string, unknown>>;
+    rejection_reasons: string[];
+    coverage_flags: string[];
+  }>;
+  coverage_checks: Array<Record<string, unknown>>;
+  coverage_warnings: string[];
+  unresolved_candidate_gaps: Array<Record<string, unknown>>;
+  discovery_iteration_count: number;
   search_plan: Array<{
     query_id: string;
     query: string;
@@ -694,6 +711,7 @@ export type LiveRadarRunDossier = {
     candidate_count: number;
     validation_issue_count: number;
     review_flag_count: number;
+    coverage_warning_count?: number;
   };
 };
 

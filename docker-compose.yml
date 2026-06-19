@@ -2,7 +2,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "${POWER_WEB_OS_REDIS_HOST_PORT:-6380}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -13,6 +13,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    env_file:
+      - .env
     environment:
       POWER_WEB_OS_DATABASE_URL: sqlite:////app/demo/output/power_web_os.sqlite3
       POWER_WEB_OS_CELERY_BROKER_URL: redis://redis:6379/0
@@ -28,6 +30,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    env_file:
+      - .env
     environment:
       POWER_WEB_OS_ENV: docker
       POWER_WEB_OS_DATABASE_URL: sqlite:////app/demo/output/power_web_os.sqlite3
@@ -35,7 +39,7 @@ services:
       POWER_WEB_OS_CELERY_RESULT_BACKEND: redis://redis:6379/1
       POWER_WEB_OS_CORS_ORIGINS: http://127.0.0.1:5173,http://localhost:5173
     ports:
-      - "8000:8000"
+      - "${POWER_WEB_OS_API_HOST_PORT:-8001}:8000"
     volumes:
       - ./demo/output:/app/demo/output
       - ./.env:/app/.env:ro
@@ -50,6 +54,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    env_file:
+      - .env
     environment:
       POWER_WEB_OS_ENV: docker
       POWER_WEB_OS_DATABASE_URL: sqlite:////app/demo/output/power_web_os.sqlite3
@@ -70,7 +76,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
     environment:
-      VITE_POWER_WEB_OS_API_BASE_URL: http://127.0.0.1:8000
+      VITE_POWER_WEB_OS_API_BASE_URL: ${VITE_POWER_WEB_OS_API_BASE_URL:-http://127.0.0.1:8001}
     ports:
       - "5173:5173"
     depends_on:

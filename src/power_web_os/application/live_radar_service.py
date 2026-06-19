@@ -87,6 +87,7 @@ class LiveRadarRunService:
             radar=radar,
             execution_plan=execution_plan,
             provider=self._provider,
+            max_web_tasks_per_subject=_int_context_value(state.task_context, "max_web_tasks_per_subject"),
         )
         result = LiveRadarCollectionResult(
             sources=provider_result.sources,
@@ -180,6 +181,17 @@ class LiveRadarRunService:
             for item in state.candidate_observations
         ])
         visible_candidates = [candidate for candidate in candidates if not _candidate_rejected(candidate)]
+        coverage_needs_review = bool(
+            state.execution_results.get("coverage_warnings")
+            or state.execution_results.get("unresolved_candidate_gaps")
+        )
+        if coverage_needs_review:
+            visible_candidates = [
+                candidate.model_copy(update={
+                    "review_flags": sorted({*candidate.review_flags, "candidate_universe_coverage_requires_review"}),
+                })
+                for candidate in visible_candidates
+            ]
         rejected_candidates = [_rejected_candidate_payload(candidate) for candidate in candidates if _candidate_rejected(candidate)]
         product_sources, analyzed_sources = product_sources_for_candidates(
             sources=sources,
@@ -447,3 +459,14 @@ def _now_iso() -> str:
 
 def _append_events(state: LiveICPRadarRunState, events: list[LiveRadarPipelineEvent]) -> list[dict[str, Any]]:
     return [*state.pipeline_events, *[event.model_dump() for event in events]]
+
+
+def _int_context_value(context: dict[str, Any], key: str) -> int | None:
+    value = context.get(key)
+    if isinstance(value, bool):
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None

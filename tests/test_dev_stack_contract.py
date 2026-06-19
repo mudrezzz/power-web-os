@@ -12,8 +12,9 @@ def test_docker_compose_defines_one_command_radar_dev_stack() -> None:
         assert f"  {service}:" in compose
 
     assert "redis:7-alpine" in compose
-    assert '"8000:8000"' in compose
+    assert "${POWER_WEB_OS_API_HOST_PORT:-8001}:8000" in compose
     assert '"5173:5173"' in compose
+    assert "${POWER_WEB_OS_REDIS_HOST_PORT:-6380}:6379" in compose
     assert "python -m alembic upgrade head" in compose
     assert "python -m power_web_os.demo seed-radar-db" in compose
     assert "uvicorn" in compose
@@ -29,8 +30,12 @@ def test_docker_compose_uses_shared_sqlite_and_redis_contract() -> None:
     assert "POWER_WEB_OS_CELERY_RESULT_BACKEND: redis://redis:6379/1" in compose
     assert compose.count("./demo/output:/app/demo/output") >= 3
     assert compose.count("./.env:/app/.env:ro") >= 3
-    assert "env_file" not in compose
-    assert "VITE_POWER_WEB_OS_API_BASE_URL: http://127.0.0.1:8000" in compose
+    assert compose.count("env_file:") >= 3
+    assert compose.count("- .env") >= 3
+    assert (
+        "VITE_POWER_WEB_OS_API_BASE_URL: "
+        "${VITE_POWER_WEB_OS_API_BASE_URL:-http://127.0.0.1:8001}"
+    ) in compose
     assert "POWER_WEB_OS_CORS_ORIGINS: http://127.0.0.1:5173,http://localhost:5173" in compose
 
 

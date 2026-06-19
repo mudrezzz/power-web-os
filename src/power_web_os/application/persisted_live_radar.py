@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
 from power_web_os.application.ports import LiveRadarArtifactExecutor, RadarRunOutputRepository, RadarRunRepository
@@ -96,11 +96,13 @@ class PersistedLiveRadarRunExecutor:
         output_repository: RadarRunOutputRepository,
         executor: LiveRadarArtifactExecutor,
         journal: RadarRunJournal | None = None,
+        commit_after_start: Callable[[], None] | None = None,
     ) -> None:
         self._run_repository = run_repository
         self._output_repository = output_repository
         self._executor = executor
         self._journal = journal
+        self._commit_after_start = commit_after_start
 
     def execute(self, run_id: str) -> RadarRunRecord:
         run = self._run_repository.get(run_id)
@@ -119,6 +121,10 @@ class PersistedLiveRadarRunExecutor:
             summary=f"Radar run started for {run.radar_id}.",
             payload={"radar_id": run.radar_id, "correlation_id": run.correlation_id},
         )
+        if self._commit_after_start is not None:
+            # Long provider calls must not hold the transaction that marks the
+            # run as running; otherwise API polling can stay stuck on queued.
+            self._commit_after_start()
         try:
             artifact = self._executor.execute(
                 live=bool(run.run_metadata.get("live", True)),

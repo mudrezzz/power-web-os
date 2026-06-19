@@ -43,6 +43,7 @@ def create_app(
     engine = create_database_engine(database_url=api_settings.database_url)
     app.state.session_factory = create_session_factory(engine)
     app.state.job_queue_factory = job_queue_factory or default_job_queue
+    app.state.radar_max_web_tasks_per_subject = api_settings.radar_max_web_tasks_per_subject
 
     @app.get("/health", response_model=HealthResponse, tags=["system"])
     def health() -> HealthResponse:

@@ -11,6 +11,7 @@ from power_web_os.application.live_radar_contracts import (
 )
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition
 from power_web_os.application.live_radar_discovery_planning import (
+    DeterministicRadarDiscoveryPlanner,
     RadarDiscoveryPlanValidator,
     build_discovery_planning_input,
     discovery_plan_to_execution_plan,
@@ -74,6 +75,38 @@ def build_planned_state(
         summary="Discovery plan validation completed.",
         payload={"plan": plan.model_dump(), "validation": validation.model_dump()},
     )
+    if not validation.accepted:
+        fallback_planner = DeterministicRadarDiscoveryPlanner()
+        fallback_plan = fallback_planner.propose_plan(planning_input=planning_input)
+        fallback_validation = validator.validate(planning_input=planning_input, plan=fallback_plan)
+        events.append(LiveRadarPipelineEvent(
+            event_type="validation_warning",
+            phase="planning",
+            actor="application",
+            node_name="discovery_plan_validator",
+            visibility="operator",
+            summary="LLM discovery plan stayed invalid; backend deterministic fallback plan will be used.",
+            payload={
+                "llm_validation": validation.model_dump(),
+                "fallback_validation": fallback_validation.model_dump(),
+            },
+        ))
+        trace_pipeline_step(
+            state,
+            "planning",
+            "discovery_plan_validator",
+            "validation_result",
+            "Discovery plan fallback",
+            summary="LLM discovery plan stayed invalid; backend deterministic fallback plan will be used.",
+            payload={
+                "invalid_plan": plan.model_dump(),
+                "validation": validation.model_dump(),
+                "fallback_plan": fallback_plan.model_dump(),
+                "fallback_validation": fallback_validation.model_dump(),
+            },
+        )
+        plan = fallback_plan
+        validation = fallback_validation
     if not validation.accepted:
         raise RuntimeError(f"Discovery plan validation failed: {'; '.join(validation.errors)}")
 

@@ -7,6 +7,7 @@ actual run logic stays in the application service, and provider calls stay behin
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from power_web_os.application.live_radar_contracts import LiveICPRadarRunState, RadarDiscoveryPlanner, WebSearchProvider
@@ -35,12 +36,14 @@ def build_live_mini_radar_artifact(
     technical_tracer: RadarRunTechnicalTracer | None = None,
 ) -> dict[str, Any]:
     workflow = LiveICPRadarRunWorkflow(provider=provider, discovery_planner=discovery_planner)
-    state = LiveICPRadarRunState(
-        task_context=task_context or {
+    default_task_context = dict(task_context or {
             "task_id": "live-mini-icp-radar",
             "correlation_id": "demo-slice-0.6.3.1",
             "requester": "demo",
-        },
+        })
+    default_task_context.setdefault("max_web_tasks_per_subject", _positive_int(os.getenv("POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT"), 20))
+    state = LiveICPRadarRunState(
+        task_context=default_task_context,
         radar=build_live_mini_radar_definition(),
         live=live,
     )
@@ -49,6 +52,14 @@ def build_live_mini_radar_artifact(
     if result.artifact is None:
         raise RuntimeError("LiveICPRadarRunWorkflow did not produce an artifact")
     return result.artifact
+
+
+def _positive_int(raw: str | None, default: int) -> int:
+    try:
+        value = int(raw or "")
+    except ValueError:
+        return default
+    return value if value > 0 else default
 
 
 class _FallbackLiveICPRadarRunWorkflow:

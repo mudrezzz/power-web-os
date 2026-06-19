@@ -53,6 +53,19 @@ def compile_radar_execution_plan(radar: dict[str, Any]) -> RadarExecutionPlan:
             expected_evidence=[],
         ))
 
+    coverage_task_id = "coverage-check-candidate-universe"
+    tasks.append(RadarExecutionTask(
+        task_id=coverage_task_id,
+        stage="coverage_check",
+        subject_type="radar",
+        subject_id=radar_id,
+        query=_compact_query([str(radar.get("name", radar_id)), "candidate universe coverage check"]),
+        purpose="Check whether the candidate universe has source-backed gaps before signal search.",
+        expected_evidence=["candidate_universe_gaps", "coverage_findings"],
+        depends_on=[previous_task_id],
+    ))
+    previous_task_id = coverage_task_id
+
     for signal in signal_rules:
         code = _rule_code(signal)
         tasks.append(RadarExecutionTask(

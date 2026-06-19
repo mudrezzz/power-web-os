@@ -305,6 +305,7 @@ class RadarRunDossierSummaryResponse(BaseModel):
     candidate_count: int = 0
     validation_issue_count: int = 0
     review_flag_count: int = 0
+    coverage_warning_count: int = 0
 
 
 class RadarRunDossierResponse(BaseModel):
@@ -314,6 +315,11 @@ class RadarRunDossierResponse(BaseModel):
     discovery_plan: dict[str, Any] = Field(default_factory=dict)
     source_policy_decisions: list[dict[str, Any]] = Field(default_factory=list)
     coverage_summary: dict[str, Any] = Field(default_factory=dict)
+    candidate_universe: list[dict[str, Any]] = Field(default_factory=list)
+    coverage_checks: list[dict[str, Any]] = Field(default_factory=list)
+    coverage_warnings: list[str] = Field(default_factory=list)
+    unresolved_candidate_gaps: list[dict[str, Any]] = Field(default_factory=list)
+    discovery_iteration_count: int = 0
     search_plan: list[RadarRunDossierQueryResponse] = Field(default_factory=list)
     sources: list[RadarRunDossierSourceResponse] = Field(default_factory=list)
     validation: list[dict[str, Any]] = Field(default_factory=list)

@@ -31,7 +31,15 @@ class OpenRouterDiscoveryPlanner(RadarDiscoveryPlanner):
     ) -> None:
         self._env = _load_env_file(env_path or Path.cwd() / ".env")
         self._api_key = api_key or self._env.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
-        self._model = model or self._env.get("OPENROUTER_PLANNER_MODEL") or self._env.get("OPENROUTER_MODEL") or os.getenv("OPENROUTER_PLANNER_MODEL") or os.getenv("OPENROUTER_MODEL")
+        advanced_model = self._env.get("OPENROUTER_ADVANCED_MODEL") or os.getenv("OPENROUTER_ADVANCED_MODEL")
+        self._model = (
+            model
+            or self._env.get("OPENROUTER_PLANNER_MODEL")
+            or os.getenv("OPENROUTER_PLANNER_MODEL")
+            or advanced_model
+            or self._env.get("OPENROUTER_MODEL")
+            or os.getenv("OPENROUTER_MODEL")
+        )
         self._timeout_seconds = timeout_seconds
 
     @property
@@ -171,7 +179,27 @@ def build_openrouter_discovery_planner_request(
 def _plan_from_response(payload: dict[str, Any]) -> RadarDiscoveryPlan:
     content = payload.get("choices", [{}])[0].get("message", {}).get("content") or "{}"
     parsed = _parse_json_object(content)
+    _normalize_planner_payload(parsed)
     return RadarDiscoveryPlan.model_validate(parsed)
+
+
+def _normalize_planner_payload(payload: dict[str, Any]) -> None:
+    for item in payload.get("coverage_hypotheses", []):
+        if isinstance(item, dict):
+            item["completeness_risk"] = _normalize_risk(item.get("completeness_risk"))
+
+
+def _normalize_risk(value: object) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"low", "medium", "high"}:
+        return normalized
+    if normalized in {"низкий", "низкая", "low risk"}:
+        return "low"
+    if normalized in {"средний", "средняя", "moderate", "moderate risk"}:
+        return "medium"
+    if normalized in {"высокий", "высокая", "high risk"}:
+        return "high"
+    return "medium"
 
 
 def _parse_json_object(value: str) -> dict[str, Any]:

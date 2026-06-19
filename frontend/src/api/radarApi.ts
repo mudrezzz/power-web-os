@@ -258,6 +258,7 @@ export type RadarRunDossierSummaryDto = {
   candidate_count: number;
   validation_issue_count: number;
   review_flag_count: number;
+  coverage_warning_count?: number;
 };
 
 export type RadarRunDossierDto = {
@@ -267,6 +268,11 @@ export type RadarRunDossierDto = {
   discovery_plan: Record<string, unknown>;
   source_policy_decisions: Array<Record<string, unknown>>;
   coverage_summary: Record<string, unknown>;
+  candidate_universe: Array<Record<string, unknown>>;
+  coverage_checks: Array<Record<string, unknown>>;
+  coverage_warnings: string[];
+  unresolved_candidate_gaps: Array<Record<string, unknown>>;
+  discovery_iteration_count: number;
   search_plan: RadarRunDossierQueryDto[];
   sources: RadarRunDossierSourceDto[];
   validation: Array<Record<string, unknown>>;

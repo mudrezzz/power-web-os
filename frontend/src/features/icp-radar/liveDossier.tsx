@@ -190,7 +190,32 @@ export function LiveRunDossierPanel({
 
       <section className="run-dossier-section">
         <h3>{t('icpRadar.live.dossier.coverage')}</h3>
-        {coverageHypotheses.length > 0 || coverageWarnings.length > 0 || (dossier.coverage_summary.analyzed_source_reasons?.length ?? 0) > 0 ? (
+        <div className="run-dossier-grid">
+          <DossierMetric label={t('icpRadar.live.dossier.discoveryIterations')} value={dossier.discovery_iteration_count} />
+          <DossierMetric label={t('icpRadar.live.dossier.coverageChecks')} value={dossier.coverage_checks.length} />
+          <DossierMetric label={t('icpRadar.live.dossier.unresolvedGaps')} value={dossier.unresolved_candidate_gaps.length} />
+          <DossierMetric label={t('icpRadar.live.dossier.coverageWarnings')} value={dossier.coverage_warnings.length} />
+        </div>
+        {dossier.candidate_universe.length > 0 && (
+          <div className="run-dossier-query-list">
+            {dossier.candidate_universe.map((entry) => (
+              <article className="run-dossier-card" key={entry.candidate_id}>
+                <header className="run-dossier-card-head">
+                  <Mono>{entry.candidate_id}</Mono>
+                  <Badge tone={candidateUniverseTone(entry.status)}>
+                    {t(`icpRadar.live.dossier.candidateUniverseStatus.${entry.status}`, { defaultValue: entry.status })}
+                  </Badge>
+                </header>
+                <strong>{entry.legal_name}</strong>
+                {entry.origin_task_id && <p>{t('icpRadar.live.dossier.originTask', { taskId: entry.origin_task_id })}</p>}
+                <DossierRefs label={t('icpRadar.live.dossier.sourceRefs')} refs={entry.source_refs} />
+                <DossierRefs label={t('icpRadar.live.dossier.rejectionReasons')} refs={entry.rejection_reasons} />
+                <DossierRefs label={t('icpRadar.live.dossier.coverageFlags')} refs={entry.coverage_flags} />
+              </article>
+            ))}
+          </div>
+        )}
+        {coverageHypotheses.length > 0 || coverageWarnings.length > 0 || dossier.coverage_checks.length > 0 || dossier.unresolved_candidate_gaps.length > 0 || (dossier.coverage_summary.analyzed_source_reasons?.length ?? 0) > 0 ? (
           <div className="run-dossier-validation-list">
             {coverageHypotheses.map((item, index) => (
               <div className="run-dossier-card" key={`coverage-${index}`}>
@@ -203,6 +228,20 @@ export function LiveRunDossierPanel({
               <div className="run-dossier-card" key={warning}>
                 <Badge tone="unsurfaced">{t('icpRadar.live.dossier.coverageWarning')}</Badge>
                 <p>{warning}</p>
+              </div>
+            ))}
+            {dossier.coverage_checks.map((check, index) => (
+              <div className="run-dossier-card" key={`coverage-check-${String(check.task_id ?? index)}-${index}`}>
+                <Badge tone="neutral">{t('icpRadar.live.dossier.executedCoverageCheck')}</Badge>
+                <strong>{String(check.task_id ?? t('icpRadar.unknown'))}</strong>
+                <p>{coverageDetails(check)}</p>
+              </div>
+            ))}
+            {dossier.unresolved_candidate_gaps.map((gap, index) => (
+              <div className="run-dossier-card" key={`gap-${String(gap.candidate_id ?? index)}-${index}`}>
+                <Badge tone="unsurfaced">{t('icpRadar.live.dossier.unresolvedGap')}</Badge>
+                <strong>{String(gap.legal_name ?? gap.candidate_id ?? t('icpRadar.unknown'))}</strong>
+                <p>{String(gap.reason ?? gap.resolution ?? t('icpRadar.live.journal.noSummary'))}</p>
               </div>
             ))}
             {dossier.coverage_summary.analyzed_source_reasons?.map((reason) => (
@@ -404,4 +443,17 @@ function coverageDetails(value: Record<string, unknown>) {
     .filter(([key]) => key !== 'summary')
     .map(([key, entry]) => `${key}: ${entry}`)
     .join(' · ');
+}
+
+function candidateUniverseTone(status: string): 'ally' | 'blocker' | 'unsurfaced' | 'neutral' {
+  if (status === 'qualified') {
+    return 'ally';
+  }
+  if (status === 'rejected') {
+    return 'blocker';
+  }
+  if (status === 'gap' || status === 'unknown_review_needed') {
+    return 'unsurfaced';
+  }
+  return 'neutral';
 }

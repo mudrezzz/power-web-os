@@ -23,8 +23,10 @@ provider SDK details.
   visibility helpers.
 - `live_radar_planning_pipeline.py` builds the accepted discovery plan through
   a planner/validator/revision loop before compiling execution tasks.
-- `live_radar_staged_execution.py` executes staged provider tasks and suppresses
-  signal searches for rejected qualification candidates.
+- `live_radar_staged_execution.py` executes staged provider tasks, expands the
+  candidate universe through coverage checks, re-runs qualification for new
+  candidates, freezes the universe, and suppresses signal searches for rejected
+  candidates.
 - `live_radar_normalization.py` owns provider-neutral candidate, signal,
   qualification, evidence-card, and score-evaluation normalization.
 - `live_radar_service.py` orchestrates one live Radar execution pass through
@@ -78,9 +80,10 @@ Live Radar pipeline phases emit structured event summaries through application
 contracts. The persisted run service writes those events through
 `RadarRunJournal`. Artifact-derived journal mapping remains a compatibility
 fallback for existing snapshots, not the preferred extension path. Application
-code owns execution strategy: qualification discovery and gates run before
-signal searches, and providers receive bounded tasks instead of the whole Radar
-as one mixed prompt.
+code owns execution strategy: qualification discovery, qualification gates, and
+coverage checks run before signal searches. New source-backed candidates found
+by coverage are merged and re-qualified before the universe is frozen. Providers
+receive bounded tasks instead of the whole Radar as one mixed prompt.
 
 Discovery planning follows the same rule. A `RadarDiscoveryPlanner` may propose
 candidate-universe, source-probe, qualification-gate, and coverage-check steps,
@@ -88,7 +91,8 @@ but `RadarDiscoveryPlanValidator` is the backend authority for source policy,
 stage ordering, and accepted execution. If configured global or local source
 bases are present, the accepted plan must select them or explicitly skip them
 with a product-safe reason. Signal search steps are compiled only after the
-accepted qualification plan.
+accepted qualification and coverage plan, and signal-stage new entities are
+retained as universe gaps instead of becoming candidates.
 
 Technical trace persistence follows the same rule: application code emits
 pipeline/provider debug summaries through `RadarRunTechnicalTracer`, which

@@ -51,12 +51,23 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
         # ambient OS env as a production/CI fallback.
         self._api_key = api_key or self._env.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
         self._model = model or self._env.get("OPENROUTER_MODEL") or os.getenv("OPENROUTER_MODEL")
+        self._advanced_model = self._env.get("OPENROUTER_ADVANCED_MODEL") or os.getenv("OPENROUTER_ADVANCED_MODEL")
+        self._extractor_model = (
+            self._env.get("OPENROUTER_EXTRACTOR_MODEL")
+            or os.getenv("OPENROUTER_EXTRACTOR_MODEL")
+            or self._advanced_model
+            or self._model
+        )
         self._web_mode = web_mode or self._env.get("OPENROUTER_WEB_MODE") or os.getenv("OPENROUTER_WEB_MODE") or "auto"
         self._timeout_seconds = timeout_seconds
 
     @property
     def model(self) -> str:
         return self._model or "openai/gpt-4.1-mini"
+
+    @property
+    def extractor_model(self) -> str:
+        return self._extractor_model or self.model
 
     @property
     def web_mode(self) -> str:
@@ -90,10 +101,11 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
         except ImportError as error:  # pragma: no cover - exercised by install shape, not unit tests.
             raise RuntimeError("Install the agent extra to run live OpenRouter searches: pip install -e .[agent]") from error
 
+        selected_model = self._model_for_search_plan(search_plan)
         payload = build_openrouter_request(
             radar=radar,
             search_plan=search_plan,
-            model=self.model,
+            model=selected_model,
             web_mode=mode,
         )
         _trace_provider(
@@ -102,7 +114,7 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
             summary=f"OpenRouter request using {mode}.",
             payload={
                 "url": "https://openrouter.ai/api/v1/chat/completions",
-                "model": self.model,
+                "model": selected_model,
                 "web_mode": mode,
                 "request": payload,
             },
@@ -126,7 +138,7 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                 title="OpenRouter request error",
                 summary=str(error),
                 duration_ms=_duration_ms(started_at),
-                payload={"error_type": error.__class__.__name__, "message": str(error), "model": self.model, "web_mode": mode},
+                payload={"error_type": error.__class__.__name__, "message": str(error), "model": selected_model, "web_mode": mode},
             )
             raise
         if response.status_code >= 400:
@@ -135,23 +147,64 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                 title="OpenRouter response error",
                 summary=f"OpenRouter returned HTTP {response.status_code}.",
                 duration_ms=_duration_ms(started_at),
-                payload={"status_code": response.status_code, "body": response.text[:2000], "model": self.model, "web_mode": mode},
+                payload={"status_code": response.status_code, "body": response.text[:2000], "model": selected_model, "web_mode": mode},
             )
             raise RuntimeError(f"OpenRouter web search request failed with {response.status_code}: {response.text[:240]}")
 
-        response_payload = response.json()
+        try:
+            response_payload = response.json()
+        except json.JSONDecodeError as error:
+            error_payload = {
+                "error_type": error.__class__.__name__,
+                "message": str(error),
+                "status_code": response.status_code,
+                "body_excerpt": response.text[:2000],
+                "model": selected_model,
+                "web_mode": mode,
+            }
+            _trace_provider(
+                trace_type="provider_error",
+                title="OpenRouter non-JSON response",
+                summary="OpenRouter returned HTTP 200 with a response body that is not valid JSON.",
+                duration_ms=_duration_ms(started_at),
+                payload=error_payload,
+            )
+            return WebSearchProviderResult(
+                sources=[],
+                candidate_observations=[],
+                provider_metadata={
+                    "provider": "openrouter",
+                    "model": selected_model,
+                    "default_model": self.model,
+                    "extractor_model": self.extractor_model,
+                    "web_mode": mode,
+                    "provider_error": error_payload,
+                },
+            )
         _trace_provider(
             trace_type="provider_response",
             title="OpenRouter response",
             summary="OpenRouter returned a structured response payload.",
             duration_ms=_duration_ms(started_at),
-            payload=_provider_response_trace_payload(response_payload, model=self.model, web_mode=mode),
+            payload=_provider_response_trace_payload(response_payload, model=selected_model, web_mode=mode),
         )
         result = normalize_openrouter_response(
             response_payload,
-            fallback_metadata={"provider": "openrouter", "model": self.model, "web_mode": mode},
+            fallback_metadata={
+                "provider": "openrouter",
+                "model": selected_model,
+                "default_model": self.model,
+                "extractor_model": self.extractor_model,
+                "web_mode": mode,
+            },
         )
         return _filter_result_to_verified_sources(result)
+
+    def _model_for_search_plan(self, search_plan: RadarSearchPlan) -> str:
+        stages = {query.stage for query in search_plan.queries}
+        if stages & {"qualification_discovery", "qualification_gate", "coverage_check"}:
+            return self.extractor_model
+        return self.model
 
 
 def normalize_openrouter_response(payload: dict[str, Any], *, fallback_metadata: dict[str, Any]) -> WebSearchProviderResult:
@@ -174,6 +227,9 @@ def normalize_openrouter_response(payload: dict[str, Any], *, fallback_metadata:
             **fallback_metadata,
             "response_id": payload.get("id"),
             "usage": payload.get("usage", {}),
+            "candidate_universe_gaps": [item for item in parsed.get("candidate_universe_gaps", []) if isinstance(item, dict)],
+            "coverage_findings": [item for item in parsed.get("coverage_findings", []) if isinstance(item, dict)],
+            "source_outcomes": [item for item in parsed.get("source_outcomes", []) if isinstance(item, dict)],
         },
     )
 
@@ -306,10 +362,17 @@ def _parse_json_object(content: str) -> dict[str, Any]:
     try:
         parsed = json.loads(stripped)
     except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", stripped, flags=re.DOTALL)
-        if not match:
-            return {}
-        parsed = json.loads(match.group(0))
+        decoder = json.JSONDecoder()
+        for index, char in enumerate(stripped):
+            if char != "{":
+                continue
+            try:
+                parsed, _ = decoder.raw_decode(stripped[index:])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(parsed, dict):
+                return parsed
+        return {}
     return parsed if isinstance(parsed, dict) else {}
 
 

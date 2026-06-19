@@ -21,7 +21,7 @@ from power_web_os.application.persisted_live_radar import (
 )
 from power_web_os.application.ports import JobQueue, LiveRadarArtifactExecutor, RadarRunScheduler
 from power_web_os.application.radar_run_journal import RadarRunJournal
-from power_web_os.application.radar_records import RadarRunRecord
+from power_web_os.application.radar_records import RadarRunRecord, RadarRunTechnicalTraceRecord
 from power_web_os.integrations.openrouter_discovery_planner import OpenRouterDiscoveryPlanner
 from power_web_os.integrations.live_radar_openrouter import OpenRouterWebSearchProvider
 from power_web_os.persistence import (
@@ -87,7 +87,7 @@ def execute_radar_run_once(
 ) -> RadarRunRecord:
     resolved_session_factory = session_factory or create_session_factory(create_database_engine())
     with session_scope(resolved_session_factory) as session:
-        technical_trace_repository = SqlAlchemyRadarRunTechnicalTraceRepository(session)
+        technical_trace_repository = SessionPerOperationRadarRunTechnicalTraceRepository(resolved_session_factory)
         resolved_live_executor = live_executor or default_live_executor(
             technical_trace_repository=technical_trace_repository,
         )
@@ -96,8 +96,28 @@ def execute_radar_run_once(
             output_repository=SqlAlchemyRadarRunOutputRepository(session),
             executor=resolved_live_executor,
             journal=RadarRunJournal(repository=SqlAlchemyRadarRunEventRepository(session)),
+            commit_after_start=session.commit,
         )
         return executor.execute(run_id)
+
+
+class SessionPerOperationRadarRunTechnicalTraceRepository:
+    """Persist trace records without holding a transaction across provider calls."""
+
+    def __init__(self, session_factory: Any) -> None:
+        self._session_factory = session_factory
+
+    def append(self, record: RadarRunTechnicalTraceRecord) -> RadarRunTechnicalTraceRecord:
+        with session_scope(self._session_factory) as session:
+            return SqlAlchemyRadarRunTechnicalTraceRepository(session).append(record)
+
+    def list_for_run(self, run_id: str) -> tuple[RadarRunTechnicalTraceRecord, ...]:
+        with session_scope(self._session_factory) as session:
+            return SqlAlchemyRadarRunTechnicalTraceRepository(session).list_for_run(run_id)
+
+    def next_sequence(self, run_id: str) -> int:
+        with session_scope(self._session_factory) as session:
+            return SqlAlchemyRadarRunTechnicalTraceRepository(session).next_sequence(run_id)
 
 
 @dataclass(slots=True)

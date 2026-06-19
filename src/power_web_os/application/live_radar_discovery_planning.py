@@ -55,6 +55,20 @@ class DeterministicRadarDiscoveryPlanner(RadarDiscoveryPlanner):
             ))
             previous_step_id = step_id
 
+        if previous_step_id:
+            steps.append(RadarDiscoveryPlanStep(
+                step_id="coverage-check-candidate-universe",
+                stage="coverage_check",
+                subject_rule_ids=[],
+                source_scope="additional" if planning_input.global_search_policy.get("allow_system_sources", True) else "global",
+                source_ids=[] if planning_input.global_search_policy.get("allow_system_sources", True) else _global_source_ids(planning_input.global_search_policy),
+                query=_compact_query([planning_input.name, "candidate universe coverage check"]),
+                purpose="Check whether the candidate universe has obvious source-backed gaps before signal search.",
+                expected_evidence=["candidate_universe_gaps", "coverage_findings"],
+                acceptance_criteria=["Report source-backed missing candidates or explain low coverage risk."],
+                depends_on=[previous_step_id],
+            ))
+
         decisions = _source_policy_decisions(planning_input)
         return RadarDiscoveryPlan(
             plan_summary=f"Discovery plan for {planning_input.name} with {len(steps)} qualification steps.",
@@ -86,9 +100,14 @@ class RadarDiscoveryPlanValidator:
             errors.append(f"Discovery plan has {len(plan.steps)} steps but max_steps is {planning_input.max_steps}.")
 
         for step in plan.steps:
+            if step.stage in {"candidate_universe_discovery", "source_probe", "qualification_gate"}:
+                if len(step.subject_rule_ids) != 1:
+                    errors.append(f"Step {step.step_id} must reference exactly one qualification rule.")
             unknown_rules = [rule_id for rule_id in step.subject_rule_ids if rule_id not in rule_ids]
             if unknown_rules:
                 errors.append(f"Step {step.step_id} references non-qualification rules: {', '.join(unknown_rules)}.")
+            if step.source_scope == "local" and any(source_id in global_source_ids for source_id in step.source_ids):
+                errors.append(f"Step {step.step_id} marks configured global source ids as local sources.")
             if step.source_scope in {"additional", "system"} and not _additional_sources_allowed(planning_input, step.subject_rule_ids):
                 errors.append(f"Step {step.step_id} uses {step.source_scope} sources while additional sources are disabled.")
             if step.source_scope == "global" and global_source_ids and not step.source_ids:
@@ -96,6 +115,9 @@ class RadarDiscoveryPlanValidator:
 
         selected = {item.source_id for item in plan.source_policy_decisions if item.decision == "selected"}
         skipped = {item.source_id for item in plan.source_policy_decisions if item.decision == "skipped" and item.reason.strip()}
+        for decision in plan.source_policy_decisions:
+            if not decision.reason.strip():
+                errors.append(f"Source policy decision for {decision.source_id} must include rationale.")
         for source_id in global_source_ids:
             if source_id not in selected and source_id not in skipped:
                 errors.append(f"Global source {source_id} must be selected or skipped with rationale.")
@@ -104,6 +126,11 @@ class RadarDiscoveryPlanValidator:
         first_discovery_index = next((index for index, step in enumerate(plan.steps) if step.stage == "candidate_universe_discovery"), None)
         if first_gate_index is not None and first_discovery_index is not None and first_gate_index < first_discovery_index:
             errors.append("Qualification gates must not run before candidate universe discovery.")
+        discovery_steps = [step for step in plan.steps if step.stage == "candidate_universe_discovery"]
+        coverage_steps = [step for step in plan.steps if step.stage == "coverage_check"]
+        low_risk_coverage = any(item.completeness_risk == "low" for item in plan.coverage_hypotheses)
+        if len(discovery_steps) == 1 and not coverage_steps and not low_risk_coverage:
+            errors.append("A single discovery step without coverage_check requires low-risk coverage rationale.")
         if not plan.coverage_hypotheses:
             warnings.append("Discovery plan does not explain candidate universe coverage.")
 
@@ -138,15 +165,19 @@ def discovery_plan_to_execution_plan(*, radar: dict[str, Any], plan: RadarDiscov
     tasks: list[RadarExecutionTask] = []
     previous_qualification_task_id = ""
     for step in plan.steps:
-        if step.stage not in {"candidate_universe_discovery", "source_probe", "qualification_gate"}:
+        if step.stage not in {"candidate_universe_discovery", "source_probe", "qualification_gate", "coverage_check"}:
             continue
         subject_id = step.subject_rule_ids[0] if step.subject_rule_ids else step.step_id
-        stage = "qualification_discovery" if not previous_qualification_task_id else "qualification_gate"
-        depends_on = [previous_qualification_task_id] if previous_qualification_task_id else list(step.depends_on)
+        if step.stage == "coverage_check":
+            stage = "coverage_check"
+            depends_on = [previous_qualification_task_id] if previous_qualification_task_id else list(step.depends_on)
+        else:
+            stage = "qualification_discovery" if not previous_qualification_task_id else "qualification_gate"
+            depends_on = [previous_qualification_task_id] if previous_qualification_task_id else list(step.depends_on)
         task = RadarExecutionTask(
             task_id=step.step_id,
             stage=stage,
-            subject_type="qualification",
+            subject_type="radar" if step.stage == "coverage_check" else "qualification",
             subject_id=subject_id,
             rule_snapshot="; ".join(step.acceptance_criteria),
             query=step.query,
@@ -159,7 +190,8 @@ def discovery_plan_to_execution_plan(*, radar: dict[str, Any], plan: RadarDiscov
             candidate_scope=list(step.candidate_scope),
         )
         tasks.append(task)
-        previous_qualification_task_id = task.task_id
+        if step.stage != "coverage_check":
+            previous_qualification_task_id = task.task_id
 
     if not tasks:
         from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan

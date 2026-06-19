@@ -38,10 +38,15 @@ They must never store headers, API keys, or raw hidden chain-of-thought.
 OpenRouter requests must stay scoped to the current execution task: qualification
 tasks must not include intent signals, and signal tasks must not discover new
 candidates.
+OpenRouter model routing is role-specific. The live search provider keeps
+`OPENROUTER_MODEL` as the fast/default signal model and uses
+`OPENROUTER_EXTRACTOR_MODEL` for discovery, qualification, and coverage tasks,
+falling back through `OPENROUTER_ADVANCED_MODEL` to `OPENROUTER_MODEL`.
 OpenRouter planner requests are a separate boundary: they receive Radar
 settings, qualification rules, source policy, and task context, then return a
 JSON discovery plan for backend validation. Planner output is advisory until the
-application validator accepts it.
+application validator accepts it. Planner requests use `OPENROUTER_PLANNER_MODEL`
+with the same advanced/default fallback.
 
 ## How To Extend
 

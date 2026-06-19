@@ -56,6 +56,20 @@ def test_execute_radar_run_once_completes_and_persists_output(tmp_path: Path) ->
     assert [event.event_type for event in events][-1] == "run_completed"
 
 
+def test_execute_radar_run_once_commits_running_state_before_provider_work(tmp_path: Path) -> None:
+    session_factory = _seed_database(tmp_path, run_id="run-transaction-boundary")
+    executor = _InspectingExecutor(session_factory=session_factory, artifact=_artifact())
+
+    completed = radar_jobs.execute_radar_run_once(
+        run_id="run-transaction-boundary",
+        live_executor=executor,
+        session_factory=session_factory,
+    )
+
+    assert completed.status is RadarRunStatus.COMPLETED
+    assert executor.observed_status == RadarRunStatus.RUNNING
+
+
 def test_execute_radar_run_once_failure_persists_failed_state(tmp_path: Path) -> None:
     session_factory = _seed_database(tmp_path, run_id="run-failed")
 
@@ -173,6 +187,20 @@ class _FailingExecutor:
     def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, object]:
         _ = live, task_context
         raise RuntimeError("provider unavailable")
+
+
+class _InspectingExecutor:
+    def __init__(self, *, session_factory, artifact: dict[str, Any]) -> None:
+        self._session_factory = session_factory
+        self._artifact = artifact
+        self.observed_status: RadarRunStatus | None = None
+
+    def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, object]:
+        _ = live
+        with session_scope(self._session_factory) as session:
+            run = SqlAlchemyRadarRunRepository(session).get(str(task_context["run_id"]))
+        self.observed_status = run.status if run is not None else None
+        return self._artifact
 
 
 def _artifact() -> dict[str, Any]:

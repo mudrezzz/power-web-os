@@ -41,7 +41,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-        "version": "0.7.6.1.4",
+        "version": "0.7.6.1.5",
         "environment": "test",
     }
 
@@ -58,7 +58,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.6.1.4"
+    assert schema["info"]["version"] == "0.7.6.1.5"
     for path in [
         "/health",
         "/api/health",
@@ -141,6 +141,7 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     queued_dossier = client.get(f"/api/radar-runs/{run['run_id']}/dossier").json()
     assert queued_dossier["summary"]["output_state"] == "pending"
     assert queued_dossier["run_context"]["status"] == "queued"
+    assert queued_dossier["run_context"]["task_context"]["max_web_tasks_per_subject"] == 20
     assert queued_dossier["search_plan"] == []
 
     execute_radar_run_once(
@@ -179,6 +180,11 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["discovery_plan"]["steps"][0]["stage"] == "candidate_universe_discovery"
     assert dossier["source_policy_decisions"][0]["decision"] == "selected"
     assert dossier["coverage_summary"]["analyzed_source_reasons"] == ["not_used_by_candidate"]
+    assert dossier["candidate_universe"][0]["status"] == "qualified"
+    assert dossier["coverage_checks"][0]["task_id"] == "coverage-q1"
+    assert dossier["coverage_warnings"] == []
+    assert dossier["unresolved_candidate_gaps"] == []
+    assert dossier["discovery_iteration_count"] == 1
     assert dossier["search_plan"][0]["query_id"] == "q1"
     assert dossier["search_plan"][0]["source_refs"] == ["src_1"]
     assert dossier["search_plan"][0]["candidate_refs"] == ["candidate-a"]
@@ -273,6 +279,17 @@ def test_post_radar_run_idempotency_does_not_enqueue_duplicate(tmp_path: Path) -
     assert queue.enqueued_run_ids == [first.json()["run_id"]]
 
 
+def test_post_radar_run_persists_configured_web_task_budget(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    queue = _RecordingJobQueue()
+    client = TestClient(_app(tmp_path, database_url=database_url, job_queue=queue, max_web_tasks_per_subject=7))
+
+    run = client.post("/api/radars/toir-quick-live/runs", json={"live": False}).json()
+    dossier = client.get(f"/api/radar-runs/{run['run_id']}/dossier").json()
+
+    assert dossier["run_context"]["task_context"]["max_web_tasks_per_subject"] == 7
+
+
 def test_api_missing_and_no_output_cases_return_explicit_statuses(tmp_path: Path) -> None:
     database_url = _create_seeded_database(tmp_path, queued_run=True)
     client = TestClient(_app(tmp_path, database_url=database_url))
@@ -329,9 +346,14 @@ def _app(
     *,
     database_url: str | None = None,
     job_queue: object | None = None,
+    max_web_tasks_per_subject: int = 20,
 ):
     return create_app(
-        ApiSettings(environment="test", database_url=database_url or sqlite_url(tmp_path / "api.db")),
+        ApiSettings(
+            environment="test",
+            database_url=database_url or sqlite_url(tmp_path / "api.db"),
+            radar_max_web_tasks_per_subject=max_web_tasks_per_subject,
+        ),
         job_queue_factory=lambda: job_queue or _RecordingJobQueue(),
     )
 
@@ -435,6 +457,33 @@ def _artifact() -> dict[str, Any]:
                 "warnings": [],
             },
             "execution_results": {
+                "candidate_universe": [
+                    {
+                        "candidate_id": "candidate-a",
+                        "legal_name": "Candidate A",
+                        "status": "qualified",
+                        "origin_task_id": "discover-q1",
+                        "source_refs": ["src_1"],
+                        "gate_results": [{"criterion_code": "Q1", "final_assessment": "matches"}],
+                        "rejection_reasons": [],
+                        "coverage_flags": [],
+                    }
+                ],
+                "coverage_checks": [
+                    {
+                        "task_id": "coverage-q1",
+                        "iteration": 1,
+                        "source_count": 1,
+                        "candidate_observation_count": 0,
+                        "new_candidate_count": 0,
+                        "gap_count": 0,
+                        "completeness_risk": "low",
+                        "warnings": [],
+                    }
+                ],
+                "coverage_warnings": [],
+                "unresolved_candidate_gaps": [],
+                "discovery_iteration_count": 1,
                 "analyzed_source_count": 1,
                 "used_source_count": 1,
                 "analyzed_sources": [

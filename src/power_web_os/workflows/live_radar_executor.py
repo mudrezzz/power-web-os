@@ -7,6 +7,7 @@ or provider details to the application layer.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from power_web_os.application.ports import LiveRadarArtifactExecutor, RadarRunTechnicalTraceRepository
@@ -39,6 +40,20 @@ class WorkflowLiveRadarArtifactExecutor(LiveRadarArtifactExecutor):
             provider=self._provider,
             discovery_planner=self._discovery_planner,
             live=live,
-            task_context=dict(task_context),
+            task_context=_task_context_with_runtime_defaults(task_context),
             technical_tracer=technical_tracer,
         )
+
+
+def _task_context_with_runtime_defaults(task_context: dict[str, object]) -> dict[str, object]:
+    context = dict(task_context)
+    context.setdefault("max_web_tasks_per_subject", _positive_int(os.getenv("POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT"), 20))
+    return context
+
+
+def _positive_int(raw: str | None, default: int) -> int:
+    try:
+        value = int(raw or "")
+    except ValueError:
+        return default
+    return value if value > 0 else default

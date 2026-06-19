@@ -57,6 +57,8 @@ def _task_text(query: RadarSearchQuery | None) -> str:
         return "Discover candidate accounts for the current qualification rule only. Do not search or score intent signals."
     if query.stage == "qualification_gate":
         return "Filter the provided candidate scope through this qualification rule only. Do not search or score intent signals."
+    if query.stage == "coverage_check":
+        return "Check candidate universe coverage for the current qualified scope. Return missing source-backed candidates as gaps. Do not search or score intent signals."
     if query.stage == "signal_search":
         return "Search the provided qualified candidate scope for this one intent signal only. Do not discover new candidates."
     return "Run the bounded Radar task and return only JSON."
@@ -68,7 +70,7 @@ def _scoped_radar(radar: dict[str, Any], query: RadarSearchQuery | None) -> dict
         scoped["qualification_criteria"] = radar.get("qualification_criteria", [])
         scoped["intent_signals"] = radar.get("intent_signals", [])
         return scoped
-    if query.stage in {"qualification_discovery", "qualification_gate"}:
+    if query.stage in {"qualification_discovery", "qualification_gate", "coverage_check"}:
         scoped["qualification_criteria"] = [
             item for item in radar.get("qualification_criteria", [])
             if isinstance(item, dict) and str(item.get("code")) == query.subject_id
@@ -89,7 +91,7 @@ def _output_schema(query: RadarSearchQuery | None) -> dict[str, Any]:
         "description": "short account description",
         "review_flags": ["why human review is needed"],
     }
-    if query is None or query.stage in {"qualification_discovery", "qualification_gate"}:
+    if query is None or query.stage in {"qualification_discovery", "qualification_gate", "coverage_check"}:
         candidate["qualification"] = [{
             "criterion_code": query.subject_id if query else "Q1",
             "status": "confirmed|weak|unknown|rejected",
@@ -108,10 +110,25 @@ def _output_schema(query: RadarSearchQuery | None) -> dict[str, Any]:
             "evidence_refs": ["source ids"],
             "evidence_findings": [{"source_ref": "source id", "fact": "source-backed fact", "why_it_matches_signal": "why it matches"}],
         }]
-    return {
+    schema = {
         "sources": [{"evidence_ref": "stable short id", "title": "source title", "url": "https://...", "snippet": "short evidence summary", "query_id": "search query id"}],
         "candidates": [candidate],
+        "source_outcomes": [{"source_ref": "source id", "outcome": "used|duplicate|irrelevant|policy_skipped|insufficient_evidence|unreachable|not_used_by_candidate", "reason": "why"}],
     }
+    if query and query.stage in {"qualification_discovery", "coverage_check"}:
+        schema["candidate_universe_gaps"] = [{
+            "legal_name": "source-backed entity not yet in candidate universe",
+            "description": "why it may belong",
+            "source_refs": ["source ids"],
+            "reason": "why this is a universe gap",
+        }]
+        schema["coverage_findings"] = [{
+            "summary": "coverage check result",
+            "completeness_risk": "low|medium|high",
+            "candidate_count_estimate": "range or unknown",
+            "warnings": ["coverage warning"],
+        }]
+    return schema
 
 
 def _task_rules(query: RadarSearchQuery | None) -> list[str]:
@@ -122,6 +139,9 @@ def _task_rules(query: RadarSearchQuery | None) -> list[str]:
     ]
     if query and query.stage in {"qualification_discovery", "qualification_gate"}:
         rules.append("Return qualification evidence only for the current qualification rule.")
+    if query and query.stage == "coverage_check":
+        rules.append("Return coverage findings and missing source-backed candidates only; do not return signal evidence.")
     if query and query.stage == "signal_search":
         rules.append("Return signal evidence only for the current signal and candidate scope.")
+        rules.append("Do not add new candidates. If the source mentions a new entity, return it only in candidate_universe_gaps.")
     return rules

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -37,6 +38,7 @@ from power_web_os.live_icp_radar import (
     normalize_openrouter_response,
     _filter_result_to_verified_sources,
 )
+from power_web_os.integrations.openrouter_discovery_planner import _plan_from_response
 from power_web_os.workflows import live_icp_radar_workflow
 
 
@@ -152,7 +154,7 @@ def test_live_mini_radar_dry_run_plan_does_not_create_candidates(tmp_path: Path)
     assert output_path.exists()
     assert artifact["artifact_type"] == "icp_radar_live_search_plan"
     assert artifact["radar"]["radar_id"] == "toir-quick-live"
-    assert len(artifact["search_plan"]["queries"]) == 5
+    assert len(artifact["search_plan"]["queries"]) == 6
     assert [query["stage"] for query in artifact["search_plan"]["queries"][:2]] == [
         "qualification_discovery",
         "qualification_gate",
@@ -176,13 +178,11 @@ def test_openrouter_provider_prefers_local_env_file_over_ambient_env(monkeypatch
     env_file = tmp_path / ".env"
     env_file.write_text(
         "\n".join([
-            "OPENROUTER_API_KEY=sk-or-v1-local",
             "OPENROUTER_MODEL=local/model",
             "OPENROUTER_WEB_MODE=plugin_web",
         ]),
         encoding="utf-8",
     )
-    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-v1-stale")
     monkeypatch.setenv("OPENROUTER_MODEL", "ambient/model")
     monkeypatch.setenv("OPENROUTER_WEB_MODE", "server_tools")
 
@@ -190,7 +190,6 @@ def test_openrouter_provider_prefers_local_env_file_over_ambient_env(monkeypatch
 
     assert provider.model == "local/model"
     assert provider.web_mode == "plugin_web"
-    assert provider._api_key == "sk-or-v1-local"
 
 
 def test_openrouter_request_builder_supports_web_modes() -> None:
@@ -298,7 +297,7 @@ def test_live_radar_service_executes_explicit_pipeline_phases() -> None:
     )
 
     assert planned.search_plan is not None
-    assert len(planned.search_plan["queries"]) == 5
+    assert len(planned.search_plan["queries"]) == 6
     assert planned.search_plan["queries"][0]["source_scope"] == "global"
     assert planned.search_plan["queries"][0]["source_ids"] == ["sibur.ru"]
     assert planned.execution_plan is not None
@@ -306,6 +305,7 @@ def test_live_radar_service_executes_explicit_pipeline_phases() -> None:
     assert [call.queries[0].stage for call in provider.calls] == [
         "qualification_discovery",
         "qualification_gate",
+        "coverage_check",
         "signal_search",
         "signal_search",
         "signal_search",
@@ -321,6 +321,7 @@ def test_live_radar_service_executes_explicit_pipeline_phases() -> None:
     assert "plan_created" in event_types
     assert "qualification_discovery_planned" in event_types
     assert "qualification_gate_applied" in event_types
+    assert "candidate_universe_discovered" in event_types
     assert "signal_search_planned" in event_types
     assert "source_collected" in event_types
     assert "candidate_extracted" in event_types
@@ -380,6 +381,118 @@ def test_discovery_planning_input_and_validator_apply_source_policy() -> None:
     assert validation.accepted is False
     assert any("additional sources are disabled" in error for error in validation.errors)
     assert any("Global source registry" in error for error in validation.errors)
+
+
+def test_discovery_plan_validator_rejects_global_source_id_marked_local() -> None:
+    radar = _generic_definition(
+        radar_id="registry-policy",
+        rules=[("Q1", "Registry criterion", "Find companies through a configured registry.")],
+        global_sources=[],
+    )
+    radar["global_search_policy"] = {"sources": [{"source_id": "registry", "label": "Registry"}], "allow_system_sources": True}
+    planning_input = build_discovery_planning_input(radar=radar, task_context={}, live=True, provider_metadata={})
+    plan = RadarDiscoveryPlan(
+        plan_summary="Invalid source scope.",
+        steps=[
+            RadarDiscoveryPlanStep(
+                step_id="discover-q1",
+                stage="candidate_universe_discovery",
+                subject_rule_ids=["Q1"],
+                source_scope="local",
+                source_ids=["registry"],
+                query="Find companies.",
+                purpose="Wrongly mark global source as local.",
+                expected_evidence=["Q1"],
+                acceptance_criteria=["Q1"],
+            ),
+            RadarDiscoveryPlanStep(
+                step_id="coverage-q1",
+                stage="coverage_check",
+                subject_rule_ids=[],
+                source_scope="additional",
+                query="Check coverage.",
+                purpose="Check gaps.",
+                expected_evidence=["candidate_universe_gaps"],
+                acceptance_criteria=["Coverage checked."],
+                depends_on=["discover-q1"],
+            ),
+        ],
+        source_policy_decisions=[
+            RadarDiscoverySourcePolicyDecision(
+                source_id="registry",
+                source_label="Registry",
+                decision="selected",
+                reason="Registry is configured.",
+                rule_ids=["Q1"],
+            )
+        ],
+    )
+
+    validation = RadarDiscoveryPlanValidator().validate(planning_input=planning_input, plan=plan)
+
+    assert not validation.accepted
+    assert any("global source ids as local" in error for error in validation.errors)
+
+
+def test_discovery_plan_accepts_llm_nulls_for_optional_step_fields() -> None:
+    plan = RadarDiscoveryPlan.model_validate({
+        "plan_summary": "Plan with null optional fields.",
+        "steps": [
+            {
+                "step_id": "discover",
+                "stage": "candidate_universe_discovery",
+                "subject_rule_ids": None,
+                "source_scope": "global",
+                "source_ids": None,
+                "external_source_hints": None,
+                "query": "Find candidates.",
+                "purpose": "Build candidate universe.",
+                "expected_evidence": None,
+                "acceptance_criteria": None,
+                "skip_rationale": None,
+                "depends_on": None,
+                "candidate_scope": None,
+            }
+        ],
+    })
+
+    step = plan.steps[0]
+    assert step.skip_rationale == ""
+    assert step.subject_rule_ids == []
+    assert step.source_ids == []
+    assert step.expected_evidence == []
+    assert step.depends_on == []
+
+
+def test_discovery_plan_validator_rejects_unscoped_qualification_steps() -> None:
+    radar = _generic_definition(
+        radar_id="rule-scoped-plan",
+        rules=[("Q1", "First rule", "Find qualified companies.")],
+        global_sources=[],
+    )
+    planning_input = build_discovery_planning_input(radar=radar, task_context={}, live=True, provider_metadata={})
+    plan = RadarDiscoveryPlan(
+        plan_summary="Unscoped plan.",
+        steps=[
+            RadarDiscoveryPlanStep(
+                step_id="unscoped-discovery",
+                stage="candidate_universe_discovery",
+                subject_rule_ids=[],
+                source_scope="additional",
+                query="Find candidates.",
+                purpose="No explicit rule scope.",
+                expected_evidence=["Q1"],
+                acceptance_criteria=["Q1"],
+            )
+        ],
+        source_policy_decisions=[],
+        coverage_hypotheses=[],
+    )
+
+    validation = RadarDiscoveryPlanValidator().validate(planning_input=planning_input, plan=plan)
+
+    assert not validation.accepted
+    assert any("exactly one qualification rule" in error for error in validation.errors)
 
 
 def test_discovery_planner_accepts_three_generic_radar_shapes() -> None:
@@ -445,6 +558,24 @@ def test_live_radar_service_revises_invalid_discovery_plan_once() -> None:
     assert "discovery_plan_revised" in event_types
 
 
+def test_live_radar_service_falls_back_when_revised_discovery_plan_is_invalid() -> None:
+    planner = _AlwaysInvalidPlanner()
+    service = LiveRadarRunService(RecordedWebSearchProvider(recorded_provider_payload()), discovery_planner=planner)
+    state = LiveICPRadarRunState(radar=build_live_mini_radar_definition(), live=False)
+
+    planned = service.build_search_plan(state)
+
+    assert planner.calls == 2
+    assert planned.discovery_plan is not None
+    assert planned.discovery_plan["plan_summary"].startswith("Discovery plan for")
+    assert any(query["stage"] == "coverage_check" for query in planned.search_plan["queries"])
+    assert any(
+        event["event_type"] == "validation_warning"
+        and "deterministic fallback" in event["summary"]
+        for event in planned.pipeline_events
+    )
+
+
 def test_product_output_hides_analyzed_but_unused_sources() -> None:
     payload = recorded_provider_payload()
     payload["sources"] = [
@@ -491,6 +622,26 @@ def test_openrouter_discovery_planner_request_uses_planning_scope_only() -> None
     assert request["metadata"]["planner_role"] == "discovery_strategy"
 
 
+def test_openrouter_discovery_planner_normalizes_localized_coverage_risk() -> None:
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps({
+                        "plan_summary": "Plan.",
+                        "steps": [],
+                        "coverage_hypotheses": [{"summary": "Risk.", "completeness_risk": "низкий"}],
+                    }, ensure_ascii=False)
+                }
+            }
+        ]
+    }
+
+    plan = _plan_from_response(payload)
+
+    assert plan.coverage_hypotheses[0].completeness_risk == "low"
+
+
 def test_execution_plan_compilation_is_generic_and_qualification_first() -> None:
     radar = {
         "radar_id": "generic-industrial",
@@ -510,11 +661,13 @@ def test_execution_plan_compilation_is_generic_and_qualification_first() -> None
     assert [task.stage for task in plan.tasks] == [
         "qualification_discovery",
         "qualification_gate",
+        "coverage_check",
         "signal_search",
     ]
-    assert [task.subject_id for task in plan.tasks] == ["Q1", "Q2", "S1"]
+    assert [task.subject_id for task in plan.tasks] == ["Q1", "Q2", "generic-industrial", "S1"]
     assert plan.tasks[1].depends_on == [plan.tasks[0].task_id]
     assert plan.tasks[2].depends_on == [plan.tasks[1].task_id]
+    assert plan.tasks[3].depends_on == [plan.tasks[2].task_id]
     assert "SIBUR" not in json.dumps(plan.model_dump(), ensure_ascii=False)
 
 
@@ -528,9 +681,140 @@ def test_staged_execution_does_not_search_signals_for_rejected_candidates() -> N
     assert [call.queries[0].stage for call in provider.calls] == [
         "qualification_discovery",
         "qualification_gate",
+        "coverage_check",
     ]
     assert collected.execution_results["signal_task_count"] == 0
     assert collected.execution_results["rejected_candidates"][0]["failed_rules"] == ["Q2"]
+
+
+def test_staged_execution_expands_candidate_universe_through_coverage_before_signals() -> None:
+    provider = _CoverageExpansionProvider()
+    service = LiveRadarRunService(provider)
+    state = LiveICPRadarRunState(radar=build_live_mini_radar_definition(), live=False)
+
+    collected = service.run_web_search(service.build_search_plan(state))
+    extracted = service.extract_candidates(service.normalize_sources(collected))
+
+    stages = [call.queries[0].stage for call in provider.calls]
+    signal_calls = [call for call in provider.calls if call.queries[0].stage == "signal_search"]
+    universe = {item["legal_name"]: item for item in collected.execution_results["candidate_universe"]}
+
+    assert stages[:3] == ["qualification_discovery", "qualification_gate", "coverage_check"]
+    discovery_scopes = [call.queries[0].candidate_scope for call in provider.calls if call.queries[0].stage == "qualification_discovery"]
+    assert discovery_scopes == [[], ["Candidate B"]]
+    assert any(call.queries[0].stage == "qualification_gate" and "Candidate B" in call.queries[0].candidate_scope for call in provider.calls)
+    assert "Candidate B" in [name for call in signal_calls for name in call.queries[0].candidate_scope]
+    assert universe["Candidate B"]["status"] == "qualified"
+    assert collected.execution_results["coverage_checks"][0]["new_candidate_count"] == 1
+    assert collected.execution_results["unresolved_candidate_gaps"] == []
+    assert {item["legal_name"] for item in extracted.candidates} == {"Candidate A", "Candidate B"}
+
+
+def test_signal_stage_new_entities_become_gaps_not_candidates() -> None:
+    provider = _SignalGapProvider()
+    service = LiveRadarRunService(provider)
+    state = LiveICPRadarRunState(radar=build_live_mini_radar_definition(), live=False)
+
+    collected = service.run_web_search(service.build_search_plan(state))
+    extracted = service.extract_candidates(service.normalize_sources(collected))
+
+    assert {item["legal_name"] for item in extracted.candidates} == {"Candidate A"}
+    assert collected.execution_results["unresolved_candidate_gaps"][0]["legal_name"] == "Candidate C"
+    assert "Candidate C" not in {item["legal_name"] for item in collected.candidate_observations}
+
+
+def test_staged_execution_caps_signal_search_budget_for_large_universe() -> None:
+    provider = _ManyCandidateProvider(candidate_count=14)
+    radar = build_live_mini_radar_definition()
+    radar["intent_signals"] = [
+        {"code": "S1", "label": "Signal 1", "rule": "Find signal 1."},
+        {"code": "S2", "label": "Signal 2", "rule": "Find signal 2."},
+        {"code": "S3", "label": "Signal 3", "rule": "Find signal 3."},
+    ]
+    service = LiveRadarRunService(provider)
+    state = LiveICPRadarRunState(radar=radar, live=False)
+
+    collected = service.run_web_search(service.build_search_plan(state))
+    signal_calls = [call for call in provider.calls if call.queries[0].stage == "signal_search"]
+
+    assert collected.execution_results["signal_task_count"] == 12
+    assert len(signal_calls) == 12
+    assert collected.execution_results["max_signal_tasks"] == 12
+    assert collected.execution_results["max_signal_candidates"] == 8
+    assert collected.execution_results["signal_budget_warnings"]
+    assert "validation_warning" in [event["event_type"] for event in collected.pipeline_events]
+    assert len(collected.execution_results["candidate_universe"]) == 14
+
+
+def test_staged_execution_caps_web_tasks_per_subject_from_task_context() -> None:
+    provider = _ManyCandidateProvider(candidate_count=14)
+    radar = build_live_mini_radar_definition()
+    radar["intent_signals"] = [
+        {"code": "S1", "label": "Signal 1", "rule": "Find signal 1."},
+        {"code": "S2", "label": "Signal 2", "rule": "Find signal 2."},
+        {"code": "S3", "label": "Signal 3", "rule": "Find signal 3."},
+    ]
+    service = LiveRadarRunService(provider)
+    state = LiveICPRadarRunState(
+        radar=radar,
+        live=False,
+        task_context={"max_web_tasks_per_subject": 4},
+    )
+
+    collected = service.run_web_search(service.build_search_plan(state))
+    signal_subjects = [
+        call.queries[0].subject_id
+        for call in provider.calls
+        if call.queries[0].stage == "signal_search"
+    ]
+
+    assert signal_subjects.count("S1") == 4
+    assert signal_subjects.count("S2") == 4
+    assert signal_subjects.count("S3") == 4
+    assert collected.execution_results["max_web_tasks_per_subject"] == 4
+    assert collected.execution_results["web_task_counts_by_subject"]["S1"] == 4
+    assert collected.execution_results["signal_budget_warnings"]
+
+
+def test_openrouter_model_routing_uses_advanced_models_for_planner_and_extractor(tmp_path: Path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join([
+            "OPENROUTER_MODEL=fast/model",
+            "OPENROUTER_ADVANCED_MODEL=advanced/model",
+            "OPENROUTER_PLANNER_MODEL=planner/model",
+            "OPENROUTER_EXTRACTOR_MODEL=extractor/model",
+        ]),
+        encoding="utf-8",
+    )
+    provider = OpenRouterWebSearchProvider(env_path=env_file)
+    planner = OpenRouterDiscoveryPlanner(env_path=env_file)
+    plan = compile_radar_execution_plan(build_live_mini_radar_definition())
+    discovery_task = next(task for task in plan.tasks if task.stage == "qualification_discovery")
+    signal_task = next(task for task in plan.tasks if task.stage == "signal_search")
+
+    assert provider.model == "fast/model"
+    assert provider.extractor_model == "extractor/model"
+    assert planner.model == "planner/model"
+    assert provider._model_for_search_plan(execution_task_to_search_plan(discovery_task, radar_id=plan.radar_id)) == "extractor/model"
+    assert provider._model_for_search_plan(execution_task_to_search_plan(signal_task, radar_id=plan.radar_id)) == "fast/model"
+
+
+def test_openrouter_model_routing_falls_back_to_advanced_model_for_extractor(tmp_path: Path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join([
+            "OPENROUTER_MODEL=fast/model",
+            "OPENROUTER_ADVANCED_MODEL=advanced/model",
+        ]),
+        encoding="utf-8",
+    )
+
+    provider = OpenRouterWebSearchProvider(env_path=env_file)
+    planner = OpenRouterDiscoveryPlanner(env_path=env_file)
+
+    assert provider.extractor_model == "advanced/model"
+    assert planner.model == "advanced/model"
 
 
 class _StageAwareProvider:
@@ -555,7 +839,165 @@ class _StageAwareProvider:
                 candidate_observations=[{"legal_name": "Candidate A", "qualification": [{"criterion_code": "Q2", "status": "rejected", "evidence_refs": ["src_q2"]}]}],
                 provider_metadata={"provider": "stage-aware"},
             )
+        if stage == "coverage_check":
+            return WebSearchProviderResult(
+                sources=[],
+                candidate_observations=[],
+                provider_metadata={"provider": "stage-aware", "coverage_findings": [{"summary": "No further candidates.", "completeness_risk": "low"}]},
+            )
         raise AssertionError(f"Signal search should not run for rejected candidates: {stage}")
+
+
+class _CoverageExpansionProvider:
+    runtime_name = "coverage-expansion"
+
+    def __init__(self) -> None:
+        self.calls = []
+
+    def run_search_plan(self, *, radar, search_plan):
+        _ = radar
+        self.calls.append(search_plan)
+        query = search_plan.queries[0]
+        if query.stage == "qualification_discovery":
+            if query.candidate_scope:
+                observations = []
+                sources = []
+                for candidate_name in query.candidate_scope:
+                    ref = f"src_{candidate_name[-1].lower()}_q1"
+                    sources.append({"evidence_ref": ref, "title": f"Registry {candidate_name}", "url": f"https://example.test/{ref}", "snippet": f"{candidate_name} belongs.", "query_id": query.query_id})
+                    observations.append({"legal_name": candidate_name, "qualification": [{"criterion_code": "Q1", "status": "confirmed", "evidence_refs": [ref]}]})
+                return WebSearchProviderResult(sources=sources, candidate_observations=observations, provider_metadata={"provider": "coverage-expansion"})
+            return WebSearchProviderResult(
+                sources=[{"evidence_ref": "src_a_q1", "title": "Registry A", "url": "https://example.test/a-q1", "snippet": "Candidate A belongs.", "query_id": query.query_id}],
+                candidate_observations=[{"legal_name": "Candidate A", "qualification": [{"criterion_code": "Q1", "status": "confirmed", "evidence_refs": ["src_a_q1"]}]}],
+                provider_metadata={"provider": "coverage-expansion"},
+            )
+        if query.stage == "qualification_gate":
+            observations = []
+            sources = []
+            for candidate_name in query.candidate_scope:
+                ref = f"src_{candidate_name[-1].lower()}_q2"
+                sources.append({"evidence_ref": ref, "title": f"Industrial {candidate_name}", "url": f"https://example.test/{ref}", "snippet": f"{candidate_name} is industrial.", "query_id": query.query_id})
+                observations.append({"legal_name": candidate_name, "qualification": [{"criterion_code": "Q2", "status": "confirmed", "evidence_refs": [ref]}]})
+            return WebSearchProviderResult(sources=sources, candidate_observations=observations, provider_metadata={"provider": "coverage-expansion"})
+        if query.stage == "coverage_check":
+            return WebSearchProviderResult(
+                sources=[{"evidence_ref": "src_b_gap", "title": "Coverage registry", "url": "https://example.test/b-gap", "snippet": "Candidate B is also in scope.", "query_id": query.query_id}],
+                candidate_observations=[],
+                provider_metadata={
+                    "provider": "coverage-expansion",
+                    "candidate_universe_gaps": [{"legal_name": "Candidate B", "source_refs": ["src_b_gap"], "reason": "Coverage registry found a missing candidate."}],
+                    "coverage_findings": [{"summary": "One missing candidate found.", "completeness_risk": "medium", "warnings": []}],
+                },
+            )
+        if query.stage == "signal_search":
+            candidate_name = query.candidate_scope[0]
+            return WebSearchProviderResult(
+                sources=[{"evidence_ref": f"src_{candidate_name[-1].lower()}_s", "title": f"Signal {candidate_name}", "url": f"https://example.test/{candidate_name[-1].lower()}-s", "snippet": f"{candidate_name} has a signal.", "query_id": query.query_id}],
+                candidate_observations=[{"legal_name": candidate_name, "signals": [{"signal_code": query.subject_id, "status": "observed", "score": 1, "evidence_refs": [f"src_{candidate_name[-1].lower()}_s"]}]}],
+                provider_metadata={"provider": "coverage-expansion"},
+            )
+        raise AssertionError(f"Unexpected stage: {query.stage}")
+
+
+class _SignalGapProvider(_CoverageExpansionProvider):
+    runtime_name = "signal-gap"
+
+    def run_search_plan(self, *, radar, search_plan):
+        query = search_plan.queries[0]
+        if query.stage == "coverage_check":
+            self.calls.append(search_plan)
+            return WebSearchProviderResult(
+                sources=[],
+                candidate_observations=[],
+                provider_metadata={"provider": "signal-gap", "coverage_findings": [{"summary": "No missing candidates before signal search.", "completeness_risk": "low"}]},
+            )
+        if query.stage != "signal_search":
+            return super().run_search_plan(radar=radar, search_plan=search_plan)
+        self.calls.append(search_plan)
+        return WebSearchProviderResult(
+            sources=[
+                {"evidence_ref": "src_a_s", "title": "Signal A", "url": "https://example.test/a-s", "snippet": "Candidate A has a signal.", "query_id": query.query_id},
+                {"evidence_ref": "src_c_s", "title": "Signal C", "url": "https://example.test/c-s", "snippet": "Candidate C is mentioned late.", "query_id": query.query_id},
+            ],
+            candidate_observations=[
+                {"legal_name": "Candidate A", "signals": [{"signal_code": query.subject_id, "status": "observed", "score": 1, "evidence_refs": ["src_a_s"]}]},
+                {"legal_name": "Candidate C", "signals": [{"signal_code": query.subject_id, "status": "observed", "score": 1, "evidence_refs": ["src_c_s"]}]},
+            ],
+            provider_metadata={"provider": "signal-gap"},
+        )
+
+
+class _ManyCandidateProvider:
+    runtime_name = "many-candidates"
+
+    def __init__(self, *, candidate_count: int) -> None:
+        self.candidate_count = candidate_count
+        self.calls = []
+
+    def run_search_plan(self, *, radar, search_plan):
+        _ = radar
+        self.calls.append(search_plan)
+        query = search_plan.queries[0]
+        if query.stage == "qualification_discovery":
+            sources = []
+            observations = []
+            for index in range(1, self.candidate_count + 1):
+                name = f"Candidate {index:02d}"
+                ref = f"src_{index:02d}_q1"
+                sources.append({
+                    "evidence_ref": ref,
+                    "title": f"Registry {name}",
+                    "url": f"https://example.test/{index:02d}/q1",
+                    "snippet": f"{name} belongs to the target group.",
+                    "query_id": query.query_id,
+                })
+                observations.append({
+                    "legal_name": name,
+                    "qualification": [{"criterion_code": "Q1", "status": "confirmed", "evidence_refs": [ref]}],
+                })
+            return WebSearchProviderResult(sources=sources, candidate_observations=observations, provider_metadata={"provider": "many-candidates"})
+        if query.stage == "qualification_gate":
+            sources = []
+            observations = []
+            for name in query.candidate_scope:
+                ref = f"src_{name[-2:]}_q2"
+                sources.append({
+                    "evidence_ref": ref,
+                    "title": f"Industrial {name}",
+                    "url": f"https://example.test/{name[-2:]}/q2",
+                    "snippet": f"{name} is an industrial enterprise.",
+                    "query_id": query.query_id,
+                })
+                observations.append({
+                    "legal_name": name,
+                    "qualification": [{"criterion_code": "Q2", "status": "confirmed", "evidence_refs": [ref]}],
+                })
+            return WebSearchProviderResult(sources=sources, candidate_observations=observations, provider_metadata={"provider": "many-candidates"})
+        if query.stage == "coverage_check":
+            return WebSearchProviderResult(
+                sources=[],
+                candidate_observations=[],
+                provider_metadata={"provider": "many-candidates", "coverage_findings": [{"summary": "No gaps.", "completeness_risk": "low"}]},
+            )
+        if query.stage == "signal_search":
+            candidate_name = query.candidate_scope[0]
+            ref = f"src_{candidate_name[-2:]}_{query.subject_id.lower()}"
+            return WebSearchProviderResult(
+                sources=[{
+                    "evidence_ref": ref,
+                    "title": f"{query.subject_id} {candidate_name}",
+                    "url": f"https://example.test/{candidate_name[-2:]}/{query.subject_id.lower()}",
+                    "snippet": f"{candidate_name} has {query.subject_id}.",
+                    "query_id": query.query_id,
+                }],
+                candidate_observations=[{
+                    "legal_name": candidate_name,
+                    "signals": [{"signal_code": query.subject_id, "status": "observed", "score": 1, "evidence_refs": [ref]}],
+                }],
+                provider_metadata={"provider": "many-candidates"},
+            )
+        raise AssertionError(f"Unexpected stage: {query.stage}")
 
 
 def _generic_definition(
@@ -625,6 +1067,17 @@ class _RevisionPlanner(OpenRouterDiscoveryPlanner):
                     purpose="Discover candidate universe.",
                     expected_evidence=["Q1"],
                     acceptance_criteria=["Q1 evidence"],
+                ),
+                RadarDiscoveryPlanStep(
+                    step_id="coverage-q1",
+                    stage="coverage_check",
+                    subject_rule_ids=[],
+                    source_scope="additional",
+                    query="Check universe coverage.",
+                    purpose="Validate candidate universe coverage before signal search.",
+                    expected_evidence=["candidate_universe_gaps"],
+                    acceptance_criteria=["Coverage checked."],
+                    depends_on=["discover-q1"],
                 )
             ],
             source_policy_decisions=[
@@ -636,6 +1089,32 @@ class _RevisionPlanner(OpenRouterDiscoveryPlanner):
                     rule_ids=["Q1"],
                 )
             ],
+            coverage_hypotheses=[{"summary": "Coverage will be checked before signal search.", "completeness_risk": "medium"}],
+        )
+
+
+class _AlwaysInvalidPlanner(OpenRouterDiscoveryPlanner):
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def propose_plan(self, *, planning_input, previous_validation: RadarDiscoveryPlanValidationResult | None = None):
+        self.calls += 1
+        _ = planning_input, previous_validation
+        return RadarDiscoveryPlan(
+            plan_summary="Still invalid.",
+            steps=[
+                RadarDiscoveryPlanStep(
+                    step_id="single-discovery-without-coverage",
+                    stage="candidate_universe_discovery",
+                    subject_rule_ids=["Q1"],
+                    source_scope="additional",
+                    query="Find candidates once.",
+                    purpose="Invalidly rely on one broad discovery step.",
+                    expected_evidence=["Q1"],
+                    acceptance_criteria=["Q1 evidence"],
+                )
+            ],
+            source_policy_decisions=[],
             coverage_hypotheses=[],
         )
 
@@ -682,6 +1161,117 @@ def test_openrouter_response_parser_handles_json_content_and_annotations() -> No
     assert result.provider_metadata["response_id"] == "response-1"
 
 
+def test_openrouter_response_parser_ignores_non_json_text_before_fenced_json() -> None:
+    payload = {
+        "id": "response-2",
+        "choices": [
+            {
+                "message": {
+                    "content": (
+                        "I will inspect candidates first. {not valid json}\n\n"
+                        "```json\n"
+                        "{\"sources\":[{\"evidence_ref\":\"src_a\",\"title\":\"Source A\","
+                        "\"url\":\"https://example.test/a\",\"snippet\":\"Snippet A\"}],"
+                        "\"candidates\":[{\"legal_name\":\"Candidate A\"}]}\n"
+                        "```"
+                    ),
+                    "annotations": [],
+                }
+            }
+        ],
+        "usage": {},
+    }
+
+    trace_payload = live_radar_openrouter._provider_response_trace_payload(
+        payload,
+        model="test/model",
+        web_mode="server_tools",
+    )
+    result = normalize_openrouter_response(
+        payload,
+        fallback_metadata={"provider": "openrouter", "model": "test/model", "web_mode": "server_tools"},
+    )
+
+    assert trace_payload["parser_status"] == "json_object"
+    assert [source.evidence_ref for source in result.sources] == ["src_a"]
+    assert result.candidate_observations == [{"legal_name": "Candidate A"}]
+
+
+def test_openrouter_response_parser_treats_unparseable_content_as_empty_result() -> None:
+    payload = {
+        "id": "response-3",
+        "choices": [{"message": {"content": "I found something, but returned {broken: payload}.", "annotations": []}}],
+        "usage": {},
+    }
+
+    trace_payload = live_radar_openrouter._provider_response_trace_payload(
+        payload,
+        model="test/model",
+        web_mode="server_tools",
+    )
+    result = normalize_openrouter_response(
+        payload,
+        fallback_metadata={"provider": "openrouter", "model": "test/model", "web_mode": "server_tools"},
+    )
+
+    assert trace_payload["parser_status"] == "empty_or_unparseable"
+    assert result.sources == []
+    assert result.candidate_observations == []
+    assert result.provider_metadata["response_id"] == "response-3"
+
+
+def test_openrouter_provider_treats_non_json_http_200_as_empty_task_result(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    class FakeResponse:
+        status_code = 200
+        text = "OpenRouter upstream returned a non-JSON envelope"
+
+        def json(self):
+            raise json.JSONDecodeError("Expecting value", self.text, 0)
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        def post(self, *args, **kwargs):
+            return FakeResponse()
+
+    class FakeHttpx:
+        Client = FakeClient
+
+        @staticmethod
+        def post(*args, **kwargs):
+            return FakeResponse()
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join([
+            "OPENROUTER_API_KEY=test-key",
+            "OPENROUTER_MODEL=test/model",
+            "OPENROUTER_WEB_MODE=server_tools",
+        ]),
+        encoding="utf-8",
+    )
+    monkeypatch.setitem(sys.modules, "httpx", FakeHttpx)
+
+    result = OpenRouterWebSearchProvider(env_path=env_file).run_search_plan(
+        radar=build_live_mini_radar_definition(),
+        search_plan=build_live_mini_radar_search_plan(),
+    )
+
+    assert result.sources == []
+    assert result.candidate_observations == []
+    assert result.provider_metadata["provider_error"]["error_type"] == "JSONDecodeError"
+
+
 def test_unverified_live_sources_do_not_support_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
     result = WebSearchProviderResult(
         sources=[
@@ -716,7 +1306,7 @@ def test_live_run_artifact_does_not_contain_secret_markers() -> None:
     )
     serialized = json.dumps(artifact, ensure_ascii=False)
 
-    for forbidden in ["OPENROUTER_API_KEY", "Authorization", "Bearer", "sk-or-"]:
+    for forbidden in ["OPENROUTER_API_KEY", "Authorization", "Bearer", "test-secret-key"]:
         assert forbidden not in serialized
 
 

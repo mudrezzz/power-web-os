@@ -31,6 +31,7 @@ class RadarApiContext:
     event_repository: SqlAlchemyRadarRunEventRepository
     technical_trace_repository: SqlAlchemyRadarRunTechnicalTraceRepository
     job_queue: JobQueue
+    radar_max_web_tasks_per_subject: int
 
 
 def default_job_queue() -> JobQueue:
@@ -40,6 +41,7 @@ def default_job_queue() -> JobQueue:
 def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
     session_factory = request.app.state.session_factory
     job_queue_factory = request.app.state.job_queue_factory
+    radar_max_web_tasks_per_subject = int(getattr(request.app.state, "radar_max_web_tasks_per_subject", 20))
     with session_scope(session_factory) as session:
         yield RadarApiContext(
             radar_repository=SqlAlchemyRadarRepository(session),
@@ -50,4 +52,5 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
             event_repository=SqlAlchemyRadarRunEventRepository(session),
             technical_trace_repository=SqlAlchemyRadarRunTechnicalTraceRepository(session),
             job_queue=job_queue_factory(),
+            radar_max_web_tasks_per_subject=radar_max_web_tasks_per_subject,
         )
