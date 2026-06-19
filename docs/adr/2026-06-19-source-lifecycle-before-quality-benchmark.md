@@ -1,6 +1,6 @@
 # ADR: Source Lifecycle Must Be Visible Before Quality Benchmarking
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-06-19
 
 ## Context

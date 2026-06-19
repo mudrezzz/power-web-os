@@ -277,6 +277,28 @@ function runDossier(dossier: RadarRunDossierDto): LiveRadarRunDossier {
     discovery_iteration_count: numberField(dossier.discovery_iteration_count, 0),
     search_plan: dossier.search_plan,
     sources: dossier.sources,
+    source_lifecycle: arrayField(dossier.source_lifecycle).map((item) => ({
+      evidence_ref: stringField(item.evidence_ref, ''),
+      title: stringField(item.title, ''),
+      url: stringField(item.url, ''),
+      query_id: nullableString(item.query_id),
+      source_type: stringField(item.source_type, 'web'),
+      state: stringField(item.state, 'discarded'),
+      reason: stringField(item.reason, 'unknown'),
+      origin: stringField(item.origin, 'unknown'),
+      usages: arrayField(item.usages).map((usage) => ({
+        candidate_id: stringField(usage.candidate_id, ''),
+        candidate_name: stringField(usage.candidate_name, ''),
+        subject_type: stringField(usage.subject_type, ''),
+        subject_id: stringField(usage.subject_id, ''),
+        subject_label: stringField(usage.subject_label, ''),
+      })),
+    })),
+    source_lifecycle_summary: {
+      total_count: numberField(dossier.source_lifecycle_summary?.total_count, 0),
+      by_state: recordNumberField(dossier.source_lifecycle_summary?.by_state),
+      by_reason: recordNumberField(dossier.source_lifecycle_summary?.by_reason),
+    },
     validation: dossier.validation,
     timeline: dossier.timeline.map((event) => ({
       event_id: event.event_id,
@@ -305,6 +327,15 @@ function sourcePolicyDecision(value: Record<string, unknown>) {
     reason: stringField(value.reason, ''),
     rule_ids: stringArray(value.rule_ids),
   };
+}
+
+function recordNumberField(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, numberField(entry, 0)]),
+  );
 }
 
 function signalResult(

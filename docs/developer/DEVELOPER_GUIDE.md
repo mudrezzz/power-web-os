@@ -635,6 +635,36 @@ finish quickly while the pipeline is still being tuned. The code fallback is
 dossier/journal warnings instead of allowing a manual run to expand without
 bounds.
 
+Planned source hardening variables for the next slices:
+
+```text
+POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE=soft
+POWER_WEB_OS_RADAR_MIN_USEFUL_SOURCES_PER_DISCOVERY_TASK=3
+POWER_WEB_OS_RADAR_MIN_CANDIDATES_PER_DISCOVERY_TASK=5
+POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK=2
+POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER=openrouter
+```
+
+The planned source verification mode controls how provider-returned URLs affect
+candidate evidence:
+
+- `strict`: currently reachable URLs are required before a source can support a
+  product finding.
+- `soft`: failed reachability keeps source-linked findings as risk-bearing,
+  review-needed evidence instead of deleting the candidate.
+- `off`: skip HTTP reachability checks for diagnostic runs.
+
+Useful-result budgets are separate from the hard task limit. If a discovery
+task returns too few useful sources/candidates, or only unverified material, the
+backend can retry or reformulate the bounded task until
+`POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK` is reached. This prevents a
+single empty or broken retrieval response from freezing the candidate universe.
+
+`POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER` is the planned provider selector
+for the retrieval boundary. `openrouter` remains the first adapter; a
+Perplexity-shaped adapter is planned so retrieval output can be compared before
+candidate extraction/scoring.
+
 Supported web modes are `auto`, `server_tools`, `plugin_web`, and `model_native`. `auto` tries OpenRouter server-side web search first and falls back to the OpenRouter web plugin if server tools are unsupported.
 
 Commands:
@@ -657,19 +687,34 @@ uses the same OpenRouter-backed workflow path, creates a `radar_runs` record,
 stores the `icp_radar_live_run` snapshot in `radar_run_outputs`, and exports the
 same JSON artifact paths for the current frontend fallback.
 
-Live artifacts must never contain API keys, authorization headers, bearer tokens, or raw provider dumps. Model-supplied URLs are filtered by HTTP reachability before they can support candidates. If OpenRouter rejects the credentials or no usable sources are returned, the frontend should show the live radar empty state rather than fabricated candidates.
+Live artifacts must never contain API keys, authorization headers, bearer
+tokens, or raw provider dumps. Current live runs still apply URL reachability
+filtering before a source can support a product candidate. The next hardening
+slice changes that from a binary drop into explicit verification state, so
+unreachable but source-linked findings can remain reviewable instead of
+vanishing. If OpenRouter rejects the credentials or no usable sources are
+returned, the frontend should show the live radar empty state rather than
+fabricated candidates.
 
-Source and score debugging has three planned hardening steps before broad
-quality benchmarking:
+Source, retrieval, and score debugging now has five hardening steps before
+broad quality benchmarking:
 
-1. Source lifecycle visibility: dossier should explain how many sources were
-   collected, parsed, verified, linked to candidate evidence, used in product,
-   or discarded.
-2. Evidence linking and verification hardening: verification should preserve
-   evidence-bearing sources with explicit risk state instead of silently losing
-   useful sources because a site blocks `HEAD`/`GET`; confirmed/observed
-   findings must still require valid evidence refs.
-3. Score contract and quality smoke: recorded fixtures should prove that
+1. Source lifecycle visibility: dossier exposes `source_lifecycle` and
+   `source_lifecycle_summary`, explaining how many sources were collected,
+   parsed, verified, linked to candidate evidence, used in product, or
+   discarded. Product `sources` still contains only evidence-bearing used
+   sources.
+2. Soft source verification and useful-result budgets: verification should
+   preserve evidence-bearing sources with explicit risk state instead of
+   silently losing useful sources because a site blocks `HEAD`/`GET`; discovery
+   tasks that return no useful material should retry within bounded limits.
+3. Web retrieval provider abstraction and Perplexity adapter: retrieval records,
+   provider citations, snippets, verification state, extraction output, and
+   source usage should be visible separately so provider quality can be
+   compared before scoring.
+4. Run-level logs and empty-result UX: dossier, journal, and technical trace
+   should be reachable from the run itself even when there are no candidates.
+5. Score contract and quality smoke: recorded fixtures should prove that
    source-backed confirmed qualification and observed signals survive
    persistence/API/frontend mapping and produce nonzero scores before live
    multi-radar benchmarks are treated as meaningful.

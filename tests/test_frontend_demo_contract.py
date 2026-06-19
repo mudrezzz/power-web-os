@@ -690,7 +690,10 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert "artifact.run_metadata.model" in live_detail_segment
     assert "artifact.run_metadata.query_count" in live_detail_segment
     assert "icpRadar.live.dossier.plan" in live_detail_segment
+    assert "icpRadar.live.dossier.sourceLifecycle" in live_detail_segment
     assert "icpRadar.live.dossier.sourcesTitle" in live_detail_segment
+    assert "source_lifecycle_summary" in live_detail_segment
+    assert "source_lifecycle.map" in live_detail_segment
 
     for ru_label in [
         "Соответствие",
@@ -706,6 +709,15 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert "shortlistTab: 'Найденные аккаунты'" in i18n
     assert "backToTable: 'Back to found accounts'" in i18n
     assert "backToTable: 'К найденным аккаунтам'" in i18n
+    for lifecycle_label in [
+        "sourceLifecycle: 'Source lifecycle'",
+        "sourceLifecycle: 'Жизненный цикл источников'",
+        "used_in_product: 'Used in product'",
+        "used_in_product: 'В зачете'",
+        "not_used_by_candidate: 'Analyzed but not linked to candidate evidence.'",
+        "not_used_by_candidate: 'Проанализирован, но не связан с evidence кандидата.'",
+    ]:
+        assert lifecycle_label in i18n
 
 
 def test_frontend_public_artifact_is_available_for_vite() -> None:

@@ -90,9 +90,12 @@ sanitized admin technical trace for developer inspection, and a
 qualification-first live Radar execution plan.
 Backend slices should continue in this order:
 
-1. Multi-radar discovery benchmark over the qualification-first, coverage-enforced workflow pipeline;
-2. normalized candidate/evidence query tables when API usage needs them;
-3. production schedule/cadence controls.
+1. soft source verification and useful-result budgets for live Radar retrieval;
+2. provider-neutral web retrieval abstraction with OpenRouter/Perplexity-style adapters;
+3. run-level empty-result diagnostics in the UI;
+4. multi-radar discovery benchmark over the qualification-first, coverage-enforced workflow pipeline;
+5. normalized candidate/evidence query tables when API usage needs them;
+6. production schedule/cadence controls.
 
 JSON artifacts remain useful as demo exports and offline fallback, but they are
 not the long-term source of truth. The frontend now prefers the Radar API for
@@ -225,14 +228,29 @@ qualification evidence, signal evidence, validation warnings, or score
 rationale. Sources analyzed but not used stay in execution metadata and the
 sanitized technical trace with reasons such as duplicate, irrelevant,
 policy-skipped, insufficient evidence, unreachable, or not used by a candidate.
-Before broad quality benchmarking, the backend must make this lifecycle explicit
-in the dossier: collected, parsed, reachable, linked to candidate evidence,
-used in product, or discarded with a reason. Source verification should evolve
-from a binary drop into a verification-state/risk signal, because many useful
-business sites block `HEAD` requests, time out, or return inconsistent HTTP
-behavior. Scores should only become nonzero when qualification or signal
-findings are connected to evidence refs that resolve to product-used or
-explicitly risk-marked sources.
+The dossier exposes this as `source_lifecycle` and
+`source_lifecycle_summary`: collected/parsed/reachable/linked/used/discarded
+states with reason counts, so a `0` product-source run is explainable without
+raw trace inspection.
+
+The next live Radar hardening step changes source verification from a binary
+drop into a verification-state/risk signal. Many useful business sites block
+`HEAD` requests, time out, redirect inconsistently, or return transient 404s.
+Under planned `soft` verification, source-linked candidates should remain
+reviewable with `unverified_url` or similar risk state instead of being deleted.
+Under `strict` verification, currently reachable URLs remain required. Under
+`off`, HTTP reachability checks are skipped for diagnostic runs. Scores should
+only become confident and nonzero when qualification or signal findings are
+connected to evidence refs that resolve to product-used or explicitly
+risk-marked sources.
+
+Web search is being separated into a managed retrieval pipeline. The application
+layer should own task planning, source policy, useful-result budgets, retry
+decisions, verification semantics, evidence linking, candidate status, and
+scoring. Provider adapters in `integrations` execute bounded retrieval or
+extraction tasks and return structured retrieval/source/citation material. This
+keeps OpenRouter, Perplexity, or later search providers interchangeable without
+letting provider-specific behavior become domain policy.
 
 `GET /api/radar-runs/{run_id}/journal` returns ordered structured audit events.
 The journal is not raw hidden chain-of-thought. Application services reject

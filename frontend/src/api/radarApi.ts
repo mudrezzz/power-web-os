@@ -248,6 +248,24 @@ export type RadarRunDossierSourceDto = {
   usages: RadarRunDossierSourceUsageDto[];
 };
 
+export type RadarRunDossierSourceLifecycleItemDto = {
+  evidence_ref: string;
+  title: string;
+  url: string;
+  query_id: string | null;
+  source_type: string;
+  state: string;
+  reason: string;
+  origin: string;
+  usages: RadarRunDossierSourceUsageDto[];
+};
+
+export type RadarRunDossierSourceLifecycleSummaryDto = {
+  total_count: number;
+  by_state: Record<string, number>;
+  by_reason: Record<string, number>;
+};
+
 export type RadarRunDossierSummaryDto = {
   output_state: 'pending' | 'available' | 'failed' | string;
   query_count: number;
@@ -275,6 +293,8 @@ export type RadarRunDossierDto = {
   discovery_iteration_count: number;
   search_plan: RadarRunDossierQueryDto[];
   sources: RadarRunDossierSourceDto[];
+  source_lifecycle: RadarRunDossierSourceLifecycleItemDto[];
+  source_lifecycle_summary: RadarRunDossierSourceLifecycleSummaryDto;
   validation: Array<Record<string, unknown>>;
   timeline: RadarRunJournalEventDto[];
   summary: RadarRunDossierSummaryDto;

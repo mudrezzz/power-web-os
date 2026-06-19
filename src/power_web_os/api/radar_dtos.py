@@ -295,6 +295,24 @@ class RadarRunDossierSourceResponse(BaseModel):
     usages: list[RadarRunDossierSourceUsageResponse] = Field(default_factory=list)
 
 
+class RadarRunDossierSourceLifecycleItemResponse(BaseModel):
+    evidence_ref: str
+    title: str = ""
+    url: str = ""
+    query_id: str | None = None
+    source_type: str = "web"
+    state: str
+    reason: str = "unknown"
+    origin: str = "unknown"
+    usages: list[RadarRunDossierSourceUsageResponse] = Field(default_factory=list)
+
+
+class RadarRunDossierSourceLifecycleSummaryResponse(BaseModel):
+    total_count: int = 0
+    by_state: dict[str, int] = Field(default_factory=dict)
+    by_reason: dict[str, int] = Field(default_factory=dict)
+
+
 class RadarRunDossierSummaryResponse(BaseModel):
     output_state: str
     query_count: int = 0
@@ -322,6 +340,8 @@ class RadarRunDossierResponse(BaseModel):
     discovery_iteration_count: int = 0
     search_plan: list[RadarRunDossierQueryResponse] = Field(default_factory=list)
     sources: list[RadarRunDossierSourceResponse] = Field(default_factory=list)
+    source_lifecycle: list[RadarRunDossierSourceLifecycleItemResponse] = Field(default_factory=list)
+    source_lifecycle_summary: RadarRunDossierSourceLifecycleSummaryResponse = Field(default_factory=RadarRunDossierSourceLifecycleSummaryResponse)
     validation: list[dict[str, Any]] = Field(default_factory=list)
     timeline: list[RadarRunJournalEventResponse] = Field(default_factory=list)
     summary: RadarRunDossierSummaryResponse

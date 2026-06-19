@@ -286,6 +286,52 @@ export function LiveRunDossierPanel({
       </section>
 
       <section className="run-dossier-section">
+        <h3>{t('icpRadar.live.dossier.sourceLifecycle')}</h3>
+        <div className="run-dossier-grid">
+          <DossierMetric label={t('icpRadar.live.dossier.lifecycleTotal')} value={dossier.source_lifecycle_summary.total_count} />
+          <DossierMetric label={t('icpRadar.live.dossier.lifecycleUsed')} value={dossier.source_lifecycle_summary.by_state.used_in_product ?? 0} />
+          <DossierMetric label={t('icpRadar.live.dossier.lifecycleDiscarded')} value={dossier.source_lifecycle_summary.by_state.discarded ?? 0} />
+          <DossierMetric label={t('icpRadar.live.dossier.lifecycleUnlinked')} value={dossier.source_lifecycle_summary.by_reason.not_used_by_candidate ?? 0} />
+        </div>
+        {dossier.source_lifecycle.length > 0 ? (
+          <div className="run-dossier-source-list">
+            {dossier.source_lifecycle.map((source) => (
+              <article className="run-dossier-source" key={`${source.evidence_ref}-${source.state}-${source.reason}`}>
+                <header className="run-dossier-card-head">
+                  <Mono>{source.evidence_ref}</Mono>
+                  <Badge tone={sourceLifecycleTone(source.state)}>
+                    {t(`icpRadar.live.dossier.sourceLifecycleState.${source.state}`, { defaultValue: source.state })}
+                  </Badge>
+                </header>
+                <strong>{source.title || source.url || source.evidence_ref}</strong>
+                <p>{t(`icpRadar.live.dossier.sourceLifecycleReason.${source.reason}`, { defaultValue: source.reason })}</p>
+                {source.url && (
+                  <a href={source.url} rel="noreferrer" target="_blank">
+                    {source.url}<ExternalLink aria-hidden="true" />
+                  </a>
+                )}
+                <span className="run-dossier-source-meta">
+                  <Mono>{source.query_id ?? t('icpRadar.unknown')}</Mono>
+                  <Mono>{source.origin}</Mono>
+                </span>
+                {source.usages.length > 0 && (
+                  <div className="run-dossier-usages">
+                    {source.usages.map((usage) => (
+                      <span key={`${source.evidence_ref}-${usage.subject_type}-${usage.subject_id}`}>
+                        <Mono>{usage.subject_type}</Mono>
+                        {usage.candidate_name || usage.candidate_id}
+                        {usage.subject_label && <small>{usage.subject_label}</small>}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        ) : <p>{t('icpRadar.live.dossier.noSourceLifecycle')}</p>}
+      </section>
+
+      <section className="run-dossier-section">
         <h3>{t('icpRadar.live.dossier.sourcesTitle')}</h3>
         <div className="run-dossier-source-list">
           {dossier.sources.length > 0 ? dossier.sources.map((source) => (
@@ -453,6 +499,16 @@ function candidateUniverseTone(status: string): 'ally' | 'blocker' | 'unsurfaced
     return 'blocker';
   }
   if (status === 'gap' || status === 'unknown_review_needed') {
+    return 'unsurfaced';
+  }
+  return 'neutral';
+}
+
+function sourceLifecycleTone(state: string): 'ally' | 'blocker' | 'unsurfaced' | 'neutral' {
+  if (state === 'used_in_product') {
+    return 'ally';
+  }
+  if (state === 'discarded') {
     return 'unsurfaced';
   }
   return 'neutral';

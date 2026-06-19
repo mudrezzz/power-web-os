@@ -1046,7 +1046,7 @@ Status:
   - Take-into-work handoff.
   - Mixing live mini radar findings into the accepted `Accounts` portfolio.
   - Synthetic fallback candidates for live runs.
-- Implementation notes:
+- Implementation result:
   - OpenRouter is the first provider, not an architectural dependency.
   - Server-side OpenRouter web search is attempted first; plugin web mode is isolated behind the same provider boundary.
   - Live artifacts must not contain API keys, authorization headers, bearer tokens, or raw provider dumps.
@@ -2511,7 +2511,7 @@ Principles:
 
 ### Slice 0.7.6.1.6: Source lifecycle visibility
 
-- Status: `Ready`
+- Status: `Done`
 - Goal: Make it clear why a live Radar run can show provider calls and search
   activity while product `sources` remains empty.
 - User value: A user or developer can inspect a run and understand how many
@@ -2554,107 +2554,203 @@ Principles:
   - Product candidate/source DTOs remain backward compatible.
   - No raw secrets, raw hidden CoT, or unredacted provider payloads appear in
     product API responses.
+- Implementation result:
+  - Added `source_lifecycle` and `source_lifecycle_summary` to the run dossier
+    API without a DB migration.
+  - Bumped API version to `0.7.6.1.6`.
+  - Product `sources` remains evidence-bearing only; analyzed-only records are
+    exposed through lifecycle diagnostics, not mixed into product sources.
+  - Frontend Journal/Dossier now renders source lifecycle metrics and reason
+    cards before the product Sources section.
+- Validation:
+  - `python -m pytest tests/test_backend_api.py`
+  - `python -m pytest tests/test_frontend_architecture_contract.py tests/test_frontend_demo_contract.py`
+  - `npm --prefix ./frontend run build`
+  - `python -m pytest tests/test_backend_architecture_contract.py`
+  - `python -m pytest`
 - Risks:
   - Lifecycle counts may initially be approximate because normalized source
     tables do not exist yet; record this in dossier copy and technical docs.
 
-### Slice 0.7.6.1.7: Evidence linking and source verification hardening
+### Slice 0.7.6.1.7: Soft source verification and useful-result budgets
 
-- Status: `Backlog`
-- Goal: Stop losing usable sources because source verification and evidence
-  linking are too brittle.
-- User value: A live Radar can keep source-backed evidence in the product
-  artifact when the source is structurally usable, even if the target website
-  blocks `HEAD` requests or behaves inconsistently.
+- Status: `Ready`
+- Goal: Stop losing candidate evidence when provider-returned URLs fail a
+  binary HTTP reachability check, and make discovery retry when it produces no
+  useful sources or candidates.
+- User value: A live Radar can keep potentially useful source-backed findings
+  as reviewable evidence instead of returning an empty result just because a
+  site returned `404`, blocked `HEAD`, timed out, or redirected unexpectedly.
 - Scope:
-  - Replace binary source verification with explicit verification states such
-    as `reachable`, `blocked`, `timeout`, `unverified`, and `invalid_url`.
-  - Allow product-used sources when they are linked to candidate evidence and
-    come from structured provider citations/sources, even if reachability is
-    degraded but not invalid.
+  - Add `POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE` with modes:
+    `strict`, `soft`, and `off`.
+  - Default planned local tuning mode is `soft`: failed URL reachability marks
+    sources as `unverified_url`/risk-bearing instead of deleting the source and
+    all candidates linked to it.
+  - Keep `strict` available for conservative runs and tests that must require
+    currently reachable URLs.
+  - Add useful-result budget settings:
+    `POWER_WEB_OS_RADAR_MIN_USEFUL_SOURCES_PER_DISCOVERY_TASK`,
+    `POWER_WEB_OS_RADAR_MIN_CANDIDATES_PER_DISCOVERY_TASK`, and
+    `POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK`.
+  - Retry or reformulate bounded discovery tasks when a task returns no useful
+    sources/candidates or only unverified sources, until the retry limit is
+    reached.
   - Require extractor output to link qualification and signal findings to
     `evidence_refs`; confirmed/observed findings without valid evidence refs
     must be downgraded to `unknown` / `not_observed` with review warnings.
-  - Keep candidates without source-backed qualification as
-    `unknown_review_needed` or universe gaps, not as confident matches.
-  - Add tests proving `source -> evidence_ref -> qualification/signal -> product
-    source` survives normalization.
+  - Keep candidates linked only to unverified sources as
+    `unknown_review_needed` with verification warnings, not as confident
+    matches and not as silently deleted candidates.
+  - Make empty candidate universe with discovery-oriented qualification rules a
+    coverage warning/high-risk state, not a successful low-risk result.
 - Out of scope:
   - Normalized source/evidence database tables.
-  - Full crawler/browser verification.
-  - Raising search budget for quality runs.
+  - Full crawler/browser rendering verification.
+  - Adding a new web retrieval provider.
+  - Full SIBUR or multi-radar benchmark.
 - Implementation notes:
-  - Verification should preserve evidence-bearing sources with explicit risk
-    metadata instead of silently discarding them.
-  - Product DTOs should show verification state/risk where useful, while Trace
-    keeps the detailed provider/source outcome.
+  - `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` still limits provider task
+    calls. URL failures happen after a task response and should not be treated
+    as useful evidence, but they also should not erase the run's diagnostic
+    state.
+  - Verification should preserve evidence-bearing sources with explicit
+    verification state/risk metadata instead of silently discarding them.
+  - Product DTOs and dossier should expose verification state where useful,
+    while Trace keeps detailed provider/source outcomes and retry attempts.
   - The source verifier remains infrastructure; scoring rules stay in
     application/domain normalization.
 - Tests:
-  - Unit tests for verifier state transitions.
+  - Unit tests for verifier state transitions and `strict` / `soft` / `off`
+    modes.
   - Recorded-provider tests for evidence-linked sources surviving to product
-    sources.
+    dossier as risk-bearing sources under `soft`.
+  - Tests that unverified-only candidates are retained as
+    `unknown_review_needed`, not scored as confident matches.
+  - Tests that discovery retries are attempted when useful-result thresholds
+    are not met and stop at the configured retry limit.
   - Negative tests where unlinked sources remain analyzed-only.
 - Docs:
-  - Update SAO and Developer Guide with verification states and evidence-linking
-    rules.
+  - Update SAO, Developer Guide, demo docs, and ADR notes with soft
+    verification, useful-result budgets, and retry semantics.
 - Demo impact:
-  - Manual runs should start showing nonzero product sources when the provider
-    returns valid evidence references.
+  - Manual runs should explain URL failures without collapsing into an
+    unexplained empty candidate list.
 - Acceptance criteria:
-  - A source-backed confirmed qualification produces a visible product source.
-  - A source-backed observed signal can produce a nonzero signal score.
+  - A source-backed qualification linked to an unreachable-but-structured
+    provider source produces a reviewable candidate with verification warning.
+  - Empty candidate universe after discovery produces high/medium coverage
+    warning unless the run has a validated low-risk rationale.
+  - Discovery retries are visible in dossier/journal/trace.
   - Sources without evidence usage do not pollute the product source list.
 - Risks:
   - Over-relaxing verification could admit weak sources; mitigate by exposing
     verification state and keeping review warnings.
 
-### Slice 0.7.6.1.8: Score contract and minimal quality-mode smoke
+### Slice 0.7.6.1.8: Web retrieval provider abstraction and Perplexity adapter
 
 - Status: `Backlog`
-- Goal: Prove that evidence-backed live findings produce nonzero scores before
-  running broad multi-radar benchmarks.
-- User value: A user can run one small live Radar and see a minimal meaningful
-  result: product sources, evidence refs, qualification/signal findings, and
-  score changes that match the scoring contract.
+- Goal: Make web search a first-class retrieval boundary instead of treating a
+  chat-completion answer as the only source collection artifact.
+- User value: A user/developer can see which provider retrieved which URLs,
+  snippets, citations, and source outcomes before extraction and scoring, and
+  can compare OpenRouter/Perplexity behavior on the same bounded task.
 - Scope:
-  - Make the score contract explicit in tests:
-    `confirmed` qualification contributes to `fit_score`; `observed` signal
-    with score contributes to `intent_score`.
-  - Add recorded fixtures for source-backed qualification and signal findings.
-  - Add a small quality-mode smoke configuration that raises
-    `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` above the terminal-only
-    smoke value, for example `3`, without making it the default Docker setting.
-  - Run one manual/API-backed live smoke and inspect:
-    `sources > 0`, `evidence_refs > 0`, and at least one nonzero score when
-    evidence supports it.
+  - Split provider interaction into explicit retrieval and extraction concepts:
+    `retrieved_sources`, `retrieval_query`, `provider_citations`, snippets,
+    retrieval status, and extraction observations.
+  - Add a provider-neutral web retrieval port under application contracts and
+    keep provider implementations in `integrations`.
+  - Add a Perplexity-backed adapter through OpenRouter or direct provider
+    configuration, depending on available API shape, without leaking provider
+    SDK/HTTP code into application services.
+  - Add environment configuration for provider selection, for example
+    `POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER=openrouter|perplexity`.
+  - Persist retrieval summaries in output metadata/technical trace without a DB
+    migration.
+  - Keep extraction/scoring bounded: retrieval returns candidate/source
+    material; extractor still produces structured observations; backend still
+    owns qualification gates, source policy, verification, and scoring.
 - Out of scope:
-  - Full SIBUR contour completeness.
-  - Multi-radar benchmark.
-  - Changing scoring weights or tier formulas.
+  - Production crawler/browser rendering.
+  - Paid provider account management UI.
+  - Normalized source/evidence tables.
+  - Full benchmark quality claims.
 - Implementation notes:
-  - Keep `.env.example` conservative for terminal smoke; document quality-mode
-    overrides separately.
-  - Do not use quality smoke as product truth. It validates wiring, not market
-    coverage.
+  - Web search is a key product capability and must be observable: task input,
+    retrieval query, retrieved URLs, snippets, provider metadata, verification
+    state, extraction result, and final usage must be traceable separately.
+  - Perplexity should be evaluated as a retrieval provider, not as a replacement
+    for backend-owned execution strategy.
+  - Trace can store sanitized provider payload summaries; product dossier should
+    show compact retrieval/source lifecycle, not raw provider dumps.
 - Tests:
-  - Unit tests for score contract from normalized candidates.
-  - API/persistence regression for evidence-backed candidate DTOs.
-  - Manual smoke checklist for quality-mode run.
+  - Contract tests for retrieval port and provider selection.
+  - Recorded-provider tests showing the same task can be executed through
+    OpenRouter and Perplexity-shaped retrieval fixtures.
+  - Trace/dossier tests that retrieved-but-unused, extracted, verified, and
+    used sources are distinguishable.
+  - Architecture tests that provider adapters do not leak into application
+    services.
 - Docs:
-  - Update Developer Guide and demo docs with terminal-smoke vs quality-smoke
-    profiles.
+  - Update SAO, Developer Guide, demo docs, and ADR notes with retrieval vs
+    extraction ownership and Perplexity configuration.
 - Demo impact:
-  - The UI should be able to show at least one source-backed nonzero score in a
-    controlled live/manual verification path.
+  - Manual runs can be inspected by provider/retrieval behavior before
+    candidate scoring is judged.
 - Acceptance criteria:
-  - Recorded tests prove nonzero scores survive persistence/API/frontend mapping.
-  - Manual quality smoke reaches terminal state and produces product sources and
-    nonzero score when provider output supports it.
-  - The next benchmark slice has a stable quality baseline to compare against.
+  - Retrieval provider can be selected by config.
+  - A run trace shows retrieval records separately from extraction records.
+  - Product candidate/source DTOs remain backward compatible.
+  - Perplexity-backed retrieval can be exercised through recorded tests and a
+    documented manual configuration.
 - Risks:
-  - Live provider variability may still make manual quality smoke flaky; keep
-    recorded tests as the primary gate and treat live smoke as diagnostic.
+  - Provider APIs and OpenRouter routing behavior may differ; keep the adapter
+    isolated and recorded fixtures provider-specific.
+
+### Slice 0.7.6.1.9: Run-level logs and empty-result UX
+
+- Status: `Backlog`
+- Goal: Make dossier, journal, and technical trace accessible from the run
+  itself, even when the run produced zero candidates.
+- User value: A user/developer can diagnose empty live Radar results from the
+  UI without needing a candidate detail page or database inspection.
+- Scope:
+  - Add run-level UI entry points for `Dossier`, `Journal`, and `Trace` from
+    the Radar run state/empty-result surface.
+  - Show run-level empty-result explanation:
+    task count, model/provider, budget, retrieval/source lifecycle counts,
+    verification failures, coverage warnings, and next recommended diagnostic
+    action.
+  - Keep candidate detail tabs for candidate-specific inspection, but stop
+    making them the only way to inspect run logs.
+  - Ensure API-backed and offline/demo fallback modes have clear behavior.
+  - Add EN/RU i18n strings and responsive layout checks.
+- Out of scope:
+  - Production auth/admin gating for Trace.
+  - New backend persistence schema.
+  - Changing provider execution behavior.
+- Implementation notes:
+  - Use existing dossier/journal/technical-trace endpoints; this is primarily a
+    frontend state/navigation slice plus small API-client wiring if needed.
+  - Trace remains dev/admin-intended and will be gated after auth exists.
+- Tests:
+  - Frontend tests that empty live runs render run-level dossier/trace actions.
+  - API adapter tests for loading run-level dossier/journal/trace without
+    candidates.
+  - Visual smoke for empty-result run view without horizontal scroll.
+- Docs:
+  - Update User Guide/demo docs with run-level diagnostics.
+- Demo impact:
+  - A `0 candidates` manual run becomes inspectable from the main Radar UI.
+- Acceptance criteria:
+  - A completed run with zero candidates exposes dossier/journal/trace from UI.
+  - Empty-result UI explains whether the run was budget-limited, source-limited,
+    verification-limited, or provider-empty.
+  - Candidate detail remains unchanged for runs with candidates.
+- Risks:
+  - Trace visibility is still not role-gated; label it as developer/admin
+    diagnostic until auth is implemented.
 
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 
@@ -2686,9 +2782,10 @@ Principles:
   - Normalized candidate/evidence tables beyond the existing output snapshot.
   - Automated scheduled benchmark runs.
 - Implementation notes:
-  - Run this only after `Slice 0.7.6.1.5`, so the benchmark tests the
-    LLM-planned, coverage-enforced iterative discovery strategy rather than the
-    older one-query discovery fallback.
+  - Run this only after `Slice 0.7.6.1.7`, `Slice 0.7.6.1.8`, and
+    `Slice 0.7.6.1.9`, so the benchmark tests a source-verification-aware,
+    observable retrieval/extraction pipeline rather than an opaque web-search
+    prompt path.
   - The benchmark should use the qualification-first execution plan from
     `Slice 0.7.6.1.3`, LLM-planned discovery from `Slice 0.7.6.1.4`, and
     coverage-enforced candidate universe expansion from `Slice 0.7.6.1.5`;
@@ -3320,4 +3417,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.6: Source lifecycle visibility`.
+Implement `Slice 0.7.6.1.7: Soft source verification and useful-result budgets`.

@@ -21,6 +21,7 @@ ADRs capture decisions that shape product architecture.
 - `2026-06-18-llm-planned-radar-discovery.md` - Let LLMs propose Radar discovery plans while backend validators enforce source policy and accepted execution.
 - `2026-06-18-candidate-universe-expansion-before-signals.md` - Expand and freeze candidate universe before signal search.
 - `2026-06-19-source-lifecycle-before-quality-benchmark.md` - Make source lifecycle, evidence linking, and score-contract hardening visible before multi-radar quality benchmarking.
+- `2026-06-19-managed-web-retrieval-and-soft-verification.md` - Treat web search as managed retrieval with soft verification, useful-result budgets, and provider-isolated adapters.
 
 ## Template
 

@@ -699,6 +699,28 @@ export type LiveRadarRunDossier = {
       subject_label: string;
     }>;
   }>;
+  source_lifecycle: Array<{
+    evidence_ref: string;
+    title: string;
+    url: string;
+    query_id: string | null;
+    source_type: string;
+    state: string;
+    reason: string;
+    origin: string;
+    usages: Array<{
+      candidate_id: string;
+      candidate_name: string;
+      subject_type: string;
+      subject_id: string;
+      subject_label: string;
+    }>;
+  }>;
+  source_lifecycle_summary: {
+    total_count: number;
+    by_state: Record<string, number>;
+    by_reason: Record<string, number>;
+  };
   validation: Array<Record<string, unknown>>;
   timeline: LiveRadarJournalEvent[];
   summary: {

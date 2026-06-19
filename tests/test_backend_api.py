@@ -41,7 +41,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-        "version": "0.7.6.1.5",
+        "version": "0.7.6.1.6",
         "environment": "test",
     }
 
@@ -58,7 +58,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.6.1.5"
+    assert schema["info"]["version"] == "0.7.6.1.6"
     for path in [
         "/health",
         "/api/health",
@@ -176,6 +176,14 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["summary"]["used_source_count"] == 1
     assert dossier["summary"]["analyzed_source_count"] == 1
     assert dossier["summary"]["skipped_source_count"] == 1
+    assert dossier["source_lifecycle_summary"]["total_count"] == 2
+    assert dossier["source_lifecycle_summary"]["by_state"] == {"discarded": 1, "used_in_product": 1}
+    assert dossier["source_lifecycle_summary"]["by_reason"]["used_by_candidate"] == 1
+    assert dossier["source_lifecycle_summary"]["by_reason"]["not_used_by_candidate"] == 1
+    assert dossier["source_lifecycle"][0]["evidence_ref"] == "src_1"
+    assert dossier["source_lifecycle"][0]["state"] == "used_in_product"
+    assert dossier["source_lifecycle"][1]["evidence_ref"] == "unused_src"
+    assert dossier["source_lifecycle"][1]["reason"] == "not_used_by_candidate"
     assert dossier["discovery_plan"]["plan_summary"] == "Test discovery plan."
     assert dossier["discovery_plan"]["steps"][0]["stage"] == "candidate_universe_discovery"
     assert dossier["source_policy_decisions"][0]["decision"] == "selected"
@@ -262,6 +270,46 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert reset.status_code == 204
     after_reset = client.get(f"/api/radar-runs/{run['run_id']}/candidates").json()
     assert after_reset["candidates"][0]["signals"][0]["review_decision"] is None
+
+
+def test_radar_run_dossier_explains_zero_product_sources(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    app = _app(tmp_path, database_url=database_url)
+    client = TestClient(app)
+
+    run = client.post(
+        "/api/radars/toir-quick-live/runs",
+        json={"live": True, "requester": "test", "task_context": {"source": "zero-source-test"}},
+    ).json()
+    artifact = _artifact()
+    artifact["sources"] = []
+    artifact["candidates"][0]["evidence_refs"] = []
+    artifact["candidates"][0]["qualification"][0]["evidence_refs"] = []
+    artifact["candidates"][0]["signals"][0]["evidence_refs"] = []
+    artifact["run_metadata"]["execution_results"]["used_source_count"] = 0
+    artifact["run_metadata"]["execution_results"]["analyzed_source_count"] = 2
+    artifact["run_metadata"]["execution_results"]["analyzed_sources"] = [
+        {"evidence_ref": "blocked_src", "title": "Blocked source", "url": "https://example.test/blocked", "reason": "unreachable"},
+        {"evidence_ref": "unlinked_src", "title": "Unlinked source", "url": "https://example.test/unlinked", "reason": "not_used_by_candidate"},
+    ]
+
+    execute_radar_run_once(
+        run_id=run["run_id"],
+        live_executor=_FakeExecutor(artifact),
+        session_factory=app.state.session_factory,
+    )
+
+    dossier = client.get(f"/api/radar-runs/{run['run_id']}/dossier").json()
+    assert dossier["summary"]["source_count"] == 0
+    assert dossier["summary"]["used_source_count"] == 0
+    assert dossier["summary"]["analyzed_source_count"] == 2
+    assert dossier["sources"] == []
+    assert dossier["source_lifecycle_summary"]["total_count"] == 2
+    assert dossier["source_lifecycle_summary"]["by_state"] == {"discarded": 2}
+    assert dossier["source_lifecycle_summary"]["by_reason"] == {"not_used_by_candidate": 1, "unreachable": 1}
+    assert {item["evidence_ref"] for item in dossier["source_lifecycle"]} == {"blocked_src", "unlinked_src"}
+    serialized = json.dumps(dossier)
+    assert not any(marker in serialized for marker in ["chain_of_thought", "hidden_reasoning", "internal_thoughts"])
 
 
 def test_post_radar_run_idempotency_does_not_enqueue_duplicate(tmp_path: Path) -> None:

@@ -89,9 +89,18 @@ bounds.
 
 With the smoke budget, a completed run may still show `0` product sources and
 zero scores. That means the runner reached a terminal state, not that discovery
-quality is acceptable. The next backend slices make the source lifecycle visible
-in the dossier, harden evidence linking/source verification, and then add a
-small quality-mode smoke profile before multi-radar benchmarking.
+quality is acceptable. The run dossier now includes source lifecycle diagnostics
+showing used and discarded/analyzed source counts and reasons.
+
+The next live Radar hardening slices focus on the web retrieval boundary before
+quality benchmarking:
+
+1. soft source verification and useful-result budgets, so unreachable or
+   blocked URLs do not silently delete source-linked candidates;
+2. provider-neutral retrieval with a Perplexity-shaped adapter, so retrieved
+   URLs/snippets/citations can be inspected separately from extraction;
+3. run-level dossier/journal/trace actions for empty-result runs, so logs are
+   not reachable only through candidate detail.
 
 To refresh documentation screenshots:
 
@@ -186,9 +195,9 @@ uses it in the live Radar detail `Journal` tab as the product run dossier:
 run context, definition version, task context, discovery strategy, selected or
 skipped source bases, coverage summary, staged qualification-first search plan,
 candidate universe lifecycle, executed coverage checks, unresolved gaps, source
-usage, validation warnings, and non-debug timeline events. This is not the admin
-technical trace; provider prompts, raw requests/responses, analyzed unused
-sources, and debug payloads remain out of this product view.
+usage, source lifecycle diagnostics, validation warnings, and non-debug
+timeline events. This is not the admin technical trace; provider prompts, raw
+requests/responses, and debug payloads remain out of this product view.
 
 For local developer inspection, the backend exposes
 `GET /api/radar-runs/{run_id}/technical-trace`. API-backed live runs show it in a
