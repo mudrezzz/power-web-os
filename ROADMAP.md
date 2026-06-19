@@ -2574,7 +2574,7 @@ Principles:
 
 ### Slice 0.7.6.1.7: Soft source verification and useful-result budgets
 
-- Status: `Ready`
+- Status: `Done`
 - Goal: Stop losing candidate evidence when provider-returned URLs fail a
   binary HTTP reachability check, and make discovery retry when it produces no
   useful sources or candidates.
@@ -2610,6 +2610,7 @@ Principles:
   - Adding a new web retrieval provider.
   - Full SIBUR or multi-radar benchmark.
 - Implementation notes:
+  - Implemented in API version `0.7.6.1.7`.
   - `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` still limits provider task
     calls. URL failures happen after a task response and should not be treated
     as useful evidence, but they also should not erase the run's diagnostic
@@ -2630,6 +2631,18 @@ Principles:
   - Tests that discovery retries are attempted when useful-result thresholds
     are not met and stop at the configured retry limit.
   - Negative tests where unlinked sources remain analyzed-only.
+- Implementation result:
+  - Added source verification metadata to `RadarSourceEvidence` and OpenRouter
+    provider normalization.
+  - Added `strict`, `soft`, and `off` verification modes with `soft` as the
+    local/dev default.
+  - Added useful-result retry budgets for discovery and coverage tasks.
+  - Risky evidence now downgrades qualification/signal confidence and marks
+    candidates for review instead of silently deleting them.
+  - Dossier source lifecycle exposes verification state, reason, mode, and
+    status code where available.
+  - Kept product source lists evidence-bearing; analyzed-only sources stay in
+    lifecycle/trace metadata.
 - Docs:
   - Update SAO, Developer Guide, demo docs, and ADR notes with soft
     verification, useful-result budgets, and retry semantics.
@@ -3417,4 +3430,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.7: Soft source verification and useful-result budgets`.
+Implement `Slice 0.7.6.1.8: Web retrieval provider abstraction and Perplexity adapter`.

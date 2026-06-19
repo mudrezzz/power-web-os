@@ -35,7 +35,7 @@ plan bounded task
   -> score signals only after qualified universe freeze
 ```
 
-Source verification will become stateful. The immediate planned modes are:
+Source verification is stateful. The implemented modes are:
 
 - `strict`: currently reachable sources are required before findings can be
   product evidence.
@@ -44,9 +44,9 @@ Source verification will become stateful. The immediate planned modes are:
 - `off`: skip HTTP reachability checks and rely on provider/source refs as
   preliminary evidence.
 
-Discovery tasks will also use useful-result budgets. A provider task that
+Discovery and coverage tasks also use useful-result budgets. A provider task that
 returns no useful source/candidate material, or only unverified material, may be
-retried or reformulated within a bounded retry limit. The existing
+retried within a bounded retry limit. The existing
 `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` remains a hard safety limit on
 provider task calls.
 
@@ -64,9 +64,8 @@ status, and scoring.
 - Product source lists remain evidence-bearing, while dossier/trace surfaces
   retrieval, verification, and discarded-source lifecycle.
 - Provider comparisons become possible because retrieval records are explicit.
-- The implementation needs additional tests for verification modes, useful
-  budgets, provider selection, and run-level empty-result diagnostics before the
-  multi-radar benchmark.
+- Provider selection and run-level empty-result diagnostics still need
+  dedicated slices before the multi-radar benchmark.
 
 ## Alternatives considered
 

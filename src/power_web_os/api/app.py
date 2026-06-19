@@ -44,6 +44,10 @@ def create_app(
     app.state.session_factory = create_session_factory(engine)
     app.state.job_queue_factory = job_queue_factory or default_job_queue
     app.state.radar_max_web_tasks_per_subject = api_settings.radar_max_web_tasks_per_subject
+    app.state.radar_source_verification_mode = api_settings.radar_source_verification_mode
+    app.state.radar_min_useful_sources_per_discovery_task = api_settings.radar_min_useful_sources_per_discovery_task
+    app.state.radar_min_candidates_per_discovery_task = api_settings.radar_min_candidates_per_discovery_task
+    app.state.radar_max_discovery_retries_per_task = api_settings.radar_max_discovery_retries_per_task
 
     @app.get("/health", response_model=HealthResponse, tags=["system"])
     def health() -> HealthResponse:

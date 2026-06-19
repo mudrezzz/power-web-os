@@ -92,14 +92,19 @@ zero scores. That means the runner reached a terminal state, not that discovery
 quality is acceptable. The run dossier now includes source lifecycle diagnostics
 showing used and discarded/analyzed source counts and reasons.
 
+Live Radar now uses soft source verification by default. If a provider returns
+source-linked candidates but URLs fail reachability checks, the run keeps those
+candidates as review-needed/risky evidence instead of silently deleting them.
+The dossier source lifecycle shows verification state, reason, mode, and HTTP
+status code where available. Useful-result budgets can trigger bounded retries
+when discovery or coverage tasks return too few useful sources/candidates.
+
 The next live Radar hardening slices focus on the web retrieval boundary before
 quality benchmarking:
 
-1. soft source verification and useful-result budgets, so unreachable or
-   blocked URLs do not silently delete source-linked candidates;
-2. provider-neutral retrieval with a Perplexity-shaped adapter, so retrieved
+1. provider-neutral retrieval with a Perplexity-shaped adapter, so retrieved
    URLs/snippets/citations can be inspected separately from extraction;
-3. run-level dossier/journal/trace actions for empty-result runs, so logs are
+2. run-level dossier/journal/trace actions for empty-result runs, so logs are
    not reachable only through candidate detail.
 
 To refresh documentation screenshots:

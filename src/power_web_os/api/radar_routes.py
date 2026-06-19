@@ -94,6 +94,10 @@ def queue_radar_run(radar_id: str, request: RadarRunRequest, context: RadarConte
             task_context={
                 **request.task_context,
                 "max_web_tasks_per_subject": context.radar_max_web_tasks_per_subject,
+                "source_verification_mode": context.radar_source_verification_mode,
+                "min_useful_sources_per_discovery_task": context.radar_min_useful_sources_per_discovery_task,
+                "min_candidates_per_discovery_task": context.radar_min_candidates_per_discovery_task,
+                "max_discovery_retries_per_task": context.radar_max_discovery_retries_per_task,
             },
         )
     )

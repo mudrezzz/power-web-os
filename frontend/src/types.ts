@@ -708,6 +708,10 @@ export type LiveRadarRunDossier = {
     state: string;
     reason: string;
     origin: string;
+    verification_state: string | null;
+    verification_mode: string | null;
+    verification_reason: string | null;
+    verification_status_code: number | null;
     usages: Array<{
       candidate_id: string;
       candidate_name: string;

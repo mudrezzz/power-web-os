@@ -24,6 +24,15 @@ from power_web_os.application.live_radar_contracts import (
     SignalScoreEvaluation,
     SignalStatus,
 )
+from power_web_os.application.live_radar_collection_utils import (
+    dedupe_sources as _dedupe_sources,
+    rank_candidates as _rank_candidates,
+)
+from power_web_os.application.live_radar_source_risk import (
+    refs_are_only_risky as _refs_are_only_risky,
+    refs_have_verification_risk as _refs_have_verification_risk,
+    source_supports_evidence as _source_supports_evidence,
+)
 
 def normalize_live_candidate(
     payload: dict[str, Any],
@@ -42,6 +51,8 @@ def normalize_live_candidate(
         review_flags.append("qualification_requires_human_review")
     if any(item.status == "unclear" for item in signals):
         review_flags.append("signal_requires_human_review")
+    if any(_refs_have_verification_risk(item.evidence_refs, sources or []) for item in [*qualification, *signals]):
+        review_flags.append("source_verification_review")
     evidence_refs = sorted({
         ref
         for collection in [qualification, signals]
@@ -79,8 +90,14 @@ def _normalize_qualification(
         evidence_refs = [
             str(ref)
             for ref in raw.get("evidence_refs", [])
-            if str(ref) in sources_by_ref
+            if _source_supports_evidence(sources_by_ref.get(str(ref)))
         ]
+        confidence = str(raw.get("confidence", "low"))
+        if status in {"confirmed", "weak"} and not evidence_refs:
+            status = "unknown"
+        elif status == "confirmed" and _refs_are_only_risky(evidence_refs, sources_by_ref):
+            status = "weak"
+            confidence = "low"
         operator = _normalize_choice(str(raw.get("operator") or criterion.get("operator") or "AND"), {"AND", "OR", "AND_NOT", "OR_NOT"}, "AND")
         requirement_level = _normalize_choice(
             str(raw.get("requirement_level") or criterion.get("requirement_level") or "required"),
@@ -88,7 +105,6 @@ def _normalize_qualification(
             "required",
         )
         final_assessment = _qualification_status_to_assessment(status)
-        confidence = str(raw.get("confidence", "low"))
         confidence_policy = _confidence_to_policy(confidence, evidence_refs=evidence_refs)
         cross_validation_required = bool(raw.get("cross_validation_required", criterion.get("cross_validation_required", False)))
         source_usages = _qualification_source_usages(evidence_refs=evidence_refs, sources_by_ref=sources_by_ref, policy=confidence_policy)
@@ -324,9 +340,16 @@ def _normalize_signals(
         evidence_refs = [
             str(ref)
             for ref in raw.get("evidence_refs", [])
-            if str(ref) in sources_by_ref
+            if _source_supports_evidence(sources_by_ref.get(str(ref)))
         ]
         confidence = str(raw.get("confidence", "low"))
+        if status == "observed" and not evidence_refs:
+            status = "not_observed"
+            score = 0
+        elif status == "observed" and _refs_are_only_risky(evidence_refs, sources_by_ref):
+            status = "unclear"
+            score = 0
+            confidence = "low"
         summary = str(raw.get("summary") or "No signal evidence found.")
         source_policy = _confidence_to_policy(confidence, evidence_refs=evidence_refs)
         source_usages = _qualification_source_usages(
@@ -465,25 +488,6 @@ def _signal_evidence_strength(*, status: SignalStatus, score: int) -> Literal["s
     if status == "observed":
         return "medium"
     return "weak"
-
-
-def _rank_candidates(candidates: list[LiveRadarCandidate]) -> list[LiveRadarCandidate]:
-    return sorted(
-        candidates,
-        key=lambda item: (-item.score.fit_score, -item.score.intent_score, item.legal_name),
-    )
-
-
-def _dedupe_sources(sources: list[RadarSourceEvidence]) -> list[RadarSourceEvidence]:
-    seen: set[tuple[str, str]] = set()
-    result = []
-    for source in sources:
-        key = (source.evidence_ref, source.url)
-        if key in seen:
-            continue
-        seen.add(key)
-        result.append(source)
-    return result
 
 
 def _normalize_choice(value: str, allowed: set[str], fallback: str) -> str:

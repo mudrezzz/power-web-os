@@ -12,13 +12,17 @@ from power_web_os.persistence.config import DEFAULT_DATABASE_URL
 class ApiSettings:
     service_name: str = "Power Web OS API"
     environment: str = "local"
-    api_version: str = "0.7.6.1.6"
+    api_version: str = "0.7.6.1.7"
     database_url: str = DEFAULT_DATABASE_URL
     cors_origins: tuple[str, ...] = (
         "http://127.0.0.1:5173",
         "http://localhost:5173",
     )
     radar_max_web_tasks_per_subject: int = 20
+    radar_source_verification_mode: str = "soft"
+    radar_min_useful_sources_per_discovery_task: int = 3
+    radar_min_candidates_per_discovery_task: int = 5
+    radar_max_discovery_retries_per_task: int = 2
 
 
 def get_api_settings() -> ApiSettings:
@@ -29,6 +33,22 @@ def get_api_settings() -> ApiSettings:
         radar_max_web_tasks_per_subject=_positive_int(
             os.getenv("POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT"),
             ApiSettings.radar_max_web_tasks_per_subject,
+        ),
+        radar_source_verification_mode=_verification_mode(
+            os.getenv("POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE"),
+            ApiSettings.radar_source_verification_mode,
+        ),
+        radar_min_useful_sources_per_discovery_task=_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_MIN_USEFUL_SOURCES_PER_DISCOVERY_TASK"),
+            ApiSettings.radar_min_useful_sources_per_discovery_task,
+        ),
+        radar_min_candidates_per_discovery_task=_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_MIN_CANDIDATES_PER_DISCOVERY_TASK"),
+            ApiSettings.radar_min_candidates_per_discovery_task,
+        ),
+        radar_max_discovery_retries_per_task=_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK"),
+            ApiSettings.radar_max_discovery_retries_per_task,
         ),
     )
 
@@ -45,3 +65,16 @@ def _positive_int(raw: str | None, default: int) -> int:
     except ValueError:
         return default
     return value if value > 0 else default
+
+
+def _non_negative_int(raw: str | None, default: int) -> int:
+    try:
+        value = int(raw or "")
+    except ValueError:
+        return default
+    return value if value >= 0 else default
+
+
+def _verification_mode(raw: str | None, default: str) -> str:
+    value = (raw or default).strip().lower()
+    return value if value in {"strict", "soft", "off"} else default

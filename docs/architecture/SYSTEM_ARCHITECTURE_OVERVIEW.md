@@ -233,16 +233,18 @@ The dossier exposes this as `source_lifecycle` and
 states with reason counts, so a `0` product-source run is explainable without
 raw trace inspection.
 
-The next live Radar hardening step changes source verification from a binary
-drop into a verification-state/risk signal. Many useful business sites block
-`HEAD` requests, time out, redirect inconsistently, or return transient 404s.
-Under planned `soft` verification, source-linked candidates should remain
-reviewable with `unverified_url` or similar risk state instead of being deleted.
-Under `strict` verification, currently reachable URLs remain required. Under
-`off`, HTTP reachability checks are skipped for diagnostic runs. Scores should
-only become confident and nonzero when qualification or signal findings are
-connected to evidence refs that resolve to product-used or explicitly
-risk-marked sources.
+Live Radar source verification is stateful rather than binary. Many useful
+business sites block `HEAD` requests, time out, redirect inconsistently, or
+return transient 404s. In `soft` verification mode, source-linked candidates
+remain reviewable with `unverified_url`, `blocked`, `timeout`, or similar risk
+state instead of being deleted. In `strict` mode, currently reachable URLs are
+required before a source can support a candidate. In `off` mode, HTTP
+reachability checks are skipped and sources are marked `not_checked`.
+Qualification and signal findings linked only to risky sources are downgraded
+to weak/unclear review-needed evidence and do not produce confident scores.
+Discovery and coverage tasks also use useful-result budgets; if a bounded task
+returns too few useful sources or candidates, the backend may retry within the
+configured retry limit and records the retry in execution metadata and trace.
 
 Web search is being separated into a managed retrieval pipeline. The application
 layer should own task planning, source policy, useful-result budgets, retry

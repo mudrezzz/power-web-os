@@ -635,7 +635,7 @@ finish quickly while the pipeline is still being tuned. The code fallback is
 dossier/journal warnings instead of allowing a manual run to expand without
 bounds.
 
-Planned source hardening variables for the next slices:
+Source verification and useful-result budget variables:
 
 ```text
 POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE=soft
@@ -645,8 +645,8 @@ POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK=2
 POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER=openrouter
 ```
 
-The planned source verification mode controls how provider-returned URLs affect
-candidate evidence:
+`POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE` controls how provider-returned
+URLs affect candidate evidence:
 
 - `strict`: currently reachable URLs are required before a source can support a
   product finding.
@@ -654,9 +654,9 @@ candidate evidence:
   review-needed evidence instead of deleting the candidate.
 - `off`: skip HTTP reachability checks for diagnostic runs.
 
-Useful-result budgets are separate from the hard task limit. If a discovery
-task returns too few useful sources/candidates, or only unverified material, the
-backend can retry or reformulate the bounded task until
+Useful-result budgets are separate from the hard task limit. If a discovery or
+coverage task returns too few useful sources/candidates, or only unverified
+material, the backend can retry the bounded task until
 `POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK` is reached. This prevents a
 single empty or broken retrieval response from freezing the candidate universe.
 

@@ -48,6 +48,19 @@ class WorkflowLiveRadarArtifactExecutor(LiveRadarArtifactExecutor):
 def _task_context_with_runtime_defaults(task_context: dict[str, object]) -> dict[str, object]:
     context = dict(task_context)
     context.setdefault("max_web_tasks_per_subject", _positive_int(os.getenv("POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT"), 20))
+    context.setdefault("source_verification_mode", _verification_mode(os.getenv("POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE"), "soft"))
+    context.setdefault(
+        "min_useful_sources_per_discovery_task",
+        _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MIN_USEFUL_SOURCES_PER_DISCOVERY_TASK"), 3),
+    )
+    context.setdefault(
+        "min_candidates_per_discovery_task",
+        _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MIN_CANDIDATES_PER_DISCOVERY_TASK"), 5),
+    )
+    context.setdefault(
+        "max_discovery_retries_per_task",
+        _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK"), 2),
+    )
     return context
 
 
@@ -57,3 +70,16 @@ def _positive_int(raw: str | None, default: int) -> int:
     except ValueError:
         return default
     return value if value > 0 else default
+
+
+def _non_negative_int(raw: str | None, default: int) -> int:
+    try:
+        value = int(raw or "")
+    except ValueError:
+        return default
+    return value if value >= 0 else default
+
+
+def _verification_mode(raw: str | None, default: str) -> str:
+    value = (raw or default).strip().lower()
+    return value if value in {"strict", "soft", "off"} else default

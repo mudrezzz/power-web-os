@@ -247,6 +247,10 @@ def _source_lifecycle(
             state=state,
             reason=reason,
             origin="product_sources",
+            verification_state=_optional_text(source.get("verification_state")),
+            verification_mode=_optional_text(source.get("verification_mode")),
+            verification_reason=_optional_text(source.get("verification_reason")),
+            verification_status_code=_optional_int(source.get("verification_status_code")),
             usages=usages,
         )
 
@@ -264,6 +268,10 @@ def _source_lifecycle(
             state="discarded",
             reason=reason,
             origin="analyzed_sources",
+            verification_state=_optional_text(analyzed.get("verification_state")),
+            verification_mode=_optional_text(analyzed.get("verification_mode")),
+            verification_reason=_optional_text(analyzed.get("verification_reason")),
+            verification_status_code=_optional_int(analyzed.get("verification_status_code")),
             usages=[],
         )
 
@@ -281,6 +289,31 @@ def _source_lifecycle(
             state="discarded",
             reason=reason,
             origin="source_outcomes",
+            verification_state=_optional_text(outcome.get("verification_state")),
+            verification_mode=_optional_text(outcome.get("verification_mode")),
+            verification_reason=_optional_text(outcome.get("verification_reason")),
+            verification_status_code=_optional_int(outcome.get("verification_status_code")),
+            usages=[],
+        )
+
+    for verification in _list(execution_results.get("source_verification_results")):
+        evidence_ref = str(verification.get("evidence_ref") or verification.get("source_ref") or "").strip()
+        if not evidence_ref or evidence_ref in items:
+            continue
+        state = str(verification.get("verification_state") or "unverified_url")
+        items[evidence_ref] = RadarRunDossierSourceLifecycleItemResponse(
+            evidence_ref=evidence_ref,
+            title=str(verification.get("title", "")),
+            url=str(verification.get("url", "")),
+            query_id=str(verification.get("query_id")) if verification.get("query_id") is not None else None,
+            source_type=str(verification.get("source_type", "web")),
+            state="discarded",
+            reason=_source_lifecycle_reason(state),
+            origin="source_verification",
+            verification_state=state,
+            verification_mode=_optional_text(verification.get("verification_mode")),
+            verification_reason=_optional_text(verification.get("verification_reason")),
+            verification_status_code=_optional_int(verification.get("verification_status_code")),
             usages=[],
         )
 
@@ -308,6 +341,15 @@ def _source_lifecycle_reason(value: str) -> str:
         "used_by_candidate",
         "not_used_by_candidate",
         "unreachable",
+        "blocked",
+        "timeout",
+        "unverified_url",
+        "not_checked",
+        "verification_limited",
+        "provider_empty",
+        "provider_empty_or_verification_limited",
+        "budget_limited",
+        "evidence_linking_limited",
         "invalid_url",
         "missing_evidence_ref",
         "policy_skipped",
@@ -318,6 +360,20 @@ def _source_lifecycle_reason(value: str) -> str:
         "unknown",
     }
     return normalized if normalized in allowed else "unknown"
+
+
+def _optional_text(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _optional_int(value: object) -> int | None:
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _source_usage_index(candidates: list[dict[str, Any]]) -> dict[str, list[RadarRunDossierSourceUsageResponse]]:

@@ -13,6 +13,9 @@ from power_web_os.application.live_radar_contracts import (
     RadarDiscoveryPlanStep,
     RadarDiscoveryPlanValidationResult,
     RadarDiscoverySourcePolicyDecision,
+    RadarExecutionPlan,
+    RadarExecutionTask,
+    RadarSourceEvidence,
 )
 from power_web_os.application.live_radar_discovery_planning import (
     DeterministicRadarDiscoveryPlanner,
@@ -20,8 +23,11 @@ from power_web_os.application.live_radar_discovery_planning import (
     build_discovery_planning_input,
 )
 from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_task_to_search_plan
+from power_web_os.application.live_radar_normalization import normalize_live_candidate
+from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
 from power_web_os.demo import generate_live_mini_icp_radar_plan
 from power_web_os.integrations import live_radar_openrouter
+from power_web_os.integrations.live_radar_source_verification import SourceReachabilityResult, verify_sources
 from power_web_os.live_icp_radar import (
     FRAMEWORK_AVAILABLE,
     LiveICPRadarRunState,
@@ -275,6 +281,101 @@ def test_recorded_response_normalizes_sources_candidates_and_scores() -> None:
     assert fallback_signal["evidence_findings"][0]["excerpt_type"] == "not_available"
     assert fallback_signal["score_evaluation"]["scale"] == "0-2"
     assert artifact["contract_validation"] == []
+
+
+def test_source_verification_modes_record_reachability_states() -> None:
+    sources = [
+        RadarSourceEvidence(evidence_ref="ok", title="Ok", url="https://example.test/ok", snippet="Ok source"),
+        RadarSourceEvidence(evidence_ref="blocked", title="Blocked", url="https://example.test/blocked", snippet="Blocked source"),
+        RadarSourceEvidence(evidence_ref="timeout", title="Timeout", url="https://example.test/timeout", snippet="Timeout source"),
+    ]
+
+    def fake_check(url: str) -> SourceReachabilityResult:
+        if url.endswith("/ok"):
+            return SourceReachabilityResult(state="reachable", reason="http_200", status_code=200)
+        if url.endswith("/blocked"):
+            return SourceReachabilityResult(state="blocked", reason="http_403", status_code=403)
+        return SourceReachabilityResult(state="timeout", reason="timeout", status_code=None)
+
+    verified = verify_sources(sources, mode="soft", reachability_check=fake_check)
+    unchecked = verify_sources(sources, mode="off", reachability_check=lambda _: pytest.fail("off mode must not verify URLs"))
+
+    assert [source.verification_state for source in verified] == ["reachable", "blocked", "timeout"]
+    assert verified[1].verification_mode == "soft"
+    assert verified[1].verification_status_code == 403
+    assert {source.verification_state for source in unchecked} == {"not_checked"}
+
+
+def test_soft_risky_source_keeps_candidate_but_downgrades_confidence() -> None:
+    radar = build_live_mini_radar_definition()
+    risky_source = RadarSourceEvidence(
+        evidence_ref="risky_src",
+        title="Risky source",
+        url="https://example.invalid/source",
+        snippet="Candidate belongs to the target universe and has a relevant signal.",
+        verification_state="unverified_url",
+        verification_mode="soft",
+        verification_reason="http_404",
+        verification_status_code=404,
+    )
+
+    candidate = normalize_live_candidate(
+        {
+            "legal_name": "Risky Evidence Candidate",
+            "qualification": [
+                {"criterion_code": "Q1", "status": "confirmed", "confidence": "high", "evidence_refs": ["risky_src"]},
+                {"criterion_code": "Q2", "status": "confirmed", "confidence": "high", "evidence_refs": ["risky_src"]},
+            ],
+            "signals": [
+                {"signal_code": "S1", "status": "observed", "score": 2, "confidence": "high", "evidence_refs": ["risky_src"]}
+            ],
+        },
+        radar=radar,
+        sources=[risky_source],
+    )
+
+    assert candidate.qualification[0].status == "weak"
+    assert candidate.qualification[0].confidence == "low"
+    assert candidate.qualification[0].confidence_policy == "hitl_required"
+    assert candidate.signals[0].status == "unclear"
+    assert candidate.signals[0].score == 0
+    assert candidate.score.fit_score == 0
+    assert "source_verification_review" in candidate.review_flags
+
+
+def test_useful_result_budget_retries_weak_discovery_result() -> None:
+    radar = build_live_mini_radar_definition()
+    provider = _WeakThenUsefulProvider()
+    execution_plan = RadarExecutionPlan(
+        radar_id="toir-quick-live",
+        tasks=[
+            RadarExecutionTask(
+                task_id="discover-q1",
+                stage="qualification_discovery",
+                subject_type="qualification",
+                subject_id="Q1",
+                query="Find candidate universe.",
+                purpose="Discovery",
+                expected_evidence=["candidate identity", "qualification evidence"],
+            )
+        ],
+    )
+
+    result, events, execution_results = run_staged_radar_execution(
+        radar=radar,
+        execution_plan=execution_plan,
+        provider=provider,
+        min_useful_sources_per_discovery_task=1,
+        min_candidates_per_discovery_task=1,
+        max_discovery_retries_per_task=1,
+    )
+
+    assert len(provider.calls) == 2
+    assert provider.calls[1].queries[0].query.startswith("Find candidate universe.\nRetry 1")
+    assert len(result.candidate_observations) == 2
+    assert execution_results["useful_result_retry_records"][0]["reason"] == "verification_limited"
+    assert execution_results["useful_result_warnings"]
+    assert "validation_warning" in [event.event_type for event in events]
 
 
 def test_live_radar_service_executes_explicit_pipeline_phases() -> None:
@@ -846,6 +947,67 @@ class _StageAwareProvider:
                 provider_metadata={"provider": "stage-aware", "coverage_findings": [{"summary": "No further candidates.", "completeness_risk": "low"}]},
             )
         raise AssertionError(f"Signal search should not run for rejected candidates: {stage}")
+
+
+class _WeakThenUsefulProvider:
+    runtime_name = "weak-then-useful"
+
+    def __init__(self) -> None:
+        self.calls = []
+
+    def run_search_plan(self, *, radar, search_plan):
+        _ = radar
+        self.calls.append(search_plan)
+        query = search_plan.queries[0]
+        if len(self.calls) == 1:
+            return WebSearchProviderResult(
+                sources=[
+                    RadarSourceEvidence(
+                        evidence_ref="weak_src",
+                        title="Weak source",
+                        url="https://example.invalid/weak",
+                        snippet="Candidate A belongs to the target universe.",
+                        query_id=query.query_id,
+                        verification_state="unverified_url",
+                        verification_mode="soft",
+                        verification_reason="http_404",
+                        verification_status_code=404,
+                    )
+                ],
+                candidate_observations=[
+                    {
+                        "legal_name": "Candidate A",
+                        "qualification": [
+                            {"criterion_code": "Q1", "status": "confirmed", "evidence_refs": ["weak_src"]}
+                        ],
+                    }
+                ],
+                provider_metadata={"provider": "weak-then-useful"},
+            )
+        return WebSearchProviderResult(
+            sources=[
+                RadarSourceEvidence(
+                    evidence_ref="ok_src",
+                    title="Verified source",
+                    url="https://example.test/ok",
+                    snippet="Candidate B belongs to the target universe.",
+                    query_id=query.query_id,
+                    verification_state="reachable",
+                    verification_mode="soft",
+                    verification_reason="http_200",
+                    verification_status_code=200,
+                )
+            ],
+            candidate_observations=[
+                {
+                    "legal_name": "Candidate B",
+                    "qualification": [
+                        {"criterion_code": "Q1", "status": "confirmed", "evidence_refs": ["ok_src"]}
+                    ],
+                }
+            ],
+            provider_metadata={"provider": "weak-then-useful"},
+        )
 
 
 class _CoverageExpansionProvider:

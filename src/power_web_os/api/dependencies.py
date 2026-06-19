@@ -32,6 +32,10 @@ class RadarApiContext:
     technical_trace_repository: SqlAlchemyRadarRunTechnicalTraceRepository
     job_queue: JobQueue
     radar_max_web_tasks_per_subject: int
+    radar_source_verification_mode: str
+    radar_min_useful_sources_per_discovery_task: int
+    radar_min_candidates_per_discovery_task: int
+    radar_max_discovery_retries_per_task: int
 
 
 def default_job_queue() -> JobQueue:
@@ -42,6 +46,12 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
     session_factory = request.app.state.session_factory
     job_queue_factory = request.app.state.job_queue_factory
     radar_max_web_tasks_per_subject = int(getattr(request.app.state, "radar_max_web_tasks_per_subject", 20))
+    radar_source_verification_mode = str(getattr(request.app.state, "radar_source_verification_mode", "soft"))
+    radar_min_useful_sources_per_discovery_task = int(
+        getattr(request.app.state, "radar_min_useful_sources_per_discovery_task", 3)
+    )
+    radar_min_candidates_per_discovery_task = int(getattr(request.app.state, "radar_min_candidates_per_discovery_task", 5))
+    radar_max_discovery_retries_per_task = int(getattr(request.app.state, "radar_max_discovery_retries_per_task", 2))
     with session_scope(session_factory) as session:
         yield RadarApiContext(
             radar_repository=SqlAlchemyRadarRepository(session),
@@ -53,4 +63,8 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
             technical_trace_repository=SqlAlchemyRadarRunTechnicalTraceRepository(session),
             job_queue=job_queue_factory(),
             radar_max_web_tasks_per_subject=radar_max_web_tasks_per_subject,
+            radar_source_verification_mode=radar_source_verification_mode,
+            radar_min_useful_sources_per_discovery_task=radar_min_useful_sources_per_discovery_task,
+            radar_min_candidates_per_discovery_task=radar_min_candidates_per_discovery_task,
+            radar_max_discovery_retries_per_task=radar_max_discovery_retries_per_task,
         )

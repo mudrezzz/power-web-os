@@ -304,6 +304,10 @@ class RadarRunDossierSourceLifecycleItemResponse(BaseModel):
     state: str
     reason: str = "unknown"
     origin: str = "unknown"
+    verification_state: str | None = None
+    verification_mode: str | None = None
+    verification_reason: str | None = None
+    verification_status_code: int | None = None
     usages: list[RadarRunDossierSourceUsageResponse] = Field(default_factory=list)
 
 

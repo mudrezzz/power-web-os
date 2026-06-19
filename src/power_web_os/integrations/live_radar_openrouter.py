@@ -18,6 +18,11 @@ from power_web_os.application.live_radar_contracts import (
 from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 from power_web_os.integrations.openrouter_request_builder import build_openrouter_request
+from power_web_os.integrations.live_radar_source_verification import (
+    normalize_verification_mode,
+    supports_product_evidence,
+    verify_sources,
+)
 
 
 class RecordedWebSearchProvider(WebSearchProvider):
@@ -59,6 +64,10 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
             or self._model
         )
         self._web_mode = web_mode or self._env.get("OPENROUTER_WEB_MODE") or os.getenv("OPENROUTER_WEB_MODE") or "auto"
+        self._source_verification_mode = normalize_verification_mode(
+            self._env.get("POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE")
+            or os.getenv("POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE")
+        )
         self._timeout_seconds = timeout_seconds
 
     @property
@@ -198,7 +207,7 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                 "web_mode": mode,
             },
         )
-        return _filter_result_to_verified_sources(result)
+        return _apply_source_verification(result, mode=self._source_verification_mode)
 
     def _model_for_search_plan(self, search_plan: RadarSearchPlan) -> str:
         stages = {query.stage for query in search_plan.queries}
@@ -234,42 +243,69 @@ def normalize_openrouter_response(payload: dict[str, Any], *, fallback_metadata:
     )
 
 
-def _filter_result_to_verified_sources(result: WebSearchProviderResult) -> WebSearchProviderResult:
-    verified_sources = [source for source in result.sources if _source_url_is_reachable(source.url)]
-    verified_refs = {source.evidence_ref for source in verified_sources}
+def _apply_source_verification(result: WebSearchProviderResult, *, mode: str) -> WebSearchProviderResult:
+    verification_mode = normalize_verification_mode(mode)
+    verified_sources = verify_sources(result.sources, mode=verification_mode)
+    usable_sources = [
+        source for source in verified_sources
+        if supports_product_evidence(source, mode=verification_mode)
+    ]
+    usable_refs = {source.evidence_ref for source in usable_sources}
+    if verification_mode == "strict":
+        verified_candidates = [
+            _filter_candidate_evidence_refs(candidate, usable_refs)
+            for candidate in result.candidate_observations
+            if _collect_candidate_evidence_refs(candidate) & usable_refs
+        ]
+        sources = usable_sources
+    else:
+        verified_candidates = [
+            _filter_candidate_evidence_refs(candidate, usable_refs)
+            for candidate in result.candidate_observations
+            if _collect_candidate_evidence_refs(candidate) & usable_refs
+        ]
+        sources = usable_sources
+    verification_results = [
+        {
+            "evidence_ref": source.evidence_ref,
+            "title": source.title,
+            "url": source.url,
+            "query_id": source.query_id,
+            "source_type": source.source_type,
+            "verification_state": source.verification_state,
+            "verification_mode": source.verification_mode,
+            "verification_reason": source.verification_reason,
+            "verification_status_code": source.verification_status_code,
+        }
+        for source in verified_sources
+    ]
+    _trace_provider(
+        trace_type="normalization_result",
+        title="Source verification result",
+        summary=f"Verified {len(verified_sources)} sources in {verification_mode} mode.",
+        payload={
+            "verification_mode": verification_mode,
+            "source_count": len(verified_sources),
+            "usable_source_count": len(usable_sources),
+            "discarded_source_count": len(verified_sources) - len(usable_sources),
+            "sources": verification_results,
+        },
+    )
     verified_candidates = [
-        _filter_candidate_evidence_refs(candidate, verified_refs)
-        for candidate in result.candidate_observations
-        if _collect_candidate_evidence_refs(candidate) & verified_refs
+        _mark_candidate_verification_risk(candidate, sources_by_ref={source.evidence_ref: source for source in sources})
+        for candidate in verified_candidates
     ]
     return WebSearchProviderResult(
-        sources=verified_sources,
+        sources=sources,
         candidate_observations=verified_candidates,
         provider_metadata={
             **result.provider_metadata,
             "source_verification": "http_status",
-            "discarded_source_count": len(result.sources) - len(verified_sources),
+            "source_verification_mode": verification_mode,
+            "source_verification_results": verification_results,
+            "discarded_source_count": len(verified_sources) - len(usable_sources),
         },
     )
-
-
-def _source_url_is_reachable(url: str) -> bool:
-    if not url.startswith(("http://", "https://")):
-        return False
-    try:
-        import httpx
-    except ImportError:  # pragma: no cover - OpenRouter provider already requires httpx.
-        return False
-
-    headers = {"User-Agent": "PowerWebOS-LiveRadar/0.6.3.1"}
-    try:
-        with httpx.Client(follow_redirects=True, timeout=12, headers=headers) as client:
-            response = client.head(url)
-            if response.status_code in {405, 403}:
-                response = client.get(url)
-            return response.status_code < 400
-    except httpx.HTTPError:
-        return False
 
 
 def _collect_candidate_evidence_refs(candidate: dict[str, Any]) -> set[str]:
@@ -310,6 +346,21 @@ def _filter_candidate_evidence_refs(candidate: dict[str, Any], verified_refs: se
             filtered_section.append(next_item)
         filtered[section_name] = filtered_section
     return filtered
+
+
+def _mark_candidate_verification_risk(candidate: dict[str, Any], *, sources_by_ref: dict[str, RadarSourceEvidence]) -> dict[str, Any]:
+    risky_refs = {
+        ref for ref in _collect_candidate_evidence_refs(candidate)
+        if sources_by_ref.get(ref) is not None and sources_by_ref[ref].verification_state != "reachable"
+    }
+    if not risky_refs:
+        return candidate
+    flags = [str(item) for item in candidate.get("review_flags", []) if str(item).strip()]
+    flags.append("source_verification_review")
+    marked = dict(candidate)
+    marked["review_flags"] = sorted(set(flags))
+    marked["source_verification_risks"] = sorted(risky_refs)
+    return marked
 
 
 def _source_from_payload(payload: dict[str, Any], *, index: int) -> RadarSourceEvidence:

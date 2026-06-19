@@ -302,9 +302,20 @@ export function LiveRunDossierPanel({
                   <Badge tone={sourceLifecycleTone(source.state)}>
                     {t(`icpRadar.live.dossier.sourceLifecycleState.${source.state}`, { defaultValue: source.state })}
                   </Badge>
+                  {source.verification_state && (
+                    <Badge tone={sourceVerificationTone(source.verification_state)}>
+                      {t(`icpRadar.live.dossier.sourceVerificationState.${source.verification_state}`, { defaultValue: source.verification_state })}
+                    </Badge>
+                  )}
                 </header>
                 <strong>{source.title || source.url || source.evidence_ref}</strong>
                 <p>{t(`icpRadar.live.dossier.sourceLifecycleReason.${source.reason}`, { defaultValue: source.reason })}</p>
+                {source.verification_reason && (
+                  <p>{t('icpRadar.live.dossier.sourceVerificationReason', {
+                    reason: source.verification_reason,
+                    statusCode: source.verification_status_code ?? t('icpRadar.unknown'),
+                  })}</p>
+                )}
                 {source.url && (
                   <a href={source.url} rel="noreferrer" target="_blank">
                     {source.url}<ExternalLink aria-hidden="true" />
@@ -313,6 +324,7 @@ export function LiveRunDossierPanel({
                 <span className="run-dossier-source-meta">
                   <Mono>{source.query_id ?? t('icpRadar.unknown')}</Mono>
                   <Mono>{source.origin}</Mono>
+                  {source.verification_mode && <Mono>{source.verification_mode}</Mono>}
                 </span>
                 {source.usages.length > 0 && (
                   <div className="run-dossier-usages">
@@ -512,4 +524,14 @@ function sourceLifecycleTone(state: string): 'ally' | 'blocker' | 'unsurfaced' |
     return 'unsurfaced';
   }
   return 'neutral';
+}
+
+function sourceVerificationTone(state: string): 'ally' | 'blocker' | 'unsurfaced' | 'neutral' {
+  if (state === 'reachable' || state === 'not_checked') {
+    return state === 'reachable' ? 'ally' : 'neutral';
+  }
+  if (state === 'invalid_url') {
+    return 'blocker';
+  }
+  return 'unsurfaced';
 }

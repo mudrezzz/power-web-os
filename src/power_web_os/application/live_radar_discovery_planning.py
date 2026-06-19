@@ -228,6 +228,10 @@ def product_sources_for_candidates(
             "url": source.url,
             "query_id": source.query_id,
             "reason": "not_used_by_candidate",
+            "verification_state": source.verification_state,
+            "verification_mode": source.verification_mode,
+            "verification_reason": source.verification_reason,
+            "verification_status_code": source.verification_status_code,
         }
         for source in sources
         if source.evidence_ref not in used_refs

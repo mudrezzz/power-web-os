@@ -257,6 +257,10 @@ export type RadarRunDossierSourceLifecycleItemDto = {
   state: string;
   reason: string;
   origin: string;
+  verification_state?: string | null;
+  verification_mode?: string | null;
+  verification_reason?: string | null;
+  verification_status_code?: number | null;
   usages: RadarRunDossierSourceUsageDto[];
 };
 

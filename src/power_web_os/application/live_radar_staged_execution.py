@@ -1,6 +1,7 @@
 """Execute qualification-first Radar plans through the provider port."""
 
 from __future__ import annotations
+
 from typing import Any
 
 from power_web_os.application.live_radar_contracts import (
@@ -15,7 +16,20 @@ from power_web_os.application.live_radar_contracts import (
 )
 from power_web_os.application.live_radar_execution_budget import SubjectTaskBudget
 from power_web_os.application.live_radar_execution_plan import execution_task_to_search_plan, scoped_execution_task
-from power_web_os.application.live_radar_normalization import _dedupe_sources, normalize_live_candidate
+from power_web_os.application.live_radar_normalization import _dedupe_sources
+from power_web_os.application.live_radar_staged_support import (
+    budget_warning_event as _budget_warning_event,
+    candidate_filtered_events as _candidate_filtered_events,
+    candidate_names_matching as _support_candidate_names_matching,
+    candidate_rejected as _candidate_rejected,
+    gate_summary as _gate_summary,
+    normalized_candidates as _normalized_candidates_support,
+    rejected_candidate_summaries as _rejected_candidate_summaries,
+    signal_planned_event as _signal_planned_event,
+    task_event as _task_event,
+    useful_result_warning_event as _useful_result_warning_event,
+)
+from power_web_os.application.live_radar_useful_budget import UsefulResultBudget, run_task_with_useful_retries
 from power_web_os.application.live_radar_universe import (
     candidate_name,
     candidate_name_set,
@@ -43,6 +57,9 @@ def run_staged_radar_execution(
     execution_plan: RadarExecutionPlan,
     provider: WebSearchProvider,
     max_web_tasks_per_subject: int | None = None,
+    min_useful_sources_per_discovery_task: int | None = None,
+    min_candidates_per_discovery_task: int | None = None,
+    max_discovery_retries_per_task: int | None = None,
 ) -> tuple[WebSearchProviderResult, list[LiveRadarPipelineEvent], dict[str, Any]]:
     sources: list[RadarSourceEvidence] = []
     observations: list[dict[str, Any]] = []
@@ -55,14 +72,35 @@ def run_staged_radar_execution(
     coverage_checks: list[dict[str, Any]] = []
     unresolved_candidate_gaps: list[dict[str, Any]] = []
     coverage_warnings: list[str] = []
+    useful_result_warnings: list[str] = []
+    useful_result_retry_records: list[dict[str, Any]] = []
     discovery_iteration_count = 0
     task_budget = SubjectTaskBudget(max_web_tasks_per_subject)
+    useful_budget = UsefulResultBudget(
+        min_sources=min_useful_sources_per_discovery_task,
+        min_candidates=min_candidates_per_discovery_task,
+        max_retries=max_discovery_retries_per_task,
+    )
 
     discovery_tasks = _tasks_for_stage(execution_plan, "qualification_discovery")
     for task in discovery_tasks:
-        result = _run_task(provider=provider, radar=radar, task=task, radar_id=execution_plan.radar_id, budget=task_budget)
+        result, run_ids, retry_records, retry_warnings = run_task_with_useful_retries(
+            task=task,
+            useful_budget=useful_budget,
+            execution_id=task.task_id,
+            run_task=lambda current_task: _run_task(
+                provider=provider,
+                radar=radar,
+                task=current_task,
+                radar_id=execution_plan.radar_id,
+                budget=task_budget,
+            ),
+            combine_results=_combine_task_results,
+        )
         sources, observations, provider_metadata = _merge_result(sources, observations, provider_metadata, result)
-        executed_task_ids.append(task.task_id)
+        executed_task_ids.extend(run_ids)
+        useful_result_retry_records.extend(retry_records)
+        useful_result_warnings.extend(retry_warnings)
         completed_qualification_ids.append(task.subject_id)
         candidate_scope = _eligible_candidate_names(
             radar=radar,
@@ -101,7 +139,19 @@ def run_staged_radar_execution(
         iteration_new_names: set[str] = set()
         for task in coverage_tasks:
             scoped_task = scoped_execution_task(task, candidate_scope=candidate_scope)
-            result = _run_task(provider=provider, radar=radar, task=scoped_task, radar_id=execution_plan.radar_id, budget=task_budget)
+            result, run_ids, retry_records, retry_warnings = run_task_with_useful_retries(
+                task=scoped_task,
+                useful_budget=useful_budget,
+                execution_id=f"{task.task_id}:iteration-{iteration}",
+                run_task=lambda current_task: _run_task(
+                    provider=provider,
+                    radar=radar,
+                    task=current_task,
+                    radar_id=execution_plan.radar_id,
+                    budget=task_budget,
+                ),
+                combine_results=_combine_task_results,
+            )
             gaps = gap_items(result)
             result = result.model_copy(update={
                 "candidate_observations": [
@@ -110,7 +160,9 @@ def run_staged_radar_execution(
                 ],
             })
             sources, observations, provider_metadata = _merge_result(sources, observations, provider_metadata, result)
-            executed_task_ids.append(f"{task.task_id}:iteration-{iteration}")
+            executed_task_ids.extend(run_ids)
+            useful_result_retry_records.extend(retry_records)
+            useful_result_warnings.extend(retry_warnings)
             names_after = candidate_name_set(observations)
             new_names = names_after - names_before
             iteration_new_names.update(new_names)
@@ -188,6 +240,9 @@ def run_staged_radar_execution(
     if task_budget.warnings:
         coverage_warnings.extend(task_budget.warnings)
         events.append(_budget_warning_event(task_budget.warnings))
+    if useful_result_warnings:
+        coverage_warnings.extend(useful_result_warnings)
+        events.append(_useful_result_warning_event(useful_result_warnings))
 
     normalized_candidates = _normalized_candidates(radar=radar, sources=sources, observations=observations)
     candidate_universe = candidate_universe_entries(
@@ -217,6 +272,12 @@ def run_staged_radar_execution(
             "max_web_tasks_per_subject": task_budget.limit,
             "web_task_counts_by_subject": task_budget.counts,
             "web_task_budget_warnings": task_budget.warnings,
+            "useful_result_retry_records": useful_result_retry_records,
+            "useful_result_warnings": useful_result_warnings,
+            "min_useful_sources_per_discovery_task": useful_budget.min_sources,
+            "min_candidates_per_discovery_task": useful_budget.min_candidates,
+            "max_discovery_retries_per_task": useful_budget.max_retries,
+            "source_verification_results": provider_metadata.get("source_verification_results", []),
             "candidate_universe": [item.model_dump() for item in candidate_universe],
             "coverage_checks": coverage_checks,
             "coverage_warnings": sorted(set(coverage_warnings)),
@@ -292,6 +353,28 @@ def _run_task(
     return provider.run_search_plan(radar=radar, search_plan=execution_task_to_search_plan(task, radar_id=radar_id))
 
 
+def _combine_task_results(first: WebSearchProviderResult, second: WebSearchProviderResult) -> WebSearchProviderResult:
+    sources, observations, metadata = _merge_result(
+        first.sources,
+        first.candidate_observations,
+        first.provider_metadata,
+        second,
+    )
+    return WebSearchProviderResult(sources=sources, candidate_observations=observations, provider_metadata=metadata)
+
+
+def _useful_result_warning_event(warnings: list[str]) -> LiveRadarPipelineEvent:
+    return LiveRadarPipelineEvent(
+        event_type="validation_warning",
+        phase="collection",
+        actor="application",
+        node_name="useful_result_budget",
+        visibility="operator",
+        summary="Useful-result budget triggered bounded discovery retries.",
+        payload={"warnings": warnings},
+    )
+
+
 def _tasks_for_stage(execution_plan: RadarExecutionPlan, stage: str) -> list[RadarExecutionTask]:
     return [task for task in execution_plan.tasks if task.stage == stage]
 
@@ -347,126 +430,15 @@ def _eligible_candidate_names(
 
 
 def _candidate_names_matching(observations: list[dict[str, Any]], lower_names: set[str]) -> list[str]:
-    names: list[str] = []
-    seen: set[str] = set()
-    for item in observations:
-        name = candidate_name(item)
-        key = name.lower()
-        if name and key in lower_names and key not in seen:
-            seen.add(key)
-            names.append(name)
-    return names
+    return _support_candidate_names_matching(observations, lower_names)
 
 
 def _normalized_candidates(*, radar: dict[str, Any], sources: list[RadarSourceEvidence], observations: list[dict[str, Any]]) -> list[LiveRadarCandidate]:
-    return [normalize_live_candidate(item, radar=radar, sources=sources) for item in _merge_candidate_observations(observations)]
-
-
-def _candidate_rejected(candidate: LiveRadarCandidate, *, completed_qualification_ids: list[str] | None = None) -> bool:
-    completed = set(completed_qualification_ids or [item.criterion_code for item in candidate.qualification])
-    return any(
-        item.criterion_code in completed
-        and item.requirement_level == "required"
-        and item.final_assessment == "does_not_match"
-        for item in candidate.qualification
-    )
-
-
-def _gate_summary(candidates: list[LiveRadarCandidate], subject_id: str) -> dict[str, Any]:
-    statuses = {"accepted": 0, "unknown": 0, "rejected": 0}
-    for candidate in candidates:
-        rule = next((item for item in candidate.qualification if item.criterion_code == subject_id), None)
-        if rule is None or rule.final_assessment in {"unknown", "partially_matches"}:
-            statuses["unknown"] += 1
-        elif rule.final_assessment == "does_not_match":
-            statuses["rejected"] += 1
-        else:
-            statuses["accepted"] += 1
-    return {"subject_id": subject_id, **statuses}
-
-
-def _rejected_candidate_summaries(candidates: list[LiveRadarCandidate]) -> list[dict[str, Any]]:
-    return [
-        {
-            "candidate_id": candidate.candidate_id,
-            "legal_name": candidate.legal_name,
-            "failed_rules": [
-                item.criterion_code
-                for item in candidate.qualification
-                if item.requirement_level == "required" and item.final_assessment == "does_not_match"
-            ],
-        }
-        for candidate in candidates
-        if _candidate_rejected(candidate)
-    ]
-
-
-def _task_event(
-    task: RadarExecutionTask,
-    result: WebSearchProviderResult,
-    event_type: str,
-    *,
-    payload: dict[str, Any] | None = None,
-) -> LiveRadarPipelineEvent:
-    return LiveRadarPipelineEvent(
-        event_type=event_type,
-        phase="collection",
-        actor="workflow",
-        node_name=task.task_id,
-        visibility="operator",
-        summary=f"Executed {task.stage} task {task.task_id}.",
-        payload={
-            "stage": task.stage,
-            "subject_type": task.subject_type,
-            "subject_id": task.subject_id,
-            "candidate_scope": list(task.candidate_scope),
-            "source_count": len(result.sources),
-            "candidate_observation_count": len(result.candidate_observations),
-            **(payload or {}),
-        },
-        source_refs=[source.evidence_ref for source in result.sources if source.evidence_ref],
-    )
-
-
-def _candidate_filtered_events(task: RadarExecutionTask, candidates: list[LiveRadarCandidate]) -> list[LiveRadarPipelineEvent]:
-    return [
-        LiveRadarPipelineEvent(
-            event_type="candidate_filtered",
-            phase="collection",
-            actor="workflow",
-            node_name=task.task_id,
-            visibility="operator",
-            summary=f"Candidate {candidate.legal_name} did not pass qualification gate {task.subject_id}.",
-            payload={"subject_id": task.subject_id, "failed_rules": item["failed_rules"]},
-            candidate_refs=[candidate.candidate_id],
-        )
-        for item in _rejected_candidate_summaries(candidates)
-        for candidate in candidates
-        if candidate.candidate_id == item["candidate_id"]
-    ]
-
-
-def _signal_planned_event(task: RadarExecutionTask) -> LiveRadarPipelineEvent:
-    return LiveRadarPipelineEvent(
-        event_type="signal_search_planned",
-        phase="planning",
-        actor="workflow",
-        node_name=task.task_id,
-        summary=f"Planned signal search {task.subject_id} for {', '.join(task.candidate_scope)}.",
-        payload={"subject_id": task.subject_id, "candidate_scope": list(task.candidate_scope)},
-        candidate_refs=list(task.candidate_scope),
-    )
-
-
-def _budget_warning_event(warnings: list[str]) -> LiveRadarPipelineEvent:
-    return LiveRadarPipelineEvent(
-        event_type="validation_warning",
-        phase="validation",
-        actor="workflow",
-        node_name="execution-budget",
-        visibility="operator",
-        summary="Radar execution budget limited remaining signal searches.",
-        payload={"warnings": list(warnings)},
+    return _normalized_candidates_support(
+        radar=radar,
+        sources=sources,
+        observations=observations,
+        merge_observations=_merge_candidate_observations,
     )
 
 

@@ -171,6 +171,10 @@ class RadarDiscoveryPlanValidationResult(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+SourceVerificationState = Literal["reachable", "blocked", "timeout", "unverified_url", "invalid_url", "not_checked"]
+SourceVerificationMode = Literal["strict", "soft", "off"]
+
+
 class RadarSourceEvidence(BaseModel):
     evidence_ref: str
     title: str
@@ -178,6 +182,10 @@ class RadarSourceEvidence(BaseModel):
     snippet: str
     query_id: str | None = None
     source_type: str = "web"
+    verification_state: SourceVerificationState = "reachable"
+    verification_mode: SourceVerificationMode = "strict"
+    verification_reason: str = ""
+    verification_status_code: int | None = None
 
 
 class QualificationSourceUsage(BaseModel):

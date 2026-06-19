@@ -286,6 +286,10 @@ function runDossier(dossier: RadarRunDossierDto): LiveRadarRunDossier {
       state: stringField(item.state, 'discarded'),
       reason: stringField(item.reason, 'unknown'),
       origin: stringField(item.origin, 'unknown'),
+      verification_state: nullableString(item.verification_state),
+      verification_mode: nullableString(item.verification_mode),
+      verification_reason: nullableString(item.verification_reason),
+      verification_status_code: nullableNumber(item.verification_status_code),
       usages: arrayField(item.usages).map((usage) => ({
         candidate_id: stringField(usage.candidate_id, ''),
         candidate_name: stringField(usage.candidate_name, ''),
@@ -581,6 +585,10 @@ function nullableString(value: unknown) {
 
 function numberField(value: unknown, fallback: number) {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function nullableNumber(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 function arrayField(value: unknown): Array<Record<string, unknown>> {

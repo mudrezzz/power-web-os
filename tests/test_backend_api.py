@@ -41,7 +41,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-        "version": "0.7.6.1.6",
+        "version": "0.7.6.1.7",
         "environment": "test",
     }
 
@@ -58,7 +58,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.6.1.6"
+    assert schema["info"]["version"] == "0.7.6.1.7"
     for path in [
         "/health",
         "/api/health",
@@ -142,6 +142,10 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert queued_dossier["summary"]["output_state"] == "pending"
     assert queued_dossier["run_context"]["status"] == "queued"
     assert queued_dossier["run_context"]["task_context"]["max_web_tasks_per_subject"] == 20
+    assert queued_dossier["run_context"]["task_context"]["source_verification_mode"] == "soft"
+    assert queued_dossier["run_context"]["task_context"]["min_useful_sources_per_discovery_task"] == 3
+    assert queued_dossier["run_context"]["task_context"]["min_candidates_per_discovery_task"] == 5
+    assert queued_dossier["run_context"]["task_context"]["max_discovery_retries_per_task"] == 2
     assert queued_dossier["search_plan"] == []
 
     execute_radar_run_once(
