@@ -61,6 +61,33 @@ Troubleshooting:
 - A Postgres Compose profile is intentionally out of scope for this dev stack;
   use `POWER_WEB_OS_DATABASE_URL` manually for PostgreSQL-backed development.
 
+## Remote Dev Server
+
+The supported remote development contour is documented in
+`docs/deployment/REMOTE_DEV_SERVER.md`. The non-secret connection and port
+settings live in `deploy/remote-dev.env`; local `.env` is copied separately and
+must never be committed or printed.
+
+Deploy or dry-run the remote Docker stack from the repository root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/deploy_remote_dev.ps1 -DryRun
+powershell -ExecutionPolicy Bypass -File scripts/deploy_remote_dev.ps1
+```
+
+Default remote URLs:
+
+```text
+http://213.148.13.45:5173
+http://213.148.13.45:8001/health
+http://213.148.13.45:8001/api/radars
+```
+
+Use the `$deploy-remote-dev` project skill when the task is to upload or
+rebuild the remote dev stack. It reads `deploy/remote-dev.env`, checks Git
+status, uses `scripts/deploy_remote_dev.ps1`, and reports health/log commands
+without exposing `.env` secrets.
+
 Useful local API URLs:
 
 ```text

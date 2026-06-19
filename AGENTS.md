@@ -268,5 +268,6 @@ Use these skills when available:
 - `$regression-and-test-strategy` for deciding and running the correct test scope.
 - `$demo-maintenance` for creating or updating the realistic demo example.
 - `$frontend-design-system` for all frontend UI work, including screens, components, CSS, layout, visual QA, frontend copy, responsive behavior, and design reviews. This skill is mandatory whenever frontend app files are created or changed.
+- `$deploy-remote-dev` for uploading or rebuilding the configured remote Docker dev stack without exposing `.env` secrets.
 
 Do not duplicate full skill workflows here. The `SKILL.md` files are the source of truth for task-specific procedures.

@@ -2660,6 +2660,60 @@ Principles:
   - Over-relaxing verification could admit weak sources; mitigate by exposing
     verification state and keeping review warnings.
 
+### Slice 0.7.6.1.7.1: Remote dev server deployment documentation and skill
+
+- Status: `Done`
+- Goal: Record the current remote dev server as a managed project contour and
+  make updates repeatable without reconstructing SSH, Docker, and `.env`
+  handling from chat history.
+- User value: A developer can deploy the current workspace to the shared remote
+  Docker dev stack with one script and clear safety rules for secrets.
+- Scope:
+  - Add `deploy/remote-dev.env` with non-secret host, SSH target, path, URL,
+    port, and Redis bind configuration.
+  - Add `docs/deployment/REMOTE_DEV_SERVER.md` with server purpose, services,
+    deploy flow, manual checks, logs, and `.env` safety rules.
+  - Add `scripts/deploy_remote_dev.ps1` for tar/scp deployment, remote `.env`
+    copy, server-specific `.env` overrides, `docker compose config --quiet`,
+    `docker compose up --build -d`, and API/frontend health checks.
+  - Add `.agents/skills/deploy-remote-dev/SKILL.md` so future "залить на
+    сервер" tasks use the documented script and do not print secrets.
+  - Update Developer Guide with remote dev commands and URLs.
+- Out of scope:
+  - Production deployment.
+  - Postgres or managed infrastructure.
+  - Auth, TLS, reverse proxy, CI/CD, rollback release management, or secret
+    manager integration.
+  - Runtime application/API/schema changes.
+- Implementation notes:
+  - Remote config keeps `POWER_WEB_OS_REMOTE_SSH_TARGET=flowise` because the
+    SSH alias has the working key configuration.
+  - The remote project path is `/opt/power-web-os`.
+  - Local `.env` is copied separately and remains uncommitted.
+  - Redis host publishing is configured as `127.0.0.1:6380`; it should not be
+    public.
+  - The deploy script supports `-DryRun` with no file transfer and no SSH
+    mutation.
+- Tests:
+  - Static contract test for remote config, deploy script, skill, and docs.
+  - `powershell -ExecutionPolicy Bypass -File scripts/deploy_remote_dev.ps1 -DryRun`
+  - `docker compose config --quiet`
+  - `python -m pytest tests/test_backend_architecture_contract.py`
+- Demo impact:
+  - No UI behavior change; the existing remote dev UI can be refreshed through
+    the documented deployment path.
+- Acceptance criteria:
+  - Remote server host/path/ports live in a tracked non-secret config file.
+  - A dry-run command explains the deployment steps without copying files.
+  - The live command can rebuild the remote Docker dev stack and verify API,
+    catalog, and frontend responses.
+  - The project skill documents when and how to deploy without exposing
+    secrets.
+- Risks:
+  - This remains a dev-only tar/scp deployment; stale remote files can remain if
+    files are deleted locally. Mitigate later with release directories or rsync
+    if this contour becomes long-lived.
+
 ### Slice 0.7.6.1.8: Web retrieval provider abstraction and Perplexity adapter
 
 - Status: `Backlog`
