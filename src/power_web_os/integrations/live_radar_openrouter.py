@@ -17,7 +17,7 @@ from power_web_os.application.live_radar_contracts import (
 )
 from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
-from power_web_os.integrations.openrouter_request_builder import build_openrouter_request
+from power_web_os.integrations.openrouter_request_builder import build_openrouter_request, openrouter_compiled_prompt_summary
 from power_web_os.integrations.live_radar_source_verification import (
     normalize_verification_mode,
     supports_product_evidence,
@@ -117,6 +117,7 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
             model=selected_model,
             web_mode=mode,
         )
+        compiled_prompt = openrouter_compiled_prompt_summary(payload)
         _trace_provider(
             trace_type="provider_request",
             title="OpenRouter request",
@@ -125,6 +126,8 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                 "url": "https://openrouter.ai/api/v1/chat/completions",
                 "model": selected_model,
                 "web_mode": mode,
+                "task_card": compiled_prompt.get("task_card", {}),
+                "compiled_prompt": compiled_prompt,
                 "request": payload,
             },
         )

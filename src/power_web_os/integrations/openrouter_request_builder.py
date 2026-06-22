@@ -6,6 +6,12 @@ import json
 from typing import Any
 
 from power_web_os.application.live_radar_contracts import RadarSearchPlan, RadarSearchQuery
+from power_web_os.application.live_radar_retrieval_plan import (
+    RadarRetrievalTaskPrompt,
+    response_contract_for_stage,
+    stage_task_label,
+    retrieval_task_from_search_query,
+)
 
 
 def build_openrouter_request(
@@ -16,14 +22,7 @@ def build_openrouter_request(
     web_mode: str,
 ) -> dict[str, Any]:
     query = search_plan.queries[0] if len(search_plan.queries) == 1 else None
-    prompt = {
-        "task": _task_text(query),
-        "radar": _scoped_radar(radar, query),
-        "current_task": query.model_dump() if query is not None else {},
-        "search_plan": search_plan.model_dump(),
-        "output_schema": _output_schema(query),
-        "rules": _task_rules(query),
-    }
+    prompt = compact_task_prompt(radar=radar, search_plan=search_plan).model_dump()
     request: dict[str, Any] = {
         "model": model,
         "messages": [
@@ -50,85 +49,105 @@ def build_openrouter_request(
     return request
 
 
+def openrouter_compiled_prompt_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    messages = payload.get("messages", [])
+    user_message = messages[1] if isinstance(messages, list) and len(messages) > 1 else {}
+    content = user_message.get("content") if isinstance(user_message, dict) else None
+    if not isinstance(content, str):
+        return {}
+    try:
+        value = json.loads(content)
+    except json.JSONDecodeError:
+        return {"raw_content_excerpt": content[:1000]}
+    if not isinstance(value, dict):
+        return {}
+    constraints = value.get("constraints", [])
+    return {
+        "task_card": value.get("task_card", {}),
+        "response_contract": value.get("response_contract", {}),
+        "constraint_count": len(constraints) if isinstance(constraints, list) else 0,
+    }
+
+
+def compact_task_prompt(*, radar: dict[str, Any], search_plan: RadarSearchPlan) -> RadarRetrievalTaskPrompt:
+    query = search_plan.queries[0] if len(search_plan.queries) == 1 else None
+    if query is None:
+        return RadarRetrievalTaskPrompt(
+            task_card={
+                "task_id": "multi-task-plan",
+                "radar_id": search_plan.radar_id,
+                "stage": "multi_task_plan",
+                "query_count": len(search_plan.queries),
+                "purpose": "Run the provided bounded Radar search tasks.",
+                "queries": [item.query for item in search_plan.queries],
+            },
+            response_contract=_compact_response_contract(None),
+            constraints=_task_rules(None),
+        )
+    task = retrieval_task_from_search_query(query)
+    task_card = {
+        "task_id": task.task_id,
+        "radar_id": search_plan.radar_id,
+        "task": _task_text(query),
+        "stage": task.stage,
+        "subject_type": task.subject_type,
+        "subject_id": task.subject_id,
+        "query": task.query,
+        "purpose": task.purpose,
+        "expected_evidence": task.expected_evidence,
+        "rule_snapshot": task.rule_snapshot,
+        "source_policy": {
+            "scope": task.source_scope,
+            "source_base": task.source_base,
+            "application_scope": task.application_scope,
+            "source_ids": task.source_ids,
+            "external_source_hints": task.external_source_hints,
+            "preferred_domains": list(_source_policy(radar).get("preferred_domains", [])),
+            "allow_open_web": _source_policy(radar).get("allow_open_web", True),
+        },
+        "candidate_scope": task.candidate_scope,
+        "depends_on": task.depends_on,
+    }
+    return RadarRetrievalTaskPrompt(
+        task_card={key: value for key, value in task_card.items() if value not in ("", None, [], {})},
+        response_contract=_compact_response_contract(query),
+        constraints=_task_rules(query),
+    )
+
+
 def _task_text(query: RadarSearchQuery | None) -> str:
     if query is None:
         return "Run a live ICP radar search. Use web search and return only JSON."
-    if query.stage == "qualification_discovery":
-        return "Discover candidate accounts for the current qualification rule only. Do not search or score intent signals."
-    if query.stage == "qualification_gate":
-        return "Filter the provided candidate scope through this qualification rule only. Do not search or score intent signals."
-    if query.stage == "coverage_check":
-        return "Check candidate universe coverage for the current qualified scope. Return missing source-backed candidates as gaps. Do not search or score intent signals."
-    if query.stage == "signal_search":
-        return "Search the provided qualified candidate scope for this one intent signal only. Do not discover new candidates."
-    return "Run the bounded Radar task and return only JSON."
+    return stage_task_label(query.stage)
 
 
-def _scoped_radar(radar: dict[str, Any], query: RadarSearchQuery | None) -> dict[str, Any]:
-    scoped = {key: value for key, value in radar.items() if key not in {"qualification_criteria", "intent_signals"}}
+def _compact_response_contract(query: RadarSearchQuery | None) -> dict[str, Any]:
     if query is None:
-        scoped["qualification_criteria"] = radar.get("qualification_criteria", [])
-        scoped["intent_signals"] = radar.get("intent_signals", [])
-        return scoped
-    if query.stage in {"qualification_discovery", "qualification_gate", "coverage_check"}:
-        scoped["qualification_criteria"] = [
-            item for item in radar.get("qualification_criteria", [])
-            if isinstance(item, dict) and str(item.get("code")) == query.subject_id
-        ]
-        scoped["intent_signals"] = []
-    elif query.stage == "signal_search":
-        scoped["qualification_criteria"] = []
-        scoped["intent_signals"] = [
-            item for item in radar.get("intent_signals", [])
-            if isinstance(item, dict) and str(item.get("code")) == query.subject_id
-        ]
-    return scoped
-
-
-def _output_schema(query: RadarSearchQuery | None) -> dict[str, Any]:
-    candidate: dict[str, Any] = {
-        "legal_name": "candidate legal name",
-        "description": "short account description",
-        "review_flags": ["why human review is needed"],
-    }
-    if query is None or query.stage in {"qualification_discovery", "qualification_gate", "coverage_check"}:
-        candidate["qualification"] = [{
-            "criterion_code": query.subject_id if query else "Q1",
-            "status": "confirmed|weak|unknown|rejected",
-            "confidence": "high|medium|low",
-            "rationale": "why this status",
-            "evidence_refs": ["source ids"],
-            "evidence_findings": [{"source_ref": "source id", "fact": "source-backed fact", "why_it_matches_rule": "why it matches"}],
-        }]
-    if query is None or query.stage == "signal_search":
-        candidate["signals"] = [{
-            "signal_code": query.subject_id if query else "S1",
-            "status": "observed|not_observed|unclear",
-            "score": "0|1|2",
-            "confidence": "high|medium|low",
-            "summary": "short signal summary",
-            "evidence_refs": ["source ids"],
-            "evidence_findings": [{"source_ref": "source id", "fact": "source-backed fact", "why_it_matches_signal": "why it matches"}],
-        }]
-    schema = {
-        "sources": [{"evidence_ref": "stable short id", "title": "source title", "url": "https://...", "snippet": "short evidence summary", "query_id": "search query id"}],
-        "candidates": [candidate],
-        "source_outcomes": [{"source_ref": "source id", "outcome": "used|duplicate|irrelevant|policy_skipped|insufficient_evidence|unreachable|not_used_by_candidate", "reason": "why"}],
-    }
-    if query and query.stage in {"qualification_discovery", "coverage_check"}:
-        schema["candidate_universe_gaps"] = [{
-            "legal_name": "source-backed entity not yet in candidate universe",
-            "description": "why it may belong",
-            "source_refs": ["source ids"],
-            "reason": "why this is a universe gap",
-        }]
-        schema["coverage_findings"] = [{
-            "summary": "coverage check result",
-            "completeness_risk": "low|medium|high",
-            "candidate_count_estimate": "range or unknown",
-            "warnings": ["coverage warning"],
-        }]
-    return schema
+        return {
+            "schema_id": "radar_task_result_v1",
+            "return_json_sections": ["sources", "candidates", "source_outcomes"],
+        }
+    contract = response_contract_for_stage(query.stage, query.subject_id).model_dump()
+    if query.stage == "signal_search":
+        contract["finding_shape"] = {
+            "sources": "evidence refs with title, url, snippet, query_id",
+            "candidates.signals": "one signal finding for current signal and candidate scope",
+            "source_outcomes": "used/duplicate/irrelevant/policy_skipped/insufficient_evidence/unreachable/not_used_by_candidate",
+        }
+    elif query.stage == "coverage_check":
+        contract["finding_shape"] = {
+            "sources": "source refs used for coverage observations",
+            "candidate_universe_gaps": "source-backed entities missing from current universe",
+            "coverage_findings": "completeness risk and warnings",
+            "source_outcomes": "source usage outcome",
+        }
+    else:
+        contract["finding_shape"] = {
+            "sources": "evidence refs with title, url, snippet, query_id",
+            "candidates.qualification": "one qualification finding for current criterion",
+            "source_outcomes": "source usage outcome",
+        }
+    return contract
 
 
 def _task_rules(query: RadarSearchQuery | None) -> list[str]:
@@ -145,3 +164,8 @@ def _task_rules(query: RadarSearchQuery | None) -> list[str]:
         rules.append("Return signal evidence only for the current signal and candidate scope.")
         rules.append("Do not add new candidates. If the source mentions a new entity, return it only in candidate_universe_gaps.")
     return rules
+
+
+def _source_policy(radar: dict[str, Any]) -> dict[str, Any]:
+    value = radar.get("source_policy")
+    return dict(value) if isinstance(value, dict) else {}

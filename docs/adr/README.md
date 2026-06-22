@@ -23,6 +23,7 @@ ADRs capture decisions that shape product architecture.
 - `2026-06-19-source-lifecycle-before-quality-benchmark.md` - Make source lifecycle, evidence linking, and score-contract hardening visible before multi-radar quality benchmarking.
 - `2026-06-19-managed-web-retrieval-and-soft-verification.md` - Treat web search as managed retrieval with soft verification, useful-result budgets, and provider-isolated adapters.
 - `2026-06-19-radar-planning-observability-hardening.md` - Harden criterion role inference, plan validation, run-level diagnostics, and trace UX before provider benchmarking.
+- `2026-06-22-radar-retrieval-contract-and-source-providers.md` - Compact Radar execution prompts, formalize retrieval task cards, fix budget semantics, and introduce structured company-data source providers such as DaData.
 
 ## Template
 

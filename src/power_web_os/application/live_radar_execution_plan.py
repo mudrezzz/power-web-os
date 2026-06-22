@@ -10,6 +10,13 @@ from power_web_os.application.live_radar_contracts import (
     RadarSearchPlan,
     RadarSearchQuery,
 )
+from power_web_os.application.live_radar_retrieval_plan import (
+    retrieval_plan_from_execution_plan,
+    retrieval_plan_to_search_plan,
+    retrieval_task_from_execution_task,
+    retrieval_task_to_search_plan,
+    retrieval_task_to_search_query,
+)
 
 
 def compile_radar_execution_plan(radar: dict[str, Any]) -> RadarExecutionPlan:
@@ -84,34 +91,15 @@ def compile_radar_execution_plan(radar: dict[str, Any]) -> RadarExecutionPlan:
 
 
 def execution_plan_to_search_plan(plan: RadarExecutionPlan) -> RadarSearchPlan:
-    return RadarSearchPlan(
-        radar_id=plan.radar_id,
-        queries=[execution_task_to_query(task) for task in plan.tasks],
-    )
+    return retrieval_plan_to_search_plan(retrieval_plan_from_execution_plan(plan))
 
 
 def execution_task_to_search_plan(task: RadarExecutionTask, *, radar_id: str) -> RadarSearchPlan:
-    return RadarSearchPlan(radar_id=radar_id, queries=[execution_task_to_query(task)])
+    return retrieval_task_to_search_plan(retrieval_task_from_execution_task(task), radar_id=radar_id)
 
 
 def execution_task_to_query(task: RadarExecutionTask) -> RadarSearchQuery:
-    return RadarSearchQuery(
-        query_id=task.task_id,
-        query=_query_with_scope(task),
-        purpose=task.purpose,
-        expected_evidence=list(task.expected_evidence),
-        stage=task.stage,
-        subject_type=task.subject_type,
-        subject_id=task.subject_id,
-        rule_snapshot=task.rule_snapshot,
-        source_scope=task.source_scope,
-        source_base=task.source_base,
-        application_scope=task.application_scope,
-        source_ids=list(task.source_ids),
-        external_source_hints=list(task.external_source_hints),
-        depends_on=list(task.depends_on),
-        candidate_scope=list(task.candidate_scope),
-    )
+    return retrieval_task_to_search_query(retrieval_task_from_execution_task(task))
 
 
 def scoped_execution_task(task: RadarExecutionTask, *, candidate_scope: list[str]) -> RadarExecutionTask:
@@ -139,12 +127,6 @@ def _task_from_rule(
         expected_evidence=[code],
         depends_on=list(depends_on or []),
     )
-
-
-def _query_with_scope(task: RadarExecutionTask) -> str:
-    if not task.candidate_scope:
-        return task.query
-    return _compact_query([task.query, "Candidate scope:", "; ".join(task.candidate_scope)])
 
 
 def _rule_code(rule: dict[str, Any]) -> str:

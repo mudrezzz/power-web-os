@@ -5,8 +5,8 @@ CRM tools, and other network-facing infrastructure.
 
 ## Ownership
 
-- `openrouter_request_builder.py` owns bounded OpenRouter prompt/request
-  shaping for one Radar execution task.
+- `openrouter_request_builder.py` owns compact OpenRouter prompt/request
+  shaping for one Radar retrieval task card.
 - `openrouter_discovery_planner.py` owns the OpenRouter adapter for structured
   discovery-plan proposals. It does not execute web search and does not decide
   candidate truth.
@@ -38,6 +38,10 @@ They must never store headers, API keys, or raw hidden chain-of-thought.
 OpenRouter requests must stay scoped to the current execution task: qualification
 tasks must not include intent signals, and signal tasks must not discover new
 candidates.
+Execution prompts should contain a compact `task_card`, `response_contract`, and
+`constraints`, not the full Radar definition or a duplicated single-task
+`search_plan`. The full OpenRouter request may still be stored in sanitized
+technical trace for developer inspection.
 OpenRouter model routing is role-specific. The live search provider keeps
 `OPENROUTER_MODEL` as the fast/default signal model and uses
 `OPENROUTER_EXTRACTOR_MODEL` for discovery, qualification, and coverage tasks,

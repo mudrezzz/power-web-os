@@ -17,6 +17,7 @@ from power_web_os.application.live_radar_contracts import (
 from power_web_os.application.live_radar_execution_budget import SubjectTaskBudget
 from power_web_os.application.live_radar_execution_plan import execution_task_to_search_plan, scoped_execution_task
 from power_web_os.application.live_radar_normalization import _dedupe_sources
+from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan
 from power_web_os.application.live_radar_staged_support import (
     budget_warning_event as _budget_warning_event,
     candidate_filtered_events as _candidate_filtered_events,
@@ -81,6 +82,7 @@ def run_staged_radar_execution(
         min_candidates=min_candidates_per_discovery_task,
         max_retries=max_discovery_retries_per_task,
     )
+    retrieval_plan = retrieval_plan_from_execution_plan(execution_plan)
 
     discovery_tasks = _tasks_for_stage(execution_plan, "qualification_discovery")
     for task in discovery_tasks:
@@ -260,6 +262,7 @@ def run_staged_radar_execution(
         events,
         {
             "execution_mode": "qualification_first_iterative_coverage",
+            "retrieval_plan": retrieval_plan.model_dump(),
             "executed_task_count": len(executed_task_ids),
             "executed_task_ids": executed_task_ids,
             "gate_results": gate_results,

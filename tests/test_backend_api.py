@@ -197,6 +197,8 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["coverage_warnings"] == []
     assert dossier["unresolved_candidate_gaps"] == []
     assert dossier["discovery_iteration_count"] == 1
+    assert dossier["retrieval_plan"]["tasks"][0]["task_id"] == "q1"
+    assert dossier["retrieval_plan"]["tasks"][0]["response_contract"]["schema_id"] == "signal_finding_v1"
     assert dossier["search_plan"][0]["query_id"] == "q1"
     assert dossier["search_plan"][0]["source_refs"] == ["src_1"]
     assert dossier["search_plan"][0]["candidate_refs"] == ["candidate-a"]
@@ -544,6 +546,27 @@ def _artifact() -> dict[str, Any]:
                         "reason": "not_used_by_candidate",
                     }
                 ],
+                "retrieval_plan": {
+                    "radar_id": "toir-quick-live",
+                    "tasks": [
+                        {
+                            "task_id": "q1",
+                            "stage": "signal_search",
+                            "subject_type": "signal",
+                            "subject_id": "S1",
+                            "query": "Candidate A maintenance modernization SIBUR",
+                            "purpose": "Find source-backed modernization evidence for Candidate A.",
+                            "expected_evidence": ["maintenance modernization", "target group relationship"],
+                            "source_scope": "additional",
+                            "candidate_scope": ["Candidate A"],
+                            "response_contract": {
+                                "schema_id": "signal_finding_v1",
+                                "expected_sections": ["sources", "candidates.signals", "source_outcomes"],
+                                "required_fields": ["signal_code", "status", "score", "evidence_refs"],
+                            },
+                        }
+                    ],
+                },
             },
         },
         "search_plan": {

@@ -46,6 +46,14 @@ from power_web_os.application.live_radar_normalization import (
     normalize_live_candidate,
     validate_live_radar_qualification_contract,
 )
+from power_web_os.application.live_radar_retrieval_plan import (
+    RadarResponseContract,
+    RadarRetrievalPlan,
+    RadarRetrievalTask,
+    RadarRetrievalTaskPrompt,
+    retrieval_plan_from_execution_plan,
+    retrieval_plan_to_search_plan,
+)
 from power_web_os.integrations.openrouter_discovery_planner import (
     OpenRouterDiscoveryPlanner,
     build_openrouter_discovery_planner_request,
@@ -131,6 +139,10 @@ __all__ = [
     "RadarDiscoveryPlanStep",
     "RadarDiscoveryPlanValidationResult",
     "RadarExecutionTask",
+    "RadarResponseContract",
+    "RadarRetrievalPlan",
+    "RadarRetrievalTask",
+    "RadarRetrievalTaskPrompt",
     "RadarSearchPlan",
     "RadarSearchQuery",
     "RadarSourceEvidence",
@@ -150,5 +162,7 @@ __all__ = [
     "build_openrouter_request",
     "normalize_live_candidate",
     "normalize_openrouter_response",
+    "retrieval_plan_from_execution_plan",
+    "retrieval_plan_to_search_plan",
     "validate_live_radar_qualification_contract",
 ]

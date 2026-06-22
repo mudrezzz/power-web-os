@@ -87,7 +87,7 @@ candidate snapshots. It also has a Celery/Redis job adapter for long-running
 Radar execution, durable human review decisions for live Radar findings, an
 append-only structured run journal for reasoning/audit summaries, an append-only
 sanitized admin technical trace for developer inspection, and a
-qualification-first live Radar execution plan.
+qualification-first live Radar execution plan with compact retrieval task cards.
 The frontend now exposes run-level diagnostics for queued, running, completed,
 failed, and zero-candidate live Radar runs, including candidate-universe and
 source-lifecycle inspection without selecting a candidate. It also renders the
@@ -95,10 +95,12 @@ sanitized developer/admin technical trace as a readable phase-grouped viewer
 with search, filters, copyable sections, and collapsed raw JSON. Backend/frontend
 slices should continue in this order:
 
-1. provider-neutral web retrieval abstraction with OpenRouter/Perplexity-style adapters;
-2. multi-radar discovery benchmark over the qualification-first, coverage-enforced workflow pipeline;
-3. normalized candidate/evidence query tables when API usage needs them;
-4. production schedule/cadence controls.
+1. hierarchical execution budgets and explicit not-searched states;
+2. structured company-source registry with DaData as the first real provider;
+3. provider-neutral web retrieval abstraction with OpenRouter/Perplexity-style adapters;
+4. multi-radar discovery benchmark over the qualification-first, coverage-enforced workflow pipeline;
+5. normalized candidate/evidence query tables when API usage needs them;
+6. production schedule/cadence controls.
 
 JSON artifacts remain useful as demo exports and offline fallback, but they are
 not the long-term source of truth. The frontend now prefers the Radar API for
@@ -230,6 +232,14 @@ provider/search tasks per qualification rule or signal. The repository
 when no environment value is configured. Budget exhaustion is surfaced as
 coverage/review warnings.
 
+That setting is a compatibility safety limit, not the final semantic budget
+model. The target execution budget is hierarchical: total run budget, discovery
+budget per qualification rule, gate budget per candidate and rule, signal budget
+per candidate and signal, and provider-specific caps. A candidate or signal that
+was not searched because a budget was exhausted must be marked as not searched,
+not as a negative observation. `not_observed` should mean the relevant bounded
+search actually ran and found no supporting evidence.
+
 OpenRouter model routing is role-specific. `OPENROUTER_MODEL` is the fast
 default for simple bounded tasks such as signal checks.
 `OPENROUTER_ADVANCED_MODEL` is the shared advanced fallback, while
@@ -269,6 +279,28 @@ scoring. Provider adapters in `integrations` execute bounded retrieval or
 extraction tasks and return structured retrieval/source/citation material. This
 keeps OpenRouter, Perplexity, or later search providers interchangeable without
 letting provider-specific behavior become domain policy.
+
+Prompt construction follows the same separation. Planner prompts may receive the
+rich Radar definition, source policy, criterion-role context, and run limits
+because they are responsible for proposing strategy. Bounded execution prompts
+now receive compact task cards: current task type, candidate/rule/signal
+scope, selected source policy, expected evidence, and a concise response
+contract. They do not repeatedly include the whole Radar artifact, a
+duplicated one-query search plan, or verbose schemas that do not change per
+task. The durable retrieval plan and technical trace should make the compiled
+task card and provider prompt inspectable without exposing secrets or raw hidden
+chain-of-thought.
+
+Structured company-data sources are separate from open web retrieval. DaData is
+the planned first provider in this class because its MCP/API surface is designed
+to give AI agents fresh company and address data, including organization lookup
+by INN/OGRN, official company facts, address data, domain/email ownership, and
+related company facts. Radar should use such sources for entity resolution and
+company attributes, while web retrieval remains responsible for open evidence,
+current events, and intent signals. Source adapters live in `integrations` behind
+application ports; Radar definitions and source policies decide whether a
+provider can be used for a rule, but provider SDK/MCP details do not leak into
+domain scoring or API routes.
 
 `GET /api/radar-runs/{run_id}/journal` returns ordered structured audit events.
 The journal is not raw hidden chain-of-thought. Application services reject

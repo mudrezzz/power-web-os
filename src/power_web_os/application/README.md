@@ -18,6 +18,8 @@ provider SDK details.
   and backward-compatible search-plan projection.
 - `live_radar_execution_plan.py` compiles generic Radar definitions into
   qualification-first staged execution plans.
+- `live_radar_retrieval_plan.py` projects accepted execution tasks into compact
+  retrieval task cards and backward-compatible search-plan queries.
 - `live_radar_discovery_planning.py` owns the discovery planner contracts,
   deterministic fallback planner, source-policy validation, and product-source
   visibility helpers.
@@ -87,7 +89,9 @@ fallback for existing snapshots, not the preferred extension path. Application
 code owns execution strategy: qualification discovery, qualification gates, and
 coverage checks run before signal searches. New source-backed candidates found
 by coverage are merged and re-qualified before the universe is frozen. Providers
-receive bounded tasks instead of the whole Radar as one mixed prompt.
+receive compact retrieval task cards instead of the whole Radar as one mixed
+prompt. The legacy `RadarSearchPlan` remains a compatibility projection, but new
+diagnostics and prompt shaping should prefer the accepted retrieval plan.
 
 Discovery planning follows the same rule. A `RadarDiscoveryPlanner` may propose
 candidate-universe, source-probe, qualification-gate, and coverage-check steps,

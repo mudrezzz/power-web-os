@@ -58,10 +58,11 @@ journal, and technical trace payloads.
 
 ## Consequences
 
-- `Slice 0.7.6.1.8` provider abstraction is deferred until the current
-  pipeline can explain planning, budget, and trace behavior.
-- The next implementation work should focus on run-level diagnostics and trace
-  UX rather than adding another provider immediately.
+- Provider comparison is deferred until the pipeline can explain planning,
+  compact task prompts, budget semantics, source lifecycle, and trace behavior.
+- Implementation work should fix prompt shape, hierarchical budgets, and
+  structured company-source support before adding another web retrieval
+  provider.
 - Future benchmark failures should be diagnosable per criterion role, source
   policy decision, candidate universe stage, budget limit, provider result,
   normalization result, and score/evidence decision.

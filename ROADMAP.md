@@ -1411,7 +1411,7 @@ Status:
 
 ### Slice 0.6.4: Take-into-work handoff from ICP Radar to Power Web
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Add the first handoff from an ICP Radar candidate into the existing Power Web / Access Plan loop.
 - User value: A user can decide which scored candidates deserve real account work instead of generating Power Webs for every found company.
 - Scope:
@@ -2919,24 +2919,239 @@ Principles:
   - Trace UI can become too heavy; keep the first version focused on inspection,
     filtering, and wrapping, not full observability-platform features.
 
-### Slice 0.7.6.1.8: Web retrieval provider abstraction and Perplexity adapter
+### Slice 0.7.6.1.8: Compact Radar task prompts and retrieval plan contract
 
 - Status: `Backlog`
-- Goal: Make web search a first-class retrieval boundary instead of treating a
-  chat-completion answer as the only source collection artifact.
-- User value: A user/developer can see which provider retrieved which URLs,
-  snippets, citations, and source outcomes before extraction and scoring, and
-  can compare OpenRouter/Perplexity behavior on the same bounded task.
+- Goal: Stop sending heavy, duplicated Radar JSON into every bounded provider
+  call, and make the formal retrieval plan the durable bridge between planning
+  and execution.
+- Problem being closed:
+  - Current OpenRouter task prompts contain repeated `radar`, `current_task`,
+    `search_plan`, full `output_schema`, and rule blocks even for a single
+    candidate/signal check.
+  - Provider traces show the model often compresses that payload into one simple
+    internal search query, which means the backend spends tokens on context that
+    does not improve retrieval.
+  - Planning exists, but the executable plan is still not explicit enough as a
+    product/developer artifact: it is hard to inspect the exact task card,
+    source policy, query, stop condition, and expected evidence that execution
+    used.
+- User value: A user/developer can inspect the actual concise task cards and
+  retrieval plan before judging candidate quality, and live runs spend fewer
+  tokens on prompt noise.
 - Scope:
-  - Split provider interaction into explicit retrieval and extraction concepts:
-    `retrieved_sources`, `retrieval_query`, `provider_citations`, snippets,
-    retrieval status, and extraction observations.
+  - Add a `RadarRetrievalPlan` / `RadarRetrievalTask` application contract that
+    projects accepted discovery, gate, coverage, and signal tasks into compact
+    executable task cards.
+  - Add a `TaskPromptCompiler` that produces minimal prompt payloads per task:
+    task type, candidate/rule/signal scope, selected source policy, expected
+    evidence, compact return contract, and hard constraints.
+  - Remove duplicated one-query `search_plan` blocks from per-task prompts when
+    `current_task` already carries the task card.
+  - Replace repeated verbose schemas with concise schema identifiers plus only
+    the task-specific fields that the model must return.
+  - Persist prompt/task summaries in technical trace and expose the accepted
+    retrieval plan in dossier without raw hidden chain-of-thought.
+  - Keep planner prompts richer than execution prompts; planner needs strategy
+    context, bounded task execution does not.
+- Out of scope:
+  - New DB schema.
+  - New source provider.
+  - Perplexity or DaData integration.
+  - Benchmark quality claims.
+- Implementation notes:
+  - The backend still owns strategy and validation. LLM/provider calls execute
+    bounded tasks and return observations.
+  - Target prompt shape should be readable as a compact task card, not as a full
+    Radar artifact dump.
+  - Trace should allow side-by-side inspection of planned task card, compiled
+    provider prompt, provider result, parsed output, and final usage.
+- Completion notes:
+  - Done: added `RadarRetrievalPlan`, `RadarRetrievalTask`,
+    `RadarResponseContract`, and `RadarRetrievalTaskPrompt` application
+    contracts.
+  - Done: projected existing execution plans through retrieval task cards while
+    preserving `RadarSearchPlan` / `search_plan` compatibility.
+  - Done: changed OpenRouter user prompts to compact `task_card`,
+    `response_contract`, and `constraints` payloads.
+  - Done: added `retrieval_plan` to run execution metadata and the dossier API
+    response.
+  - Done: added provider request trace summaries for `task_card` and
+    `compiled_prompt`.
+- Tests:
+  - Unit tests for prompt compiler output size/shape and no duplicated
+    `current_task`/single-query `search_plan` payload.
+  - Recorded provider tests proving discovery, gate, coverage, and signal task
+    prompts remain task-scoped.
+  - Trace/dossier tests that accepted retrieval plan and compact task card are
+    visible without secrets or hidden-CoT keys.
+  - Architecture tests that prompt compilation stays in `integrations` or an
+    application port boundary, not in domain scoring.
+- Docs:
+  - Update SAO, Developer Guide, demo docs, and ADR notes with compact prompt
+    contracts and retrieval plan ownership.
+- Demo impact:
+  - Manual run trace becomes easier to inspect: each provider call has a short
+    task card and compiled prompt, rather than a large raw JSON blob.
+- Acceptance criteria:
+  - Provider request traces for signal tasks show only the current candidate,
+    current signal, source policy, and compact response contract.
+  - Dossier shows the accepted retrieval plan and task cards.
+  - Existing API/candidate DTOs remain backward compatible.
+- Risks:
+  - Over-compressing prompts can reduce extraction quality; mitigate with
+    recorded fixtures and trace-visible prompt diffs.
+
+### Slice 0.7.6.1.9: Hierarchical Radar execution budgets and not-searched states
+
+- Status: `Backlog`
+- Goal: Replace broad subject-level provider task limits with budgets that match
+  Radar semantics: per run, per discovery rule, per candidate + qualification
+  criterion, per candidate + signal, and per provider.
+- Problem being closed:
+  - `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=5` currently behaves too
+    broadly. In signal stages it can limit search to the first few candidates
+    for a signal instead of allowing up to five attempts for each candidate and
+    each signal.
+  - Candidates that were not searched because of budget can look like
+    `not_observed`, which is semantically wrong. `not_observed` must mean
+    searched and no signal found.
+- User value: Run diagnostics can distinguish "searched and negative" from "not
+  searched because the budget ran out", so shortlist quality and missing
+  evidence are not misread.
+- Scope:
+  - Add `RadarExecutionBudget` with hierarchical keys:
+    `run`, `stage`, `rule_id`, `candidate_id`, `signal_id`, and provider.
+  - Keep `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` as a compatibility alias,
+    but map it to candidate-scoped rule/signal task budgets where possible.
+  - Add clearer future settings:
+    `POWER_WEB_OS_RADAR_MAX_DISCOVERY_TASKS_PER_RULE`,
+    `POWER_WEB_OS_RADAR_MAX_GATE_TASKS_PER_CANDIDATE_RULE`,
+    `POWER_WEB_OS_RADAR_MAX_SIGNAL_TASKS_PER_CANDIDATE_SIGNAL`, and
+    `POWER_WEB_OS_RADAR_MAX_TOTAL_WEB_TASKS_PER_RUN`.
+  - Add candidate/signal statuses such as `not_searched_budget_limited` and
+    `not_searched_policy_limited` while keeping existing candidate DTOs
+    backward compatible.
+  - Surface per-budget counters and exhausted-budget reasons in dossier,
+    journal, and technical trace.
+- Out of scope:
+  - Provider adapter replacement.
+  - UI redesign beyond existing diagnostics fields.
+  - New DB schema.
+- Implementation notes:
+  - Budget keys must be generated by the application executor, not by provider
+    adapters.
+  - Signal score `0` is allowed only for searched negative or invalid evidence;
+    unsearched budget-limited findings need their own review state.
+- Tests:
+  - Unit tests for budget key generation and exhaustion per candidate/signal.
+  - Recorded flow where 10 candidates and one signal do not stop after the first
+    five candidates when per-candidate budget allows more.
+  - API/dossier tests for `not_searched_budget_limited` projection.
+  - Regression tests for existing smoke-safe low-budget runs.
+- Docs:
+  - Update Developer Guide, demo docs, and `.env.example` comments with the new
+    budget semantics and compatibility alias.
+- Demo impact:
+  - Run diagnostics show which candidates were searched, which were skipped by
+    budget, and which signal/rule budget was exhausted.
+- Acceptance criteria:
+  - A budget-limited candidate is never shown as a searched negative result.
+  - Existing `.env` with `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` still
+    works, but docs recommend the new explicit variables.
+- Risks:
+  - More precise budgets can increase runtime/cost when raised; keep total run
+    cap and trace-visible counters.
+
+### Slice 0.7.6.1.10: DaData source provider and Radar source registry
+
+- Status: `Backlog`
+- Goal: Add a real structured company-data source to Radar execution instead of
+  relying only on general web search for legal-entity facts.
+- Problem being closed:
+  - The Radar settings already model sources and MCP/API-style source policies,
+    but there is no concrete structured company source connector behind them.
+  - General web search is weak for facts such as INN/OGRN, legal status, address,
+    OKVED, revenue, and organization normalization.
+  - Without a connector, the UI cannot honestly let users add DaData as a source
+    that the backend can execute.
+- User value: A Radar can use a registry/company-data source for entity
+  resolution and company facts, while web search remains responsible for open
+  evidence and signal monitoring.
+- Scope:
+  - Add provider-neutral source registry contracts:
+    `RadarSourceProvider`, `CompanyRegistryProvider`, `CompanyLookupRequest`,
+    `CompanyLookupResult`, and source usage/outcome records.
+  - Add a DaData adapter in `integrations` using the DaData API/MCP boundary,
+    configured by local secrets such as `DADATA_API_KEY` and
+    `DADATA_SECRET_KEY`.
+  - Add Radar source type `company_registry` with provider id `dadata`.
+  - Allow planner/source policy to select DaData for entity resolution,
+    legal-entity normalization, INN/OGRN facts, address/status/OKVED/revenue
+    enrichment, and domain/email-owner lookup when configured.
+  - Add UI/settings source option only after backend adapter and recorded tests
+    exist, so the UI does not advertise a non-executable source.
+  - Store DaData outputs in technical trace and output metadata as structured
+    source observations; product dossier shows only facts used in candidate,
+    qualification, validation, or scoring evidence.
+- Out of scope:
+  - Using DaData as the only discovery mechanism.
+  - Production account/billing management UI.
+  - Normalized candidate/evidence tables.
+  - CRM enrichment writeback.
+- Implementation notes:
+  - DaData is not a replacement for web retrieval. It is a structured source for
+    company identity and facts; the planner should combine it with web sources
+    when the criterion requires open evidence or current intent signals.
+  - The adapter must live under `integrations`; application services depend on a
+    source-provider port, not on MCP/API client details.
+  - Secrets must never appear in trace, logs, generated artifacts, or committed
+    docs.
+- Tests:
+  - Recorded DaData fixtures for lookup by INN/OGRN/name/domain/email where
+    applicable.
+  - Planner/source-policy tests showing DaData is selected for registry-like
+    criteria and skipped with rationale when not useful.
+  - Architecture tests that DaData client details do not leak into application or
+    domain code.
+  - API/dossier tests for source usage links and redaction.
+- Docs:
+  - Update SAO, Developer Guide, demo docs, and ADR notes with DaData as the
+    first structured company-data source provider.
+- Demo impact:
+  - A future manual run can explain that company identity facts came from DaData
+    while signal evidence came from web retrieval.
+- Acceptance criteria:
+  - DaData can be configured locally without committing secrets.
+  - A recorded run can use DaData-backed company facts through the source-provider
+    port.
+  - UI source configuration does not expose DaData until backend execution is
+    test-covered.
+- Risks:
+  - DaData coverage and pricing differ by lookup type; keep provider behavior
+    explicit in docs and trace.
+
+### Slice 0.7.6.1.11: Web retrieval provider abstraction and Perplexity adapter
+
+- Status: `Backlog`
+- Goal: Make web search provider behavior comparable after task prompts,
+  budgets, and structured company sources are under control.
+- Problem being closed:
+  - OpenRouter web search, Perplexity-style retrieval, and future providers can
+    return different citations, snippets, and tool metadata. Without a retrieval
+    port, those differences are hidden inside provider-specific chat payloads.
+- User value: A user/developer can compare which provider retrieved which URLs,
+  snippets, citations, and source outcomes before extraction and scoring.
+- Scope:
+  - Split web provider interaction into explicit retrieval and extraction
+    concepts: `retrieved_sources`, `retrieval_query`, `provider_citations`,
+    snippets, retrieval status, and extraction observations.
   - Add a provider-neutral web retrieval port under application contracts and
     keep provider implementations in `integrations`.
   - Add a Perplexity-backed adapter through OpenRouter or direct provider
     configuration, depending on available API shape, without leaking provider
     SDK/HTTP code into application services.
-  - Add environment configuration for provider selection, for example
+  - Add environment configuration such as
     `POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER=openrouter|perplexity`.
   - Persist retrieval summaries in output metadata/technical trace without a DB
     migration.
@@ -2949,12 +3164,9 @@ Principles:
   - Normalized source/evidence tables.
   - Full benchmark quality claims.
 - Implementation notes:
-  - Run after `Slice 0.7.6.1.7.2`, `Slice 0.7.6.1.7.3`, and
-    `Slice 0.7.6.1.7.4`, so provider comparison has readable planning,
-    budget, source lifecycle, and trace diagnostics.
-  - Web search is a key product capability and must be observable: task input,
-    retrieval query, retrieved URLs, snippets, provider metadata, verification
-    state, extraction result, and final usage must be traceable separately.
+  - Run after compact task prompts, hierarchical budgets, and DaData source
+    registry, so provider comparison is not polluted by prompt noise, wrong
+    budget semantics, or missing structured company facts.
   - Perplexity should be evaluated as a retrieval provider, not as a replacement
     for backend-owned execution strategy.
   - Trace can store sanitized provider payload summaries; product dossier should
@@ -2982,50 +3194,6 @@ Principles:
 - Risks:
   - Provider APIs and OpenRouter routing behavior may differ; keep the adapter
     isolated and recorded fixtures provider-specific.
-
-### Slice 0.7.6.1.9: Run-level logs and empty-result UX
-
-- Status: `Backlog`
-- Goal: Make dossier, journal, and technical trace accessible from the run
-  itself, even when the run produced zero candidates.
-- User value: A user/developer can diagnose empty live Radar results from the
-  UI without needing a candidate detail page or database inspection.
-- Scope:
-  - Add run-level UI entry points for `Dossier`, `Journal`, and `Trace` from
-    the Radar run state/empty-result surface.
-  - Show run-level empty-result explanation:
-    task count, model/provider, budget, retrieval/source lifecycle counts,
-    verification failures, coverage warnings, and next recommended diagnostic
-    action.
-  - Keep candidate detail tabs for candidate-specific inspection, but stop
-    making them the only way to inspect run logs.
-  - Ensure API-backed and offline/demo fallback modes have clear behavior.
-  - Add EN/RU i18n strings and responsive layout checks.
-- Out of scope:
-  - Production auth/admin gating for Trace.
-  - New backend persistence schema.
-  - Changing provider execution behavior.
-- Implementation notes:
-  - Use existing dossier/journal/technical-trace endpoints; this is primarily a
-    frontend state/navigation slice plus small API-client wiring if needed.
-  - Trace remains dev/admin-intended and will be gated after auth exists.
-- Tests:
-  - Frontend tests that empty live runs render run-level dossier/trace actions.
-  - API adapter tests for loading run-level dossier/journal/trace without
-    candidates.
-  - Visual smoke for empty-result run view without horizontal scroll.
-- Docs:
-  - Update User Guide/demo docs with run-level diagnostics.
-- Demo impact:
-  - A `0 candidates` manual run becomes inspectable from the main Radar UI.
-- Acceptance criteria:
-  - A completed run with zero candidates exposes dossier/journal/trace from UI.
-  - Empty-result UI explains whether the run was budget-limited, source-limited,
-    verification-limited, or provider-empty.
-  - Candidate detail remains unchanged for runs with candidates.
-- Risks:
-  - Trace visibility is still not role-gated; label it as developer/admin
-    diagnostic until auth is implemented.
 
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 
@@ -3058,9 +3226,11 @@ Principles:
   - Automated scheduled benchmark runs.
 - Implementation notes:
   - Run this only after `Slice 0.7.6.1.7.2`, `Slice 0.7.6.1.7.3`,
-    `Slice 0.7.6.1.7.4`, `Slice 0.7.6.1.8`, and `Slice 0.7.6.1.9`, so the
-    benchmark tests a source-verification-aware, observable
-    retrieval/extraction pipeline rather than an opaque web-search prompt path.
+    `Slice 0.7.6.1.7.4`, `Slice 0.7.6.1.8`, `Slice 0.7.6.1.9`,
+    `Slice 0.7.6.1.10`, and `Slice 0.7.6.1.11`, so the benchmark tests a
+    source-verification-aware, observable, compact-prompt,
+    structured-source-capable retrieval/extraction pipeline rather than an
+    opaque web-search prompt path.
   - The benchmark should use the qualification-first execution plan from
     `Slice 0.7.6.1.3`, LLM-planned discovery from `Slice 0.7.6.1.4`, and
     coverage-enforced candidate universe expansion from `Slice 0.7.6.1.5`;
@@ -3692,4 +3862,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.8: Web retrieval provider abstraction and Perplexity adapter`.
+Implement `Slice 0.7.6.1.9: Hierarchical Radar execution budgets and not-searched states`.

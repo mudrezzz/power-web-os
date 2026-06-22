@@ -665,13 +665,29 @@ simple bounded tasks such as signal checks. Planner calls use
 use `OPENROUTER_EXTRACTOR_MODEL`. If a specific model is absent, planner and
 extractor fall back to `OPENROUTER_ADVANCED_MODEL`, then to `OPENROUTER_MODEL`.
 
-`POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` limits backend-controlled live
-Radar web/provider tasks per qualification rule or signal. The checked-in
-`.env.example` uses a smoke-safe value of `1` so Docker/dev manual runs can
-finish quickly while the pipeline is still being tuned. The code fallback is
-`20` when no environment value is configured. Exhausted budgets produce
-dossier/journal warnings instead of allowing a manual run to expand without
-bounds.
+`POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` is the current compatibility
+safety limit for backend-controlled live Radar web/provider tasks. The
+checked-in `.env.example` uses a smoke-safe value of `1` so Docker/dev manual
+runs can finish quickly while the pipeline is still being tuned. The code
+fallback is `20` when no environment value is configured. Exhausted budgets
+produce dossier/journal warnings instead of allowing a manual run to expand
+without bounds.
+
+The target budget model is more precise than that compatibility variable. The
+next implementation slices should move toward:
+
+```text
+POWER_WEB_OS_RADAR_MAX_DISCOVERY_TASKS_PER_RULE=
+POWER_WEB_OS_RADAR_MAX_GATE_TASKS_PER_CANDIDATE_RULE=
+POWER_WEB_OS_RADAR_MAX_SIGNAL_TASKS_PER_CANDIDATE_SIGNAL=
+POWER_WEB_OS_RADAR_MAX_TOTAL_WEB_TASKS_PER_RUN=
+```
+
+Use those semantics when touching budget code: a signal search budget should be
+counted per `(candidate, signal)`, and a qualification gate budget should be
+counted per `(candidate, qualification_rule)`. A candidate that was never
+searched because a budget was exhausted must not be normalized as
+`not_observed`; it needs an explicit not-searched/budget-limited state.
 
 Source verification and useful-result budget variables:
 
@@ -703,6 +719,23 @@ for the retrieval boundary. `openrouter` remains the first adapter; a
 Perplexity-shaped adapter is planned so retrieval output can be compared before
 candidate extraction/scoring.
 
+Prompt construction is also a boundary. Planner prompts may carry rich Radar
+context because they produce strategy. Execution prompts are compiled from
+compact task cards: current candidate/rule/signal scope, selected source policy,
+expected evidence, and a concise response contract. Do not send the whole Radar
+definition, duplicated one-query search plan, and full verbose schema to every
+bounded provider call. Technical trace shows both the task card and the compiled
+provider prompt.
+
+DaData is planned as the first structured company-source provider, not as a web
+search replacement. Put DaData API/MCP client code in `integrations` behind a
+source-provider port. Use it for legal-entity normalization, INN/OGRN/company
+facts, address/status/OKVED/revenue enrichment, domain/email-owner lookup, and
+other registry-style facts when the Radar source policy allows it. Keep open web
+retrieval for current evidence and intent signals. Local secrets such as
+`DADATA_API_KEY` and `DADATA_SECRET_KEY` must remain in `.env` only and must not
+appear in traces, artifacts, docs, or tests.
+
 Supported web modes are `auto`, `server_tools`, `plugin_web`, and `model_native`. `auto` tries OpenRouter server-side web search first and falls back to the OpenRouter web plugin if server tools are unsupported.
 
 Commands:
@@ -726,15 +759,14 @@ stores the `icp_radar_live_run` snapshot in `radar_run_outputs`, and exports the
 same JSON artifact paths for the current frontend fallback.
 
 Live artifacts must never contain API keys, authorization headers, bearer
-tokens, or raw provider dumps. Current live runs still apply URL reachability
-filtering before a source can support a product candidate. The next hardening
-slice changes that from a binary drop into explicit verification state, so
-unreachable but source-linked findings can remain reviewable instead of
-vanishing. If OpenRouter rejects the credentials or no usable sources are
+tokens, or raw provider dumps. Current live runs use explicit source
+verification state: risky source-linked findings can remain reviewable instead
+of vanishing, but they should not produce confident scores without stronger
+evidence. If OpenRouter rejects the credentials or no usable sources are
 returned, the frontend should show the live radar empty state rather than
 fabricated candidates.
 
-Source, retrieval, and score debugging now has eight hardening steps before
+Source, retrieval, and score debugging now has eleven hardening steps before
 broad quality benchmarking:
 
 1. Source lifecycle visibility: dossier exposes `source_lifecycle` and
@@ -760,15 +792,23 @@ broad quality benchmarking:
    planning, discovery, gate, coverage, signal, normalization, scoring, and
    validation phases, with wrapped JSON, summaries, filters, and copy/raw
    controls.
-6. Web retrieval provider abstraction and Perplexity adapter: retrieval records,
-   provider citations, snippets, verification state, extraction output, and
-   source usage should be visible separately so provider quality can be
-   compared before scoring.
-7. Score contract and quality smoke: recorded fixtures should prove that
+6. Compact task prompts and retrieval plan contract: execution calls use compact
+   task cards instead of repeated heavy Radar JSON; dossier/trace should
+   show the accepted retrieval plan and compiled prompt.
+7. Hierarchical execution budgets: count tasks per run, stage, rule, candidate,
+   signal, and provider. Budget-limited candidates/signals must be shown as not
+   searched, not as negative observations.
+8. DaData source provider and source registry: add a real structured
+   company-data source behind a source-provider port before claiming discovery
+   quality from web-only runs.
+9. Web retrieval provider abstraction and Perplexity adapter: compare
+   OpenRouter/Perplexity-style retrieval after prompts, budgets, and structured
+   company sources are controlled.
+10. Score contract and quality smoke: recorded fixtures should prove that
    source-backed confirmed qualification and observed signals survive
    persistence/API/frontend mapping and produce nonzero scores before live
    multi-radar benchmarks are treated as meaningful.
-8. Multi-radar benchmark: only after the planning and observability path can
+11. Multi-radar benchmark: only after the planning and observability path can
    explain failures should real-model SIBUR, industry/region/revenue, and
    source-constrained discovery scenarios be used as quality evidence.
 

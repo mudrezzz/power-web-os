@@ -26,6 +26,7 @@ from power_web_os.application.live_radar_discovery_planning import (
 from power_web_os.application.live_radar_plan_acceptance import RadarDiscoveryPlanAcceptanceService
 from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_task_to_search_plan
 from power_web_os.application.live_radar_normalization import normalize_live_candidate
+from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan, retrieval_plan_to_search_plan
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
 from power_web_os.demo import generate_live_mini_icp_radar_plan
 from power_web_os.integrations import live_radar_openrouter
@@ -237,12 +238,34 @@ def test_openrouter_request_builder_scopes_prompt_to_current_task() -> None:
     qualification_prompt = json.loads(qualification_request["messages"][1]["content"])
     signal_prompt = json.loads(signal_request["messages"][1]["content"])
 
-    assert qualification_prompt["current_task"]["stage"] == "qualification_discovery"
-    assert len(qualification_prompt["radar"]["qualification_criteria"]) == 1
-    assert qualification_prompt["radar"]["intent_signals"] == []
-    assert signal_prompt["current_task"]["stage"] == "signal_search"
-    assert signal_prompt["radar"]["qualification_criteria"] == []
-    assert len(signal_prompt["radar"]["intent_signals"]) == 1
+    assert set(qualification_prompt) == {"task_card", "response_contract", "constraints"}
+    assert qualification_prompt["task_card"]["stage"] == "qualification_discovery"
+    assert qualification_prompt["task_card"]["subject_id"] == qualification_task.subject_id
+    assert qualification_prompt["response_contract"]["schema_id"] == "qualification_finding_v1"
+    assert "intent_signals" not in json.dumps(qualification_prompt)
+    assert "search_plan" not in qualification_prompt
+    assert "radar" not in qualification_prompt
+    assert signal_prompt["task_card"]["stage"] == "signal_search"
+    assert signal_prompt["task_card"]["subject_id"] == signal_task.subject_id
+    assert signal_prompt["response_contract"]["schema_id"] == "signal_finding_v1"
+    assert "qualification_criteria" not in json.dumps(signal_prompt)
+    assert "search_plan" not in signal_prompt
+    assert "radar" not in signal_prompt
+
+
+def test_execution_plan_projects_to_retrieval_plan_and_legacy_search_plan() -> None:
+    radar = build_live_mini_radar_definition()
+    plan = compile_radar_execution_plan(radar)
+
+    retrieval_plan = retrieval_plan_from_execution_plan(plan)
+    legacy_plan = retrieval_plan_to_search_plan(retrieval_plan)
+
+    assert retrieval_plan.radar_id == plan.radar_id
+    assert [task.task_id for task in retrieval_plan.tasks] == [task.task_id for task in plan.tasks]
+    signal_task = next(task for task in retrieval_plan.tasks if task.stage == "signal_search")
+    assert signal_task.response_contract.schema_id == "signal_finding_v1"
+    assert signal_task.expected_evidence == [signal_task.subject_id]
+    assert legacy_plan.model_dump() == build_live_mini_radar_search_plan(radar).model_dump()
 
 
 def test_recorded_response_normalizes_sources_candidates_and_scores() -> None:
@@ -375,6 +398,8 @@ def test_useful_result_budget_retries_weak_discovery_result() -> None:
     assert len(provider.calls) == 2
     assert provider.calls[1].queries[0].query.startswith("Find candidate universe.\nRetry 1")
     assert len(result.candidate_observations) == 2
+    assert execution_results["retrieval_plan"]["tasks"][0]["task_id"] == "discover-q1"
+    assert execution_results["retrieval_plan"]["tasks"][0]["response_contract"]["schema_id"] == "qualification_finding_v1"
     assert execution_results["useful_result_retry_records"][0]["reason"] == "verification_limited"
     assert execution_results["useful_result_warnings"]
     assert "validation_warning" in [event.event_type for event in events]

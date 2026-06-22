@@ -39,6 +39,7 @@ def dossier_response(
     run_metadata = _dict(artifact.get("run_metadata"))
     discovery_plan = _dict(run_metadata.get("discovery_plan"))
     execution_results = _dict(run_metadata.get("execution_results"))
+    retrieval_plan = _dict(execution_results.get("retrieval_plan"))
     source_policy_decisions = _list(discovery_plan.get("source_policy_decisions"))
     coverage_summary = _coverage_summary(discovery_plan, execution_results)
     candidate_universe = _list(execution_results.get("candidate_universe"))
@@ -65,6 +66,7 @@ def dossier_response(
         radar_snapshot=_dict(artifact.get("radar")) or _definition_payload_summary(active_definition),
         definition_snapshot=_definition_snapshot(active_definition),
         discovery_plan=discovery_plan,
+        retrieval_plan=retrieval_plan,
         source_policy_decisions=source_policy_decisions,
         coverage_summary=coverage_summary,
         candidate_universe=candidate_universe,

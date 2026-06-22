@@ -337,6 +337,7 @@ class RadarRunDossierResponse(BaseModel):
     radar_snapshot: dict[str, Any] = Field(default_factory=dict)
     definition_snapshot: RadarRunDossierDefinitionResponse | None = None
     discovery_plan: dict[str, Any] = Field(default_factory=dict)
+    retrieval_plan: dict[str, Any] = Field(default_factory=dict)
     source_policy_decisions: list[dict[str, Any]] = Field(default_factory=list)
     coverage_summary: dict[str, Any] = Field(default_factory=dict)
     candidate_universe: list[dict[str, Any]] = Field(default_factory=list)

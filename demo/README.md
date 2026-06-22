@@ -99,17 +99,18 @@ The dossier source lifecycle shows verification state, reason, mode, and HTTP
 status code where available. Useful-result budgets can trigger bounded retries
 when discovery or coverage tasks return too few useful sources/candidates.
 
-The next live Radar hardening slices focus on planning and observability before
-provider comparison or quality benchmarking:
+The next live Radar hardening slices focus on retrieval quality before provider
+comparison or broad benchmarking:
 
-1. criterion role inference and plan acceptance repair, so the system separates
-   upstream discovery criteria from downstream gates and does not reject useful
-   LLM plans because of repairable source-scope wording;
-2. run-level dossier/journal/trace actions, so logs are reachable from the run
-   itself and not only through candidate detail;
-3. readable technical trace viewer, so prompts, provider responses, parsed
-   outputs, validation errors, budgets, and durations are grouped by logical
-   Radar phase before Perplexity/OpenRouter retrieval quality is compared.
+1. hierarchical execution budgets, so limits are counted per rule/candidate and
+   per signal/candidate rather than hiding unsearched candidates as negative
+   results;
+2. a DaData-backed structured company source, so legal-entity facts can come
+   from a registry-style provider while open web remains responsible for current
+   evidence and intent signals;
+3. provider-neutral web retrieval adapters, so OpenRouter and Perplexity-style
+   retrieval can be compared after prompt, budget, and source semantics are
+   controlled.
 
 To refresh documentation screenshots:
 
@@ -157,6 +158,9 @@ SIBUR-specific script.
 Discovery is also planned before execution. The backend asks the planner for a
 structured candidate-universe strategy, validates it against the radar source
 policy, allows one revision if needed, and executes only accepted bounded tasks.
+Bounded provider calls use compact retrieval task cards and concise response
+contracts instead of sending the full Radar definition and duplicated search
+plan to every task.
 Discovery is iterative: coverage checks run before signal search, source-backed
 gap candidates are merged into the universe, qualification gates are re-run for
 new candidates, and the final universe is frozen before signals start. Signal
@@ -283,6 +287,8 @@ Signal validation is visible in the demo: users can confirm, correct, reject, or
 - ICP Radar settings edits are browser-local demo drafts only; production persistence, schedule execution, live source setup, and shortlist recalculation are not implemented yet.
 - ICP Radar candidate detail is read-only.
 - `Take into work` is visible as a planned affordance and does not change state yet.
-- No live source connectors yet.
+- No structured company-data source connector yet; DaData is planned as the
+  first backend-executed source provider before it appears as an editable Radar
+  source in the UI.
 - No CRM export yet.
 - No frontend-integrated persisted review or downstream feedback loop yet.
