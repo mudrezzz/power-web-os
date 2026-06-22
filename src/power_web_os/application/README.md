@@ -46,6 +46,10 @@ provider SDK details.
   raw hidden chain-of-thought payload keys.
 - `radar_technical_trace.py` owns sanitized developer/admin trace semantics,
   secret redaction, long-string capping, and hidden-reasoning rejection.
+- `radar_source_providers.py` defines structured source-provider ports and the
+  source registry wrapper. It may select company-registry providers such as
+  DaData by source policy, but it does not know HTTP, MCP, SDK, or secret
+  handling details.
 
 ## Dependency Rules
 
@@ -92,6 +96,11 @@ by coverage are merged and re-qualified before the universe is frozen. Providers
 receive compact retrieval task cards instead of the whole Radar as one mixed
 prompt. The legacy `RadarSearchPlan` remains a compatibility projection, but new
 diagnostics and prompt shaping should prefer the accepted retrieval plan.
+Structured company facts follow the same rule: application code consumes
+`CompanyRegistryProvider` observations through `RadarSourceRegistry`, while
+DaData HTTP/API details stay in `integrations`. Structured registry observations
+may support candidate identity and qualification evidence; signal searches
+remain web-based.
 
 Discovery planning follows the same rule. A `RadarDiscoveryPlanner` may propose
 candidate-universe, source-probe, qualification-gate, and coverage-check steps,

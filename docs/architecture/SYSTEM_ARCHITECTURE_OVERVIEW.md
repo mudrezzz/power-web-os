@@ -291,15 +291,17 @@ task card and provider prompt inspectable without exposing secrets or raw hidden
 chain-of-thought.
 
 Structured company-data sources are separate from open web retrieval. DaData is
-the planned first provider in this class because its MCP/API surface is designed
-to give AI agents fresh company and address data, including organization lookup
-by INN/OGRN, official company facts, address data, domain/email ownership, and
-related company facts. Radar should use such sources for entity resolution and
-company attributes, while web retrieval remains responsible for open evidence,
-current events, and intent signals. Source adapters live in `integrations` behind
+the first implemented provider in this class. Its MCP/API surface is designed to
+give AI agents fresh company and address data, including organization lookup by
+INN/OGRN, official company facts, address data, domain/email ownership, and
+related company facts. Radar uses such sources for entity resolution and company
+attributes, while web retrieval remains responsible for open evidence, current
+events, and intent signals. Source adapters live in `integrations` behind
 application ports; Radar definitions and source policies decide whether a
 provider can be used for a rule, but provider SDK/MCP details do not leak into
-domain scoring or API routes.
+domain scoring or API routes. The DaData adapter supports recorded mode for
+tests/local smoke and live mode when `DADATA_API_KEY` and `DADATA_SECRET_KEY`
+are present.
 
 `GET /api/radar-runs/{run_id}/journal` returns ordered structured audit events.
 The journal is not raw hidden chain-of-thought. Application services reject

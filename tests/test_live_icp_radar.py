@@ -33,7 +33,9 @@ from power_web_os.application.live_radar_execution_budget import (
 from power_web_os.application.live_radar_normalization import normalize_live_candidate
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan, retrieval_plan_to_search_plan
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
+from power_web_os.application.radar_source_providers import RadarSourceRegistry, SourceRegistryWebSearchProvider
 from power_web_os.demo import generate_live_mini_icp_radar_plan
+from power_web_os.integrations.dadata_provider import RecordedDaDataCompanyRegistryProvider
 from power_web_os.integrations import live_radar_openrouter
 from power_web_os.integrations.live_radar_source_verification import SourceReachabilityResult, verify_sources
 from power_web_os.live_icp_radar import (
@@ -271,6 +273,80 @@ def test_execution_plan_projects_to_retrieval_plan_and_legacy_search_plan() -> N
     assert signal_task.response_contract.schema_id == "signal_finding_v1"
     assert signal_task.expected_evidence == [signal_task.subject_id]
     assert legacy_plan.model_dump() == build_live_mini_radar_search_plan(radar).model_dump()
+
+
+def test_source_registry_selects_dadata_company_registry_source() -> None:
+    radar = {
+        "radar_id": "generic-radar",
+        "global_search_policy": {
+            "sources": [{
+                "source_id": "dadata_registry",
+                "source_type": "company_registry",
+                "provider_id": "dadata",
+                "label": "DaData",
+                "reference": "company_registry:dadata",
+            }]
+        },
+    }
+    task = RadarExecutionTask(
+        task_id="discover-q1",
+        stage="qualification_discovery",
+        subject_type="qualification",
+        subject_id="Q1",
+        rule_snapshot="Find source-backed legal entities.",
+        query="Candidate A",
+        purpose="Discover companies.",
+        source_ids=["dadata_registry"],
+    )
+    provider = RecordedDaDataCompanyRegistryProvider(fixtures=[{
+        "source_ref": "dadata_candidate_a",
+        "legal_name": "Candidate A",
+        "inn": "7700000000",
+        "status": "ACTIVE",
+        "address": "Moscow",
+    }])
+
+    result = RadarSourceRegistry(company_registry_providers={"dadata": provider}).lookup_for_task(radar=radar, task=task)
+
+    assert result.sources[0].source_type == "company_registry"
+    assert result.sources[0].evidence_ref == "dadata_candidate_a"
+    assert result.candidate_observations[0]["legal_name"] == "Candidate A"
+    assert result.candidate_observations[0]["qualification"][0]["criterion_code"] == "Q1"
+    assert result.provider_metadata["source_provider_outcomes"][0]["provider_id"] == "dadata"
+
+
+def test_source_registry_wrapper_does_not_use_dadata_for_signal_search() -> None:
+    radar = {
+        "radar_id": "generic-radar",
+        "global_search_policy": {
+            "sources": [{
+                "source_id": "dadata_registry",
+                "source_type": "company_registry",
+                "provider_id": "dadata",
+            }]
+        },
+    }
+    provider = RecordedDaDataCompanyRegistryProvider(fixtures=[{"legal_name": "Candidate A"}])
+    web_provider = RecordedWebSearchProvider(WebSearchProviderResult())
+    wrapped = SourceRegistryWebSearchProvider(
+        web_provider,
+        RadarSourceRegistry(company_registry_providers={"dadata": provider}),
+    )
+    signal_task = RadarExecutionTask(
+        task_id="signal-s1",
+        stage="signal_search",
+        subject_type="signal",
+        subject_id="S1",
+        query="Candidate A signal",
+        purpose="Search signal.",
+        source_ids=["dadata_registry"],
+        candidate_scope=["Candidate A"],
+    )
+
+    wrapped.run_search_plan(radar=radar, search_plan=execution_task_to_search_plan(signal_task, radar_id="generic-radar"))
+
+    assert provider.requests == []
+    assert len(web_provider.calls) == 1
 
 
 def test_execution_budget_keys_are_candidate_scoped_for_gate_and_signal_tasks() -> None:

@@ -3075,7 +3075,7 @@ Principles:
 
 ### Slice 0.7.6.1.10: DaData source provider and Radar source registry
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Add a real structured company-data source to Radar execution instead of
   relying only on general web search for legal-entity facts.
 - Problem being closed:
@@ -3089,14 +3089,14 @@ Principles:
   resolution and company facts, while web search remains responsible for open
   evidence and signal monitoring.
 - Scope:
-  - Add provider-neutral source registry contracts:
+  - Added provider-neutral source registry contracts:
     `RadarSourceProvider`, `CompanyRegistryProvider`, `CompanyLookupRequest`,
     `CompanyLookupResult`, and source usage/outcome records.
-  - Add a DaData adapter in `integrations` using the DaData API/MCP boundary,
+  - Added a DaData adapter in `integrations` using the DaData API/MCP boundary,
     configured by local secrets such as `DADATA_API_KEY` and
     `DADATA_SECRET_KEY`.
-  - Add Radar source type `company_registry` with provider id `dadata`.
-  - Allow planner/source policy to select DaData for entity resolution,
+  - Added Radar source type `company_registry` with provider id `dadata`.
+  - Allowed planner/source policy to select DaData for entity resolution,
     legal-entity normalization, INN/OGRN facts, address/status/OKVED/revenue
     enrichment, and domain/email-owner lookup when configured.
   - Add UI/settings source option only after backend adapter and recorded tests
@@ -3132,14 +3132,24 @@ Principles:
   - A future manual run can explain that company identity facts came from DaData
     while signal evidence came from web retrieval.
 - Acceptance criteria:
-  - DaData can be configured locally without committing secrets.
-  - A recorded run can use DaData-backed company facts through the source-provider
-    port.
+  - Done: DaData can be configured locally without committing secrets.
+  - Done: a recorded run can use DaData-backed company facts through the
+    source-provider port.
   - UI source configuration does not expose DaData until backend execution is
     test-covered.
 - Risks:
   - DaData coverage and pricing differ by lookup type; keep provider behavior
     explicit in docs and trace.
+
+- Completed notes:
+  - Added `application/radar_source_providers.py` for source registry contracts
+    and the web-provider wrapper.
+  - Added `integrations/dadata_provider.py` with recorded/live DaData adapter and
+    sanitized technical trace summaries.
+  - Added DaData registry source to the live Radar definition for backend source
+    policy execution; signal search remains web-based.
+  - Added `.env.example` DaData settings and documentation for recorded/live
+    modes.
 
 ### Slice 0.7.6.1.11: Web retrieval provider abstraction and Perplexity adapter
 
@@ -3872,4 +3882,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.10: DaData source provider and Radar source registry`.
+Implement `Slice 0.7.6.1.11: Web retrieval provider abstraction and Perplexity adapter`.

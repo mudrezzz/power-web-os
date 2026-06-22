@@ -12,6 +12,7 @@ from typing import Any
 
 from power_web_os.application.ports import LiveRadarArtifactExecutor, RadarRunTechnicalTraceRepository
 from power_web_os.application.live_radar_contracts import RadarDiscoveryPlanner, WebSearchProvider
+from power_web_os.application.radar_source_providers import RadarSourceRegistry
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTracer
 from power_web_os.workflows.live_icp_radar_workflow import build_live_mini_radar_artifact
 
@@ -22,10 +23,12 @@ class WorkflowLiveRadarArtifactExecutor(LiveRadarArtifactExecutor):
         provider: WebSearchProvider,
         *,
         discovery_planner: RadarDiscoveryPlanner | None = None,
+        source_registry: RadarSourceRegistry | None = None,
         technical_trace_repository: RadarRunTechnicalTraceRepository | None = None,
     ) -> None:
         self._provider = provider
         self._discovery_planner = discovery_planner
+        self._source_registry = source_registry
         self._technical_trace_repository = technical_trace_repository
 
     def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, Any]:
@@ -40,6 +43,7 @@ class WorkflowLiveRadarArtifactExecutor(LiveRadarArtifactExecutor):
             provider=self._provider,
             discovery_planner=self._discovery_planner,
             live=live,
+            source_registry=self._source_registry,
             task_context=_task_context_with_runtime_defaults(task_context),
             technical_tracer=technical_tracer,
         )

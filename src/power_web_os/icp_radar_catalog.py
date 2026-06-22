@@ -485,11 +485,12 @@ def _planned_signal(
 
 def _live_quick_definition() -> RadarDefinition:
     sources = (
+        SourceDefinition("dadata_registry", "company_registry", "DaData company registry", "company_registry:dadata", "high"),
         SourceDefinition("openrouter_web", "search_engine", "OpenRouter web search", "openrouter:web_search", "medium"),
         SourceDefinition("sibur_site", "url", "Сайт СИБУР", "https://www.sibur.ru", "high"),
     )
     source_policy = SourcePolicy(
-        source_ids=("openrouter_web", "sibur_site"),
+        source_ids=("dadata_registry", "openrouter_web", "sibur_site"),
         source_logic="OR",
         allow_additional_sources=True,
         fallback_confidence="low",

@@ -103,15 +103,16 @@ The dossier source lifecycle shows verification state, reason, mode, and HTTP
 status code where available. Useful-result budgets can trigger bounded retries
 when discovery or coverage tasks return too few useful sources/candidates.
 
-The next live Radar hardening slices focus on retrieval quality before provider
-comparison or broad benchmarking:
+Live Radar can now use a DaData-backed structured company source from the
+backend source registry. In `POWER_WEB_OS_DADATA_MODE=recorded`, tests and local
+smoke runs use fixtures. In `live` mode, set `DADATA_API_KEY` and
+`DADATA_SECRET_KEY` in local `.env`; secrets are not committed or shown in
+trace. DaData supports legal-entity identity and registry facts, while open web
+remains responsible for current evidence and intent signals.
 
-1. a DaData-backed structured company source, so legal-entity facts can come
-   from a registry-style provider while open web remains responsible for current
-   evidence and intent signals;
-2. provider-neutral web retrieval adapters, so OpenRouter and Perplexity-style
-   retrieval can be compared after prompt, budget, and source semantics are
-   controlled.
+The next live Radar hardening slice focuses on provider-neutral web retrieval
+adapters, so OpenRouter and Perplexity-style retrieval can be compared after
+prompt, budget, and source semantics are controlled.
 
 To refresh documentation screenshots:
 
@@ -288,8 +289,7 @@ Signal validation is visible in the demo: users can confirm, correct, reject, or
 - ICP Radar settings edits are browser-local demo drafts only; production persistence, schedule execution, live source setup, and shortlist recalculation are not implemented yet.
 - ICP Radar candidate detail is read-only.
 - `Take into work` is visible as a planned affordance and does not change state yet.
-- No structured company-data source connector yet; DaData is planned as the
-  first backend-executed source provider before it appears as an editable Radar
-  source in the UI.
+- DaData is backend-executed through source policy, but the UI source editor does
+  not expose it as a configurable option yet.
 - No CRM export yet.
 - No frontend-integrated persisted review or downstream feedback loop yet.

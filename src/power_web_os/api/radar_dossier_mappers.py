@@ -304,8 +304,8 @@ def _source_lifecycle(
             usages=[],
         )
 
-    for outcome in _list(execution_results.get("source_outcomes")):
-        evidence_ref = str(outcome.get("evidence_ref") or outcome.get("source_ref") or outcome.get("id") or "").strip()
+    for outcome in [*_list(execution_results.get("source_outcomes")), *_list(execution_results.get("source_provider_outcomes"))]:
+        evidence_ref = str(outcome.get("evidence_ref") or outcome.get("source_ref") or outcome.get("source_id") or outcome.get("id") or "").strip()
         if not evidence_ref or evidence_ref in items:
             continue
         reason = _source_lifecycle_reason(str(outcome.get("outcome") or outcome.get("reason") or "unknown"))
@@ -386,6 +386,9 @@ def _source_lifecycle_reason(value: str) -> str:
         "irrelevant",
         "insufficient_evidence",
         "provider_metadata_only",
+        "provider_empty",
+        "provider_recorded_empty",
+        "provider_unavailable",
         "unknown",
     }
     return normalized if normalized in allowed else "unknown"

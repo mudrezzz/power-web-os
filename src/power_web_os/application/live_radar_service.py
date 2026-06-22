@@ -38,14 +38,21 @@ from power_web_os.application.live_radar_pipeline_support import (
     trace_pipeline_step as _trace,
 )
 from power_web_os.application.live_radar_planning_pipeline import build_planned_state
+from power_web_os.application.radar_source_providers import RadarSourceRegistry, SourceRegistryWebSearchProvider
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
 
 
 class LiveRadarRunService:
     """Provider-neutral planner/executor/evaluator pipeline for live Radar."""
 
-    def __init__(self, provider: WebSearchProvider, *, discovery_planner: RadarDiscoveryPlanner | None = None) -> None:
-        self._provider = provider
+    def __init__(
+        self,
+        provider: WebSearchProvider,
+        *,
+        discovery_planner: RadarDiscoveryPlanner | None = None,
+        source_registry: RadarSourceRegistry | None = None,
+    ) -> None:
+        self._provider = SourceRegistryWebSearchProvider(provider, source_registry) if source_registry is not None else provider
         self._discovery_planner = discovery_planner or DeterministicRadarDiscoveryPlanner()
 
     def run(

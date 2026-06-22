@@ -231,6 +231,7 @@ def generate_persisted_live_mini_icp_radar_artifact(
         session_scope,
     )
     from power_web_os.workflows.live_radar_executor import WorkflowLiveRadarArtifactExecutor
+    from power_web_os.integrations.dadata_provider import dadata_source_registry_from_env
 
     engine = create_database_engine(database_url=database_url)
     session_factory = create_session_factory(engine)
@@ -242,6 +243,7 @@ def generate_persisted_live_mini_icp_radar_artifact(
             executor=WorkflowLiveRadarArtifactExecutor(
                 provider=OpenRouterWebSearchProvider(),
                 discovery_planner=OpenRouterDiscoveryPlanner(),
+                source_registry=dadata_source_registry_from_env(),
             ),
         )
         result = service.run(PersistedLiveRadarRunCommand(live=True))

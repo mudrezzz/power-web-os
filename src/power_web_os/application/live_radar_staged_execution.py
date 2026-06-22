@@ -302,6 +302,8 @@ def run_staged_radar_execution(
             "min_candidates_per_discovery_task": useful_budget.min_candidates,
             "max_discovery_retries_per_task": useful_budget.max_retries,
             "source_verification_results": provider_metadata.get("source_verification_results", []),
+            "source_outcomes": provider_metadata.get("source_outcomes", []),
+            "source_provider_outcomes": provider_metadata.get("source_provider_outcomes", []),
             "candidate_universe": _candidate_universe_with_signal_statuses(candidate_universe, signal_search_statuses),
             "coverage_checks": coverage_checks,
             "coverage_warnings": sorted(set(coverage_warnings)),

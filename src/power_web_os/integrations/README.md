@@ -12,6 +12,9 @@ CRM tools, and other network-facing infrastructure.
   candidate truth.
 - `live_radar_openrouter.py` owns the OpenRouter request/response adapter for
   the live mini ICP Radar.
+- `dadata_provider.py` owns the DaData company-registry adapter. It maps DaData
+  party suggestions into application-level company observations and source
+  outcomes; it is not a web-search or signal-evidence provider.
 - Recorded provider adapters used by tests may live here when they implement the
   same provider port without live network calls.
 
@@ -51,6 +54,13 @@ settings, qualification rules, source policy, and task context, then return a
 JSON discovery plan for backend validation. Planner output is advisory until the
 application validator accepts it. Planner requests use `OPENROUTER_PLANNER_MODEL`
 with the same advanced/default fallback.
+
+DaData source-provider requests are a separate structured-data boundary. The
+adapter reads `DADATA_API_KEY`, `DADATA_SECRET_KEY`,
+`POWER_WEB_OS_DADATA_MODE`, and `POWER_WEB_OS_DADATA_BASE_URL` from local
+environment only. Recorded mode is suitable for tests and local smoke runs
+without network credentials. Live mode calls the DaData organization suggestions
+API and stores only sanitized request/response summaries in technical trace.
 
 ## How To Extend
 

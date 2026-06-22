@@ -21,10 +21,10 @@ as negative observations, diagnostics become misleading.
 
 Finally, general web search is not the right source for every fact. Company
 identity, INN/OGRN, official registration facts, address data, OKVED, status,
-and financial facts need structured company-data sources. DaData is the planned
-first provider in this class: its MCP/API surface is intended to provide AI
-agents fresh data about companies and addresses, including organization lookup
-and related business facts.
+and financial facts need structured company-data sources. DaData is the first
+implemented provider in this class: its MCP/API surface is intended to provide
+AI agents fresh data about companies and addresses, including organization
+lookup and related business facts.
 
 ## Decision
 
@@ -62,11 +62,12 @@ Unsearched findings must be explicit. `not_observed` means a relevant bounded
 task ran and no evidence was found. Budget-limited or policy-limited cases must
 use explicit not-searched states.
 
-DaData will be introduced as a structured company-source provider, not as a web
-retrieval replacement. Radar may use it for legal-entity resolution and company
-facts, while open web retrieval remains responsible for current evidence and
-intent signals. The UI may expose DaData as a source only after the backend
-adapter and recorded tests exist.
+DaData is introduced as the first structured company-source provider, not as a
+web retrieval replacement. Radar may use it for legal-entity resolution and
+company facts, while open web retrieval remains responsible for current evidence
+and intent signals. The UI may expose DaData as a source only after source
+configuration UX and permissions are designed; backend execution and recorded
+tests now exist.
 
 ## Consequences
 

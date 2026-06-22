@@ -730,14 +730,29 @@ definition, duplicated one-query search plan, and full verbose schema to every
 bounded provider call. Technical trace shows both the task card and the compiled
 provider prompt.
 
-DaData is planned as the first structured company-source provider, not as a web
-search replacement. Put DaData API/MCP client code in `integrations` behind a
-source-provider port. Use it for legal-entity normalization, INN/OGRN/company
-facts, address/status/OKVED/revenue enrichment, domain/email-owner lookup, and
-other registry-style facts when the Radar source policy allows it. Keep open web
-retrieval for current evidence and intent signals. Local secrets such as
-`DADATA_API_KEY` and `DADATA_SECRET_KEY` must remain in `.env` only and must not
-appear in traces, artifacts, docs, or tests.
+DaData is the first implemented structured company-source provider, not a web
+search replacement. The source registry port lives in `application`; DaData
+API/MCP client code lives in `integrations/dadata_provider.py`. Use it for
+legal-entity normalization, INN/OGRN/company facts, address/status/OKVED/revenue
+enrichment, domain/email-owner lookup, and other registry-style facts when the
+Radar source policy allows it. Keep open web retrieval for current evidence and
+intent signals. Local secrets such as `DADATA_API_KEY` and `DADATA_SECRET_KEY`
+must remain in `.env` only and must not appear in traces, artifacts, docs, or
+tests.
+
+DaData local settings:
+
+```text
+DADATA_API_KEY=
+DADATA_SECRET_KEY=
+POWER_WEB_OS_DADATA_MODE=recorded
+POWER_WEB_OS_DADATA_BASE_URL=https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/party
+```
+
+Use `POWER_WEB_OS_DADATA_MODE=recorded` for tests and local smoke without
+network credentials. Use `live` only when both DaData keys are present. Dossier
+source lifecycle and technical trace show DaData source outcomes; signal-search
+tasks do not call DaData.
 
 Supported web modes are `auto`, `server_tools`, `plugin_web`, and `model_native`. `auto` tries OpenRouter server-side web search first and falls back to the OpenRouter web plugin if server tools are unsupported.
 
