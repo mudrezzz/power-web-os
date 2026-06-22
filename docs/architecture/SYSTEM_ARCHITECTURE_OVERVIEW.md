@@ -87,7 +87,8 @@ candidate snapshots. It also has a Celery/Redis job adapter for long-running
 Radar execution, durable human review decisions for live Radar findings, an
 append-only structured run journal for reasoning/audit summaries, an append-only
 sanitized admin technical trace for developer inspection, and a
-qualification-first live Radar execution plan with compact retrieval task cards.
+qualification-first live Radar execution plan with compact retrieval task cards
+and hierarchical execution budgets.
 The frontend now exposes run-level diagnostics for queued, running, completed,
 failed, and zero-candidate live Radar runs, including candidate-universe and
 source-lifecycle inspection without selecting a candidate. It also renders the
@@ -95,12 +96,11 @@ sanitized developer/admin technical trace as a readable phase-grouped viewer
 with search, filters, copyable sections, and collapsed raw JSON. Backend/frontend
 slices should continue in this order:
 
-1. hierarchical execution budgets and explicit not-searched states;
-2. structured company-source registry with DaData as the first real provider;
-3. provider-neutral web retrieval abstraction with OpenRouter/Perplexity-style adapters;
-4. multi-radar discovery benchmark over the qualification-first, coverage-enforced workflow pipeline;
-5. normalized candidate/evidence query tables when API usage needs them;
-6. production schedule/cadence controls.
+1. structured company-source registry with DaData as the first real provider;
+2. provider-neutral web retrieval abstraction with OpenRouter/Perplexity-style adapters;
+3. multi-radar discovery benchmark over the qualification-first, coverage-enforced workflow pipeline;
+4. normalized candidate/evidence query tables when API usage needs them;
+5. production schedule/cadence controls.
 
 JSON artifacts remain useful as demo exports and offline fallback, but they are
 not the long-term source of truth. The frontend now prefers the Radar API for
@@ -226,19 +226,18 @@ tasks are scoped to that frozen universe; any new entity mentioned during signal
 search is stored as a `candidate_universe_gap` for dossier/trace inspection, not
 as a candidate. Runtime defaults cap discovery at two iterations and fifty
 candidates until benchmark data justifies different limits.
-`POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` limits backend-controlled
-provider/search tasks per qualification rule or signal. The repository
+`POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` remains a compatibility safety
+limit for backend-controlled provider/search tasks. The repository
 `.env.example` uses a smoke-safe value of `1`; the code fallback remains `20`
-when no environment value is configured. Budget exhaustion is surfaced as
-coverage/review warnings.
+when no environment value is configured.
 
-That setting is a compatibility safety limit, not the final semantic budget
-model. The target execution budget is hierarchical: total run budget, discovery
-budget per qualification rule, gate budget per candidate and rule, signal budget
-per candidate and signal, and provider-specific caps. A candidate or signal that
-was not searched because a budget was exhausted must be marked as not searched,
-not as a negative observation. `not_observed` should mean the relevant bounded
-search actually ran and found no supporting evidence.
+Execution budgets are hierarchical. The backend can cap total run tasks,
+discovery tasks per qualification rule, gate tasks per candidate and rule, and
+signal tasks per candidate and signal. Budget decisions are made in the
+application executor before provider calls. A candidate or signal that was not
+searched because a budget was exhausted is marked as `not_searched_*`, not as a
+negative observation. `not_observed` means the relevant bounded search actually
+ran and found no supporting evidence.
 
 OpenRouter model routing is role-specific. `OPENROUTER_MODEL` is the fast
 default for simple bounded tasks such as signal checks.

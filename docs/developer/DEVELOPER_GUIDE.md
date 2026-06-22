@@ -655,6 +655,10 @@ OPENROUTER_PLANNER_MODEL=deepseek/deepseek-v3.2
 OPENROUTER_EXTRACTOR_MODEL=deepseek/deepseek-v3.2
 OPENROUTER_WEB_MODE=server_tools
 POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=1
+POWER_WEB_OS_RADAR_MAX_DISCOVERY_TASKS_PER_RULE=
+POWER_WEB_OS_RADAR_MAX_GATE_TASKS_PER_CANDIDATE_RULE=
+POWER_WEB_OS_RADAR_MAX_SIGNAL_TASKS_PER_CANDIDATE_SIGNAL=
+POWER_WEB_OS_RADAR_MAX_TOTAL_WEB_TASKS_PER_RUN=
 ```
 
 For local CLI demo runs, explicit constructor arguments are strongest, then project `.env`, then ambient OS environment variables. This prevents an old Windows/user `OPENROUTER_API_KEY` from silently overriding the key in the repository-local `.env`.
@@ -665,16 +669,13 @@ simple bounded tasks such as signal checks. Planner calls use
 use `OPENROUTER_EXTRACTOR_MODEL`. If a specific model is absent, planner and
 extractor fall back to `OPENROUTER_ADVANCED_MODEL`, then to `OPENROUTER_MODEL`.
 
-`POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` is the current compatibility
-safety limit for backend-controlled live Radar web/provider tasks. The
-checked-in `.env.example` uses a smoke-safe value of `1` so Docker/dev manual
-runs can finish quickly while the pipeline is still being tuned. The code
-fallback is `20` when no environment value is configured. Exhausted budgets
-produce dossier/journal warnings instead of allowing a manual run to expand
-without bounds.
+`POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` is a compatibility safety limit
+for backend-controlled live Radar web/provider tasks. The checked-in
+`.env.example` uses a smoke-safe value of `1` so Docker/dev manual runs can
+finish quickly while the pipeline is still being tuned. The code fallback is
+`20` when no environment value is configured.
 
-The target budget model is more precise than that compatibility variable. The
-next implementation slices should move toward:
+Hierarchical budget variables override the compatibility alias when set:
 
 ```text
 POWER_WEB_OS_RADAR_MAX_DISCOVERY_TASKS_PER_RULE=
@@ -683,11 +684,13 @@ POWER_WEB_OS_RADAR_MAX_SIGNAL_TASKS_PER_CANDIDATE_SIGNAL=
 POWER_WEB_OS_RADAR_MAX_TOTAL_WEB_TASKS_PER_RUN=
 ```
 
-Use those semantics when touching budget code: a signal search budget should be
-counted per `(candidate, signal)`, and a qualification gate budget should be
-counted per `(candidate, qualification_rule)`. A candidate that was never
-searched because a budget was exhausted must not be normalized as
-`not_observed`; it needs an explicit not-searched/budget-limited state.
+Discovery budgets are counted per qualification/discovery rule. Gate budgets
+are counted per `(candidate, qualification_rule)`. Signal budgets are counted
+per `(candidate, signal)`. The total run budget caps all backend-controlled
+provider tasks. A candidate that was never searched because a budget was
+exhausted is projected as `not_searched_budget_limited`, not as
+`not_observed`. `not_observed` means the relevant bounded search actually ran
+and found no supporting evidence.
 
 Source verification and useful-result budget variables:
 
@@ -795,20 +798,17 @@ broad quality benchmarking:
 6. Compact task prompts and retrieval plan contract: execution calls use compact
    task cards instead of repeated heavy Radar JSON; dossier/trace should
    show the accepted retrieval plan and compiled prompt.
-7. Hierarchical execution budgets: count tasks per run, stage, rule, candidate,
-   signal, and provider. Budget-limited candidates/signals must be shown as not
-   searched, not as negative observations.
-8. DaData source provider and source registry: add a real structured
+7. DaData source provider and source registry: add a real structured
    company-data source behind a source-provider port before claiming discovery
    quality from web-only runs.
-9. Web retrieval provider abstraction and Perplexity adapter: compare
+8. Web retrieval provider abstraction and Perplexity adapter: compare
    OpenRouter/Perplexity-style retrieval after prompts, budgets, and structured
    company sources are controlled.
-10. Score contract and quality smoke: recorded fixtures should prove that
+9. Score contract and quality smoke: recorded fixtures should prove that
    source-backed confirmed qualification and observed signals survive
    persistence/API/frontend mapping and produce nonzero scores before live
    multi-radar benchmarks are treated as meaningful.
-11. Multi-radar benchmark: only after the planning and observability path can
+10. Multi-radar benchmark: only after the planning and observability path can
    explain failures should real-model SIBUR, industry/region/revenue, and
    source-constrained discovery scenarios be used as quality evidence.
 

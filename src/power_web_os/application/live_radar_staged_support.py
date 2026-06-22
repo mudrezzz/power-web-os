@@ -155,3 +155,61 @@ def useful_result_warning_event(warnings: list[str]) -> LiveRadarPipelineEvent:
         summary="Useful-result budget triggered bounded discovery retries.",
         payload={"warnings": warnings},
     )
+
+
+def budget_decision(result: WebSearchProviderResult) -> dict[str, Any]:
+    decision = result.provider_metadata.get("budget_decision")
+    return dict(decision) if isinstance(decision, dict) and not decision.get("accepted", True) else {}
+
+
+def not_searched_signal_observation(candidate_name: str, task: RadarExecutionTask, decision: dict[str, Any]) -> dict[str, Any]:
+    reason = str(decision.get("state") or "not_searched_budget_limited")
+    message = str(decision.get("message") or "Signal search was not executed because an execution budget was exhausted.")
+    return {
+        "legal_name": candidate_name,
+        "signals": [{
+            "signal_code": task.subject_id,
+            "status": "unclear",
+            "score": 0,
+            "confidence": "low",
+            "summary": message,
+            "search_status": reason,
+            "not_searched_reason": str(decision.get("reason") or "budget_limited"),
+            "review_flags": [reason],
+            "score_evaluation": {
+                "applied_score": 0,
+                "rule_snapshot": task.rule_snapshot,
+                "explanation": "The signal was not searched and must not be treated as a negative observation.",
+            },
+        }],
+        "review_flags": [reason],
+    }
+
+
+def signal_status_record(candidate_name: str, task: RadarExecutionTask, decision: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "candidate_name": candidate_name,
+        "signal_id": task.subject_id,
+        "task_id": task.task_id,
+        "search_status": str(decision.get("state") or "not_searched_budget_limited"),
+        "not_searched_reason": str(decision.get("reason") or "budget_limited"),
+        "budget_key": str(decision.get("key") or ""),
+        "message": str(decision.get("message") or ""),
+    }
+
+
+def candidate_universe_with_signal_statuses(
+    candidate_universe: list[LiveRadarCandidate],
+    signal_search_statuses: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    statuses_by_name: dict[str, list[dict[str, Any]]] = {}
+    for item in signal_search_statuses:
+        name = str(item.get("candidate_name", "")).lower()
+        if name:
+            statuses_by_name.setdefault(name, []).append(item)
+    payloads = []
+    for item in candidate_universe:
+        payload = item.model_dump()
+        payload["signal_searches"] = statuses_by_name.get(str(payload.get("legal_name", "")).lower(), [])
+        payloads.append(payload)
+    return payloads

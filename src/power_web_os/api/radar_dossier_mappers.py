@@ -42,6 +42,9 @@ def dossier_response(
     retrieval_plan = _dict(execution_results.get("retrieval_plan"))
     source_policy_decisions = _list(discovery_plan.get("source_policy_decisions"))
     coverage_summary = _coverage_summary(discovery_plan, execution_results)
+    budget_summary = _budget_summary(execution_results)
+    budget_exhaustion_events = _list(execution_results.get("budget_exhaustion_events"))
+    signal_search_statuses = _list(execution_results.get("signal_search_statuses"))
     candidate_universe = _list(execution_results.get("candidate_universe"))
     coverage_checks = _list(execution_results.get("coverage_checks"))
     coverage_warnings = [str(value) for value in execution_results.get("coverage_warnings", []) if isinstance(value, str)]
@@ -69,6 +72,9 @@ def dossier_response(
         retrieval_plan=retrieval_plan,
         source_policy_decisions=source_policy_decisions,
         coverage_summary=coverage_summary,
+        budget_summary=budget_summary,
+        budget_exhaustion_events=budget_exhaustion_events,
+        signal_search_statuses=signal_search_statuses,
         candidate_universe=candidate_universe,
         coverage_checks=coverage_checks,
         coverage_warnings=coverage_warnings,
@@ -165,6 +171,25 @@ def _coverage_summary(discovery_plan: dict[str, Any], execution_results: dict[st
             str(item.get("reason"))
             for item in analyzed_sources
             if str(item.get("reason", "")).strip()
+        }),
+    }
+
+
+def _budget_summary(execution_results: dict[str, Any]) -> dict[str, Any]:
+    counters = _dict(execution_results.get("budget_counters"))
+    settings = _dict(execution_results.get("budget_settings"))
+    exhaustion_events = _list(execution_results.get("budget_exhaustion_events"))
+    signal_statuses = _list(execution_results.get("signal_search_statuses"))
+    return {
+        "settings": settings,
+        "counters": counters,
+        "exhausted_count": len(exhaustion_events),
+        "signal_searched_count": sum(1 for item in signal_statuses if str(item.get("search_status")) == "searched"),
+        "signal_not_searched_count": sum(1 for item in signal_statuses if str(item.get("search_status", "")).startswith("not_searched")),
+        "not_searched_reasons": sorted({
+            str(item.get("not_searched_reason"))
+            for item in signal_statuses
+            if str(item.get("not_searched_reason", "")).strip()
         }),
     }
 

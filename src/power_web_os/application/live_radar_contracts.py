@@ -288,6 +288,8 @@ class LiveRadarSignalResult(BaseModel):
     signal_code: str
     signal: str
     status: SignalStatus
+    search_status: str = "searched"
+    not_searched_reason: str | None = None
     score: int = Field(ge=0, le=2)
     confidence: str = "low"
     summary: str

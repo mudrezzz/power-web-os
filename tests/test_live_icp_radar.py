@@ -25,6 +25,11 @@ from power_web_os.application.live_radar_discovery_planning import (
 )
 from power_web_os.application.live_radar_plan_acceptance import RadarDiscoveryPlanAcceptanceService
 from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_task_to_search_plan
+from power_web_os.application.live_radar_execution_budget import (
+    RadarExecutionBudget,
+    RadarExecutionBudgetSettings,
+    budget_key,
+)
 from power_web_os.application.live_radar_normalization import normalize_live_candidate
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan, retrieval_plan_to_search_plan
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
@@ -266,6 +271,34 @@ def test_execution_plan_projects_to_retrieval_plan_and_legacy_search_plan() -> N
     assert signal_task.response_contract.schema_id == "signal_finding_v1"
     assert signal_task.expected_evidence == [signal_task.subject_id]
     assert legacy_plan.model_dump() == build_live_mini_radar_search_plan(radar).model_dump()
+
+
+def test_execution_budget_keys_are_candidate_scoped_for_gate_and_signal_tasks() -> None:
+    gate_task = RadarExecutionTask(
+        task_id="gate-q2",
+        stage="qualification_gate",
+        subject_type="qualification",
+        subject_id="Q2",
+        query="Check candidate.",
+        purpose="Check one candidate.",
+        candidate_scope=["Candidate A"],
+    )
+    signal_task = RadarExecutionTask(
+        task_id="signal-s1",
+        stage="signal_search",
+        subject_type="signal",
+        subject_id="S1",
+        query="Search signal.",
+        purpose="Search one candidate signal.",
+        candidate_scope=["Candidate A"],
+    )
+    budget = RadarExecutionBudget(RadarExecutionBudgetSettings(max_signal_tasks_per_candidate_signal=1))
+
+    assert budget_key(gate_task) == "gate:Q2:Candidate A"
+    assert budget_key(signal_task) == "signal:S1:Candidate A"
+    assert budget.reserve(signal_task)
+    assert not budget.reserve(signal_task)
+    assert budget.exhaustion_events[0]["state"] == "not_searched_budget_limited"
 
 
 def test_recorded_response_normalizes_sources_candidates_and_scores() -> None:
@@ -916,7 +949,7 @@ def test_signal_stage_new_entities_become_gaps_not_candidates() -> None:
     assert "Candidate C" not in {item["legal_name"] for item in collected.candidate_observations}
 
 
-def test_staged_execution_caps_signal_search_budget_for_large_universe() -> None:
+def test_staged_execution_searches_each_candidate_signal_when_total_budget_allows() -> None:
     provider = _ManyCandidateProvider(candidate_count=14)
     radar = build_live_mini_radar_definition()
     radar["intent_signals"] = [
@@ -930,16 +963,15 @@ def test_staged_execution_caps_signal_search_budget_for_large_universe() -> None
     collected = service.run_web_search(service.build_search_plan(state))
     signal_calls = [call for call in provider.calls if call.queries[0].stage == "signal_search"]
 
-    assert collected.execution_results["signal_task_count"] == 12
-    assert len(signal_calls) == 12
-    assert collected.execution_results["max_signal_tasks"] == 12
-    assert collected.execution_results["max_signal_candidates"] == 8
-    assert collected.execution_results["signal_budget_warnings"]
-    assert "validation_warning" in [event["event_type"] for event in collected.pipeline_events]
+    assert collected.execution_results["signal_task_count"] == 42
+    assert len(signal_calls) == 42
+    assert collected.execution_results["max_signal_candidates"] == 14
+    assert collected.execution_results["budget_exhaustion_events"] == []
+    assert all(item["search_status"] == "searched" for item in collected.execution_results["signal_search_statuses"])
     assert len(collected.execution_results["candidate_universe"]) == 14
 
 
-def test_staged_execution_caps_web_tasks_per_subject_from_task_context() -> None:
+def test_compatibility_budget_is_candidate_signal_scoped_not_signal_global() -> None:
     provider = _ManyCandidateProvider(candidate_count=14)
     radar = build_live_mini_radar_definition()
     radar["intent_signals"] = [
@@ -961,12 +993,44 @@ def test_staged_execution_caps_web_tasks_per_subject_from_task_context() -> None
         if call.queries[0].stage == "signal_search"
     ]
 
-    assert signal_subjects.count("S1") == 4
-    assert signal_subjects.count("S2") == 4
-    assert signal_subjects.count("S3") == 4
+    assert signal_subjects.count("S1") == 14
+    assert signal_subjects.count("S2") == 14
+    assert signal_subjects.count("S3") == 14
     assert collected.execution_results["max_web_tasks_per_subject"] == 4
-    assert collected.execution_results["web_task_counts_by_subject"]["S1"] == 4
-    assert collected.execution_results["signal_budget_warnings"]
+    assert collected.execution_results["budget_settings"]["compatibility_max_web_tasks_per_subject"] == 4
+    assert collected.execution_results["web_task_counts_by_subject"]["signal:S1:Candidate 01"] == 1
+    assert collected.execution_results["web_task_counts_by_subject"]["signal:S3:Candidate 14"] == 1
+    assert collected.execution_results["budget_exhaustion_events"] == []
+
+
+def test_total_budget_marks_remaining_signals_as_not_searched() -> None:
+    provider = _ManyCandidateProvider(candidate_count=14)
+    radar = build_live_mini_radar_definition()
+    radar["intent_signals"] = [{"code": "S1", "label": "Signal 1", "rule": "Find signal 1."}]
+    service = LiveRadarRunService(provider)
+    state = LiveICPRadarRunState(
+        radar=radar,
+        live=False,
+        task_context={"max_total_web_tasks_per_run": 20},
+    )
+
+    collected = service.run_web_search(service.build_search_plan(state))
+    extracted = service.extract_candidates(service.normalize_sources(collected))
+    signal_calls = [call for call in provider.calls if call.queries[0].stage == "signal_search"]
+    statuses = collected.execution_results["signal_search_statuses"]
+    not_searched = [item for item in statuses if item["search_status"] == "not_searched_budget_limited"]
+    candidate_14 = next(item for item in extracted.candidates if item["legal_name"] == "Candidate 14")
+    candidate_14_signal = candidate_14["signals"][0]
+
+    assert len(signal_calls) == 4
+    assert collected.execution_results["budget_counters"]["total"] == 20
+    assert not_searched
+    assert collected.execution_results["budget_exhaustion_events"]
+    assert candidate_14_signal["status"] == "unclear"
+    assert candidate_14_signal["search_status"] == "not_searched_budget_limited"
+    assert candidate_14_signal["not_searched_reason"] == "total_run_budget_exhausted"
+    assert candidate_14_signal["score"] == 0
+    assert candidate_14_signal["status"] != "not_observed"
 
 
 def test_openrouter_model_routing_uses_advanced_models_for_planner_and_extractor(tmp_path: Path) -> None:

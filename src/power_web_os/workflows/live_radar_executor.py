@@ -48,6 +48,10 @@ class WorkflowLiveRadarArtifactExecutor(LiveRadarArtifactExecutor):
 def _task_context_with_runtime_defaults(task_context: dict[str, object]) -> dict[str, object]:
     context = dict(task_context)
     context.setdefault("max_web_tasks_per_subject", _positive_int(os.getenv("POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT"), 20))
+    _set_optional_positive(context, "max_discovery_tasks_per_rule", "POWER_WEB_OS_RADAR_MAX_DISCOVERY_TASKS_PER_RULE")
+    _set_optional_positive(context, "max_gate_tasks_per_candidate_rule", "POWER_WEB_OS_RADAR_MAX_GATE_TASKS_PER_CANDIDATE_RULE")
+    _set_optional_positive(context, "max_signal_tasks_per_candidate_signal", "POWER_WEB_OS_RADAR_MAX_SIGNAL_TASKS_PER_CANDIDATE_SIGNAL")
+    _set_optional_positive(context, "max_total_web_tasks_per_run", "POWER_WEB_OS_RADAR_MAX_TOTAL_WEB_TASKS_PER_RUN")
     context.setdefault("source_verification_mode", _verification_mode(os.getenv("POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE"), "soft"))
     context.setdefault(
         "min_useful_sources_per_discovery_task",
@@ -64,6 +68,14 @@ def _task_context_with_runtime_defaults(task_context: dict[str, object]) -> dict
     return context
 
 
+def _set_optional_positive(context: dict[str, object], key: str, env_name: str) -> None:
+    if key in context and context[key] is not None:
+        return
+    value = _optional_positive_int(os.getenv(env_name))
+    if value is not None:
+        context[key] = value
+
+
 def _positive_int(raw: str | None, default: int) -> int:
     try:
         value = int(raw or "")
@@ -78,6 +90,14 @@ def _non_negative_int(raw: str | None, default: int) -> int:
     except ValueError:
         return default
     return value if value >= 0 else default
+
+
+def _optional_positive_int(raw: str | None) -> int | None:
+    try:
+        value = int(raw or "")
+    except ValueError:
+        return None
+    return value if value > 0 else None
 
 
 def _verification_mode(raw: str | None, default: str) -> str:

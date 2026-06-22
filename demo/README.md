@@ -83,9 +83,13 @@ The committed `.env.example` uses a smoke-safe live Radar budget:
 `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=1` and
 `OPENROUTER_WEB_MODE=server_tools`. This is intentionally conservative so a
 manual Docker run should reach a terminal state quickly before quality tuning.
-Increase the budget only when validating discovery quality; exhausted budgets
-produce dossier/journal warnings instead of allowing a run to expand without
-bounds.
+For quality testing, prefer the explicit hierarchical budget variables:
+`POWER_WEB_OS_RADAR_MAX_DISCOVERY_TASKS_PER_RULE`,
+`POWER_WEB_OS_RADAR_MAX_GATE_TASKS_PER_CANDIDATE_RULE`,
+`POWER_WEB_OS_RADAR_MAX_SIGNAL_TASKS_PER_CANDIDATE_SIGNAL`, and
+`POWER_WEB_OS_RADAR_MAX_TOTAL_WEB_TASKS_PER_RUN`. Exhausted budgets produce
+dossier/journal warnings and `not_searched_*` states instead of making
+unsearched candidates look like negative results.
 
 With the smoke budget, a completed run may still show `0` product sources and
 zero scores. That means the runner reached a terminal state, not that discovery
@@ -102,13 +106,10 @@ when discovery or coverage tasks return too few useful sources/candidates.
 The next live Radar hardening slices focus on retrieval quality before provider
 comparison or broad benchmarking:
 
-1. hierarchical execution budgets, so limits are counted per rule/candidate and
-   per signal/candidate rather than hiding unsearched candidates as negative
-   results;
-2. a DaData-backed structured company source, so legal-entity facts can come
+1. a DaData-backed structured company source, so legal-entity facts can come
    from a registry-style provider while open web remains responsible for current
    evidence and intent signals;
-3. provider-neutral web retrieval adapters, so OpenRouter and Perplexity-style
+2. provider-neutral web retrieval adapters, so OpenRouter and Perplexity-style
    retrieval can be compared after prompt, budget, and source semantics are
    controlled.
 

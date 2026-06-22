@@ -1689,7 +1689,7 @@ Status:
 
 ### Slice 0.6.6: ICP Radar run history and monitoring schedule loop
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Show how configured radars run over time and distinguish full discovery from incremental signal monitoring.
 - User value: A user can understand when the radar last ran, what changed, which signals are new, and how candidate scores moved since the previous run.
 - Scope:
@@ -3062,6 +3062,16 @@ Principles:
 - Risks:
   - More precise budgets can increase runtime/cost when raised; keep total run
     cap and trace-visible counters.
+- Completion notes:
+  - Added `RadarExecutionBudget` with hierarchical semantic keys and kept
+    `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` as a compatibility alias.
+  - Added explicit budget settings for discovery, gate, signal, and total run
+    caps.
+  - Removed signal candidate slicing as the primary limit and now records
+    `not_searched_budget_limited` signal rows when a budget prevents provider
+    execution.
+  - Extended dossier output with budget summary, exhaustion events, and signal
+    search statuses.
 
 ### Slice 0.7.6.1.10: DaData source provider and Radar source registry
 
@@ -3862,4 +3872,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.9: Hierarchical Radar execution budgets and not-searched states`.
+Implement `Slice 0.7.6.1.10: DaData source provider and Radar source registry`.

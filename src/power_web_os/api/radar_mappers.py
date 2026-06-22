@@ -273,6 +273,8 @@ def _signal_response(
         signal_code=str(payload.get("signal_code", "")),
         signal=str(payload.get("signal", "")),
         status=str(payload.get("status", "unclear")),
+        search_status=str(payload.get("search_status", "searched")),
+        not_searched_reason=str(payload.get("not_searched_reason")) if payload.get("not_searched_reason") is not None else None,
         score=int(payload.get("score", 0) or 0),
         confidence=str(payload.get("confidence", "low")),
         summary=str(payload.get("summary", "")),

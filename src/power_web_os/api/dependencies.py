@@ -32,6 +32,10 @@ class RadarApiContext:
     technical_trace_repository: SqlAlchemyRadarRunTechnicalTraceRepository
     job_queue: JobQueue
     radar_max_web_tasks_per_subject: int
+    radar_max_discovery_tasks_per_rule: int | None
+    radar_max_gate_tasks_per_candidate_rule: int | None
+    radar_max_signal_tasks_per_candidate_signal: int | None
+    radar_max_total_web_tasks_per_run: int | None
     radar_source_verification_mode: str
     radar_min_useful_sources_per_discovery_task: int
     radar_min_candidates_per_discovery_task: int
@@ -46,6 +50,14 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
     session_factory = request.app.state.session_factory
     job_queue_factory = request.app.state.job_queue_factory
     radar_max_web_tasks_per_subject = int(getattr(request.app.state, "radar_max_web_tasks_per_subject", 20))
+    radar_max_discovery_tasks_per_rule = _optional_int(getattr(request.app.state, "radar_max_discovery_tasks_per_rule", None))
+    radar_max_gate_tasks_per_candidate_rule = _optional_int(
+        getattr(request.app.state, "radar_max_gate_tasks_per_candidate_rule", None)
+    )
+    radar_max_signal_tasks_per_candidate_signal = _optional_int(
+        getattr(request.app.state, "radar_max_signal_tasks_per_candidate_signal", None)
+    )
+    radar_max_total_web_tasks_per_run = _optional_int(getattr(request.app.state, "radar_max_total_web_tasks_per_run", None))
     radar_source_verification_mode = str(getattr(request.app.state, "radar_source_verification_mode", "soft"))
     radar_min_useful_sources_per_discovery_task = int(
         getattr(request.app.state, "radar_min_useful_sources_per_discovery_task", 3)
@@ -63,8 +75,22 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
             technical_trace_repository=SqlAlchemyRadarRunTechnicalTraceRepository(session),
             job_queue=job_queue_factory(),
             radar_max_web_tasks_per_subject=radar_max_web_tasks_per_subject,
+            radar_max_discovery_tasks_per_rule=radar_max_discovery_tasks_per_rule,
+            radar_max_gate_tasks_per_candidate_rule=radar_max_gate_tasks_per_candidate_rule,
+            radar_max_signal_tasks_per_candidate_signal=radar_max_signal_tasks_per_candidate_signal,
+            radar_max_total_web_tasks_per_run=radar_max_total_web_tasks_per_run,
             radar_source_verification_mode=radar_source_verification_mode,
             radar_min_useful_sources_per_discovery_task=radar_min_useful_sources_per_discovery_task,
             radar_min_candidates_per_discovery_task=radar_min_candidates_per_discovery_task,
             radar_max_discovery_retries_per_task=radar_max_discovery_retries_per_task,
         )
+
+
+def _optional_int(value: object) -> int | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None

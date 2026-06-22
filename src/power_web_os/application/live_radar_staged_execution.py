@@ -14,19 +14,23 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProvider,
     WebSearchProviderResult,
 )
-from power_web_os.application.live_radar_execution_budget import SubjectTaskBudget
+from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget, budget_settings_from_context
 from power_web_os.application.live_radar_execution_plan import execution_task_to_search_plan, scoped_execution_task
 from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan
 from power_web_os.application.live_radar_staged_support import (
     budget_warning_event as _budget_warning_event,
+    budget_decision as _budget_decision,
     candidate_filtered_events as _candidate_filtered_events,
+    candidate_universe_with_signal_statuses as _candidate_universe_with_signal_statuses,
     candidate_names_matching as _support_candidate_names_matching,
     candidate_rejected as _candidate_rejected,
     gate_summary as _gate_summary,
     normalized_candidates as _normalized_candidates_support,
     rejected_candidate_summaries as _rejected_candidate_summaries,
     signal_planned_event as _signal_planned_event,
+    signal_status_record as _signal_status_record,
+    not_searched_signal_observation as _not_searched_signal_observation,
     task_event as _task_event,
     useful_result_warning_event as _useful_result_warning_event,
 )
@@ -48,16 +52,16 @@ from power_web_os.application.live_radar_universe import (
 
 MAX_DISCOVERY_ITERATIONS = 2
 MAX_CANDIDATE_UNIVERSE_SIZE = 50
-MAX_SIGNAL_CANDIDATES = 8
-MAX_SIGNAL_TASKS = 12
-
-
 def run_staged_radar_execution(
     *,
     radar: dict[str, Any],
     execution_plan: RadarExecutionPlan,
     provider: WebSearchProvider,
     max_web_tasks_per_subject: int | None = None,
+    max_discovery_tasks_per_rule: int | None = None,
+    max_gate_tasks_per_candidate_rule: int | None = None,
+    max_signal_tasks_per_candidate_signal: int | None = None,
+    max_total_web_tasks_per_run: int | None = None,
     min_useful_sources_per_discovery_task: int | None = None,
     min_candidates_per_discovery_task: int | None = None,
     max_discovery_retries_per_task: int | None = None,
@@ -76,7 +80,14 @@ def run_staged_radar_execution(
     useful_result_warnings: list[str] = []
     useful_result_retry_records: list[dict[str, Any]] = []
     discovery_iteration_count = 0
-    task_budget = SubjectTaskBudget(max_web_tasks_per_subject)
+    budget_settings = budget_settings_from_context(
+        max_web_tasks_per_subject=max_web_tasks_per_subject,
+        max_discovery_tasks_per_rule=max_discovery_tasks_per_rule,
+        max_gate_tasks_per_candidate_rule=max_gate_tasks_per_candidate_rule,
+        max_signal_tasks_per_candidate_signal=max_signal_tasks_per_candidate_signal,
+        max_total_web_tasks_per_run=max_total_web_tasks_per_run,
+    )
+    task_budget = RadarExecutionBudget(budget_settings)
     useful_budget = UsefulResultBudget(
         min_sources=min_useful_sources_per_discovery_task,
         min_candidates=min_candidates_per_discovery_task,
@@ -212,29 +223,29 @@ def run_staged_radar_execution(
 
     signal_task_count = 0
     signal_budget_warnings: list[str] = []
-    max_signal_candidates = task_budget.limit or MAX_SIGNAL_CANDIDATES
-    max_signal_tasks = None if task_budget.limit else MAX_SIGNAL_TASKS
-    signal_candidate_scope = candidate_scope[:max_signal_candidates]
-    if len(candidate_scope) > max_signal_candidates:
-        signal_budget_warnings.append(
-            f"Signal search candidate scope was limited to {max_signal_candidates} of {len(candidate_scope)} candidates."
-        )
-    signal_budget_exhausted = False
+    signal_candidate_scope = list(candidate_scope)
+    signal_search_statuses: list[dict[str, Any]] = []
     for task in _tasks_for_stage(execution_plan, "signal_search"):
-        if signal_budget_exhausted:
-            break
         for scoped_candidate_name in signal_candidate_scope:
-            if max_signal_tasks is not None and signal_task_count >= max_signal_tasks:
-                signal_budget_warnings.append(f"Signal search task budget reached {max_signal_tasks} tasks.")
-                signal_budget_exhausted = True
-                break
             scoped_task = scoped_execution_task(task, candidate_scope=[scoped_candidate_name])
             events.append(_signal_planned_event(scoped_task))
             result = _run_task(provider=provider, radar=radar, task=scoped_task, radar_id=execution_plan.radar_id, budget=task_budget)
+            budget_decision = _budget_decision(result)
+            if budget_decision:
+                observations.append(_not_searched_signal_observation(scoped_candidate_name, task, budget_decision))
+                signal_search_statuses.append(_signal_status_record(scoped_candidate_name, task, budget_decision))
+                continue
             result = filter_signal_result(result, allowed_candidate_names={scoped_candidate_name})
             unresolved_candidate_gaps.extend(gap_payloads(gap_items(result), origin_task_id=task.task_id))
             sources, observations, provider_metadata = _merge_result(sources, observations, provider_metadata, result)
             executed_task_ids.append(f"{task.task_id}:{scoped_candidate_name}")
+            signal_search_statuses.append({
+                "candidate_name": scoped_candidate_name,
+                "signal_id": task.subject_id,
+                "task_id": task.task_id,
+                "search_status": "searched",
+                "not_searched_reason": "",
+            })
             signal_task_count += 1
     if signal_budget_warnings:
         coverage_warnings.extend(signal_budget_warnings)
@@ -269,10 +280,20 @@ def run_staged_radar_execution(
             "signal_task_count": signal_task_count,
             "candidate_scope": candidate_scope,
             "signal_candidate_scope": signal_candidate_scope,
+            "signal_search_statuses": signal_search_statuses,
             "signal_budget_warnings": signal_budget_warnings,
-            "max_signal_candidates": max_signal_candidates,
-            "max_signal_tasks": max_signal_tasks or task_budget.limit,
-            "max_web_tasks_per_subject": task_budget.limit,
+            "max_signal_candidates": len(signal_candidate_scope),
+            "max_signal_tasks": budget_settings.max_signal_tasks_per_candidate_signal,
+            "max_web_tasks_per_subject": budget_settings.compatibility_max_web_tasks_per_subject,
+            "budget_settings": {
+                "max_total_web_tasks_per_run": budget_settings.max_total_tasks_per_run,
+                "max_discovery_tasks_per_rule": budget_settings.max_discovery_tasks_per_rule,
+                "max_gate_tasks_per_candidate_rule": budget_settings.max_gate_tasks_per_candidate_rule,
+                "max_signal_tasks_per_candidate_signal": budget_settings.max_signal_tasks_per_candidate_signal,
+                "compatibility_max_web_tasks_per_subject": budget_settings.compatibility_max_web_tasks_per_subject,
+            },
+            "budget_counters": {"total": task_budget.total_count, "by_key": dict(task_budget.counts)},
+            "budget_exhaustion_events": list(task_budget.exhaustion_events),
             "web_task_counts_by_subject": task_budget.counts,
             "web_task_budget_warnings": task_budget.warnings,
             "useful_result_retry_records": useful_result_retry_records,
@@ -281,7 +302,7 @@ def run_staged_radar_execution(
             "min_candidates_per_discovery_task": useful_budget.min_candidates,
             "max_discovery_retries_per_task": useful_budget.max_retries,
             "source_verification_results": provider_metadata.get("source_verification_results", []),
-            "candidate_universe": [item.model_dump() for item in candidate_universe],
+            "candidate_universe": _candidate_universe_with_signal_statuses(candidate_universe, signal_search_statuses),
             "coverage_checks": coverage_checks,
             "coverage_warnings": sorted(set(coverage_warnings)),
             "unresolved_candidate_gaps": dedupe_gap_payloads(unresolved_candidate_gaps, known_candidate_names=candidate_name_set(observations)),
@@ -309,13 +330,16 @@ def _run_gate_pass(
     gate_results: list[dict[str, Any]],
     events: list[LiveRadarPipelineEvent],
     executed_task_ids: list[str],
-    budget: SubjectTaskBudget,
+    budget: RadarExecutionBudget,
 ) -> tuple[list[RadarSourceEvidence], list[dict[str, Any]], dict[str, Any], list[str]]:
     for task in tasks:
-        scoped_task = scoped_execution_task(task, candidate_scope=candidate_scope)
-        result = _run_task(provider=provider, radar=radar, task=scoped_task, radar_id=execution_plan.radar_id, budget=budget)
-        sources, observations, provider_metadata = _merge_result(sources, observations, provider_metadata, result)
-        executed_task_ids.append(task.task_id if not candidate_scope else f"{task.task_id}:{len(candidate_scope)}-candidates")
+        scopes = candidate_scope if task.stage == "qualification_gate" and candidate_scope else [None]
+        for scoped_candidate_name in scopes:
+            scoped_scope = [scoped_candidate_name] if scoped_candidate_name else candidate_scope
+            scoped_task = scoped_execution_task(task, candidate_scope=scoped_scope)
+            result = _run_task(provider=provider, radar=radar, task=scoped_task, radar_id=execution_plan.radar_id, budget=budget)
+            sources, observations, provider_metadata = _merge_result(sources, observations, provider_metadata, result)
+            executed_task_ids.append(task.task_id if not scoped_scope else f"{task.task_id}:{','.join(scoped_scope)}")
         candidates = _normalized_candidates(radar=radar, sources=sources, observations=observations)
         gate_summary = _gate_summary(candidates, task.subject_id)
         gate_results.append(gate_summary)
@@ -338,18 +362,28 @@ def _run_task(
     radar: dict[str, Any],
     task: RadarExecutionTask,
     radar_id: str,
-    budget: SubjectTaskBudget,
+    budget: RadarExecutionBudget,
 ) -> WebSearchProviderResult:
     if not budget.reserve(task):
+        decision = budget.last_decision
         return WebSearchProviderResult(
             sources=[],
             candidate_observations=[],
             provider_metadata={
                 "provider": "execution_budget",
+                "budget_decision": {
+                    "accepted": decision.accepted,
+                    "key": decision.key,
+                    "limit": decision.limit,
+                    "current": decision.current,
+                    "state": decision.state,
+                    "reason": decision.reason,
+                    "message": decision.message,
+                },
                 "coverage_findings": [{
-                    "summary": budget.last_warning or f"Web task budget reached for {task.subject_id}.",
+                    "summary": decision.message or f"Web task budget reached for {task.subject_id}.",
                     "completeness_risk": "medium",
-                    "warnings": [budget.last_warning] if budget.last_warning else [],
+                    "warnings": [decision.message] if decision.message else [],
                 }],
             },
         )

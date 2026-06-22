@@ -41,7 +41,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-        "version": "0.7.6.1.7",
+            "version": "0.7.6.1.9",
         "environment": "test",
     }
 
@@ -58,7 +58,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.6.1.7"
+    assert schema["info"]["version"] == "0.7.6.1.9"
     for path in [
         "/health",
         "/api/health",
@@ -142,6 +142,7 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert queued_dossier["summary"]["output_state"] == "pending"
     assert queued_dossier["run_context"]["status"] == "queued"
     assert queued_dossier["run_context"]["task_context"]["max_web_tasks_per_subject"] == 20
+    assert queued_dossier["run_context"]["task_context"]["max_signal_tasks_per_candidate_signal"] is None
     assert queued_dossier["run_context"]["task_context"]["source_verification_mode"] == "soft"
     assert queued_dossier["run_context"]["task_context"]["min_useful_sources_per_discovery_task"] == 3
     assert queued_dossier["run_context"]["task_context"]["min_candidates_per_discovery_task"] == 5
@@ -199,6 +200,10 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["discovery_iteration_count"] == 1
     assert dossier["retrieval_plan"]["tasks"][0]["task_id"] == "q1"
     assert dossier["retrieval_plan"]["tasks"][0]["response_contract"]["schema_id"] == "signal_finding_v1"
+    assert dossier["budget_summary"]["counters"]["total"] == 4
+    assert dossier["budget_summary"]["signal_not_searched_count"] == 1
+    assert dossier["budget_exhaustion_events"][0]["state"] == "not_searched_budget_limited"
+    assert dossier["signal_search_statuses"][1]["search_status"] == "not_searched_budget_limited"
     assert dossier["search_plan"][0]["query_id"] == "q1"
     assert dossier["search_plan"][0]["source_refs"] == ["src_1"]
     assert dossier["search_plan"][0]["candidate_refs"] == ["candidate-a"]
@@ -336,12 +341,21 @@ def test_post_radar_run_idempotency_does_not_enqueue_duplicate(tmp_path: Path) -
 def test_post_radar_run_persists_configured_web_task_budget(tmp_path: Path) -> None:
     database_url = _create_seeded_database(tmp_path)
     queue = _RecordingJobQueue()
-    client = TestClient(_app(tmp_path, database_url=database_url, job_queue=queue, max_web_tasks_per_subject=7))
+    client = TestClient(_app(
+        tmp_path,
+        database_url=database_url,
+        job_queue=queue,
+        max_web_tasks_per_subject=7,
+        max_signal_tasks_per_candidate_signal=3,
+        max_total_web_tasks_per_run=25,
+    ))
 
     run = client.post("/api/radars/toir-quick-live/runs", json={"live": False}).json()
     dossier = client.get(f"/api/radar-runs/{run['run_id']}/dossier").json()
 
     assert dossier["run_context"]["task_context"]["max_web_tasks_per_subject"] == 7
+    assert dossier["run_context"]["task_context"]["max_signal_tasks_per_candidate_signal"] == 3
+    assert dossier["run_context"]["task_context"]["max_total_web_tasks_per_run"] == 25
 
 
 def test_api_missing_and_no_output_cases_return_explicit_statuses(tmp_path: Path) -> None:
@@ -401,12 +415,16 @@ def _app(
     database_url: str | None = None,
     job_queue: object | None = None,
     max_web_tasks_per_subject: int = 20,
+    max_signal_tasks_per_candidate_signal: int | None = None,
+    max_total_web_tasks_per_run: int | None = None,
 ):
     return create_app(
         ApiSettings(
             environment="test",
             database_url=database_url or sqlite_url(tmp_path / "api.db"),
             radar_max_web_tasks_per_subject=max_web_tasks_per_subject,
+            radar_max_signal_tasks_per_candidate_signal=max_signal_tasks_per_candidate_signal,
+            radar_max_total_web_tasks_per_run=max_total_web_tasks_per_run,
         ),
         job_queue_factory=lambda: job_queue or _RecordingJobQueue(),
     )
@@ -567,6 +585,51 @@ def _artifact() -> dict[str, Any]:
                         }
                     ],
                 },
+                "budget_settings": {
+                    "max_total_web_tasks_per_run": 4,
+                    "max_discovery_tasks_per_rule": None,
+                    "max_gate_tasks_per_candidate_rule": None,
+                    "max_signal_tasks_per_candidate_signal": 1,
+                    "compatibility_max_web_tasks_per_subject": 20,
+                },
+                "budget_counters": {
+                    "total": 4,
+                    "by_key": {
+                        "discovery:Q1": 1,
+                        "signal:S1:Candidate A": 1,
+                    },
+                },
+                "budget_exhaustion_events": [
+                    {
+                        "task_id": "signal-search-s1",
+                        "stage": "signal_search",
+                        "subject_type": "signal",
+                        "subject_id": "S1",
+                        "candidate_scope": ["Candidate B"],
+                        "budget_key": "run",
+                        "limit": 4,
+                        "current": 4,
+                        "state": "not_searched_budget_limited",
+                        "reason": "total_run_budget_exhausted",
+                        "message": "Total Radar web task budget reached: 4 tasks.",
+                    }
+                ],
+                "signal_search_statuses": [
+                    {
+                        "candidate_name": "Candidate A",
+                        "signal_id": "S1",
+                        "task_id": "signal-search-s1",
+                        "search_status": "searched",
+                        "not_searched_reason": "",
+                    },
+                    {
+                        "candidate_name": "Candidate B",
+                        "signal_id": "S1",
+                        "task_id": "signal-search-s1",
+                        "search_status": "not_searched_budget_limited",
+                        "not_searched_reason": "total_run_budget_exhausted",
+                    },
+                ],
             },
         },
         "search_plan": {

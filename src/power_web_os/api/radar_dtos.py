@@ -111,6 +111,8 @@ class SignalResponse(BaseModel):
     signal_code: str
     signal: str = ""
     status: str
+    search_status: str = "searched"
+    not_searched_reason: str | None = None
     score: int = 0
     confidence: str = "low"
     summary: str = ""
@@ -340,6 +342,9 @@ class RadarRunDossierResponse(BaseModel):
     retrieval_plan: dict[str, Any] = Field(default_factory=dict)
     source_policy_decisions: list[dict[str, Any]] = Field(default_factory=list)
     coverage_summary: dict[str, Any] = Field(default_factory=dict)
+    budget_summary: dict[str, Any] = Field(default_factory=dict)
+    budget_exhaustion_events: list[dict[str, Any]] = Field(default_factory=list)
+    signal_search_statuses: list[dict[str, Any]] = Field(default_factory=list)
     candidate_universe: list[dict[str, Any]] = Field(default_factory=list)
     coverage_checks: list[dict[str, Any]] = Field(default_factory=list)
     coverage_warnings: list[str] = Field(default_factory=list)

@@ -44,6 +44,10 @@ def create_app(
     app.state.session_factory = create_session_factory(engine)
     app.state.job_queue_factory = job_queue_factory or default_job_queue
     app.state.radar_max_web_tasks_per_subject = api_settings.radar_max_web_tasks_per_subject
+    app.state.radar_max_discovery_tasks_per_rule = api_settings.radar_max_discovery_tasks_per_rule
+    app.state.radar_max_gate_tasks_per_candidate_rule = api_settings.radar_max_gate_tasks_per_candidate_rule
+    app.state.radar_max_signal_tasks_per_candidate_signal = api_settings.radar_max_signal_tasks_per_candidate_signal
+    app.state.radar_max_total_web_tasks_per_run = api_settings.radar_max_total_web_tasks_per_run
     app.state.radar_source_verification_mode = api_settings.radar_source_verification_mode
     app.state.radar_min_useful_sources_per_discovery_task = api_settings.radar_min_useful_sources_per_discovery_task
     app.state.radar_min_candidates_per_discovery_task = api_settings.radar_min_candidates_per_discovery_task

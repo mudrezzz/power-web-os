@@ -88,6 +88,13 @@ class LiveRadarRunService:
             execution_plan=execution_plan,
             provider=self._provider,
             max_web_tasks_per_subject=_int_context_value(state.task_context, "max_web_tasks_per_subject"),
+            max_discovery_tasks_per_rule=_int_context_value(state.task_context, "max_discovery_tasks_per_rule"),
+            max_gate_tasks_per_candidate_rule=_int_context_value(state.task_context, "max_gate_tasks_per_candidate_rule"),
+            max_signal_tasks_per_candidate_signal=_int_context_value(
+                state.task_context,
+                "max_signal_tasks_per_candidate_signal",
+            ),
+            max_total_web_tasks_per_run=_int_context_value(state.task_context, "max_total_web_tasks_per_run"),
             min_useful_sources_per_discovery_task=_int_context_value(
                 state.task_context,
                 "min_useful_sources_per_discovery_task",

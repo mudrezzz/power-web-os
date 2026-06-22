@@ -330,6 +330,10 @@ def _normalize_signals(
     for signal in radar["intent_signals"]:
         raw = by_code.get(signal["code"], {})
         status = _normalize_choice(str(raw.get("status", "not_observed")), {"observed", "not_observed", "unclear"}, "not_observed")
+        search_status = str(raw.get("search_status") or "searched")
+        not_searched_reason = str(raw.get("not_searched_reason") or "") or None
+        if search_status.startswith("not_searched"):
+            status = "unclear"
         raw_score = raw.get("score", 0)
         try:
             score = max(0, min(2, int(raw_score)))
@@ -352,11 +356,7 @@ def _normalize_signals(
             confidence = "low"
         summary = str(raw.get("summary") or "No signal evidence found.")
         source_policy = _confidence_to_policy(confidence, evidence_refs=evidence_refs)
-        source_usages = _qualification_source_usages(
-            evidence_refs=evidence_refs,
-            sources_by_ref=sources_by_ref,
-            policy=source_policy,
-        )
+        source_usages = _qualification_source_usages(evidence_refs=evidence_refs, sources_by_ref=sources_by_ref, policy=source_policy)
         evidence_findings = _signal_evidence_findings(
             raw=raw,
             evidence_refs=evidence_refs,
@@ -370,16 +370,13 @@ def _normalize_signals(
             evidence_refs=evidence_refs,
             final_assessment="matches" if status == "observed" else "unknown",
         )
-        score_evaluation = _signal_score_evaluation(
-            raw=raw,
-            score=score,
-            status=status,  # type: ignore[arg-type]
-            summary=summary,
-        )
+        score_evaluation = _signal_score_evaluation(raw=raw, score=score, status=status, summary=summary)  # type: ignore[arg-type]
         results.append(LiveRadarSignalResult(
             signal_code=signal["code"],
             signal=signal["label"],
             status=status,  # type: ignore[arg-type]
+            search_status=search_status,
+            not_searched_reason=not_searched_reason,
             score=score,
             confidence=confidence,
             summary=summary,
