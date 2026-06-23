@@ -290,6 +290,15 @@ selected, recorded retrieval/extraction fixtures pass schema gates, and targeted
 live provider probes can return usable material. Full live runs are final smoke
 or benchmark steps, not the primary debugging loop.
 
+The first live Radar preflight gate is application-owned and offline by default.
+It reads the active persisted definition through repository ports, compares it
+with the runtime definition provider, validates source-policy references and
+source-provider availability, and checks recorded malformed extraction outputs.
+It must report failures such as `definition_runtime_mismatch`,
+`source_base_not_executable`, `extraction_schema_invalid`,
+`evidence_linking_failed`, and `invalid_zero_score_projection` before a worker
+job is queued.
+
 Prompt construction follows the same separation. Planner prompts may receive the
 rich Radar definition, source policy, criterion-role context, and run limits
 because they are responsible for proposing strategy. Bounded execution prompts

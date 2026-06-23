@@ -3227,7 +3227,7 @@ Principles:
 
 ### Slice 0.7.6.1.11.1: Radar execution preflight and red tests
 
-- Status: `Ready`
+- Status: `Done`
 - Goal: Add a fast TDD/preflight gate for complex live Radar execution before
   running expensive full live provider jobs.
 - Problem being closed:
@@ -3272,6 +3272,18 @@ Principles:
     use; it must not run a full Radar job.
   - The preflight result should be structured so UI/CLI can later show
     actionable failures.
+  - Done: added application-layer `RadarExecutionPreflightService` and
+    structured preflight report/check contracts.
+  - Done: added `python -m power_web_os.demo preflight-radar --radar-id
+    toir-quick-live --json`; it reads persisted definitions, performs no
+    network calls, creates no run/output rows, and exits non-zero when the
+    report is not ready.
+  - Done: current `toir-quick-live` reports the expected red
+    `definition_runtime_mismatch` until the active-definition execution repair
+    slice lands.
+  - Done: added recorded negative fixture gates for malformed provider shapes,
+    prose-first output, evidence-ref failures, and invalid not-searched zero
+    score projection.
 - Tests:
   - Unit tests for preflight result shape and severity.
   - Recorded integration tests proving current DaData/runtime mismatch is
@@ -4056,4 +4068,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11.1: Radar execution preflight and red tests`.
+Implement `Slice 0.7.6.1.11.2: Active Radar definition execution and source-base enforcement`.

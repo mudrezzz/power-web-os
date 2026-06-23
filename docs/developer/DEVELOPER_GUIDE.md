@@ -860,6 +860,31 @@ unknown refs, or return retrievable material that cannot be tied to candidate
 evidence. These cases should become explicit diagnostic states such as
 `extraction_schema_invalid` or `evidence_linking_failed`, not normal zero scores.
 
+Run the current Radar execution preflight before manual live testing:
+
+```bash
+python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json
+```
+
+The command reads the active persisted Radar definition from
+`POWER_WEB_OS_DATABASE_URL` or `--database-url`, performs no network calls, and
+does not create `radar_runs` or `radar_run_outputs`. It exits non-zero when
+`ready_for_live_run=false`. That is expected while known red checks are still
+being repaired. Important check codes:
+
+- `definition_runtime_mismatch`: persisted active definition and workflow
+  runtime definition differ.
+- `source_base_not_executable`: source ids or source types cannot be resolved
+  to executable source bases.
+- `company_registry_provider_available`: a configured company registry source
+  such as DaData has, or lacks, an available provider.
+- `extraction_schema_invalid`: recorded provider output violates the expected
+  extraction shape.
+- `evidence_linking_failed`: candidate/finding evidence refs do not resolve to
+  normalized sources.
+- `invalid_zero_score_projection`: unsearched or invalid signal output would be
+  shown as a normal searched-negative zero score.
+
 Frontend rendering for live radar results must go through the canonical ICP Radar UX contract. Treat `icp_radar_live_run` as a different data adapter, not as permission to create a separate live-only grid, side panel, table column set, preview, or detail surface. Runtime provider metadata belongs in the candidate `Journal` tab.
 
 Candidate qualification results must use the shared qualification evidence contract before they reach the UI. Provider output can be sparse, but the backend normalizer must shape each Q-rule result into rule snapshot, operator, requirement level, source usages, source origin, trust/check policy, evidence findings, optional short excerpt, cross-validation, requirement evaluation, final assessment, and optional review decision. The candidate detail qualification tab renders that contract as a table-first review surface with expandable rows and browser-local approve/reject/correct decisions. Keep the collapsed row scan-first: code, rule, operator, assessment, source count, cross-validation, and local decision. In expanded rows, render evidence as cards that combine source ref/title/origin/trust with fact, excerpt, and why-it-matches text; do not duplicate a separate sources table there. Requirement level, evidence strength, cross-validation status, confidence, and recommended action belong inside the expanded `Requirement fit` section. Reject/correct decisions must require a comment. Do not render provider-specific raw Q1/Q2 rows directly.

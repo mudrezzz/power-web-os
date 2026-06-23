@@ -24,6 +24,11 @@ from power_web_os.application.radar_review import (
     RadarReviewDecisionService,
     RadarReviewValidationError,
 )
+from power_web_os.application.radar_preflight import (
+    RadarExecutionPreflightService,
+    RadarPreflightCheckResult,
+    RadarPreflightReport,
+)
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRecord,
@@ -45,6 +50,9 @@ __all__ = [
     "RadarDefinitionRecord",
     "RadarDefinitionRepository",
     "RadarRecord",
+    "RadarExecutionPreflightService",
+    "RadarPreflightCheckResult",
+    "RadarPreflightReport",
     "RadarRepository",
     "RadarReviewDecisionCommand",
     "RadarReviewDecisionRecord",

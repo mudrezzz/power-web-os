@@ -100,9 +100,18 @@ Complex live Radar runs should be treated as TDD/preflight-gated work. Before a
 manual `Run radar` is used as evidence of quality, the fast preflight/recorded
 fixture checks should verify active definition wiring, configured source bases,
 DaData/source-provider selection, extraction schema shape, and evidence-ref
-linking. Until the preflight command from `Slice 0.7.6.1.11.1` is implemented,
-manual full live runs are exploratory diagnostics, not pass/fail development
-tests.
+linking:
+
+```bash
+python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json
+```
+
+The preflight command is intentionally fast and offline: it reads the persisted
+Radar definition, validates source-policy/provider wiring, runs recorded
+negative extraction checks, and exits with code `1` when `ready_for_live_run` is
+false. A red preflight report is a development signal. Do not treat a long live
+Radar run as quality evidence until the preflight report is green or the run is
+explicitly exploratory.
 
 Live Radar now uses soft source verification by default. If a provider returns
 source-linked candidates but URLs fail reachability checks, the run keeps those

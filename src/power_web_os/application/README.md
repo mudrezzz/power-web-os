@@ -20,6 +20,10 @@ provider SDK details.
   qualification-first staged execution plans.
 - `live_radar_retrieval_plan.py` projects accepted execution tasks into compact
   retrieval task cards and backward-compatible search-plan queries.
+- `radar_preflight.py` owns fast live Radar readiness checks before expensive
+  provider execution: active definition wiring, source-policy references,
+  source-provider availability, recorded extraction schemas, evidence linking,
+  and invalid zero-score projections.
 - `live_radar_web_retrieval.py` defines provider-neutral web retrieval
   material: bounded retrieval requests, ranked retrieved sources, source
   outcomes, and recorded fixtures. It does not own extraction, scoring,
@@ -121,6 +125,11 @@ pipeline/provider debug summaries through `RadarRunTechnicalTracer`, which
 redacts payloads before they reach persistence. Provider adapters may emit
 technical observations, but they must not bypass the redactor or store raw
 hidden chain-of-thought.
+
+Complex live Radar changes must pass preflight before broad live runs. The
+preflight service depends on repository/source-provider contracts and recorded
+fixtures; it must not enqueue jobs, call OpenRouter, call DaData, or normalize
+broken provider output into apparently successful product states.
 
 ## How To Extend
 
