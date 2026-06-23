@@ -253,6 +253,11 @@ def _candidate_observations_from_registry(
             "description": _registry_snippet(observation),
             "evidence_refs": [source_ref],
             "review_flags": ["company_registry_fact_requires_review"],
+            "entity_type": "legal_entity",
+            "entity_resolution_status": "resolved",
+            "inn": observation.inn,
+            "ogrn": observation.ogrn,
+            "okved": observation.okved,
             "registry_facts": observation.facts,
             "qualification": [{
                 "criterion_code": task.subject_id,

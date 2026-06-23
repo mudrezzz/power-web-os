@@ -26,6 +26,8 @@ RadarDiscoverySourceScope = Literal["global", "local", "additional", "system"]
 RadarCriterionRole = Literal["upstream_discovery", "downstream_gate", "attribute_enrichment", "exclusion"]
 RadarSourceBase = Literal["global_configured", "rule_local", "additional", "system"]
 RadarSourceApplicationScope = Literal["whole_universe", "rule_scope", "candidate_scope"]
+RadarEntityType = Literal["legal_entity", "production_site", "project", "asset", "unknown_entity"]
+RadarEntityResolutionStatus = Literal["resolved", "linked_to_legal_entity", "unresolved_gap", "rejected_as_account", "review_needed"]
 
 
 class RadarSearchQuery(BaseModel):

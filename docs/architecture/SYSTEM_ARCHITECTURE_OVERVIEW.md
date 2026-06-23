@@ -337,6 +337,13 @@ source refs and unrepaired schema mismatches remain `evidence_linking_failed` or
 events, contract validation, and dossier projections so retrieved-source-rich
 runs cannot masquerade as clean empty/zero-score results.
 
+Entity resolution is now a separate application-owned gate before account
+scoring. A Radar account candidate means `legal_entity`; production sites,
+projects, installations, and assets are linked to a resolved legal entity or
+reported as review-needed gaps. DaData/company-registry observations can support
+legal-entity identity and enrichment through INN/OGRN/status/OKVED facts, but
+they do not replace web evidence for intent signals.
+
 Prompt construction follows the same separation. Planner prompts may receive the
 rich Radar definition, source policy, criterion-role context, and run limits
 because they are responsible for proposing strategy. Bounded execution prompts

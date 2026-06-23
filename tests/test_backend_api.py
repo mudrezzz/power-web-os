@@ -194,6 +194,14 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["source_policy_decisions"][0]["decision"] == "selected"
     assert dossier["coverage_summary"]["analyzed_source_reasons"] == ["not_used_by_candidate"]
     assert dossier["candidate_universe"][0]["status"] == "qualified"
+    assert dossier["candidate_universe"][0]["entity_type"] == "legal_entity"
+    assert dossier["candidate_universe"][0]["resolution_status"] == "resolved"
+    assert dossier["candidate_universe"][0]["linked_fact_count"] == 1
+    assert dossier["entity_resolution_results"][1]["entity_type"] == "project"
+    assert dossier["entity_resolution_results"][1]["resolution_status"] == "linked_to_legal_entity"
+    assert dossier["linked_entity_facts"][0]["entity_name"] == "EP-600"
+    assert dossier["coverage_summary"]["entity_resolution_count"] == 2
+    assert dossier["coverage_summary"]["linked_entity_fact_count"] == 1
     assert dossier["coverage_checks"][0]["task_id"] == "coverage-q1"
     assert dossier["coverage_warnings"] == []
     assert dossier["unresolved_candidate_gaps"] == []
@@ -545,8 +553,38 @@ def _artifact() -> dict[str, Any]:
                         "gate_results": [{"criterion_code": "Q1", "final_assessment": "matches"}],
                         "rejection_reasons": [],
                         "coverage_flags": [],
+                        "entity_type": "legal_entity",
+                        "resolution_status": "resolved",
+                        "linked_fact_count": 1,
                     }
                 ],
+                "entity_resolution_results": [
+                    {
+                        "entity_name": "Candidate A",
+                        "entity_type": "legal_entity",
+                        "resolution_status": "resolved",
+                        "source_refs": ["src_1"],
+                        "reason": "Legal entity identity was supported by registry facts.",
+                    },
+                    {
+                        "entity_name": "EP-600",
+                        "entity_type": "project",
+                        "resolution_status": "linked_to_legal_entity",
+                        "resolved_legal_name": "Candidate A",
+                        "source_refs": ["src_1"],
+                        "reason": "Non-account entity was linked to a resolved legal entity.",
+                    },
+                ],
+                "linked_entity_facts": [
+                    {
+                        "entity_name": "EP-600",
+                        "entity_type": "project",
+                        "linked_legal_name": "Candidate A",
+                        "source_refs": ["src_1"],
+                        "reason": "Non-account entity was linked to a resolved legal entity.",
+                    }
+                ],
+                "entity_resolution_warnings": [],
                 "coverage_checks": [
                     {
                         "task_id": "coverage-q1",

@@ -15,6 +15,8 @@ from power_web_os.api.radar_dtos import (
     RadarRunDossierSourceUsageResponse,
     RadarRunDossierSummaryResponse,
 )
+from power_web_os.api.radar_dossier_summaries import budget_summary as _budget_summary
+from power_web_os.api.radar_dossier_summaries import coverage_summary as _coverage_summary
 from power_web_os.api.radar_mappers import journal_event_response
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
@@ -45,6 +47,9 @@ def dossier_response(
     budget_summary = _budget_summary(execution_results)
     budget_exhaustion_events = _list(execution_results.get("budget_exhaustion_events"))
     signal_search_statuses = _list(execution_results.get("signal_search_statuses"))
+    entity_resolution_results = _list(execution_results.get("entity_resolution_results"))
+    linked_entity_facts = _list(execution_results.get("linked_entity_facts"))
+    entity_resolution_warnings = _list(execution_results.get("entity_resolution_warnings"))
     candidate_universe = _list(execution_results.get("candidate_universe"))
     coverage_checks = _list(execution_results.get("coverage_checks"))
     coverage_warnings = [str(value) for value in execution_results.get("coverage_warnings", []) if isinstance(value, str)]
@@ -75,6 +80,9 @@ def dossier_response(
         budget_summary=budget_summary,
         budget_exhaustion_events=budget_exhaustion_events,
         signal_search_statuses=signal_search_statuses,
+        entity_resolution_results=entity_resolution_results,
+        linked_entity_facts=linked_entity_facts,
+        entity_resolution_warnings=entity_resolution_warnings,
         candidate_universe=candidate_universe,
         coverage_checks=coverage_checks,
         coverage_warnings=coverage_warnings,
@@ -143,54 +151,6 @@ def _definition_payload_summary(record: RadarDefinitionRecord | None) -> dict[st
         "qualification_rule_count": len(_flatten_definition_rules(_dict(payload.get("account_qualification")).get("rule_group"))),
         "intent_signal_count": len(payload.get("intent_signals", [])) if isinstance(payload.get("intent_signals"), list) else 0,
         "source_policy": _dict(payload.get("global_search_policy")),
-    }
-
-
-def _coverage_summary(discovery_plan: dict[str, Any], execution_results: dict[str, Any]) -> dict[str, Any]:
-    hypotheses = _list(discovery_plan.get("coverage_hypotheses"))
-    warnings = [
-        str(value)
-        for value in discovery_plan.get("warnings", [])
-        if isinstance(value, str) and value.strip()
-    ]
-    analyzed_sources = _list(execution_results.get("analyzed_sources"))
-    rejected_candidates = _list(execution_results.get("rejected_candidates"))
-    coverage_checks = _list(execution_results.get("coverage_checks"))
-    coverage_warnings = [str(value) for value in execution_results.get("coverage_warnings", []) if isinstance(value, str)]
-    unresolved_candidate_gaps = _list(execution_results.get("unresolved_candidate_gaps"))
-    return {
-        "hypotheses": hypotheses,
-        "warnings": [*warnings, *coverage_warnings],
-        "analyzed_source_count": _int(execution_results.get("analyzed_source_count"), default=len(analyzed_sources)),
-        "used_source_count": _int(execution_results.get("used_source_count"), default=0),
-        "rejected_candidate_count": len(rejected_candidates),
-        "coverage_check_count": len(coverage_checks),
-        "unresolved_candidate_gap_count": len(unresolved_candidate_gaps),
-        "discovery_iteration_count": _int(execution_results.get("discovery_iteration_count"), default=0),
-        "analyzed_source_reasons": sorted({
-            str(item.get("reason"))
-            for item in analyzed_sources
-            if str(item.get("reason", "")).strip()
-        }),
-    }
-
-
-def _budget_summary(execution_results: dict[str, Any]) -> dict[str, Any]:
-    counters = _dict(execution_results.get("budget_counters"))
-    settings = _dict(execution_results.get("budget_settings"))
-    exhaustion_events = _list(execution_results.get("budget_exhaustion_events"))
-    signal_statuses = _list(execution_results.get("signal_search_statuses"))
-    return {
-        "settings": settings,
-        "counters": counters,
-        "exhausted_count": len(exhaustion_events),
-        "signal_searched_count": sum(1 for item in signal_statuses if str(item.get("search_status")) == "searched"),
-        "signal_not_searched_count": sum(1 for item in signal_statuses if str(item.get("search_status", "")).startswith("not_searched")),
-        "not_searched_reasons": sorted({
-            str(item.get("not_searched_reason"))
-            for item in signal_statuses
-            if str(item.get("not_searched_reason", "")).strip()
-        }),
     }
 
 

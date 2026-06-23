@@ -25,6 +25,9 @@ def merge_provider_metadata(existing: dict[str, Any], incoming: dict[str, Any]) 
         "extraction_validation_results",
         "extraction_validation_issues",
         "extraction_repair_results",
+        "entity_resolution_results",
+        "linked_entity_facts",
+        "entity_resolution_warnings",
     ):
         merged[key] = [*dict_list(existing.get(key)), *dict_list(incoming.get(key))]
     return merged

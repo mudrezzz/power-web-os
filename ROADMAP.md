@@ -1923,7 +1923,7 @@ Principles:
 
 ### Slice 0.7.1.3: Remaining Radar legacy module decomposition follow-up
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Decompose remaining legacy-large Radar modules after live Radar extraction.
 - User value: Engineers can extend fixture import, catalog generation, and evidence normalization without reintroducing backend god modules.
 - Scope:
@@ -3475,7 +3475,7 @@ Principles:
 
 ### Slice 0.7.6.1.11.4: Entity resolution model for legal entity vs asset/site/project
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Separate legal entities from production sites, projects, plants, and
   assets in the Radar candidate universe.
 - User value: Account candidates become actual legal entities/accounts, while
@@ -3489,6 +3489,16 @@ Principles:
     entities.
   - Mark unresolved sites/projects as review-needed gaps instead of fully scored
     account candidates.
+- Completed:
+  - Added application-layer entity resolution contracts and
+    `RadarEntityResolutionService`.
+  - Marked DaData/company-registry observations as `legal_entity` records with
+    registry identity fields.
+  - Integrated entity resolution into staged execution before candidate
+    normalization and candidate-universe freeze.
+  - Added dossier metadata for `entity_resolution_results`,
+    `linked_entity_facts`, and `entity_resolution_warnings`.
+  - Added ADR `2026-06-23-radar-entity-resolution-before-account-scoring.md`.
 - Out of scope:
   - Normalized candidate/evidence tables.
   - Full UI source editor.
@@ -3500,6 +3510,8 @@ Principles:
 - Acceptance criteria:
   - Upstream discovery can distinguish account candidates from linked assets and
     explain unresolved entity gaps.
+  - SIBUR-like project code `EP-600` is not treated as a scored legal-entity
+    account unless it is linked to a resolved legal entity.
 
 ### Slice 0.7.6.1.11.5: Effective runtime config and live preflight probes
 
@@ -4346,4 +4358,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11.4: Entity resolution model for legal entity vs asset/site/project`.
+Implement `Slice 0.7.6.1.11.5: Effective runtime config and live preflight probes`.

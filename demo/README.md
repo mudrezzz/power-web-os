@@ -146,6 +146,12 @@ smoke runs use fixtures. In `live` mode, set `DADATA_API_KEY` and
 trace. DaData supports legal-entity identity and registry facts, while open web
 remains responsible for current evidence and intent signals.
 
+Live Radar also resolves entity type before scoring. The shortlist is an account
+shortlist, so normal candidates are legal entities. Production sites, projects,
+installations, and assets found during discovery are linked to a resolved legal
+entity when possible; otherwise they appear as review-needed gaps in the run
+dossier instead of becoming noisy scored account rows.
+
 To test DaData without running the whole Radar, use the targeted provider probe:
 
 ```powershell

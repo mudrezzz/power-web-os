@@ -773,6 +773,14 @@ intent signals. Local secrets such as `DADATA_API_KEY` and `DADATA_SECRET_KEY`
 must remain in `.env` only and must not appear in traces, artifacts, docs, or
 tests.
 
+Entity resolution runs in the application layer before Radar candidate scoring.
+`RadarEntityResolutionService` classifies provider observations as
+`legal_entity`, `production_site`, `project`, `asset`, or `unknown_entity`.
+Only legal entities are normal account candidates. Sites, projects, and assets
+must be linked to a resolved legal entity or reported as review-needed
+candidate-universe gaps with `entity_type_not_account`; do not let provider
+output such as project codes or plant names become standalone scored accounts.
+
 DaData local settings:
 
 ```text

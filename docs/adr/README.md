@@ -26,6 +26,7 @@ ADRs capture decisions that shape product architecture.
 - `2026-06-22-radar-retrieval-contract-and-source-providers.md` - Compact Radar execution prompts, formalize retrieval task cards, fix budget semantics, and introduce structured company-data source providers such as DaData.
 - `2026-06-23-tdd-preflight-for-complex-llm-pipelines.md` - Require fast preflight, recorded fixtures, and targeted live probes before expensive full live runs for complex LLM pipelines.
 - `2026-06-23-radar-source-obligations-and-adaptive-checkpoints.md` - Treat Radar source policies as enforceable obligations and add adaptive execution checkpoints before benchmark runs.
+- `2026-06-23-radar-entity-resolution-before-account-scoring.md` - Resolve legal entities separately from sites, projects, and assets before Radar account scoring.
 
 ## Template
 

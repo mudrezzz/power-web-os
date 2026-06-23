@@ -24,6 +24,11 @@ from power_web_os.application.live_radar_extraction_diagnostics import (
 )
 from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan
+from power_web_os.application.live_radar_staged_merge import (
+    candidate_universe_with_entity_metadata as _candidate_universe_with_entity_metadata,
+    merge_candidate_observations as _merge_candidate_observations,
+    merge_result as _merge_result,
+)
 from power_web_os.application.live_radar_staged_support import (
     budget_warning_event as _budget_warning_event,
     budget_decision as _budget_decision,
@@ -48,12 +53,12 @@ from power_web_os.application.live_radar_universe import (
     coverage_risk,
     coverage_warnings as coverage_warning_messages,
     dedupe_gap_payloads,
+    dict_list,
     filter_signal_result,
     first_task_id,
     gap_items,
     gap_observations,
     gap_payloads,
-    merge_provider_metadata,
 )
 
 MAX_DISCOVERY_ITERATIONS = 2
@@ -274,6 +279,11 @@ def run_staged_radar_execution(
         candidates=normalized_candidates, completed_qualification_ids=completed_qualification_ids,
         origin_task_id=first_task_id(execution_plan.tasks), gap_names={candidate_name(item) for item in unresolved_candidate_gaps if candidate_name(item)},
     )
+    unresolved_candidate_gaps.extend(gap_payloads(dict_list(provider_metadata.get("candidate_universe_gaps")), origin_task_id="entity_resolution"))
+    candidate_universe_payload = _candidate_universe_with_entity_metadata(
+        _candidate_universe_with_signal_statuses(candidate_universe, signal_search_statuses),
+        observations,
+    )
     return (
         WebSearchProviderResult(
             sources=_dedupe_sources(sources), candidate_observations=_merge_candidate_observations(observations),
@@ -321,10 +331,13 @@ def run_staged_radar_execution(
             "extraction_validation_issues": extraction_issues,
             "extraction_repair_results": repair_results,
             "extraction_contract_state": extraction_contract_state(provider_metadata),
-            "candidate_universe": _candidate_universe_with_signal_statuses(candidate_universe, signal_search_statuses),
+            "candidate_universe": candidate_universe_payload,
             "coverage_checks": coverage_checks,
             "coverage_warnings": sorted(set(coverage_warnings)),
             "unresolved_candidate_gaps": dedupe_gap_payloads(unresolved_candidate_gaps, known_candidate_names=candidate_name_set(observations)),
+            "entity_resolution_results": provider_metadata.get("entity_resolution_results", []),
+            "linked_entity_facts": provider_metadata.get("linked_entity_facts", []),
+            "entity_resolution_warnings": provider_metadata.get("entity_resolution_warnings", []),
             "discovery_iteration_count": discovery_iteration_count,
             "max_discovery_iterations": MAX_DISCOVERY_ITERATIONS,
             "max_candidate_universe_size": MAX_CANDIDATE_UNIVERSE_SIZE,
@@ -431,42 +444,6 @@ def _useful_result_warning_event(warnings: list[str]) -> LiveRadarPipelineEvent:
 
 def _tasks_for_stage(execution_plan: RadarExecutionPlan, stage: str) -> list[RadarExecutionTask]:
     return [task for task in execution_plan.tasks if task.stage == stage]
-
-
-def _merge_result(
-    sources: list[RadarSourceEvidence],
-    observations: list[dict[str, Any]],
-    metadata: dict[str, Any],
-    result: WebSearchProviderResult,
-) -> tuple[list[RadarSourceEvidence], list[dict[str, Any]], dict[str, Any]]:
-    return (
-        _dedupe_sources([*sources, *result.sources]),
-        _merge_candidate_observations([*observations, *result.candidate_observations]),
-        merge_provider_metadata(metadata, result.provider_metadata),
-    )
-
-
-def _merge_candidate_observations(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    merged: dict[str, dict[str, Any]] = {}
-    for item in observations:
-        name = str(item.get("legal_name") or item.get("name") or "").strip()
-        if not name:
-            continue
-        target = merged.setdefault(name.lower(), {"legal_name": name, "qualification": [], "signals": [], "review_flags": []})
-        target["description"] = target.get("description") or item.get("description", "")
-        target["qualification"] = _merge_section(target.get("qualification", []), item.get("qualification", []), "criterion_code")
-        target["signals"] = _merge_section(target.get("signals", []), item.get("signals", []), "signal_code")
-        target["review_flags"] = sorted({str(flag) for flag in [*target.get("review_flags", []), *item.get("review_flags", [])] if str(flag).strip()})
-    return list(merged.values())
-
-
-def _merge_section(existing: object, incoming: object, key: str) -> list[dict[str, Any]]:
-    merged = {str(item.get(key) or item.get("code") or ""): dict(item) for item in _list(existing)}
-    for item in _list(incoming):
-        section_id = str(item.get(key) or item.get("code") or "")
-        if section_id:
-            merged[section_id] = {**merged.get(section_id, {}), **item}
-    return list(merged.values())
 
 
 def _eligible_candidate_names(

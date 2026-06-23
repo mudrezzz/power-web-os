@@ -31,6 +31,7 @@ from power_web_os.application.live_radar_execution_budget import (
     RadarExecutionBudgetSettings,
     budget_key,
 )
+from power_web_os.application.live_radar_entity_resolution import RadarEntityResolutionService
 from power_web_os.application.live_radar_normalization import normalize_live_candidate
 from power_web_os.application.live_radar_extraction_contract import validate_and_repair_extraction_payload
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan, retrieval_plan_to_search_plan
@@ -404,6 +405,9 @@ def test_source_registry_selects_dadata_company_registry_source() -> None:
     assert result.sources[0].source_type == "company_registry"
     assert result.sources[0].evidence_ref == "dadata_candidate_a"
     assert result.candidate_observations[0]["legal_name"] == "Candidate A"
+    assert result.candidate_observations[0]["entity_type"] == "legal_entity"
+    assert result.candidate_observations[0]["entity_resolution_status"] == "resolved"
+    assert result.candidate_observations[0]["inn"] == "7700000000"
     assert result.candidate_observations[0]["qualification"][0]["criterion_code"] == "Q1"
     assert result.provider_metadata["source_provider_outcomes"][0]["provider_id"] == "dadata"
 
@@ -1206,6 +1210,107 @@ def test_signal_stage_new_entities_become_gaps_not_candidates() -> None:
     assert {item["legal_name"] for item in extracted.candidates} == {"Candidate A"}
     assert collected.execution_results["unresolved_candidate_gaps"][0]["legal_name"] == "Candidate C"
     assert "Candidate C" not in {item["legal_name"] for item in collected.candidate_observations}
+
+
+def test_entity_resolution_links_project_fact_to_legal_entity() -> None:
+    service = RadarEntityResolutionService()
+    output = service.resolve(
+        observations=[
+            {
+                "legal_name": "АО «Тестовый завод»",
+                "inn": "1234567890",
+                "evidence_refs": ["src_legal"],
+                "qualification": [{"criterion_code": "Q1", "status": "confirmed", "evidence_refs": ["src_legal"]}],
+            },
+            {
+                "legal_name": "EP-600",
+                "entity_type": "project",
+                "linked_legal_name": "АО «Тестовый завод»",
+                "evidence_refs": ["src_project"],
+            },
+        ],
+        sources=[
+            RadarSourceEvidence(evidence_ref="src_legal", title="Registry", url="https://example.test/legal", snippet="АО «Тестовый завод», INN 1234567890"),
+            RadarSourceEvidence(evidence_ref="src_project", title="Project", url="https://example.test/project", snippet="EP-600 at АО «Тестовый завод»"),
+        ],
+    )
+
+    assert [item["legal_name"] for item in output.candidate_observations] == ["АО «Тестовый завод»"]
+    assert output.candidate_observations[0]["entity_type"] == "legal_entity"
+    assert output.candidate_observations[0]["linked_entity_facts"][0]["entity_name"] == "EP-600"
+    assert output.provider_metadata["linked_entity_facts"][0]["linked_legal_name"] == "АО «Тестовый завод»"
+    assert any(item["resolution_status"] == "linked_to_legal_entity" for item in output.provider_metadata["entity_resolution_results"])
+    assert output.provider_metadata["candidate_universe_gaps"] == []
+
+
+def test_staged_execution_does_not_score_project_as_legal_entity_candidate() -> None:
+    class ProjectOnlyProvider:
+        runtime_name = "project-only"
+
+        def __init__(self) -> None:
+            self.calls = []
+
+        def run_search_plan(self, *, radar, search_plan):
+            _ = radar
+            self.calls.append(search_plan)
+            query = search_plan.queries[0]
+            if query.stage == "qualification_discovery":
+                return WebSearchProviderResult(
+                    sources=[
+                        RadarSourceEvidence(
+                            evidence_ref="src_ep600",
+                            title="EP-600 project",
+                            url="https://example.test/ep-600",
+                            snippet="EP-600 is a production expansion project.",
+                            query_id=query.query_id,
+                        )
+                    ],
+                    candidate_observations=[
+                        {
+                            "legal_name": "EP-600",
+                            "entity_type": "project",
+                            "qualification": [{"criterion_code": "Q1", "status": "confirmed", "evidence_refs": ["src_ep600"]}],
+                        }
+                    ],
+                )
+            return WebSearchProviderResult()
+
+    provider = ProjectOnlyProvider()
+    radar = {
+        "radar_id": "entity-resolution-test",
+        "qualification_criteria": [{"code": "Q1", "label": "Find legal entities", "requirement_level": "required"}],
+        "intent_signals": [{"code": "S1", "label": "Signal", "rule": "Find signal."}],
+    }
+    plan = RadarExecutionPlan(
+        radar_id="entity-resolution-test",
+        tasks=[
+            RadarExecutionTask(
+                task_id="discover-q1",
+                stage="qualification_discovery",
+                subject_type="qualification",
+                subject_id="Q1",
+                query="Find projects and companies.",
+                purpose="Discover candidate universe.",
+            ),
+            RadarExecutionTask(
+                task_id="signal-s1",
+                stage="signal_search",
+                subject_type="signal",
+                subject_id="S1",
+                query="Find signal.",
+                purpose="Signal search.",
+            ),
+        ],
+    )
+
+    result, _, execution_results = run_staged_radar_execution(radar=radar, execution_plan=plan, provider=provider)
+
+    assert result.candidate_observations == []
+    assert [call.queries[0].stage for call in provider.calls] == ["qualification_discovery"]
+    assert execution_results["signal_task_count"] == 0
+    assert execution_results["unresolved_candidate_gaps"][0]["legal_name"] == "EP-600"
+    assert execution_results["unresolved_candidate_gaps"][0]["reason"] == "entity_type_not_account"
+    assert execution_results["entity_resolution_results"][0]["entity_type"] == "project"
 
 
 def test_staged_execution_searches_each_candidate_signal_when_total_budget_allows() -> None:
