@@ -26,6 +26,7 @@ from power_web_os.integrations.openrouter_discovery_planner import OpenRouterDis
 from power_web_os.integrations.live_radar_openrouter import OpenRouterWebSearchProvider
 from power_web_os.integrations.dadata_provider import dadata_source_registry_from_env
 from power_web_os.persistence import (
+    SqlAlchemyRadarDefinitionRepository,
     SqlAlchemyRadarRunOutputRepository,
     SqlAlchemyRadarRunEventRepository,
     SqlAlchemyRadarRunRepository,
@@ -97,6 +98,7 @@ def execute_radar_run_once(
             run_repository=SqlAlchemyRadarRunRepository(session),
             output_repository=SqlAlchemyRadarRunOutputRepository(session),
             executor=resolved_live_executor,
+            definition_repository=SqlAlchemyRadarDefinitionRepository(session),
             journal=RadarRunJournal(repository=SqlAlchemyRadarRunEventRepository(session)),
             commit_after_start=session.commit,
         )

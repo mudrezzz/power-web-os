@@ -17,6 +17,7 @@ from power_web_os.live_icp_radar import (
     build_live_mini_radar_definition,
     build_live_mini_radar_search_plan_artifact,
 )
+from power_web_os.demo_preflight import build_radar_preflight_report, print_preflight_report
 from power_web_os.planner import DeterministicAccessPlanner
 from power_web_os.radar import AccountRadar
 from power_web_os.serialization import (
@@ -225,6 +226,7 @@ def generate_persisted_live_mini_icp_radar_artifact(
         PersistedLiveRadarRunService,
     )
     from power_web_os.persistence import (
+        SqlAlchemyRadarDefinitionRepository,
         SqlAlchemyRadarRunOutputRepository,
         SqlAlchemyRadarRunRepository,
         create_database_engine,
@@ -241,6 +243,7 @@ def generate_persisted_live_mini_icp_radar_artifact(
         service = PersistedLiveRadarRunService(
             run_repository=SqlAlchemyRadarRunRepository(session),
             output_repository=SqlAlchemyRadarRunOutputRepository(session),
+            definition_repository=SqlAlchemyRadarDefinitionRepository(session),
             executor=WorkflowLiveRadarArtifactExecutor(
                 provider=OpenRouterWebSearchProvider(),
                 discovery_planner=OpenRouterDiscoveryPlanner(),
@@ -258,32 +261,6 @@ def generate_persisted_live_mini_icp_radar_artifact(
     return artifact
 
 
-def build_radar_preflight_report(
-    *,
-    radar_id: str,
-    database_url: str | None = None,
-    profile: str = "recorded",
-) -> dict[str, Any]:
-    from power_web_os.application.radar_preflight import RadarExecutionPreflightService
-    from power_web_os.persistence import (
-        SqlAlchemyRadarDefinitionRepository,
-        create_database_engine,
-        create_session_factory,
-        session_scope,
-    )
-
-    engine = create_database_engine(database_url=database_url)
-    session_factory = create_session_factory(engine)
-    with session_scope(session_factory) as session:
-        service = RadarExecutionPreflightService(
-            definition_repository=SqlAlchemyRadarDefinitionRepository(session),
-            runtime_definition_provider=build_live_mini_radar_definition,
-            company_registry_provider_ids=_available_company_registry_provider_ids(),
-        )
-        report = service.run(radar_id=radar_id, profile="recorded" if profile == "recorded" else "static")
-    return report.to_payload()
-
-
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -295,44 +272,6 @@ def _assert_no_secrets(payload: dict[str, Any]) -> None:
     if any(token in serialized for token in forbidden):
         raise RuntimeError("Refusing to write live radar artifact containing secret-like content")
 
-
-def _available_company_registry_provider_ids() -> set[str]:
-    env = _load_env_file(Path.cwd() / ".env")
-    mode = (env.get("POWER_WEB_OS_DADATA_MODE") or "recorded").strip().lower()
-    if mode == "recorded":
-        return {"dadata"}
-    return {"dadata"} if mode == "live" and env.get("DADATA_API_KEY") and env.get("DADATA_SECRET_KEY") else set()
-
-
-def _load_env_file(path: Path) -> dict[str, str]:
-    if not path.exists():
-        return {}
-    values: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
-            continue
-        key, value = stripped.split("=", 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
-    return values
-
-
-def _print_preflight_report(report: dict[str, Any], *, as_json: bool) -> None:
-    if as_json:
-        print(json.dumps(report, ensure_ascii=False, indent=2))
-        return
-    status = "READY" if report.get("ready_for_live_run") else "NOT READY"
-    summary = report.get("summary", {})
-    print(f"Radar preflight: {status}")
-    print(f"Radar: {report.get('radar_id')}")
-    print(f"Definition: {report.get('definition_id') or 'missing'}")
-    print(f"Checks: {summary.get('passed_count', 0)} passed, {summary.get('error_count', 0)} errors, {summary.get('warning_count', 0)} warnings")
-    for check in report.get("checks", []):
-        if check.get("status") == "passed":
-            continue
-        print(f"- {check.get('code')}: {check.get('message')}")
-        if check.get("remediation"):
-            print(f"  remediation: {check['remediation']}")
 
 def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
@@ -486,7 +425,7 @@ def main() -> None:
             profile=args.profile,
         )
         _assert_no_secrets(artifact)
-        _print_preflight_report(artifact, as_json=args.json)
+        print_preflight_report(artifact, as_json=args.json)
         if not artifact.get("ready_for_live_run"):
             raise SystemExit(1)
         return

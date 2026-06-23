@@ -11,10 +11,12 @@ from power_web_os.application.persisted_live_radar import (
     PersistedLiveRadarRunService,
 )
 from power_web_os.application.radar_run_journal import RadarRunEventCommand, RadarRunJournal
-from power_web_os.application.radar_records import RadarRecord, RadarRunRecord, RadarRunStatus
+from power_web_os.application.radar_records import RadarDefinitionRecord, RadarRecord, RadarRunRecord, RadarRunStatus
+from power_web_os.demo import build_icp_radar_catalog_from_workbook
 from power_web_os.integrations.live_radar_openrouter import RecordedWebSearchProvider
 from power_web_os.persistence import (
     Base,
+    SqlAlchemyRadarDefinitionRepository,
     SqlAlchemyRadarRepository,
     SqlAlchemyRadarRunEventRepository,
     SqlAlchemyRadarRunOutputRepository,
@@ -49,9 +51,12 @@ def test_persisted_live_radar_run_completes_and_stores_artifact_snapshot(tmp_pat
         output_repo = SqlAlchemyRadarRunOutputRepository(session)
         event_repo = SqlAlchemyRadarRunEventRepository(session)
         trace_repo = SqlAlchemyRadarRunTechnicalTraceRepository(session)
+        definition_repo = SqlAlchemyRadarDefinitionRepository(session)
+        _seed_active_definition(definition_repo)
         service = PersistedLiveRadarRunService(
             run_repository=run_repo,
             output_repository=output_repo,
+            definition_repository=definition_repo,
             executor=WorkflowLiveRadarArtifactExecutor(
                 provider=RecordedWebSearchProvider(_recorded_payload()),
                 technical_trace_repository=trace_repo,
@@ -82,6 +87,9 @@ def test_persisted_live_radar_run_completes_and_stores_artifact_snapshot(tmp_pat
     assert result.run.status is RadarRunStatus.COMPLETED
     assert result.output is not None
     assert result.output.artifact_payload["artifact_type"] == "icp_radar_live_run"
+    assert result.output.artifact_payload["radar"]["definition_id"] == "radar-def-toir-quick-live"
+    assert result.output.artifact_payload["radar"]["global_search_policy"]["sources"][0]["source_id"] == "dadata_registry"
+    assert result.output.artifact_payload["radar"]["qualification_criteria"][0]["code"] == "q1-sibur-group"
     assert result.output.candidates_payload[0]["legal_name"] == "Candidate A"
     assert result.output.sources_payload[0]["evidence_ref"] == "src_1"
     assert result.output.artifact_payload == stored_output.artifact_payload
@@ -136,9 +144,12 @@ def test_persisted_live_radar_run_failure_persists_failed_state_without_output(t
         run_repo = SqlAlchemyRadarRunRepository(session)
         output_repo = SqlAlchemyRadarRunOutputRepository(session)
         event_repo = SqlAlchemyRadarRunEventRepository(session)
+        definition_repo = SqlAlchemyRadarDefinitionRepository(session)
+        _seed_active_definition(definition_repo)
         service = PersistedLiveRadarRunService(
             run_repository=run_repo,
             output_repository=output_repo,
+            definition_repository=definition_repo,
             executor=_FailingExecutor(),
             journal=RadarRunJournal(repository=event_repo),
         )
@@ -157,6 +168,33 @@ def test_persisted_live_radar_run_failure_persists_failed_state_without_output(t
     assert stored_run.error_metadata["exception_type"] == "RuntimeError"
     assert [event.event_type for event in events] == ["run_queued", "run_started", "run_failed"]
     assert events[-1].payload == {"exception_type": "RuntimeError"}
+
+
+def test_persisted_live_radar_run_fails_without_active_definition(tmp_path: Path) -> None:
+    engine = create_database_engine(database_url=sqlite_url(tmp_path / "persisted-live-no-definition.db"))
+    Base.metadata.create_all(engine)
+    session_factory = create_session_factory(engine)
+
+    with session_scope(session_factory) as session:
+        SqlAlchemyRadarRepository(session).upsert(
+            RadarRecord(radar_id="toir-quick-live", name="TOIR Quick Live Radar", status="active", owner="ABM")
+        )
+        run_repo = SqlAlchemyRadarRunRepository(session)
+        output_repo = SqlAlchemyRadarRunOutputRepository(session)
+        service = PersistedLiveRadarRunService(
+            run_repository=run_repo,
+            output_repository=output_repo,
+            definition_repository=SqlAlchemyRadarDefinitionRepository(session),
+            executor=_UnexpectedExecutor(),
+        )
+
+        result = service.run(PersistedLiveRadarRunCommand(run_id="run-no-definition", live=False))
+        stored_output = output_repo.get("run-no-definition")
+
+    assert result.run.status is RadarRunStatus.FAILED
+    assert result.run.error_metadata["exception_type"] == "ActiveRadarDefinitionNotFound"
+    assert "No active Radar definition" in str(result.run.error_message)
+    assert stored_output is None
 
 
 def test_radar_run_journal_rejects_raw_hidden_reasoning_fields(tmp_path: Path) -> None:
@@ -185,9 +223,43 @@ def test_radar_run_journal_rejects_raw_hidden_reasoning_fields(tmp_path: Path) -
 
 
 class _FailingExecutor:
-    def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, object]:
-        _ = live, task_context
+    def execute(
+        self,
+        *,
+        live: bool,
+        task_context: dict[str, object],
+        radar_payload: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        _ = live, task_context, radar_payload
         raise RuntimeError("provider unavailable")
+
+
+class _UnexpectedExecutor:
+    def execute(
+        self,
+        *,
+        live: bool,
+        task_context: dict[str, object],
+        radar_payload: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        _ = live, task_context, radar_payload
+        raise AssertionError("executor should not run without an active definition")
+
+
+def _seed_active_definition(repository: SqlAlchemyRadarDefinitionRepository) -> None:
+    catalog = build_icp_radar_catalog_from_workbook(Path("demo/fixtures/icp_radar/sibur_icp_pass1.xlsx"))
+    for item in catalog["radars"]:
+        if item["radar_id"] == "toir-quick-live":
+            repository.upsert(
+                RadarDefinitionRecord(
+                    definition_id=item["definition"]["definition_id"],
+                    radar_id=item["radar_id"],
+                    definition_payload=item["definition"],
+                    definition_version=catalog["artifact_version"],
+                )
+            )
+            return
+    raise AssertionError("toir-quick-live fixture is missing")
 
 
 def _recorded_payload() -> dict[str, Any]:

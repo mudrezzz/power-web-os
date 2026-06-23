@@ -3307,7 +3307,7 @@ Principles:
 
 ### Slice 0.7.6.1.11.2: Active Radar definition execution and source-base enforcement
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Make persisted live execution use the active Radar definition from the
   database and enforce configured source bases such as DaData.
 - User value: When a user configures DaData or another source in the Radar
@@ -3340,37 +3340,138 @@ Principles:
   - Runtime Radar payload contains `global_search_policy.sources` from the
     active persisted definition.
   - DaData source-provider traces/outcomes appear when configured and selected.
+- Completion notes:
+  - Persisted execution now loads the active `RadarDefinitionRecord`, adapts it
+    into the live runtime payload, and passes that payload through the workflow
+    executor.
+  - The hardcoded live mini definition remains only as the legacy/offline demo
+    fallback when no explicit runtime payload is supplied.
+  - Preflight now compares the active persisted definition against the same
+    runtime payload shape used by the worker, so `definition_runtime_mismatch`
+    is green for the seeded `toir-quick-live` definition.
+  - Source-base propagation is covered by recorded tests for DaData selection,
+    unavailable provider outcomes, persisted artifact payload, and worker
+    wiring.
 
 ### Slice 0.7.6.1.11.3: Strict extraction schema gate and evidence-ref reconciliation
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Stop converting malformed extraction output into normal zero-score
   results.
 - User value: A run that retrieved useful sources but failed extraction/linking
   is diagnosed as extraction/linking failure, not as evidence that all signals
   are absent.
 - Scope:
-  - Add strict extraction schema validation for source lists, candidate lists,
-    qualification rows, signal rows, and source outcomes.
-  - Add source-ref reconciliation: match returned URLs/titles to backend
-    retrieved source refs where possible.
+  - Add an application-layer extraction contract validator for every bounded
+    provider task output before the result can enter candidate normalization.
+  - Validate:
+    - top-level output is a JSON object after any supported prose/fence cleanup;
+    - `sources` is a list;
+    - `candidates` is a list, not a dict keyed by section or candidate name;
+    - `source_outcomes` is a list;
+    - qualification rows are lists/objects with rule id, status/assessment, and
+      evidence refs when they claim support;
+    - signal rows are lists/objects with signal code, status, score, confidence,
+      and evidence refs when they claim support;
+    - evidence refs are strings that resolve to normalized/retrieved source refs
+      or can be repaired by URL/title matching.
+  - Add `ExtractionValidationIssue` and `ExtractionRepairResult` contracts in
+    the application layer. They must not import SQLAlchemy, FastAPI, Celery,
+    Redis, OpenRouter, DaData, or HTTP clients.
+  - Add source-ref reconciliation:
+    - exact match by returned `evidence_ref`;
+    - URL-normalized match against retrieved/normalized sources;
+    - title/domain fuzzy-safe match only when the match is unique enough;
+    - numeric refs and unknown refs become repair issues, not silent drops.
+  - Add one bounded repair attempt for repairable shapes:
+    - dict `candidates` can be converted to list only when values are valid
+      candidate-like objects;
+    - dict `source_outcomes` can be converted to list only when values are valid
+      outcome-like objects;
+    - prose-first fenced JSON can be extracted when there is exactly one JSON
+      object;
+    - unresolvable refs remain invalid.
   - Convert unrepaired invalid output into explicit states:
     `extraction_schema_invalid`, `evidence_linking_failed`, or
     `extraction_repair_needed`.
   - Prevent invalid extraction/linking from producing normal `not_observed`
-    signal rows or confident zero scores.
+    signal rows, confident zero scores, empty product source lists that look like
+    no sources were retrieved, or completed runs with no diagnostic warning.
+  - Persist diagnostics in run metadata, journal, technical trace, and dossier
+    projection using safe summaries only.
 - Out of scope:
   - New provider integrations.
   - Entity type model.
+  - Source usage obligation policy.
+  - Adaptive plan revision/checkpoints.
+  - Normalized candidate/evidence tables.
+  - Frontend trace viewer redesign.
 - Tests:
-  - Negative fixtures from `0.7.6.1.11.1` become green.
-  - Numeric refs, unknown refs, missing refs, dict/list mismatch, and prose-first
-    outputs are covered.
-  - Dossier/trace expose extraction repair/failure without secrets or raw hidden
-    chain-of-thought.
+  - Unit tests for extraction contract validation:
+    - prose-first response before JSON;
+    - fenced JSON with one valid object;
+    - `candidates` dict instead of list;
+    - `source_outcomes` dict instead of list;
+    - missing `sources`, `candidates`, or `source_outcomes`;
+    - numeric, missing, and unknown `source_ref`;
+    - source-linked candidate with refs that can be repaired by URL/title;
+    - signal result that would otherwise collapse to normal zero score.
+  - Recorded provider tests where retrieved sources exist but malformed
+    extraction returns `extraction_schema_invalid` or repair metadata instead of
+    normal empty candidates.
+  - Persistence/API tests proving run dossier/technical trace expose
+    `extraction_schema_invalid`, `evidence_linking_failed`,
+    repair-attempt counts, unresolved refs, and analyzed source counts.
+  - Regression tests that valid recorded provider output remains accepted and
+    existing candidate DTOs stay backward compatible.
+  - Safety tests that no response contains `OPENROUTER_API_KEY`,
+    `DADATA_API_KEY`, `Authorization`, `Bearer`, `chain_of_thought`,
+    `hidden_reasoning`, or `internal_thoughts`.
+- Docs:
+  - Update Developer Guide and demo docs with how to interpret extraction
+    schema/linking failures and why they differ from "nothing found".
+  - Update SAO only if implementation introduces new application contracts or
+    changes run-state semantics.
+- Demo impact:
+  - A run that retrieved sources but failed extraction/linking should show a
+    diagnostic warning in run dossier/diagnostics instead of looking like an
+    empty clean run.
 - Acceptance criteria:
   - A retrieved-source-rich but malformed provider response no longer produces
     `source_count=0` plus normal zero scores.
+  - The specific failure pattern from `radar-run-95e4417f-f200-4ba1-8ef1-929f72d34253`
+    is represented by a recorded test: OpenRouter returns useful retrieved
+    sources, but `candidates` is object-shaped; the run records extraction
+    schema failure or repair metadata, not "0 candidates because nothing was
+    found".
+  - Invalid extraction cannot advance to signal scoring as normal evidence.
+  - Dossier/trace make the difference clear:
+    - retrieved/analyzed sources existed;
+    - extraction or evidence-ref linking failed;
+    - which issue codes were raised;
+    - what was repaired and what remained invalid.
+- Completion notes:
+  - Added application-owned extraction validation/repair contracts before live
+    Radar normalization.
+  - OpenRouter extraction now records `extraction_validation_results`,
+    `extraction_validation_issues`, and `extraction_repair_results`; repairable
+    prose/object shapes are explicit, while unresolvable evidence refs remain
+    hard diagnostics.
+  - Staged execution propagates extraction issues into `execution_results`,
+    coverage warnings, journal events, and artifact contract validation, so a
+    source-rich extraction failure no longer looks like a clean empty run.
+  - Preflight now reuses the same extraction gate as runtime execution, keeping
+    fast recorded diagnostics aligned with live provider parsing.
+  - Recorded tests cover object-shaped candidates, source-ref reconciliation,
+    unresolved refs, invalid zero-score projection, and the source-rich
+    extraction-failure pattern observed in live runs.
+- Risks:
+  - Over-strict validation can reject usable but slightly sparse provider output;
+    mitigate with a small repair layer and explicit `review_needed` states.
+  - Over-aggressive fuzzy ref repair can attach evidence to the wrong source;
+    keep repair conservative and trace every repaired ref.
+  - This slice improves truthfulness and diagnostics; it may reduce apparent
+    candidate counts until later provider/prompt improvements are implemented.
 
 ### Slice 0.7.6.1.11.4: Entity resolution model for legal entity vs asset/site/project
 
@@ -3399,6 +3500,183 @@ Principles:
 - Acceptance criteria:
   - Upstream discovery can distinguish account candidates from linked assets and
     explain unresolved entity gaps.
+
+### Slice 0.7.6.1.11.5: Effective runtime config and live preflight probes
+
+- Status: `Backlog`
+- Goal: Make the worker's actual Radar runtime configuration visible and testable
+  before a full live run starts.
+- User value: A user can confirm that the run will use the intended DaData mode,
+  OpenRouter web mode, retrieval provider, Perplexity engine, model routing, and
+  execution budgets instead of discovering a stale Docker/env mismatch after a
+  long run.
+- Scope:
+  - Add an effective runtime config report for API/worker execution that redacts
+    secrets but shows provider modes, model ids, retrieval provider/engine, source
+    verification mode, and budget values.
+  - Extend `preflight-radar` with optional targeted live probes for DaData,
+    OpenRouter web retrieval, OpenRouter/Perplexity retrieval, and one
+    extraction-only schema probe.
+  - Add a worker/Docker config parity check so local `.env`, API process, and
+    worker process cannot silently diverge.
+  - Persist effective runtime config into run metadata/trace for later RCA.
+- Out of scope:
+  - Fixing extraction schema failures.
+  - Changing provider implementations.
+  - Full benchmark execution.
+- Tests:
+  - Unit tests for redacted effective config shape.
+  - Recorded tests for worker/API config mismatch.
+  - Optional live-probe tests gated by explicit env flags.
+- Docs:
+  - Document that manual live Radar testing starts with static preflight, then
+    targeted live probes, then full run.
+- Demo impact:
+  - Run diagnostics can explain which provider modes were actually used.
+- Acceptance criteria:
+  - A run cannot be mistaken for a Perplexity/live-DaData test when the worker
+    actually used `openrouter/auto` or `DADATA_MODE=recorded`.
+
+### Slice 0.7.6.1.11.6: Source usage policy and mandatory source obligations
+
+- Status: `Backlog`
+- Goal: Treat configured source bases as executable obligations, not only as
+  planner hints.
+- User value: When a user adds web search, DaData, or an official site to the
+  Radar search base, they can decide whether it is required, preferred, optional,
+  fallback-only, or disabled, and the planner cannot silently skip required
+  sources.
+- Scope:
+  - Extend source policy with usage modes such as `required`, `preferred`,
+    `optional`, `fallback`, `required_for_identity`,
+    `required_for_coverage`, and `required_for_signal`.
+  - Add source obligation validation for planner output:
+    required sources must be used in an accepted stage or fail/review-stop with
+    an explicit reason.
+  - Require coverage steps to name concrete source ids; empty coverage source
+    scope is invalid unless the plan provides a backend-accepted rationale.
+  - Add source-obligation decisions to dossier, journal, and trace.
+- Out of scope:
+  - UI source editor controls for usage policy.
+  - New provider integrations.
+  - Direct Perplexity API.
+- Tests:
+  - Planner fixtures where required web search is skipped are rejected.
+  - Preferred sources may be skipped only with rationale.
+  - Required source unavailable creates explicit source-provider outcome.
+- Docs:
+  - Update SAO/Developer Guide with source obligation semantics.
+- Demo impact:
+  - TOIR Quick Live Radar can mark DaData and SIBUR site as high-trust sources
+    while still requiring web search for coverage when configured.
+- Acceptance criteria:
+  - Source trust level and source usage obligation are modeled separately.
+
+### Slice 0.7.6.1.11.7: Adaptive execution review checkpoints
+
+- Status: `Backlog`
+- Goal: Add runtime checkpoints that review discovery/gate/coverage quality and
+  revise or expand execution before moving to the next stage.
+- User value: A bad initial strategy no longer runs to completion blindly; the
+  Radar can notice weak candidate coverage, missing required sources, schema
+  failures, or source-linking gaps and adapt before spending the rest of the
+  budget.
+- Scope:
+  - Add checkpoints after candidate discovery, qualification gates, coverage
+    checks, and before signal search.
+  - Check candidate count, linked-source count, required-source usage, unresolved
+    gaps, schema/linking failures, budget pressure, and coverage risk.
+  - Add backend decisions: `continue`, `retry_same_source`, `expand_sources`,
+    `revise_plan`, `stop_review_needed`, `fail_hard`.
+  - Feed compact checkpoint facts into an adaptive plan revision prompt when
+    backend policy permits revision.
+- Out of scope:
+  - Long-running autonomous loops without budget limits.
+  - Raw hidden chain-of-thought storage.
+  - Benchmark quality claims.
+- Tests:
+  - Recorded discovery with too few linked candidates triggers `expand_sources`
+    or `revise_plan`.
+  - Weak coverage stops before signal search when source obligations are unmet.
+  - Checkpoint decisions appear in dossier/trace without secrets.
+- Docs:
+  - Document checkpoint states and when a run can complete with warnings versus
+    stop as review-needed.
+- Demo impact:
+  - Diagnostics explains why the Radar changed strategy or refused to continue.
+- Acceptance criteria:
+  - A weak discovery result is no longer treated as a valid universe freeze.
+
+### Slice 0.7.6.1.11.8: DaData lookup hardening and structured observation injection
+
+- Status: `Backlog`
+- Goal: Make DaData an actual backend source provider for company identity and
+  enrichment instead of a source name embedded in an LLM prompt.
+- User value: Structured company facts such as INN, OGRN, status, address, and
+  OKVED are fetched deterministically from DaData when configured, and the LLM
+  works with source-backed observations instead of inventing or simulating a
+  DaData lookup.
+- Scope:
+  - Add bounded DaData lookup tasks for discovery, entity resolution, and
+    qualification/enrichment.
+  - Normalize DaData results into `CompanyRegistryObservation` records and
+    source evidence with clear source outcomes.
+  - Inject structured DaData observations into extraction/evaluation prompts as
+    facts, not as an instruction to "use dadata".
+  - Add explicit empty/unavailable/error outcomes when DaData returns no useful
+    observation.
+- Out of scope:
+  - Using DaData as signal evidence.
+  - UI source editor.
+  - Direct MCP integration beyond current API/provider boundary.
+- Tests:
+  - Recorded and optional live DaData tests for name/INN lookup.
+  - Fixture proving DaData observations can seed candidate identity before web
+    evidence is evaluated.
+  - Signal search does not call DaData as a replacement for web evidence.
+- Docs:
+  - Document DaData as structured company-data provider, not a web-search
+    substitute.
+- Demo impact:
+  - Dossier shows DaData-backed identity/enrichment facts separately from web
+    evidence.
+- Acceptance criteria:
+  - Trace shows backend DaData calls and normalized observations, not only LLM
+    text mentioning DaData.
+
+### Slice 0.7.6.1.11.9: Product projection repair for analyzed vs used sources
+
+- Status: `Backlog`
+- Goal: Make source lifecycle honest in product and diagnostics projections when
+  retrieval succeeds but evidence linking fails.
+- User value: A user can distinguish "no sources were found" from "sources were
+  retrieved/analyzed but not linked to candidates", and a developer can see why
+  sources did or did not reach the product evidence list.
+- Scope:
+  - Keep product candidate source lists evidence-bearing, but expose summarized
+    analyzed/retrieved/skipped counts in run dossier and diagnostics.
+  - Add source lifecycle categories: `retrieved`, `verified`, `parsed`,
+    `linked`, `used`, `analyzed_only`, `skipped`, `linking_failed`,
+    `schema_rejected`.
+  - Surface extraction/linking failure summaries when `sources_count=0` in the
+    product output but analyzed sources exist.
+  - Add UI-safe projection fields without dumping raw provider payloads.
+- Out of scope:
+  - Normalized evidence tables.
+  - New retrieval providers.
+  - Changing scoring logic.
+- Tests:
+  - Fixture with many analyzed sources and zero linked candidates produces an
+    explicit linking/schema warning, not an apparently empty run.
+  - Product used-source list stays clean while diagnostics shows analyzed-only
+    source lifecycle.
+- Docs:
+  - Document product evidence versus diagnostic source lifecycle.
+- Demo impact:
+  - Zero-candidate runs become interpretable without opening raw trace JSON.
+- Acceptance criteria:
+  - A run with 37 analyzed sources and 0 linked candidates is displayed as an
+    extraction/linking failure mode, not as "no sources".
 
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 
@@ -3433,7 +3711,7 @@ Principles:
   - Run this only after `Slice 0.7.6.1.7.2`, `Slice 0.7.6.1.7.3`,
     `Slice 0.7.6.1.7.4`, `Slice 0.7.6.1.8`, `Slice 0.7.6.1.9`,
     `Slice 0.7.6.1.10`, `Slice 0.7.6.1.11`, and the TDD/preflight repair
-    slices `0.7.6.1.11.1` through `0.7.6.1.11.4`, so the benchmark tests a
+    slices `0.7.6.1.11.1` through `0.7.6.1.11.9`, so the benchmark tests a
     source-verification-aware, observable, compact-prompt,
     structured-source-capable retrieval/extraction pipeline rather than an
     opaque web-search prompt path.
@@ -4068,4 +4346,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11.2: Active Radar definition execution and source-base enforcement`.
+Implement `Slice 0.7.6.1.11.4: Entity resolution model for legal entity vs asset/site/project`.

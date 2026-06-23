@@ -35,6 +35,7 @@ def build_live_mini_radar_artifact(
     live: bool,
     source_registry: RadarSourceRegistry | None = None,
     task_context: dict[str, Any] | None = None,
+    radar: dict[str, Any] | None = None,
     technical_tracer: RadarRunTechnicalTracer | None = None,
 ) -> dict[str, Any]:
     workflow = LiveICPRadarRunWorkflow(provider=provider, discovery_planner=discovery_planner, source_registry=source_registry)
@@ -63,7 +64,7 @@ def build_live_mini_radar_artifact(
     )
     state = LiveICPRadarRunState(
         task_context=default_task_context,
-        radar=build_live_mini_radar_definition(),
+        radar=radar or build_live_mini_radar_definition(),
         live=live,
     )
     with technical_trace_context(technical_tracer):

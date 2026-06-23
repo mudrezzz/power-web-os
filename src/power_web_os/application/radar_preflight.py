@@ -11,6 +11,11 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, Literal
 
+from power_web_os.application.live_radar_definition_runtime import active_definition_to_live_radar_payload
+from power_web_os.application.live_radar_extraction_contract import (
+    ExtractionValidationIssue,
+    validate_and_repair_extraction_payload,
+)
 from power_web_os.application.ports import RadarDefinitionRepository
 
 RadarPreflightCheckStatus = Literal["passed", "failed", "warning", "skipped"]
@@ -83,7 +88,7 @@ class RadarExecutionPreflightService:
             ))
             return _report(radar_id=radar_id, definition_id=None, definition_version=None, checks=checks)
 
-        payload = dict(active_definition.definition_payload)
+        payload = active_definition_to_live_radar_payload(active_definition)
         checks.append(_passed(
             "active_definition_available",
             f"Active definition {active_definition.definition_id} is available.",
@@ -141,15 +146,15 @@ def recorded_provider_fixture_checks(radar_definition: dict[str, Any]) -> list[R
     fixtures = {
         "prose_first_output": (
             "Here is the result:\n{\"sources\": [], \"candidates\": []}",
-            {"extraction_schema_invalid"},
+            {"extraction_repair_needed"},
         ),
         "dict_candidates": (
             {"sources": [], "candidates": {"legal_name": "Candidate A"}},
-            {"extraction_schema_invalid"},
+            {"extraction_repair_needed"},
         ),
         "dict_source_outcomes": (
             {"sources": [], "candidates": [], "source_outcomes": {"source_ref": "src_1"}},
-            {"extraction_schema_invalid"},
+            {"extraction_repair_needed"},
         ),
         "unknown_source_ref": (
             {
@@ -207,31 +212,20 @@ def recorded_provider_fixture_checks(radar_definition: dict[str, Any]) -> list[R
 
 
 def validate_provider_output_fixture(payload: Any) -> tuple[RadarPreflightCheckResult, ...]:
-    checks: list[RadarPreflightCheckResult] = []
-    if isinstance(payload, str):
-        stripped = payload.lstrip()
-        if not stripped.startswith("{"):
-            checks.append(_failed(
-                "extraction_schema_invalid",
-                "Provider output contains prose before the JSON object.",
-                details={"payload_excerpt": stripped[:160]},
-                remediation="Require strict JSON output for extraction fixtures and live provider prompts.",
-            ))
-        try:
-            payload = json.loads(stripped[stripped.find("{"):])
-        except (ValueError, TypeError):
-            return tuple(checks)
-    if not isinstance(payload, dict):
-        return (_failed(
-            "extraction_schema_invalid",
-            "Provider output must be a JSON object.",
-            details={"payload_type": type(payload).__name__},
-            remediation="Reject non-object extraction responses before normalization.",
-        ),)
-    checks.extend(_shape_checks(payload))
-    checks.extend(_evidence_linking_checks(payload))
-    checks.extend(_zero_score_projection_checks(payload))
-    return tuple(checks)
+    repair = validate_and_repair_extraction_payload(payload)
+    return tuple(_issue_to_preflight_check(issue) for issue in repair.issues)
+
+
+def _issue_to_preflight_check(issue: ExtractionValidationIssue) -> RadarPreflightCheckResult:
+    status: RadarPreflightCheckStatus = "failed" if issue.severity == "error" else "warning"
+    return RadarPreflightCheckResult(
+        code=issue.code,
+        status=status,
+        severity=issue.severity,
+        message=issue.message,
+        details=issue.details,
+        remediation=issue.remediation,
+    )
 
 
 def _shape_checks(payload: dict[str, Any]) -> list[RadarPreflightCheckResult]:

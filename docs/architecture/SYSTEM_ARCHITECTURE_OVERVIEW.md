@@ -94,13 +94,18 @@ failed, and zero-candidate live Radar runs, including candidate-universe and
 source-lifecycle inspection without selecting a candidate. It also renders the
 sanitized developer/admin technical trace as a readable phase-grouped viewer
 with search, filters, copyable sections, and collapsed raw JSON. Backend/frontend
-slices should continue in this order:
+slices should continue in this order before broad live quality claims:
 
-1. structured company-source registry with DaData as the first real provider;
-2. provider-neutral web retrieval abstraction with OpenRouter/Perplexity-style adapters;
-3. multi-radar discovery benchmark over the qualification-first, coverage-enforced workflow pipeline;
-4. normalized candidate/evidence query tables when API usage needs them;
-5. production schedule/cadence controls.
+1. strict extraction schema gates and source-ref reconciliation;
+2. entity resolution for legal entities versus sites, projects, and assets;
+3. effective runtime config and targeted live preflight probes;
+4. source usage obligations for required/preferred/optional/fallback sources;
+5. adaptive execution checkpoints after discovery, gates, and coverage;
+6. hardened DaData structured-observation injection;
+7. product projection repair for analyzed versus used sources;
+8. multi-radar discovery benchmark over the repaired workflow pipeline;
+9. normalized candidate/evidence query tables when API usage needs them;
+10. production schedule/cadence controls.
 
 JSON artifacts remain useful as demo exports and offline fallback, but they are
 not the long-term source of truth. The frontend now prefers the Radar API for
@@ -176,6 +181,15 @@ Review endpoints save/reset current qualification and signal decisions for
 existing snapshot findings, and candidate DTOs overlay those decisions without
 rewriting `radar_run_outputs`.
 
+Persisted live execution loads the active `RadarDefinitionRecord` for the run's
+`radar_id` before provider work starts. An application adapter converts that
+persisted definition into the live runtime payload while preserving the active
+definition id/version and configured `global_search_policy.sources`. Missing
+active definitions fail the run explicitly; the hardcoded live mini definition is
+only a legacy/offline demo fallback. This keeps planner input, retrieval plan,
+artifact radar payload, dossier, and trace aligned to the same active source
+policy.
+
 Live Radar execution is structure-first, qualification-first, and
 pipeline-shaped. The application service owns explicit provider-neutral phases:
 planning, provider collection, source normalization, candidate extraction,
@@ -217,6 +231,15 @@ source. Safe source-scope mismatches are normalized with explicit corrections
 instead of forcing a fallback plan. Hard source-policy violations, signal search
 inside discovery, and invalid rule references still force revision or fallback.
 
+Source policy is more than a ranked hint list. The architecture separates source
+trust from source usage obligation: a source can be high-trust but optional, or
+lower-trust but required for coverage. Future source definitions should support
+obligations such as required, preferred, optional, fallback, disabled, and
+stage-scoped variants such as required for identity, coverage, or signal
+evidence. Backend validation remains authoritative: a required source cannot be
+silently skipped by planner output, and coverage steps must name the concrete
+sources they use or stop with an explicit review/failure state.
+
 Candidate universe execution is now iterative. Accepted discovery plans may
 contain executable `coverage_check` stages. The application service runs initial
 candidate discovery, applies qualification gates, executes coverage checks,
@@ -230,6 +253,14 @@ candidates until benchmark data justifies different limits.
 limit for backend-controlled provider/search tasks. The repository
 `.env.example` uses a smoke-safe value of `1`; the code fallback remains `20`
 when no environment value is configured.
+
+Execution will add adaptive checkpoints before broad benchmark work. After
+candidate discovery, qualification gates, coverage checks, and before signal
+search, the application layer should evaluate candidate count, linked-source
+count, required-source usage, coverage risk, schema/linking failures, and budget
+pressure. Checkpoint outcomes may continue, retry, expand sources, request plan
+revision, stop as review-needed, or fail hard. This prevents a weak initial plan
+from freezing an empty or under-covered candidate universe.
 
 Execution budgets are hierarchical. The backend can cap total run tasks,
 discovery tasks per qualification rule, gate tasks per candidate and rule, and
@@ -298,6 +329,13 @@ It must report failures such as `definition_runtime_mismatch`,
 `source_base_not_executable`, `extraction_schema_invalid`,
 `evidence_linking_failed`, and `invalid_zero_score_projection` before a worker
 job is queued.
+
+The same extraction contract is enforced during runtime provider normalization.
+Repairable shape problems are marked as `extraction_repair_needed`; unresolved
+source refs and unrepaired schema mismatches remain `evidence_linking_failed` or
+`extraction_schema_invalid`. These diagnostics flow into run metadata, journal
+events, contract validation, and dossier projections so retrieved-source-rich
+runs cannot masquerade as clean empty/zero-score results.
 
 Prompt construction follows the same separation. Planner prompts may receive the
 rich Radar definition, source policy, criterion-role context, and run limits
@@ -536,6 +574,11 @@ The referenced platform should be used as follows:
   runs: static/config checks, recorded pipeline fixtures, negative schema/error
   fixtures, and small targeted live provider probes. Long live runs are allowed
   only after those cheaper checks are green or explicitly marked exploratory.
+- For Radar specifically, a multi-radar benchmark must wait until extraction
+  schema failures, evidence-ref linking, entity resolution, effective runtime
+  config drift, source obligations, adaptive checkpoints, DaData structured
+  provider injection, and analyzed-versus-used source projection are covered by
+  fast tests or explicit diagnostic states.
 
 ## Demo Implications
 

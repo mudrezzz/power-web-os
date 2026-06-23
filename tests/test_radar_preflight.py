@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition
+from power_web_os.application.live_radar_definition_runtime import active_definition_to_live_radar_payload
 from power_web_os.application.radar_preflight import (
     RadarExecutionPreflightService,
     RadarPreflightCheckResult,
@@ -30,14 +32,32 @@ def sqlite_url(path: Path) -> str:
     return f"sqlite:///{path.as_posix()}"
 
 
-def test_current_toir_quick_live_preflight_reports_runtime_definition_mismatch() -> None:
+def test_toir_quick_live_preflight_uses_active_runtime_definition() -> None:
+    definition = _toir_quick_live_definition()
+    service = RadarExecutionPreflightService(
+        definition_repository=_Repo(definition),
+        runtime_definition_provider=lambda: active_definition_to_live_radar_payload(definition),
+        company_registry_provider_ids={"dadata"},
+    )
+
+    report = service.run(radar_id="toir-quick-live", profile="static")
+
+    assert report.ready_for_live_run
+    checks = _checks_by_code(report.checks)
+    mismatch = checks["definition_runtime_mismatch"][0]
+    assert mismatch.status == "passed"
+    assert mismatch.severity == "info"
+    assert report.summary["failed_codes"] == []
+
+
+def test_preflight_still_detects_legacy_hardcoded_runtime_definition() -> None:
     service = RadarExecutionPreflightService(
         definition_repository=_Repo(_toir_quick_live_definition()),
         runtime_definition_provider=build_live_mini_radar_definition,
         company_registry_provider_ids={"dadata"},
     )
 
-    report = service.run(radar_id="toir-quick-live")
+    report = service.run(radar_id="toir-quick-live", profile="static")
 
     assert not report.ready_for_live_run
     checks = _checks_by_code(report.checks)
@@ -45,13 +65,13 @@ def test_current_toir_quick_live_preflight_reports_runtime_definition_mismatch()
     assert mismatch.status == "failed"
     assert mismatch.severity == "error"
     assert "legacy hardcoded live mini definition" in mismatch.remediation
-    assert report.summary["failed_codes"] == ["definition_runtime_mismatch"]
+    assert "definition_runtime_mismatch" in report.summary["failed_codes"]
 
 
 def test_preflight_requires_executable_company_registry_provider() -> None:
     service = RadarExecutionPreflightService(
         definition_repository=_Repo(_toir_quick_live_definition()),
-        runtime_definition_provider=lambda: _toir_quick_live_definition().definition_payload,
+        runtime_definition_provider=lambda: active_definition_to_live_radar_payload(_toir_quick_live_definition()),
         company_registry_provider_ids=set(),
     )
 
@@ -74,7 +94,12 @@ def test_preflight_rejects_unknown_source_policy_references() -> None:
             definition_payload=payload,
             definition_version=definition.definition_version,
         )),
-        runtime_definition_provider=lambda: payload,
+        runtime_definition_provider=lambda: active_definition_to_live_radar_payload(definition.__class__(
+            definition_id=definition.definition_id,
+            radar_id=definition.radar_id,
+            definition_payload=payload,
+            definition_version=definition.definition_version,
+        )),
         company_registry_provider_ids={"dadata"},
     )
 
@@ -90,7 +115,7 @@ def test_preflight_is_ready_when_definition_sources_and_runtime_match() -> None:
     definition = _toir_quick_live_definition()
     service = RadarExecutionPreflightService(
         definition_repository=_Repo(definition),
-        runtime_definition_provider=lambda: definition.definition_payload,
+        runtime_definition_provider=lambda: active_definition_to_live_radar_payload(definition),
         company_registry_provider_ids={"dadata"},
     )
 
@@ -125,7 +150,7 @@ def test_provider_fixture_gate_detects_malformed_shapes_and_evidence_refs() -> N
     codes = {issue.code for issue in issues}
 
     assert codes >= {
-        "extraction_schema_invalid",
+        "extraction_repair_needed",
         "evidence_linking_failed",
         "invalid_zero_score_projection",
     }
@@ -134,7 +159,7 @@ def test_provider_fixture_gate_detects_malformed_shapes_and_evidence_refs() -> N
 def test_provider_fixture_gate_rejects_prose_first_output() -> None:
     issues = validate_provider_output_fixture('Result follows:\n{"sources": [], "candidates": []}')
 
-    assert {issue.code for issue in issues} == {"extraction_schema_invalid"}
+    assert {issue.code for issue in issues} == {"extraction_repair_needed"}
     assert issues[0].details["payload_excerpt"].startswith("Result follows")
 
 
@@ -163,13 +188,15 @@ def test_preflight_cli_returns_json_and_does_not_create_runs(tmp_path: Path) -> 
         capture_output=True,
         text=True,
         encoding="utf-8",
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONPATH": str(Path.cwd() / "src")},
     )
 
     payload = json.loads(completed.stdout)
-    assert completed.returncode == 1
+    assert completed.returncode == 0
     assert payload["artifact_type"] == "radar_execution_preflight_report"
-    assert not payload["ready_for_live_run"]
-    assert "definition_runtime_mismatch" in payload["summary"]["failed_codes"]
+    assert payload["ready_for_live_run"]
+    assert "definition_runtime_mismatch" not in payload["summary"]["failed_codes"]
     with session_scope(session_factory) as session:
         assert SqlAlchemyRadarRunRepository(session).list_for_radar("toir-quick-live") == ()
         assert SqlAlchemyRadarRunOutputRepository(session).get("any-run") is None

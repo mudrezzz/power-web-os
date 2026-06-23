@@ -15,6 +15,7 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProviderResult,
 )
 from power_web_os.application.live_radar_normalization import _dedupe_sources
+from power_web_os.application.live_radar_extraction_contract import extraction_validation_state, validate_and_repair_extraction_payload
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 from power_web_os.application.live_radar_web_retrieval import retrieval_request_from_search_plan
 from power_web_os.integrations.openrouter_request_builder import build_openrouter_request, openrouter_compiled_prompt_summary
@@ -279,12 +280,26 @@ def normalize_openrouter_response(payload: dict[str, Any], *, fallback_metadata:
     message = payload.get("choices", [{}])[0].get("message", {})
     content = message.get("content") or "{}"
     parsed = _parse_json_object(content)
+    content_repair = validate_and_repair_extraction_payload(content if content else parsed)
+    parsed = content_repair.payload
     sources = [
         _source_from_payload(item, index=index)
         for index, item in enumerate(parsed.get("sources", []), start=1)
         if isinstance(item, dict)
     ]
     sources.extend(_sources_from_annotations(message.get("annotations", []), start_index=len(sources) + 1))
+    repair = validate_and_repair_extraction_payload({**parsed, "sources": [source.model_dump() for source in sources]})
+    parsed = repair.payload
+    issues = [*content_repair.issues, *repair.issues]
+    repair_actions = [*content_repair.repair_actions, *repair.repair_actions]
+    validation_metadata = {
+        **repair.to_metadata(),
+        "issues": [issue.to_payload() for issue in issues],
+        "repair_actions": list(repair_actions),
+        "repaired": bool(repair_actions),
+    }
+    validation_metadata["state"] = extraction_validation_state(validation_metadata["issues"], repaired=bool(repair_actions))
+    validation_metadata["valid"] = not any(issue.get("severity") == "error" for issue in validation_metadata["issues"])
     return WebSearchProviderResult(
         sources=_dedupe_sources(sources),
         candidate_observations=[
@@ -295,6 +310,9 @@ def normalize_openrouter_response(payload: dict[str, Any], *, fallback_metadata:
             **fallback_metadata,
             "response_id": payload.get("id"),
             "usage": payload.get("usage", {}),
+            "extraction_validation_results": [validation_metadata],
+            "extraction_validation_issues": [issue.to_payload() for issue in issues],
+            "extraction_repair_results": list(repair_actions),
             "candidate_universe_gaps": [item for item in parsed.get("candidate_universe_gaps", []) if isinstance(item, dict)],
             "coverage_findings": [item for item in parsed.get("coverage_findings", []) if isinstance(item, dict)],
             "source_outcomes": [item for item in parsed.get("source_outcomes", []) if isinstance(item, dict)],

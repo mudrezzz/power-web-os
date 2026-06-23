@@ -16,10 +16,19 @@ provider SDK details.
 - `live_radar_contracts.py` defines provider-neutral live Radar DTOs and ports.
 - `live_radar_definition.py` owns the deterministic live mini Radar definition
   and backward-compatible search-plan projection.
+- `live_radar_definition_runtime.py` maps persisted active Radar definitions
+  into the live runtime payload. It preserves definition id/version and source
+  policy while adding legacy `qualification_criteria` / signal projections for
+  the current pipeline.
 - `live_radar_execution_plan.py` compiles generic Radar definitions into
   qualification-first staged execution plans.
 - `live_radar_retrieval_plan.py` projects accepted execution tasks into compact
   retrieval task cards and backward-compatible search-plan queries.
+- `live_radar_extraction_contract.py` owns strict extraction schema gates and
+  conservative evidence-ref reconciliation before provider observations reach
+  candidate normalization.
+- `live_radar_extraction_diagnostics.py` projects extraction gate issues into
+  execution metadata and product-safe journal events.
 - `radar_preflight.py` owns fast live Radar readiness checks before expensive
   provider execution: active definition wiring, source-policy references,
   source-provider availability, recorded extraction schemas, evidence linking,
@@ -81,7 +90,10 @@ in `workflows`.
 Persisted live Radar execution follows the same rule: application code creates
 and updates run records through repository ports, then calls a
 `LiveRadarArtifactExecutor` port. The workflow-backed adapter and OpenRouter
-provider are wired outside the application layer.
+provider are wired outside the application layer. Persisted execution must load
+the active `RadarDefinitionRecord` and pass the canonical live runtime payload
+to the executor. Missing active definitions fail the run explicitly; only
+legacy/offline demo paths may use the hardcoded live mini definition.
 
 Human review persistence follows the same rule: application code validates
 qualification/signal decision semantics and stores the current decision through

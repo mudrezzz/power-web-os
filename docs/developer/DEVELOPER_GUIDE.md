@@ -386,6 +386,13 @@ Rules:
 - The persisted live run command executes the existing live workflow path,
   persists run state and output, and exports the same JSON artifact shape for
   demo/frontend fallback.
+- Persisted live execution is active-definition-first. The worker loads the
+  active `RadarDefinitionRecord`, adapts it into the live runtime payload, and
+  passes that payload into the workflow executor. The hardcoded live mini radar
+  definition remains only for legacy/offline demo commands that do not provide
+  an explicit runtime payload.
+- If an active definition is missing, the persisted run fails with explicit
+  error metadata instead of silently falling back to the hardcoded mini radar.
 - Live Radar execution is now an explicit qualification-first application
   pipeline. Extend `RadarExecutionPlan` compilation, provider collection,
   source normalization, candidate extraction, candidate evaluation, validation,
@@ -399,6 +406,12 @@ Rules:
   planning. The LLM planner proposes source bases, bounded steps, expected
   evidence, and coverage hypotheses; backend validation remains authoritative
   for source policy, stage ordering, and accepted execution.
+- Source policy is an executable contract, not just context for the LLM. New
+  source policy work must distinguish source trust from source usage obligation:
+  required, preferred, optional, fallback, disabled, and stage-scoped variants
+  such as required for identity, coverage, or signal evidence. Required sources
+  must be used in an accepted stage or produce an explicit review/failure state;
+  they must not be silently skipped by planner output.
 - Qualification tasks and signal tasks must remain separate. Provider adapters
   execute one bounded task at a time; application services own stage ordering
   and rejected-candidate signal suppression.
@@ -411,6 +424,16 @@ Rules:
 - Product source lists must contain only evidence-bearing used sources. Keep
   analyzed/skipped sources in execution metadata or sanitized technical trace so
   users see clean evidence while developers can debug source selection.
+- Adaptive execution checkpoints should guard expensive live runs. After
+  discovery, gates, and coverage, check candidate counts, linked-source counts,
+  required-source usage, schema/linking failures, budget pressure, and coverage
+  risk. The application layer may continue, retry, expand sources, revise the
+  plan, stop as review-needed, or fail hard. Do not let a weak discovery result
+  silently freeze the candidate universe and proceed to signal search.
+- DaData and future structured registries are backend source providers. The
+  backend should call them, normalize typed observations, and pass facts into
+  extraction/evaluation. Do not ask the LLM to "use DaData" as if it were a
+  hidden tool unless the backend has actually provided such a tool.
 - Structured journal events should come from pipeline phase outputs through
   `RadarRunJournal`. Artifact-derived journal mapping exists only as a
   backward-compatible fallback for older snapshots and fake test executors.
@@ -764,6 +787,24 @@ network credentials. Use `live` only when both DaData keys are present. Dossier
 source lifecycle and technical trace show DaData source outcomes; signal-search
 tasks do not call DaData.
 
+Before using DaData in a long live Radar run, run the targeted provider probe.
+The normal test suite skips the live call; opt in explicitly when local keys are
+present:
+
+```bash
+python -m pytest tests/test_dadata_provider.py -rs
+```
+
+PowerShell live probe:
+
+```powershell
+$env:POWER_WEB_OS_RUN_LIVE_DADATA_TESTS='1'; python -m pytest tests/test_dadata_provider.py -m live_dadata -rs
+```
+
+The live probe performs one bounded company lookup using
+`POWER_WEB_OS_DADATA_TEST_QUERY` or `1651025328` by default. It should return at
+least one company observation and must not print or persist DaData secrets.
+
 Supported web modes are `auto`, `server_tools`, `plugin_web`, and `model_native`. `auto` tries OpenRouter server-side web search first and falls back to the OpenRouter web plugin if server tools are unsupported.
 
 Commands:
@@ -859,6 +900,13 @@ return dicts where lists are required, omit stable source refs, link evidence to
 unknown refs, or return retrievable material that cannot be tied to candidate
 evidence. These cases should become explicit diagnostic states such as
 `extraction_schema_invalid` or `evidence_linking_failed`, not normal zero scores.
+The runtime uses the same extraction gate as preflight: repairable shapes such
+as one candidate object instead of a one-item list are recorded as
+`extraction_repair_needed`, while unresolvable source refs remain hard
+`evidence_linking_failed` diagnostics. If retrieved sources exist but extraction
+cannot link them to candidate evidence, the run dossier must show extraction
+issues and retrieved/analyzed source counts instead of looking like a clean
+"nothing found" result.
 
 Run the current Radar execution preflight before manual live testing:
 
@@ -869,17 +917,22 @@ python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json
 The command reads the active persisted Radar definition from
 `POWER_WEB_OS_DATABASE_URL` or `--database-url`, performs no network calls, and
 does not create `radar_runs` or `radar_run_outputs`. It exits non-zero when
-`ready_for_live_run=false`. That is expected while known red checks are still
-being repaired. Important check codes:
+`ready_for_live_run=false`. The seeded `toir-quick-live` definition should no
+longer fail `definition_runtime_mismatch`; if it does, persisted execution is
+not using the same active definition payload as the worker. Important check
+codes:
 
 - `definition_runtime_mismatch`: persisted active definition and workflow
-  runtime definition differ.
+  runtime definition differ; this should be green for seeded active definitions.
 - `source_base_not_executable`: source ids or source types cannot be resolved
   to executable source bases.
 - `company_registry_provider_available`: a configured company registry source
   such as DaData has, or lacks, an available provider.
 - `extraction_schema_invalid`: recorded provider output violates the expected
   extraction shape.
+- `extraction_repair_needed`: provider output was accepted only after a safe
+  shape/source-ref repair, such as prose cleanup or URL-to-source-ref
+  reconciliation.
 - `evidence_linking_failed`: candidate/finding evidence refs do not resolve to
   normalized sources.
 - `invalid_zero_score_projection`: unsearched or invalid signal output would be

@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from power_web_os.application.persisted_live_radar import QueuedLiveRadarRunService
-from power_web_os.application.radar_records import RadarRecord, RadarRunRecord, RadarRunStatus
+from power_web_os.application.radar_records import RadarDefinitionRecord, RadarRecord, RadarRunRecord, RadarRunStatus
+from power_web_os.demo import build_icp_radar_catalog_from_workbook
 from power_web_os.jobs import CeleryJobQueue, ConfiguredRadarRunScheduler
 from power_web_os.jobs import radar_jobs
 from power_web_os.persistence import (
@@ -51,6 +52,7 @@ def test_execute_radar_run_once_completes_and_persists_output(tmp_path: Path) ->
     assert stored_run is not None
     assert stored_run.status is RadarRunStatus.COMPLETED
     assert output is not None
+    assert output.artifact_payload["radar"]["definition_id"] == "radar-def-toir-quick-live"
     assert output.candidates_payload[0]["legal_name"] == "Candidate A"
     assert [event.event_type for event in events][0] == "run_started"
     assert [event.event_type for event in events][-1] == "run_completed"
@@ -141,6 +143,7 @@ def _seed_database(
                 owner="Industrial ABM",
             )
         )
+        _seed_active_definition(session)
         if run_id is not None:
             SqlAlchemyRadarRunRepository(session).create(
                 RadarRunRecord(
@@ -178,14 +181,29 @@ class _FakeExecutor:
     def __init__(self, artifact: dict[str, Any]) -> None:
         self._artifact = artifact
 
-    def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, object]:
+    def execute(
+        self,
+        *,
+        live: bool,
+        task_context: dict[str, object],
+        radar_payload: dict[str, object] | None = None,
+    ) -> dict[str, object]:
         _ = live, task_context
-        return self._artifact
+        artifact = dict(self._artifact)
+        if radar_payload is not None:
+            artifact["radar"] = dict(radar_payload)
+        return artifact
 
 
 class _FailingExecutor:
-    def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, object]:
-        _ = live, task_context
+    def execute(
+        self,
+        *,
+        live: bool,
+        task_context: dict[str, object],
+        radar_payload: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        _ = live, task_context, radar_payload
         raise RuntimeError("provider unavailable")
 
 
@@ -195,12 +213,37 @@ class _InspectingExecutor:
         self._artifact = artifact
         self.observed_status: RadarRunStatus | None = None
 
-    def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, object]:
-        _ = live
+    def execute(
+        self,
+        *,
+        live: bool,
+        task_context: dict[str, object],
+        radar_payload: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        _ = live, radar_payload
         with session_scope(self._session_factory) as session:
             run = SqlAlchemyRadarRunRepository(session).get(str(task_context["run_id"]))
         self.observed_status = run.status if run is not None else None
         return self._artifact
+
+
+def _seed_active_definition(session) -> None:
+    from power_web_os.persistence import SqlAlchemyRadarDefinitionRepository
+
+    catalog = build_icp_radar_catalog_from_workbook(Path("demo/fixtures/icp_radar/sibur_icp_pass1.xlsx"))
+    repository = SqlAlchemyRadarDefinitionRepository(session)
+    for item in catalog["radars"]:
+        if item["radar_id"] == "toir-quick-live":
+            repository.upsert(
+                RadarDefinitionRecord(
+                    definition_id=item["definition"]["definition_id"],
+                    radar_id=item["radar_id"],
+                    definition_payload=item["definition"],
+                    definition_version=catalog["artifact_version"],
+                )
+            )
+            return
+    raise AssertionError("toir-quick-live fixture is missing")
 
 
 def _artifact() -> dict[str, Any]:

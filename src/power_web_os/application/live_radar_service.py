@@ -23,6 +23,7 @@ from power_web_os.application.live_radar_contracts import (
     RadarSourceEvidence,
     WebSearchProvider,
 )
+from power_web_os.application.live_radar_extraction_contract import qualification_contract_issues_from_extraction_results
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition, build_live_mini_radar_search_plan
 from power_web_os.application.live_radar_discovery_planning import DeterministicRadarDiscoveryPlanner, product_sources_for_candidates
 from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_plan_to_search_plan
@@ -353,6 +354,7 @@ class LiveRadarRunService:
             sources=sources,
             radar=radar,
         )
+        issues = [*issues, *qualification_contract_issues_from_extraction_results(state.execution_results)]
         result = LiveRadarValidationResult(
             issues=issues,
             events=[

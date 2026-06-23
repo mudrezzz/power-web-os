@@ -134,7 +134,13 @@ class RadarRunExecutor(Protocol):
 class LiveRadarArtifactExecutor(Protocol):
     """Application port for producing a live Radar artifact."""
 
-    def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, object]: ...
+    def execute(
+        self,
+        *,
+        live: bool,
+        task_context: dict[str, object],
+        radar_payload: dict[str, object] | None = None,
+    ) -> dict[str, object]: ...
 
 
 class RadarRunScheduler(Protocol):

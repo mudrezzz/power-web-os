@@ -109,9 +109,28 @@ python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json
 The preflight command is intentionally fast and offline: it reads the persisted
 Radar definition, validates source-policy/provider wiring, runs recorded
 negative extraction checks, and exits with code `1` when `ready_for_live_run` is
-false. A red preflight report is a development signal. Do not treat a long live
-Radar run as quality evidence until the preflight report is green or the run is
+false. The seeded `toir-quick-live` definition should pass the
+definition/runtime match check because persisted worker execution now loads the
+active database definition instead of the legacy hardcoded mini definition. A
+red preflight report is a development signal. Do not treat a long live Radar
+run as quality evidence until the preflight report is green or the run is
 explicitly exploratory.
+
+Full live Radar quality claims are still gated by the repair slices recorded in
+`ROADMAP.md`: strict extraction schema checks, evidence-ref reconciliation,
+entity resolution, effective runtime config probes, source usage obligations,
+adaptive execution checkpoints, hardened DaData observation injection, and
+honest analyzed-versus-used source projection. Until those are implemented, a
+manual `Run radar` is useful for diagnostics and smoke testing, not for judging
+final discovery quality.
+
+The first extraction repair slice is now implemented. In diagnostics, treat
+`extraction_repair_needed` as "the provider returned usable material, but the
+backend had to repair its shape or source refs" and treat
+`evidence_linking_failed` / `extraction_schema_invalid` as "retrieval may have
+worked, but extraction could not safely become product evidence." These states
+are different from a clean negative result where a bounded task searched and
+found no supporting evidence.
 
 Live Radar now uses soft source verification by default. If a provider returns
 source-linked candidates but URLs fail reachability checks, the run keeps those
@@ -126,6 +145,17 @@ smoke runs use fixtures. In `live` mode, set `DADATA_API_KEY` and
 `DADATA_SECRET_KEY` in local `.env`; secrets are not committed or shown in
 trace. DaData supports legal-entity identity and registry facts, while open web
 remains responsible for current evidence and intent signals.
+
+To test DaData without running the whole Radar, use the targeted provider probe:
+
+```powershell
+python -m pytest tests/test_dadata_provider.py -rs
+$env:POWER_WEB_OS_RUN_LIVE_DADATA_TESTS='1'; python -m pytest tests/test_dadata_provider.py -m live_dadata -rs
+```
+
+The live probe uses `POWER_WEB_OS_DADATA_TEST_QUERY` or `1651025328` by default
+and should return a company observation before DaData-backed Radar runs are used
+as quality evidence.
 
 Live Radar web retrieval is now a separate diagnostic boundary before
 extraction/normalization. By default it uses OpenRouter web search. To compare
@@ -179,7 +209,10 @@ The live mini radar command writes `demo/output/live_mini_icp_radar_run.json` an
 
 The persisted live mini radar command uses the same provider-backed workflow but
 also creates a `radar_runs` row and a `radar_run_outputs` JSON snapshot in the
-configured database. It still exports the same JSON paths for offline fallback.
+configured database. Persisted/API/worker execution loads the active
+`RadarDefinitionRecord` from the database and passes that definition into the
+workflow. The hardcoded mini definition is kept only for the legacy offline live
+demo command. It still exports the same JSON paths for offline fallback.
 Live execution is qualification-first: the backend first discovers a candidate
 universe, applies required qualification gates in order, and only then runs
 signal searches for candidates that were not rejected by those gates. This is a
@@ -199,6 +232,13 @@ inspection.
 The normal product source list shows only sources that went into candidate,
 qualification, signal, validation, or scoring evidence. Analyzed-but-unused
 sources remain in the technical trace for debugging.
+
+Configured global source bases, including `dadata_registry`, are now part of
+the active runtime payload. Qualification/entity-resolution tasks can use DaData
+through the backend source registry, while signal search remains web-evidence
+based. If DaData is selected but unavailable or empty, the run records explicit
+source-provider outcomes in dossier/trace instead of silently using the legacy
+hardcoded radar.
 
 The API can expose the same persisted backend state. With Docker Compose use
 host port `8001`; with the manual local `power-web-os-api` process use `8000`

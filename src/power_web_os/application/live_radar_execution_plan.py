@@ -116,6 +116,7 @@ def _task_from_rule(
     depends_on: list[str] | None = None,
 ) -> RadarExecutionTask:
     code = _rule_code(rule)
+    source_ids = _source_ids_from_rule(rule)
     return RadarExecutionTask(
         task_id=task_id,
         stage=stage,  # type: ignore[arg-type]
@@ -125,12 +126,23 @@ def _task_from_rule(
         query=_compact_query([str(radar.get("name", "")), str(rule.get("label", "")), str(rule.get("rule", ""))]),
         purpose=purpose,
         expected_evidence=[code],
+        source_scope="global" if source_ids else "additional",
+        source_base="global_configured" if source_ids else None,
+        application_scope="rule_scope" if source_ids else None,
+        source_ids=source_ids,
         depends_on=list(depends_on or []),
     )
 
 
 def _rule_code(rule: dict[str, Any]) -> str:
     return str(rule.get("code") or rule.get("criterion_code") or rule.get("signal_code") or rule.get("id") or "rule")
+
+
+def _source_ids_from_rule(rule: dict[str, Any]) -> list[str]:
+    policy = rule.get("source_policy")
+    if not isinstance(policy, dict) or not policy.get("use_global_search_policy", True):
+        return []
+    return [str(item) for item in policy.get("source_ids", []) if str(item).strip()]
 
 
 def _compact_query(parts: list[str]) -> str:

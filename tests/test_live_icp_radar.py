@@ -8,6 +8,7 @@ import pytest
 
 import power_web_os.live_icp_radar as live_facade
 from power_web_os.application.live_radar_service import LiveRadarRunService
+from power_web_os.application.live_radar_definition_runtime import active_definition_to_live_radar_payload
 from power_web_os.application.live_radar_contracts import (
     RadarDiscoveryPlan,
     RadarDiscoveryPlanStep,
@@ -31,6 +32,7 @@ from power_web_os.application.live_radar_execution_budget import (
     budget_key,
 )
 from power_web_os.application.live_radar_normalization import normalize_live_candidate
+from power_web_os.application.live_radar_extraction_contract import validate_and_repair_extraction_payload
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan, retrieval_plan_to_search_plan
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
 from power_web_os.application.live_radar_web_retrieval import (
@@ -40,7 +42,8 @@ from power_web_os.application.live_radar_web_retrieval import (
     retrieval_request_from_search_plan,
 )
 from power_web_os.application.radar_source_providers import RadarSourceRegistry, SourceRegistryWebSearchProvider
-from power_web_os.demo import generate_live_mini_icp_radar_plan
+from power_web_os.application.radar_records import RadarDefinitionRecord
+from power_web_os.demo import build_icp_radar_catalog_from_workbook, generate_live_mini_icp_radar_plan
 from power_web_os.integrations.dadata_provider import RecordedDaDataCompanyRegistryProvider
 from power_web_os.integrations import live_radar_openrouter
 from power_web_os.integrations.live_radar_source_verification import SourceReachabilityResult, verify_sources
@@ -602,6 +605,96 @@ def test_useful_result_budget_retries_weak_discovery_result() -> None:
     assert execution_results["useful_result_retry_records"][0]["reason"] == "verification_limited"
     assert execution_results["useful_result_warnings"]
     assert "validation_warning" in [event.event_type for event in events]
+
+
+def test_extraction_contract_repairs_single_candidate_object_and_reconciles_refs() -> None:
+    repair = validate_and_repair_extraction_payload({
+        "sources": [
+            {
+                "evidence_ref": "src_1",
+                "title": "Candidate A source",
+                "url": "https://example.test/a",
+                "snippet": "Candidate A belongs.",
+            }
+        ],
+        "candidates": {
+            "legal_name": "Candidate A",
+            "evidence_refs": ["https://example.test/a"],
+            "qualification": [{"criterion_code": "Q1", "status": "confirmed", "evidence_refs": ["https://example.test/a"]}],
+        },
+    })
+
+    assert repair.valid
+    assert repair.state == "extraction_repair_needed"
+    assert repair.payload["candidates"][0]["evidence_refs"] == ["src_1"]
+    assert repair.payload["candidates"][0]["qualification"][0]["evidence_refs"] == ["src_1"]
+    assert {issue.code for issue in repair.issues} == {"extraction_repair_needed"}
+
+
+def test_extraction_contract_reports_unresolved_evidence_refs() -> None:
+    repair = validate_and_repair_extraction_payload({
+        "sources": [{"evidence_ref": "src_1", "title": "A", "url": "https://example.test/a", "snippet": "A"}],
+        "candidates": [{"legal_name": "Candidate A", "signals": [{"signal_code": "S1", "evidence_refs": [42, "missing_src"]}]}],
+    })
+
+    assert not repair.valid
+    assert repair.state == "evidence_linking_failed"
+    assert {issue.code for issue in repair.issues} == {"evidence_linking_failed"}
+
+
+def test_openrouter_normalization_records_extraction_repair_metadata() -> None:
+    payload = {
+        "id": "resp_1",
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": json.dumps({
+                        "sources": [{"evidence_ref": "src_1", "title": "A", "url": "https://example.test/a", "snippet": "A"}],
+                        "candidates": {"legal_name": "Candidate A", "evidence_refs": ["src_1"]},
+                    }),
+                    "annotations": [],
+                }
+            }
+        ],
+    }
+
+    result = normalize_openrouter_response(payload, fallback_metadata={"provider": "openrouter"})
+
+    assert result.candidate_observations[0]["legal_name"] == "Candidate A"
+    assert result.provider_metadata["extraction_validation_results"][0]["state"] == "extraction_repair_needed"
+    assert result.provider_metadata["extraction_repair_results"][0]["type"] == "object_wrapped_as_list"
+
+
+def test_staged_execution_exposes_extraction_schema_failures_in_execution_results() -> None:
+    radar = build_live_mini_radar_definition()
+    execution_plan = RadarExecutionPlan(
+        radar_id="toir-quick-live",
+        tasks=[
+            RadarExecutionTask(
+                task_id="discover-q1",
+                stage="qualification_discovery",
+                subject_type="qualification",
+                subject_id="Q1",
+                query="Find candidate universe.",
+                purpose="Discovery",
+                expected_evidence=["candidate identity"],
+            )
+        ],
+    )
+
+    result, events, execution_results = run_staged_radar_execution(
+        radar=radar,
+        execution_plan=execution_plan,
+        provider=_SchemaInvalidProvider(),
+    )
+
+    assert result.candidate_observations == []
+    assert execution_results["extraction_contract_state"] == "extraction_schema_invalid"
+    assert execution_results["extraction_validation_issues"][0]["code"] == "extraction_schema_invalid"
+    assert execution_results["retrieved_sources"][0]["url"] == "https://example.test/retrieved"
+    assert any("extraction_schema_invalid" in warning for warning in execution_results["coverage_warnings"])
+    assert any(event.node_name == "extraction_contract_gate" for event in events)
 
 
 def test_live_radar_service_executes_explicit_pipeline_phases() -> None:
@@ -1332,6 +1425,57 @@ class _WeakThenUsefulProvider:
         )
 
 
+class _SchemaInvalidProvider:
+    runtime_name = "schema-invalid"
+
+    def run_search_plan(self, *, radar, search_plan):
+        _ = radar, search_plan
+        return WebSearchProviderResult(
+            sources=[],
+            candidate_observations=[],
+            provider_metadata={
+                "provider": "schema-invalid",
+                "retrieved_sources": [
+                    {
+                        "source_ref": "retrieved_1",
+                        "title": "Retrieved source",
+                        "url": "https://example.test/retrieved",
+                        "snippet": "Retrieved but extraction schema failed.",
+                    }
+                ],
+                "extraction_validation_results": [
+                    {
+                        "valid": False,
+                        "state": "extraction_schema_invalid",
+                        "repaired": False,
+                        "repair_actions": [],
+                        "issues": [
+                            {
+                                "code": "extraction_schema_invalid",
+                                "severity": "error",
+                                "path": "$.candidates",
+                                "message": "Provider output field candidates must be a list.",
+                                "details": {"field": "candidates", "actual_type": "object"},
+                                "remediation": "Reject dict/list mismatches before normalization.",
+                            }
+                        ],
+                    }
+                ],
+                "extraction_validation_issues": [
+                    {
+                        "code": "extraction_schema_invalid",
+                        "severity": "error",
+                        "path": "$.candidates",
+                        "message": "Provider output field candidates must be a list.",
+                        "details": {"field": "candidates", "actual_type": "object"},
+                        "remediation": "Reject dict/list mismatches before normalization.",
+                    }
+                ],
+                "extraction_repair_results": [],
+            },
+        )
+
+
 class _CoverageExpansionProvider:
     runtime_name = "coverage-expansion"
 
@@ -1701,6 +1845,57 @@ def test_openrouter_response_parser_treats_unparseable_content_as_empty_result()
     assert trace_payload["parser_status"] == "empty_or_unparseable"
     assert result.sources == []
     assert result.candidate_observations == []
+
+
+def test_active_definition_adapter_preserves_source_policy_and_runtime_projection() -> None:
+    record = _toir_quick_live_definition_record()
+
+    runtime_payload = active_definition_to_live_radar_payload(record)
+    plan = compile_radar_execution_plan(runtime_payload)
+
+    assert runtime_payload["definition_id"] == "radar-def-toir-quick-live"
+    assert runtime_payload["definition_version"] == record.definition_version
+    assert runtime_payload["global_search_policy"]["sources"][0]["source_id"] == "dadata_registry"
+    assert runtime_payload["qualification_criteria"][0]["code"] == "q1-sibur-group"
+    assert runtime_payload["qualification_criteria"][0]["source_policy"]["source_ids"][0] == "dadata_registry"
+    assert runtime_payload["intent_signals"][0]["code"] == "S1"
+    assert plan.tasks[0].source_ids[:2] == ["dadata_registry", "openrouter_web"]
+    assert plan.tasks[0].source_base == "global_configured"
+
+
+def test_source_registry_emits_unavailable_outcome_for_selected_dadata_source() -> None:
+    radar = active_definition_to_live_radar_payload(_toir_quick_live_definition_record())
+    task = RadarExecutionTask(
+        task_id="qualify-discover-q1",
+        stage="qualification_discovery",
+        subject_type="qualification",
+        subject_id="q1-sibur-group",
+        query="Find companies in the target holding.",
+        purpose="Discover holding legal entities.",
+        expected_evidence=["q1-sibur-group"],
+        source_scope="global",
+        source_ids=["dadata_registry"],
+    )
+
+    result = RadarSourceRegistry(company_registry_providers={}).lookup_for_task(radar=radar, task=task)
+
+    outcomes = result.provider_metadata["source_provider_outcomes"]
+    assert outcomes[0]["source_id"] == "dadata_registry"
+    assert outcomes[0]["provider_id"] == "dadata"
+    assert outcomes[0]["outcome"] == "provider_unavailable"
+
+
+def _toir_quick_live_definition_record() -> RadarDefinitionRecord:
+    catalog = build_icp_radar_catalog_from_workbook(Path("demo/fixtures/icp_radar/sibur_icp_pass1.xlsx"))
+    for item in catalog["radars"]:
+        if item["radar_id"] == "toir-quick-live":
+            return RadarDefinitionRecord(
+                definition_id=item["definition"]["definition_id"],
+                radar_id=item["radar_id"],
+                definition_payload=item["definition"],
+                definition_version=catalog["artifact_version"],
+            )
+    raise AssertionError("toir-quick-live fixture is missing")
     assert result.provider_metadata["response_id"] == "response-3"
 
 

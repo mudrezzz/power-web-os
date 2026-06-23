@@ -31,7 +31,13 @@ class WorkflowLiveRadarArtifactExecutor(LiveRadarArtifactExecutor):
         self._source_registry = source_registry
         self._technical_trace_repository = technical_trace_repository
 
-    def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, Any]:
+    def execute(
+        self,
+        *,
+        live: bool,
+        task_context: dict[str, object],
+        radar_payload: dict[str, object] | None = None,
+    ) -> dict[str, Any]:
         technical_tracer = None
         run_id = task_context.get("run_id")
         if self._technical_trace_repository is not None and run_id:
@@ -45,6 +51,7 @@ class WorkflowLiveRadarArtifactExecutor(LiveRadarArtifactExecutor):
             live=live,
             source_registry=self._source_registry,
             task_context=_task_context_with_runtime_defaults(task_context),
+            radar=dict(radar_payload) if radar_payload is not None else None,
             technical_tracer=technical_tracer,
         )
 

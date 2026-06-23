@@ -474,8 +474,14 @@ class _FakeExecutor:
     def __init__(self, artifact: dict[str, Any]) -> None:
         self._artifact = artifact
 
-    def execute(self, *, live: bool, task_context: dict[str, object]) -> dict[str, object]:
-        _ = live, task_context
+    def execute(
+        self,
+        *,
+        live: bool,
+        task_context: dict[str, object],
+        radar_payload: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        _ = live, task_context, radar_payload
         return self._artifact
 
 

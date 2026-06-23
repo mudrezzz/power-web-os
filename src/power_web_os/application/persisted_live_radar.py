@@ -12,7 +12,13 @@ from datetime import UTC, datetime
 from typing import Any, Callable
 from uuid import uuid4
 
-from power_web_os.application.ports import LiveRadarArtifactExecutor, RadarRunOutputRepository, RadarRunRepository
+from power_web_os.application.live_radar_definition_runtime import active_definition_to_live_radar_payload
+from power_web_os.application.ports import (
+    LiveRadarArtifactExecutor,
+    RadarDefinitionRepository,
+    RadarRunOutputRepository,
+    RadarRunRepository,
+)
 from power_web_os.application.radar_run_journal import RadarRunEventCommand, RadarRunJournal
 from power_web_os.application.radar_records import RadarRunOutputRecord, RadarRunRecord, RadarRunStatus
 
@@ -95,12 +101,14 @@ class PersistedLiveRadarRunExecutor:
         run_repository: RadarRunRepository,
         output_repository: RadarRunOutputRepository,
         executor: LiveRadarArtifactExecutor,
+        definition_repository: RadarDefinitionRepository | None = None,
         journal: RadarRunJournal | None = None,
         commit_after_start: Callable[[], None] | None = None,
     ) -> None:
         self._run_repository = run_repository
         self._output_repository = output_repository
         self._executor = executor
+        self._definition_repository = definition_repository
         self._journal = journal
         self._commit_after_start = commit_after_start
 
@@ -110,6 +118,14 @@ class PersistedLiveRadarRunExecutor:
             raise KeyError(f"Radar run not found: {run_id}")
         if run.status.is_terminal:
             return run
+
+        radar_payload = self._active_radar_payload(run)
+        if radar_payload is None:
+            return self._fail_run(
+                run,
+                message=f"No active Radar definition found for {run.radar_id}.",
+                exception_type="ActiveRadarDefinitionNotFound",
+            )
 
         run = self._run_repository.update_status(run.run_id, RadarRunStatus.RUNNING)
         self._append_event(
@@ -129,6 +145,7 @@ class PersistedLiveRadarRunExecutor:
             artifact = self._executor.execute(
                 live=bool(run.run_metadata.get("live", True)),
                 task_context=_task_context_from_run(run),
+                radar_payload=radar_payload,
             )
             self._output_repository.upsert(_output_record(run_id=run.run_id, artifact=artifact))
             if self._journal is not None:
@@ -152,23 +169,34 @@ class PersistedLiveRadarRunExecutor:
             )
             return completed
         except Exception as exc:
-            failed = self._run_repository.update_status(
-                run.run_id,
-                RadarRunStatus.FAILED,
-                error_message=str(exc),
-                error_metadata={"exception_type": type(exc).__name__},
-            )
-            self._append_event(
-                run_id=run.run_id,
-                event_type="run_failed",
-                phase="lifecycle",
-                actor="worker",
-                node_name="persisted_live_radar_executor",
-                visibility="operator",
-                summary=str(exc),
-                payload={"exception_type": type(exc).__name__},
-            )
-            return failed
+            return self._fail_run(run, message=str(exc), exception_type=type(exc).__name__)
+
+    def _active_radar_payload(self, run: RadarRunRecord) -> dict[str, Any] | None:
+        if self._definition_repository is None:
+            return None
+        definition = self._definition_repository.get_active(run.radar_id)
+        if definition is None:
+            return None
+        return active_definition_to_live_radar_payload(definition)
+
+    def _fail_run(self, run: RadarRunRecord, *, message: str, exception_type: str) -> RadarRunRecord:
+        failed = self._run_repository.update_status(
+            run.run_id,
+            RadarRunStatus.FAILED,
+            error_message=message,
+            error_metadata={"exception_type": exception_type},
+        )
+        self._append_event(
+            run_id=run.run_id,
+            event_type="run_failed",
+            phase="lifecycle",
+            actor="worker",
+            node_name="persisted_live_radar_executor",
+            visibility="operator",
+            summary=message,
+            payload={"exception_type": exception_type},
+        )
+        return failed
 
     def _append_event(self, **kwargs: Any) -> None:
         if self._journal is not None:
@@ -182,11 +210,13 @@ class PersistedLiveRadarRunService:
         run_repository: RadarRunRepository,
         output_repository: RadarRunOutputRepository,
         executor: LiveRadarArtifactExecutor,
+        definition_repository: RadarDefinitionRepository | None = None,
         journal: RadarRunJournal | None = None,
     ) -> None:
         self._run_repository = run_repository
         self._output_repository = output_repository
         self._executor = executor
+        self._definition_repository = definition_repository
         self._journal = journal
 
     def run(self, command: PersistedLiveRadarRunCommand) -> PersistedLiveRadarRunResult:
@@ -196,6 +226,7 @@ class PersistedLiveRadarRunService:
                 run_repository=self._run_repository,
                 output_repository=self._output_repository,
                 executor=self._executor,
+                definition_repository=self._definition_repository,
                 journal=self._journal,
             )
             run = executor.execute(queued.run.run_id)

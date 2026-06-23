@@ -3523,6 +3523,13 @@
         "global_search_policy": {
           "sources": [
             {
+              "source_id": "dadata_registry",
+              "source_type": "company_registry",
+              "label": "DaData company registry",
+              "reference": "company_registry:dadata",
+              "trust_level": "high"
+            },
+            {
               "source_id": "openrouter_web",
               "source_type": "search_engine",
               "label": "OpenRouter web search",
@@ -3564,6 +3571,7 @@
                 "requirement_level": "required",
                 "source_policy": {
                   "source_ids": [
+                    "dadata_registry",
                     "openrouter_web",
                     "sibur_site"
                   ],
@@ -3584,6 +3592,7 @@
                 "requirement_level": "required",
                 "source_policy": {
                   "source_ids": [
+                    "dadata_registry",
                     "openrouter_web",
                     "sibur_site"
                   ],

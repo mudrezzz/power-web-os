@@ -46,3 +46,6 @@ where = ["src"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+  "live_dadata: opt-in live DaData API probes; requires POWER_WEB_OS_RUN_LIVE_DADATA_TESTS=1 and local credentials",
+]

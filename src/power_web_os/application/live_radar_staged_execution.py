@@ -16,6 +16,12 @@ from power_web_os.application.live_radar_contracts import (
 )
 from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget, budget_settings_from_context
 from power_web_os.application.live_radar_execution_plan import execution_task_to_search_plan, scoped_execution_task
+from power_web_os.application.live_radar_extraction_diagnostics import (
+    extraction_contract_state,
+    extraction_repair_results,
+    extraction_validation_event,
+    extraction_validation_issues,
+)
 from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan
 from power_web_os.application.live_radar_staged_support import (
@@ -256,18 +262,21 @@ def run_staged_radar_execution(
     if useful_result_warnings:
         coverage_warnings.extend(useful_result_warnings)
         events.append(_useful_result_warning_event(useful_result_warnings))
+    extraction_issues = extraction_validation_issues(provider_metadata)
+    repair_results = extraction_repair_results(provider_metadata)
+    if extraction_issues:
+        issue_codes = sorted({str(issue.get("code")) for issue in extraction_issues if str(issue.get("code", "")).strip()})
+        coverage_warnings.extend([f"Extraction contract issue: {code}" for code in issue_codes])
+        events.append(extraction_validation_event(extraction_issues, repair_results))
 
     normalized_candidates = _normalized_candidates(radar=radar, sources=sources, observations=observations)
     candidate_universe = candidate_universe_entries(
-        candidates=normalized_candidates,
-        completed_qualification_ids=completed_qualification_ids,
-        origin_task_id=first_task_id(execution_plan.tasks),
-        gap_names={candidate_name(item) for item in unresolved_candidate_gaps if candidate_name(item)},
+        candidates=normalized_candidates, completed_qualification_ids=completed_qualification_ids,
+        origin_task_id=first_task_id(execution_plan.tasks), gap_names={candidate_name(item) for item in unresolved_candidate_gaps if candidate_name(item)},
     )
     return (
         WebSearchProviderResult(
-            sources=_dedupe_sources(sources),
-            candidate_observations=_merge_candidate_observations(observations),
+            sources=_dedupe_sources(sources), candidate_observations=_merge_candidate_observations(observations),
             provider_metadata={**provider_metadata, "execution_mode": "qualification_first_iterative_coverage"},
         ),
         events,
@@ -286,8 +295,7 @@ def run_staged_radar_execution(
             "max_signal_tasks": budget_settings.max_signal_tasks_per_candidate_signal,
             "max_web_tasks_per_subject": budget_settings.compatibility_max_web_tasks_per_subject,
             "budget_settings": {
-                "max_total_web_tasks_per_run": budget_settings.max_total_tasks_per_run,
-                "max_discovery_tasks_per_rule": budget_settings.max_discovery_tasks_per_rule,
+                "max_total_web_tasks_per_run": budget_settings.max_total_tasks_per_run, "max_discovery_tasks_per_rule": budget_settings.max_discovery_tasks_per_rule,
                 "max_gate_tasks_per_candidate_rule": budget_settings.max_gate_tasks_per_candidate_rule,
                 "max_signal_tasks_per_candidate_signal": budget_settings.max_signal_tasks_per_candidate_signal,
                 "compatibility_max_web_tasks_per_subject": budget_settings.compatibility_max_web_tasks_per_subject,
@@ -309,6 +317,10 @@ def run_staged_radar_execution(
             "retrieved_source_count": provider_metadata.get("retrieved_source_count", 0),
             "source_outcomes": provider_metadata.get("source_outcomes", []),
             "source_provider_outcomes": provider_metadata.get("source_provider_outcomes", []),
+            "extraction_validation_results": provider_metadata.get("extraction_validation_results", []),
+            "extraction_validation_issues": extraction_issues,
+            "extraction_repair_results": repair_results,
+            "extraction_contract_state": extraction_contract_state(provider_metadata),
             "candidate_universe": _candidate_universe_with_signal_statuses(candidate_universe, signal_search_statuses),
             "coverage_checks": coverage_checks,
             "coverage_warnings": sorted(set(coverage_warnings)),
@@ -316,9 +328,7 @@ def run_staged_radar_execution(
             "discovery_iteration_count": discovery_iteration_count,
             "max_discovery_iterations": MAX_DISCOVERY_ITERATIONS,
             "max_candidate_universe_size": MAX_CANDIDATE_UNIVERSE_SIZE,
-            "rejected_candidates": _rejected_candidate_summaries(
-                normalized_candidates
-            ),
+            "rejected_candidates": _rejected_candidate_summaries(normalized_candidates),
         },
     )
 
@@ -466,11 +476,7 @@ def _eligible_candidate_names(
     observations: list[dict[str, Any]],
     completed_qualification_ids: list[str],
 ) -> list[str]:
-    return [
-        candidate.legal_name
-        for candidate in _normalized_candidates(radar=radar, sources=sources, observations=observations)
-        if not _candidate_rejected(candidate, completed_qualification_ids=completed_qualification_ids)
-    ]
+    return [candidate.legal_name for candidate in _normalized_candidates(radar=radar, sources=sources, observations=observations) if not _candidate_rejected(candidate, completed_qualification_ids=completed_qualification_ids)]
 
 
 def _candidate_names_matching(observations: list[dict[str, Any]], lower_names: set[str]) -> list[str]:
@@ -479,10 +485,7 @@ def _candidate_names_matching(observations: list[dict[str, Any]], lower_names: s
 
 def _normalized_candidates(*, radar: dict[str, Any], sources: list[RadarSourceEvidence], observations: list[dict[str, Any]]) -> list[LiveRadarCandidate]:
     return _normalized_candidates_support(
-        radar=radar,
-        sources=sources,
-        observations=observations,
-        merge_observations=_merge_candidate_observations,
+        radar=radar, sources=sources, observations=observations, merge_observations=_merge_candidate_observations,
     )
 
 
