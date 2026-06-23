@@ -44,6 +44,36 @@ export type RadarDetailDto = RadarSummaryDto & {
   runs: RadarRunSummaryDto[];
 };
 
+export type RadarPreflightCheckDto = {
+  code: string;
+  status: 'passed' | 'failed' | 'warning' | 'skipped' | string;
+  severity: 'info' | 'warning' | 'error' | string;
+  message: string;
+  details: Record<string, unknown>;
+  remediation: string;
+};
+
+export type RadarRuntimeConfigDto = {
+  artifact_type: string;
+  component: string;
+  fingerprint: string;
+  config: Record<string, unknown>;
+  values: Array<Record<string, unknown>>;
+  checks: RadarPreflightCheckDto[];
+  summary: Record<string, unknown>;
+};
+
+export type RadarPreflightDto = {
+  artifact_type: 'radar_execution_preflight_report' | string;
+  radar_id: string;
+  definition_id: string | null;
+  definition_version: string | null;
+  ready_for_live_run: boolean;
+  summary: Record<string, unknown>;
+  checks: RadarPreflightCheckDto[];
+  runtime_config?: RadarRuntimeConfigDto;
+};
+
 export type RadarRunSummaryDto = {
   run_id: string;
   radar_id: string;
@@ -287,6 +317,8 @@ export type RadarRunDossierSummaryDto = {
 
 export type RadarRunDossierDto = {
   run_context: RadarRunDossierContextDto;
+  runtime_config: Record<string, unknown>;
+  runtime_config_warnings: Array<Record<string, unknown>>;
   radar_snapshot: Record<string, unknown>;
   definition_snapshot: RadarRunDossierDefinitionDto | null;
   discovery_plan: Record<string, unknown>;
@@ -368,6 +400,10 @@ export class RadarApiClient {
 
   getRadar(radarId: string) {
     return this.request<RadarDetailDto>(`/api/radars/${encodeURIComponent(radarId)}`);
+  }
+
+  getRadarPreflight(radarId: string) {
+    return this.request<RadarPreflightDto>(`/api/radars/${encodeURIComponent(radarId)}/preflight`);
   }
 
   queueRadarRun(radarId: string, request: RadarRunRequestDto) {

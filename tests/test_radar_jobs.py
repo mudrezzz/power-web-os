@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from power_web_os.application.persisted_live_radar import QueuedLiveRadarRunService
+from power_web_os.application.radar_runtime_config import build_effective_runtime_config_report
 from power_web_os.application.radar_records import RadarDefinitionRecord, RadarRecord, RadarRunRecord, RadarRunStatus
 from power_web_os.demo import build_icp_radar_catalog_from_workbook
 from power_web_os.jobs import CeleryJobQueue, ConfiguredRadarRunScheduler
@@ -14,6 +15,7 @@ from power_web_os.persistence import (
     SqlAlchemyRadarRepository,
     SqlAlchemyRadarRunEventRepository,
     SqlAlchemyRadarRunOutputRepository,
+    SqlAlchemyRadarRunTechnicalTraceRepository,
     SqlAlchemyRadarRunRepository,
     create_database_engine,
     create_session_factory,
@@ -47,6 +49,7 @@ def test_execute_radar_run_once_completes_and_persists_output(tmp_path: Path) ->
         stored_run = SqlAlchemyRadarRunRepository(session).get("run-success")
         output = SqlAlchemyRadarRunOutputRepository(session).get("run-success")
         events = SqlAlchemyRadarRunEventRepository(session).list_for_run("run-success")
+        traces = SqlAlchemyRadarRunTechnicalTraceRepository(session).list_for_run("run-success")
 
     assert completed.status is RadarRunStatus.COMPLETED
     assert stored_run is not None
@@ -54,6 +57,10 @@ def test_execute_radar_run_once_completes_and_persists_output(tmp_path: Path) ->
     assert output is not None
     assert output.artifact_payload["radar"]["definition_id"] == "radar-def-toir-quick-live"
     assert output.candidates_payload[0]["legal_name"] == "Candidate A"
+    assert stored_run.run_metadata["worker_runtime_config"]["component"] == "worker"
+    assert isinstance(stored_run.run_metadata["runtime_config_warnings"], list)
+    assert traces[0].title == "Effective runtime config"
+    assert traces[0].trace_type == "validation_result"
     assert [event.event_type for event in events][0] == "run_started"
     assert [event.event_type for event in events][-1] == "run_completed"
 
@@ -93,6 +100,30 @@ def test_execute_radar_run_once_failure_persists_failed_state(tmp_path: Path) ->
     assert [event.event_type for event in events] == ["run_started", "run_failed"]
 
 
+def test_execute_radar_run_once_records_runtime_config_mismatch(tmp_path: Path, monkeypatch) -> None:
+    api_config = build_effective_runtime_config_report(
+        component="api",
+        env={"POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER": "openrouter"},
+    ).to_payload()
+    session_factory = _seed_database(tmp_path, run_id="run-runtime-mismatch", api_runtime_config=api_config)
+    monkeypatch.setenv("POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER", "openrouter_perplexity")
+
+    radar_jobs.execute_radar_run_once(
+        run_id="run-runtime-mismatch",
+        live_executor=_FakeExecutor(_artifact()),
+        session_factory=session_factory,
+    )
+
+    with session_scope(session_factory) as session:
+        stored_run = SqlAlchemyRadarRunRepository(session).get("run-runtime-mismatch")
+        traces = SqlAlchemyRadarRunTechnicalTraceRepository(session).list_for_run("run-runtime-mismatch")
+
+    assert stored_run is not None
+    warnings = stored_run.run_metadata["runtime_config_warnings"]
+    assert any(item["path"] == "retrieval.provider" for item in warnings)
+    assert traces[0].payload["runtime_config_warnings"] == warnings
+
+
 def test_celery_eager_task_executes_without_redis(tmp_path: Path, monkeypatch) -> None:
     database_url = sqlite_url(tmp_path / "celery-eager.db")
     _seed_database(tmp_path, database_url=database_url, run_id="run-eager")
@@ -130,6 +161,7 @@ def _seed_database(
     *,
     database_url: str | None = None,
     run_id: str | None = None,
+    api_runtime_config: dict[str, Any] | None = None,
 ):
     engine = create_database_engine(database_url=database_url or sqlite_url(tmp_path / "jobs.db"))
     Base.metadata.create_all(engine)
@@ -155,6 +187,7 @@ def _seed_database(
                         "live": False,
                         "requester": "test",
                         "task_context": {},
+                        **({"api_runtime_config": api_runtime_config} if api_runtime_config is not None else {}),
                     },
                 )
             )

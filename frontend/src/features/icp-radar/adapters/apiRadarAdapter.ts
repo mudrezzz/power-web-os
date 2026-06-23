@@ -225,6 +225,8 @@ function runTechnicalTrace(trace: RadarRunTechnicalTraceDto): LiveRadarTechnical
 function runDossier(dossier: RadarRunDossierDto): LiveRadarRunDossier {
   return {
     run_context: dossier.run_context,
+    runtime_config: dossier.runtime_config ?? {},
+    runtime_config_warnings: dossier.runtime_config_warnings ?? [],
     radar_snapshot: dossier.radar_snapshot,
     definition_snapshot: dossier.definition_snapshot,
     discovery_plan: {

@@ -1,10 +1,11 @@
-import { ArrowRight, ChevronDown, ChevronRight, Eye, Play, Radar, RotateCw, Settings, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronRight, Eye, ListChecks, Play, Radar, RotateCw, Settings, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../../components/primitives';
 import type { LiveICPRadarRunArtifact, LiveRadarCandidate } from '../../types';
 import { LiveRadarRunDiagnosticsView } from './liveRunDiagnostics';
+import { LiveRadarPreflightPanel } from './livePreflightPanel';
 import { liveTotalScore, qualificationAssessmentTone, qualificationRuleText, qualificationStatusToAssessment } from './model';
-import type { RadarRunControlState } from './application/useRadarBackend';
+import type { RadarPreflightControlState, RadarRunControlState } from './application/useRadarBackend';
 
 // Live shortlist deliberately mirrors fixture shortlist: table scan, inline preview, then explicit detail navigation.
 
@@ -14,9 +15,13 @@ export function LiveRadarShortlistTable({
   diagnosticsOpen,
   onOpenDetails,
   onToggleDiagnostics,
+  onCheckSetup,
   onOpenSettings,
+  onTogglePreflight,
   onRunRadar,
   onToggleCandidate,
+  preflightOpen,
+  preflightState,
   runState,
 }: {
   artifact: LiveICPRadarRunArtifact | null;
@@ -24,9 +29,13 @@ export function LiveRadarShortlistTable({
   diagnosticsOpen: boolean;
   onOpenDetails: (candidateId: string) => void;
   onToggleDiagnostics: () => void;
+  onCheckSetup: () => void;
   onOpenSettings: () => void;
+  onTogglePreflight: () => void;
   onRunRadar: () => void;
   onToggleCandidate: (candidateId: string) => void;
+  preflightOpen: boolean;
+  preflightState: RadarPreflightControlState;
   runState: RadarRunControlState;
 }) {
   const { t } = useTranslation();
@@ -55,12 +64,16 @@ export function LiveRadarShortlistTable({
                   {diagnosticsOpen ? t('icpRadar.live.diagnostics.hideRun') : t('icpRadar.live.diagnostics.inspectRun')}
                 </Button>
               )}
+              <Button icon={<ListChecks aria-hidden="true" />} variant="default" onClick={preflightOpen ? onTogglePreflight : onCheckSetup}>
+                {preflightOpen ? t('icpRadar.live.preflight.hide') : t('icpRadar.live.preflight.checkSetup')}
+              </Button>
               <Button icon={<Settings aria-hidden="true" />} variant="quiet" onClick={onOpenSettings}>
                 {t('icpRadar.openSettings')}
               </Button>
             </div>
           </div>
         </Card>
+        {preflightOpen && <LiveRadarPreflightPanel artifact={artifact} preflightState={preflightState} runState={runState} />}
         {diagnosticsOpen && <LiveRadarRunDiagnosticsView artifact={artifact} runState={runState} />}
       </>
     );
@@ -80,8 +93,12 @@ export function LiveRadarShortlistTable({
           <Button icon={<Eye aria-hidden="true" />} variant="default" onClick={onToggleDiagnostics}>
             {diagnosticsOpen ? t('icpRadar.live.diagnostics.hideRun') : t('icpRadar.live.diagnostics.inspectRun')}
           </Button>
+          <Button icon={<ListChecks aria-hidden="true" />} variant="default" onClick={preflightOpen ? onTogglePreflight : onCheckSetup}>
+            {preflightOpen ? t('icpRadar.live.preflight.hide') : t('icpRadar.live.preflight.checkSetup')}
+          </Button>
         </div>
       </Card>
+      {preflightOpen && <LiveRadarPreflightPanel artifact={artifact} preflightState={preflightState} runState={runState} />}
       {diagnosticsOpen && <LiveRadarRunDiagnosticsView artifact={artifact} runState={runState} />}
       {artifact.candidates.length === 0 ? (
         <Card>

@@ -40,6 +40,7 @@ class RadarApiContext:
     radar_min_useful_sources_per_discovery_task: int
     radar_min_candidates_per_discovery_task: int
     radar_max_discovery_retries_per_task: int
+    runtime_config_report: dict[str, object]
 
 
 def default_job_queue() -> JobQueue:
@@ -64,6 +65,7 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
     )
     radar_min_candidates_per_discovery_task = int(getattr(request.app.state, "radar_min_candidates_per_discovery_task", 5))
     radar_max_discovery_retries_per_task = int(getattr(request.app.state, "radar_max_discovery_retries_per_task", 2))
+    runtime_config_report = dict(getattr(request.app.state, "runtime_config_report", {}))
     with session_scope(session_factory) as session:
         yield RadarApiContext(
             radar_repository=SqlAlchemyRadarRepository(session),
@@ -83,6 +85,7 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
             radar_min_useful_sources_per_discovery_task=radar_min_useful_sources_per_discovery_task,
             radar_min_candidates_per_discovery_task=radar_min_candidates_per_discovery_task,
             radar_max_discovery_retries_per_task=radar_max_discovery_retries_per_task,
+            runtime_config_report=runtime_config_report,
         )
 
 

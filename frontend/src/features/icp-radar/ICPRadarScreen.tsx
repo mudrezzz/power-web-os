@@ -172,11 +172,18 @@ function RadarShortlist({ workspace }: { workspace: ReturnType<typeof useRadarWo
         expandedCandidateId={navigation.expandedLiveCandidateId}
         onOpenDetails={navigation.setDetailLiveCandidateId}
         onOpenSettings={() => navigation.setSelectedTab('settings')}
+        onCheckSetup={() => {
+          navigation.setRunPreflightOpen(true);
+          void workspace.checkRadarSetup(workspace.selectedRadar!.radar_id);
+        }}
         onRunRadar={() => workspace.runRadar(workspace.selectedRadar!.radar_id)}
         onToggleDiagnostics={() => navigation.setRunDiagnosticsOpen(!navigation.runDiagnosticsOpen)}
+        onTogglePreflight={() => navigation.setRunPreflightOpen(!navigation.runPreflightOpen)}
         onToggleCandidate={(candidateId) => navigation.setExpandedLiveCandidateId(
           navigation.expandedLiveCandidateId === candidateId ? null : candidateId,
         )}
+        preflightOpen={navigation.runPreflightOpen}
+        preflightState={workspace.preflightState}
         runState={workspace.runState}
       />
     );

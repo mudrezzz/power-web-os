@@ -21,6 +21,8 @@ from power_web_os.application.persisted_live_radar import (
 )
 from power_web_os.application.ports import JobQueue, LiveRadarArtifactExecutor, RadarRunScheduler
 from power_web_os.application.radar_run_journal import RadarRunJournal
+from power_web_os.application.radar_runtime_config import build_effective_runtime_config_report
+from power_web_os.application.radar_technical_trace import RadarRunTechnicalTracer
 from power_web_os.application.radar_records import RadarRunRecord, RadarRunTechnicalTraceRecord
 from power_web_os.integrations.openrouter_discovery_planner import OpenRouterDiscoveryPlanner
 from power_web_os.integrations.live_radar_openrouter import OpenRouterWebSearchProvider
@@ -101,6 +103,8 @@ def execute_radar_run_once(
             definition_repository=SqlAlchemyRadarDefinitionRepository(session),
             journal=RadarRunJournal(repository=SqlAlchemyRadarRunEventRepository(session)),
             commit_after_start=session.commit,
+            runtime_config_provider=lambda: build_effective_runtime_config_report(component="worker").to_payload(),
+            technical_tracer=RadarRunTechnicalTracer(repository=technical_trace_repository, default_run_id=run_id),
         )
         return executor.execute(run_id)
 

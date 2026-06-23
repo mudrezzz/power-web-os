@@ -228,6 +228,7 @@ Current Radar endpoints:
 ```text
 GET  /api/radars
 GET  /api/radars/{radar_id}
+GET  /api/radars/{radar_id}/preflight
 POST /api/radars/{radar_id}/runs
 GET  /api/radar-runs/{run_id}
 GET  /api/radar-runs/{run_id}/candidates
@@ -268,6 +269,7 @@ Useful Radar API URLs:
 ```text
 http://127.0.0.1:8000/api/radars
 http://127.0.0.1:8000/api/radars/toir-quick-live
+http://127.0.0.1:8000/api/radars/toir-quick-live/preflight
 http://127.0.0.1:8000/api/radar-runs/{run_id}/journal
 http://127.0.0.1:8000/api/radar-runs/{run_id}/dossier
 http://127.0.0.1:8000/api/radar-runs/{run_id}/technical-trace
@@ -304,8 +306,14 @@ npm --prefix ./frontend run dev
 ```
 
 With Redis and the worker running, open `ICP Radar`, select
-`ТОиР Quick Live Radar`, and click `Run radar`. The UI posts a queued run,
-polls `GET /api/radar-runs/{run_id}`, and reads
+`ТОиР Quick Live Radar`, and click `Check setup` / `Проверка` before a long
+manual run. The UI calls `GET /api/radars/{radar_id}/preflight` and shows a
+human-readable readiness panel: failed checks and remediation, redacted API
+runtime settings, and API/worker parity for the latest run when a worker
+snapshot exists. This UI check is offline/static; use the CLI
+`preflight-radar --live-probes --probe ...` flags for bounded live DaData or
+OpenRouter probes. Then click `Run radar`. The UI posts a queued run, polls
+`GET /api/radar-runs/{run_id}`, and reads
 `GET /api/radar-runs/{run_id}/candidates` plus
 `GET /api/radar-runs/{run_id}/journal` after output exists. It also reads
 `GET /api/radar-runs/{run_id}/dossier` to show the product run dossier: run
@@ -919,7 +927,7 @@ issues and retrieved/analyzed source counts instead of looking like a clean
 Run the current Radar execution preflight before manual live testing:
 
 ```bash
-python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json
+python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json --show-runtime-config
 ```
 
 The command reads the active persisted Radar definition from
@@ -945,6 +953,36 @@ codes:
   normalized sources.
 - `invalid_zero_score_projection`: unsearched or invalid signal output would be
   shown as a normal searched-negative zero score.
+
+Runtime config is part of the Radar execution contract. The preflight report
+shows the effective, redacted settings for the current process: OpenRouter model
+routing, web mode, retrieval provider/engine, DaData mode and credential
+presence, source verification mode, budgets, database kind, Celery broker kind,
+and a deterministic non-secret fingerprint. This is the first check before a
+manual live run because it catches stale Docker/env mismatches before a long
+worker job starts.
+
+Targeted live probes are opt-in and bounded. Use them only after static
+preflight is readable:
+
+```bash
+python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json --show-runtime-config --live-probes --probe dadata
+python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json --show-runtime-config --live-probes --probe openrouter-web
+python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json --show-runtime-config --live-probes --probe openrouter-perplexity
+python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json --show-runtime-config --live-probes --probe extraction-schema
+```
+
+The API exposes the current API-process config at:
+
+```bash
+curl http://127.0.0.1:8000/api/runtime-config
+```
+
+When a run is queued, the API config snapshot and fingerprint are stored in
+`radar_runs.run_metadata`. When the worker starts the run, it stores its own
+snapshot and fingerprint. If critical values differ, the run records
+`runtime_config_mismatch` warnings in metadata and technical trace. The warning
+is diagnostic in this slice: it does not fail the run automatically.
 
 Frontend rendering for live radar results must go through the canonical ICP Radar UX contract. Treat `icp_radar_live_run` as a different data adapter, not as permission to create a separate live-only grid, side panel, table column set, preview, or detail surface. Runtime provider metadata belongs in the candidate `Journal` tab.
 

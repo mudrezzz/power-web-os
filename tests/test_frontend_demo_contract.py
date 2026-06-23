@@ -331,6 +331,7 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "modified_locally",
         "LiveRadarShortlistTable",
         "LiveRadarRunDiagnosticsView",
+        "LiveRadarPreflightPanel",
         "LiveRadarCandidatePreview",
         "LiveRadarCandidateDetailView",
         "CandidateDetailTabs",
@@ -727,6 +728,11 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "used_in_product: 'В зачете'",
         "not_used_by_candidate: 'Analyzed but not linked to candidate evidence.'",
         "not_used_by_candidate: 'Проанализирован, но не связан с evidence кандидата.'",
+        "checkSetup: 'Check setup'",
+        "checkSetup: 'Проверка'",
+        "parity: 'API / worker parity'",
+        "parity: 'Сверка API / worker'",
+        "verification: 'Проверка источников'",
     ]:
         assert lifecycle_label in i18n
 
@@ -756,6 +762,8 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
     assert "fetch(liveMiniRadarArtifactUrl)" in app
     assert "getRunDossier" in api_client
     assert "getRunTechnicalTrace" in api_client
+    assert "getRadarPreflight" in api_client
+    assert "RadarPreflightDto" in api_client
     assert "RadarRunDossierDto" in api_client
     assert "RadarRunTechnicalTraceDto" in api_client
     assert "normalizedDossier?.search_plan.map" in api_adapter
@@ -835,6 +843,13 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
         "showRaw",
         "icpRadar.live.trace.policy",
         "icpRadar.live.trace.searchPlaceholder",
+        "LiveRadarPreflightPanel",
+        "preflightOpen",
+        "preflightState",
+        "onCheckSetup",
+        "icpRadar.live.preflight.checkSetup",
+        "icpRadar.live.preflight.runtimeCards.${card.key}",
+        "icpRadar.live.preflight.checkStatus.${check.status}",
     ]:
         assert screen_token in screen
     qualification_header = screen.split('<div className="qualification-review-head">', 1)[1].split("</div>", 1)[0]

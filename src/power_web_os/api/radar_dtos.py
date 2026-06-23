@@ -34,6 +34,17 @@ class RadarDetailResponse(RadarSummaryResponse):
     runs: list["RadarRunSummaryResponse"] = Field(default_factory=list)
 
 
+class RadarPreflightResponse(BaseModel):
+    artifact_type: str = "radar_execution_preflight_report"
+    radar_id: str
+    definition_id: str | None = None
+    definition_version: str | None = None
+    ready_for_live_run: bool
+    summary: dict[str, Any] = Field(default_factory=dict)
+    checks: list[dict[str, Any]] = Field(default_factory=list)
+    runtime_config: dict[str, Any] = Field(default_factory=dict)
+
+
 class RadarRunRequest(BaseModel):
     live: bool = True
     idempotency_key: str | None = None
@@ -336,6 +347,8 @@ class RadarRunDossierSummaryResponse(BaseModel):
 
 class RadarRunDossierResponse(BaseModel):
     run_context: RadarRunDossierContextResponse
+    runtime_config: dict[str, Any] = Field(default_factory=dict)
+    runtime_config_warnings: list[dict[str, Any]] = Field(default_factory=list)
     radar_snapshot: dict[str, Any] = Field(default_factory=dict)
     definition_snapshot: RadarRunDossierDefinitionResponse | None = None
     discovery_plan: dict[str, Any] = Field(default_factory=dict)

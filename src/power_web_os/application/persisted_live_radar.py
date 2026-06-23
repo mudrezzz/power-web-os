@@ -20,6 +20,11 @@ from power_web_os.application.ports import (
     RadarRunRepository,
 )
 from power_web_os.application.radar_run_journal import RadarRunEventCommand, RadarRunJournal
+from power_web_os.application.radar_runtime_config import (
+    build_effective_runtime_config_report,
+    compare_runtime_config_reports,
+)
+from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, RadarRunTechnicalTracer
 from power_web_os.application.radar_records import RadarRunOutputRecord, RadarRunRecord, RadarRunStatus
 
 
@@ -32,6 +37,7 @@ class PersistedLiveRadarRunCommand:
     correlation_id: str | None = None
     requester: str = "demo"
     task_context: dict[str, Any] | None = None
+    api_runtime_config: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +110,8 @@ class PersistedLiveRadarRunExecutor:
         definition_repository: RadarDefinitionRepository | None = None,
         journal: RadarRunJournal | None = None,
         commit_after_start: Callable[[], None] | None = None,
+        runtime_config_provider: Callable[[], dict[str, Any]] | None = None,
+        technical_tracer: RadarRunTechnicalTracer | None = None,
     ) -> None:
         self._run_repository = run_repository
         self._output_repository = output_repository
@@ -111,6 +119,8 @@ class PersistedLiveRadarRunExecutor:
         self._definition_repository = definition_repository
         self._journal = journal
         self._commit_after_start = commit_after_start
+        self._runtime_config_provider = runtime_config_provider
+        self._technical_tracer = technical_tracer
 
     def execute(self, run_id: str) -> RadarRunRecord:
         run = self._run_repository.get(run_id)
@@ -127,7 +137,26 @@ class PersistedLiveRadarRunExecutor:
                 exception_type="ActiveRadarDefinitionNotFound",
             )
 
-        run = self._run_repository.update_status(run.run_id, RadarRunStatus.RUNNING)
+        worker_runtime_config = self._worker_runtime_config()
+        api_runtime_config = run.run_metadata.get("api_runtime_config")
+        runtime_warnings = compare_runtime_config_reports(
+            expected=dict(api_runtime_config) if isinstance(api_runtime_config, dict) else None,
+            actual=worker_runtime_config,
+        )
+        run = self._run_repository.update_status(
+            run.run_id,
+            RadarRunStatus.RUNNING,
+            run_metadata={
+                **run.run_metadata,
+                "worker_runtime_config": worker_runtime_config,
+                "runtime_config_warnings": runtime_warnings,
+            },
+        )
+        if self._commit_after_start is not None:
+            # Commit the running status before writing a trace through the
+            # session-per-operation repository; SQLite locks otherwise.
+            self._commit_after_start()
+        self._append_runtime_config_trace(run, worker_runtime_config=worker_runtime_config, warnings=runtime_warnings)
         self._append_event(
             run_id=run.run_id,
             event_type="run_started",
@@ -202,6 +231,40 @@ class PersistedLiveRadarRunExecutor:
         if self._journal is not None:
             self._journal.append(RadarRunEventCommand(**kwargs))
 
+    def _worker_runtime_config(self) -> dict[str, Any]:
+        if self._runtime_config_provider is not None:
+            return dict(self._runtime_config_provider())
+        return build_effective_runtime_config_report(component="worker").to_payload()
+
+    def _append_runtime_config_trace(
+        self,
+        run: RadarRunRecord,
+        *,
+        worker_runtime_config: dict[str, Any],
+        warnings: list[dict[str, Any]],
+    ) -> None:
+        if self._technical_tracer is None:
+            return
+        self._technical_tracer.append(
+            RadarRunTechnicalTraceCommand(
+                run_id=run.run_id,
+                phase="lifecycle",
+                node_name="persisted_live_radar_executor",
+                trace_type="validation_result",
+                title="Effective runtime config",
+                summary=(
+                    "Worker runtime config matches API runtime config."
+                    if not warnings
+                    else f"Worker runtime config differs from API config in {len(warnings)} fields."
+                ),
+                payload={
+                    "api_runtime_config": _dict_payload_soft(run.run_metadata.get("api_runtime_config")),
+                    "worker_runtime_config": worker_runtime_config,
+                    "runtime_config_warnings": warnings,
+                },
+            )
+        )
+
 
 class PersistedLiveRadarRunService:
     def __init__(
@@ -236,12 +299,15 @@ class PersistedLiveRadarRunService:
 
 
 def _queued_run_metadata(command: PersistedLiveRadarRunCommand) -> dict[str, Any]:
-    return {
+    metadata = {
         "execution_mode": "queued_live_radar",
         "live": command.live,
         "requester": command.requester,
         "task_context": dict(command.task_context or {}),
     }
+    if command.api_runtime_config is not None:
+        metadata["api_runtime_config"] = dict(command.api_runtime_config)
+    return metadata
 
 
 def _task_context_from_run(run: RadarRunRecord) -> dict[str, Any]:
@@ -295,6 +361,10 @@ def _dict_payload(value: object) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError("Expected live Radar artifact section to be an object")
     return dict(value)
+
+
+def _dict_payload_soft(value: object) -> dict[str, Any]:
+    return dict(value) if isinstance(value, dict) else {}
 
 
 def _list_payload(value: object) -> list[dict[str, Any]]:

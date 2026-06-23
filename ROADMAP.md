@@ -3515,7 +3515,7 @@ Principles:
 
 ### Slice 0.7.6.1.11.5: Effective runtime config and live preflight probes
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Make the worker's actual Radar runtime configuration visible and testable
   before a full live run starts.
 - User value: A user can confirm that the run will use the intended DaData mode,
@@ -3548,6 +3548,45 @@ Principles:
 - Acceptance criteria:
   - A run cannot be mistaken for a Perplexity/live-DaData test when the worker
     actually used `openrouter/auto` or `DADATA_MODE=recorded`.
+- Completed:
+  - Added an application-owned redacted runtime config report with stable
+    non-secret fingerprints for API, worker, CLI, and trace usage.
+  - Added `GET /api/runtime-config` and bumped the API version to
+    `0.7.6.1.11.5`.
+  - Extended `preflight-radar` with `--show-runtime-config` and opt-in live
+    probes for DaData, OpenRouter web, OpenRouter Perplexity, and extraction
+    schema checks.
+  - Persisted API runtime config snapshots when queuing runs and worker runtime
+    config snapshots when execution starts.
+  - Added runtime-config mismatch warnings to run metadata and technical trace
+    without failing the run automatically.
+
+### Slice 0.7.6.1.11.5.1: Human-readable Radar preflight check panel
+
+- Status: `Done`
+- Goal: Make the `0.7.6.1.11.5` preflight/runtime-config result readable from
+  the Radar UI before a long live run starts.
+- User value: A user can click `Проверка` next to `Запустить` and
+  `Диагностика` and see whether the active Radar definition is ready, which
+  checks failed, which remediation is needed, which redacted runtime settings
+  the API sees, and whether the latest worker runtime snapshot matched the API
+  runtime.
+- Scope:
+  - Added read-only `GET /api/radars/{radar_id}/preflight`, backed by the
+    existing `RadarExecutionPreflightService` and API effective runtime config.
+    It performs no provider network calls and creates no run/output rows.
+  - Added `RadarApiClient.getRadarPreflight`, typed frontend DTOs, and
+    API-backed state for setup checks.
+  - Added the live Radar `Check setup` / `Проверка` action and a
+    `LiveRadarPreflightPanel` with readiness, runtime cards, API/worker parity,
+    and grouped checks without raw JSON dumps.
+  - Kept live provider probes CLI-only; the UI check remains static/offline.
+- Validation:
+  - Backend API tests cover the preflight endpoint, missing radar `404`, no run
+    creation, and secret/hidden-CoT redaction.
+  - Frontend architecture/demo contracts cover the action button, panel module,
+    API client contract, i18n strings, and no direct `fetch` in presentation
+    components.
 
 ### Slice 0.7.6.1.11.6: Source usage policy and mandatory source obligations
 
@@ -4358,4 +4397,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11.5: Effective runtime config and live preflight probes`.
+Implement `Slice 0.7.6.1.11.6: Source usage policy and mandatory source obligations`.

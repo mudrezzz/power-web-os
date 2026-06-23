@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from power_web_os.api.dependencies import RadarApiContext, get_radar_api_context
 from power_web_os.api.radar_dtos import (
     RadarDetailResponse,
+    RadarPreflightResponse,
     RadarRunCandidatesResponse,
     RadarRunDossierResponse,
     RadarRunJournalResponse,
@@ -32,6 +33,8 @@ from power_web_os.api.radar_mappers import (
     technical_trace_response,
 )
 from power_web_os.application.persisted_live_radar import PersistedLiveRadarRunCommand, QueuedLiveRadarRunService
+from power_web_os.application.live_radar_definition_runtime import active_definition_to_live_radar_payload
+from power_web_os.application.radar_preflight import RadarExecutionPreflightService
 from power_web_os.application.radar_run_journal import RadarRunJournal
 from power_web_os.application.radar_review import (
     QUALIFICATION_SUBJECT,
@@ -71,6 +74,26 @@ def get_radar(radar_id: str, context: RadarContext) -> RadarDetailResponse:
     )
 
 
+@router.get("/radars/{radar_id}/preflight", response_model=RadarPreflightResponse)
+def get_radar_preflight(
+    radar_id: str,
+    context: RadarContext,
+    include_runtime_config: bool = True,
+) -> RadarPreflightResponse:
+    radar = context.radar_repository.get(radar_id)
+    if radar is None:
+        raise HTTPException(status_code=404, detail=f"Radar not found: {radar_id}")
+    service = RadarExecutionPreflightService(
+        definition_repository=context.definition_repository,
+        runtime_definition_provider=lambda: _active_runtime_definition_payload(context, radar_id),
+        company_registry_provider_ids=_available_company_registry_provider_ids(context),
+    )
+    payload = service.run(radar_id=radar_id).to_payload()
+    if include_runtime_config:
+        payload["runtime_config"] = context.runtime_config_report
+    return RadarPreflightResponse.model_validate(payload)
+
+
 @router.post(
     "/radars/{radar_id}/runs",
     response_model=RadarRunSummaryResponse,
@@ -103,6 +126,7 @@ def queue_radar_run(radar_id: str, request: RadarRunRequest, context: RadarConte
                 "min_candidates_per_discovery_task": context.radar_min_candidates_per_discovery_task,
                 "max_discovery_retries_per_task": context.radar_max_discovery_retries_per_task,
             },
+            api_runtime_config=context.runtime_config_report,
         )
     )
     if result.should_enqueue:
@@ -268,6 +292,24 @@ def _outputs_for_runs(context: RadarApiContext, runs: tuple[RadarRunRecord, ...]
         if output is not None:
             outputs[run.run_id] = output
     return outputs
+
+
+def _active_runtime_definition_payload(context: RadarApiContext, radar_id: str) -> dict[str, object]:
+    definition = context.definition_repository.get_active(radar_id)
+    if definition is None:
+        return {}
+    return active_definition_to_live_radar_payload(definition)
+
+
+def _available_company_registry_provider_ids(context: RadarApiContext) -> set[str]:
+    config = context.runtime_config_report.get("config")
+    dadata = config.get("dadata") if isinstance(config, dict) else None
+    if not isinstance(dadata, dict):
+        return set()
+    mode = str(dadata.get("mode") or "recorded")
+    if mode == "recorded":
+        return {"dadata"}
+    return {"dadata"} if bool(dadata.get("credentials_present")) else set()
 
 
 def _run_and_output(run_id: str, context: RadarApiContext) -> tuple[RadarRunRecord, RadarRunOutputRecord]:

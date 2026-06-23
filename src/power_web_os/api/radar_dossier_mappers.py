@@ -36,6 +36,7 @@ def dossier_response(
     reviews: tuple[RadarReviewDecisionRecord, ...] = (),
 ) -> RadarRunDossierResponse:
     artifact = output.artifact_payload if output is not None else {}
+    persisted_run_metadata = _dict(run.run_metadata)
     candidates = _list(artifact.get("candidates"))
     sources = _list(artifact.get("sources"))
     run_metadata = _dict(artifact.get("run_metadata"))
@@ -71,6 +72,8 @@ def dossier_response(
 
     return RadarRunDossierResponse(
         run_context=_dossier_context(run),
+        runtime_config=_runtime_config(persisted_run_metadata),
+        runtime_config_warnings=_list(persisted_run_metadata.get("runtime_config_warnings")),
         radar_snapshot=_dict(artifact.get("radar")) or _definition_payload_summary(active_definition),
         definition_snapshot=_definition_snapshot(active_definition),
         discovery_plan=discovery_plan,
@@ -128,6 +131,13 @@ def _dossier_context(run: RadarRunRecord) -> RadarRunDossierContextResponse:
         runtime=_metadata_text(metadata, nested_metadata, "runtime") or "",
         task_context=_dict(metadata.get("task_context")),
     )
+
+
+def _runtime_config(metadata: dict[str, Any]) -> dict[str, Any]:
+    worker_config = _dict(metadata.get("worker_runtime_config"))
+    if worker_config:
+        return worker_config
+    return _dict(metadata.get("api_runtime_config"))
 
 
 def _definition_snapshot(record: RadarDefinitionRecord | None) -> RadarRunDossierDefinitionResponse | None:

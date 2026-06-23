@@ -198,13 +198,14 @@
 }
 
 .live-radar-run-toolbar {
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--s-4);
 }
 
 .live-radar-run-toolbar > div {
   display: grid;
   gap: var(--s-2);
+  margin-right: auto;
   min-width: 0;
 }
 

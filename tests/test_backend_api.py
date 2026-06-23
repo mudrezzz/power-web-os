@@ -41,7 +41,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-            "version": "0.7.6.1.9",
+            "version": "0.7.6.1.11.5",
         "environment": "test",
     }
 
@@ -58,12 +58,14 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.6.1.9"
+    assert schema["info"]["version"] == "0.7.6.1.11.5"
     for path in [
         "/health",
         "/api/health",
+        "/api/runtime-config",
         "/api/radars",
         "/api/radars/{radar_id}",
+        "/api/radars/{radar_id}/preflight",
         "/api/radars/{radar_id}/runs",
         "/api/radar-runs/{run_id}",
         "/api/radar-runs/{run_id}/candidates",
@@ -90,6 +92,73 @@ def test_api_allows_local_vite_frontend_origin(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"
+
+
+def test_runtime_config_endpoint_returns_redacted_api_config(tmp_path: Path) -> None:
+    client = TestClient(_app(
+        tmp_path,
+        max_web_tasks_per_subject=7,
+        max_signal_tasks_per_candidate_signal=3,
+        max_total_web_tasks_per_run=25,
+    ))
+
+    response = client.get("/api/runtime-config")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["artifact_type"] == "radar_runtime_config_report"
+    assert payload["component"] == "api"
+    assert len(payload["fingerprint"]) == 16
+    assert payload["config"]["radar"]["max_web_tasks_per_subject"] == 7
+    assert payload["config"]["radar"]["max_signal_tasks_per_candidate_signal"] == 3
+    assert payload["config"]["radar"]["max_total_web_tasks_per_run"] == 25
+    serialized = json.dumps(payload)
+    assert not any(marker in serialized for marker in [
+        "OPENROUTER_API_KEY",
+        "DADATA_API_KEY",
+        "DADATA_SECRET_KEY",
+        "Authorization",
+        "Bearer",
+        "sk-or-",
+    ])
+
+
+def test_radar_preflight_endpoint_returns_readable_report_without_creating_runs(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    client = TestClient(_app(tmp_path, database_url=database_url))
+
+    response = client.get("/api/radars/toir-quick-live/preflight")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["artifact_type"] == "radar_execution_preflight_report"
+    assert payload["radar_id"] == "toir-quick-live"
+    assert payload["runtime_config"]["component"] == "api"
+    assert isinstance(payload["ready_for_live_run"], bool)
+    assert {check["code"] for check in payload["checks"]} >= {
+        "active_definition_available",
+        "definition_runtime_mismatch",
+    }
+    assert client.get("/api/radars/toir-quick-live").json()["run_count"] == 0
+    serialized = json.dumps(payload)
+    assert not any(marker in serialized for marker in [
+        "OPENROUTER_API_KEY",
+        "DADATA_API_KEY",
+        "DADATA_SECRET_KEY",
+        "Authorization",
+        "Bearer",
+        "sk-or-",
+        "chain_of_thought",
+        "hidden_reasoning",
+        "internal_thoughts",
+    ])
+
+
+def test_radar_preflight_endpoint_returns_404_for_missing_radar(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    client = TestClient(_app(tmp_path, database_url=database_url))
+
+    assert client.get("/api/radars/missing/preflight").status_code == 404
 
 
 def test_radar_catalog_and_detail_read_persisted_data(tmp_path: Path) -> None:
@@ -147,6 +216,8 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert queued_dossier["run_context"]["task_context"]["min_useful_sources_per_discovery_task"] == 3
     assert queued_dossier["run_context"]["task_context"]["min_candidates_per_discovery_task"] == 5
     assert queued_dossier["run_context"]["task_context"]["max_discovery_retries_per_task"] == 2
+    assert queued_dossier["runtime_config"]["component"] == "api"
+    assert queued_dossier["runtime_config_warnings"] == []
     assert queued_dossier["search_plan"] == []
 
     execute_radar_run_once(
@@ -176,6 +247,8 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert not any(marker in json.dumps(journal) for marker in ["chain_of_thought", "hidden_reasoning", "internal_thoughts"])
     assert dossier["run_context"]["correlation_id"] == "corr-api-1"
     assert dossier["run_context"]["requester"] == "test"
+    assert dossier["runtime_config"]["component"] == "worker"
+    assert isinstance(dossier["runtime_config_warnings"], list)
     assert dossier["summary"]["output_state"] == "available"
     assert dossier["summary"]["query_count"] == 1
     assert dossier["summary"]["used_source_count"] == 1
@@ -219,14 +292,17 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert {usage["subject_type"] for usage in dossier["sources"][0]["usages"]} == {"candidate", "qualification", "signal"}
     assert [event["event_type"] for event in dossier["timeline"]][0] == "run_queued"
     assert not any(marker in json.dumps(dossier) for marker in ["chain_of_thought", "hidden_reasoning", "internal_thoughts"])
-    assert trace_empty["traces"] == []
+    assert trace_empty["traces"][0]["title"] == "Effective runtime config"
+    assert trace_empty["traces"][0]["trace_type"] == "validation_result"
 
     with session_scope(app.state.session_factory) as session:
-        SqlAlchemyRadarRunTechnicalTraceRepository(session).append(
+        trace_repository = SqlAlchemyRadarRunTechnicalTraceRepository(session)
+        sequence = trace_repository.next_sequence(run["run_id"])
+        trace_repository.append(
             RadarRunTechnicalTraceRecord(
-                trace_id=f"{run['run_id']}:trace:000001",
+                trace_id=f"{run['run_id']}:trace:{sequence:06d}",
                 run_id=run["run_id"],
-                sequence=1,
+                sequence=sequence,
                 phase="provider",
                 node_name="openrouter_web_search",
                 trace_type="provider_request",
@@ -237,7 +313,7 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
             )
         )
     trace = client.get(f"/api/radar-runs/{run['run_id']}/technical-trace").json()
-    assert trace["traces"][0]["trace_type"] == "provider_request"
+    assert any(item["trace_type"] == "provider_request" for item in trace["traces"])
     serialized_trace = json.dumps(trace)
     assert not any(marker in serialized_trace for marker in [
         "OPENROUTER_API_KEY",

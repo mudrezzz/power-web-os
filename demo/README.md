@@ -106,6 +106,39 @@ linking:
 python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json
 ```
 
+To also see the effective runtime settings that the current process will use,
+add `--show-runtime-config`:
+
+```bash
+python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json --show-runtime-config
+```
+
+The runtime config section is redacted: API keys and secrets are reported only
+as present/missing. It shows OpenRouter models, web mode, retrieval
+provider/engine, DaData mode, source verification mode, execution budgets,
+database kind, Redis/Celery kind, and a non-secret fingerprint that can be
+compared with the API/worker snapshots saved on a real run.
+
+Targeted live probes are explicit and bounded. They never enqueue a Radar run:
+
+```bash
+python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json --show-runtime-config --live-probes --probe dadata
+python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json --show-runtime-config --live-probes --probe openrouter-web
+python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json --show-runtime-config --live-probes --probe openrouter-perplexity
+python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json --show-runtime-config --live-probes --probe extraction-schema
+```
+
+For the running API process, use:
+
+```bash
+curl http://127.0.0.1:8000/api/runtime-config
+```
+
+When a Radar run is started through the API, the API runtime config is stored at
+queue time and the worker runtime config is stored when execution starts. If the
+fingerprints or critical provider/model/budget fields differ, the run dossier
+and technical trace show an explicit runtime-config mismatch warning.
+
 The preflight command is intentionally fast and offline: it reads the persisted
 Radar definition, validates source-policy/provider wiring, runs recorded
 negative extraction checks, and exits with code `1` when `ready_for_live_run` is
@@ -253,6 +286,7 @@ unless you changed the uvicorn port.
 ```text
 http://127.0.0.1:8001/api/radars
 http://127.0.0.1:8001/api/radars/toir-quick-live
+http://127.0.0.1:8001/api/radars/toir-quick-live/preflight
 http://127.0.0.1:8001/api/radar-runs/{run_id}
 http://127.0.0.1:8001/api/radar-runs/{run_id}/candidates
 http://127.0.0.1:8001/api/radar-runs/{run_id}/reviews
@@ -298,6 +332,12 @@ filters, copyable readable sections, and collapsed raw JSON for deeper
 developer inspection.
 
 When the backend API is running, inspect `ТОиР Quick Live Radar` and click
+`Check setup` / `Проверка` before `Run radar`. The setup panel is a static
+offline check: it does not enqueue a run and does not call OpenRouter or DaData.
+It shows readiness, failed checks with remediation, redacted API runtime
+settings, and API/worker parity when the latest run has a worker snapshot. If a
+check suggests provider uncertainty, run the targeted CLI live probes first;
+provider probes remain CLI-only until a separate UX/security decision. Then use
 `Run radar`. The UI creates a queued run, shows `queued/running/completed/failed`
 status with the run id, and refreshes the live shortlist after output exists. If
 the API is unavailable, the same screen clearly stays in demo fallback mode and

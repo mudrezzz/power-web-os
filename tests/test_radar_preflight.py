@@ -183,6 +183,9 @@ def test_preflight_cli_returns_json_and_does_not_create_runs(tmp_path: Path) -> 
             "--database-url",
             db_url,
             "--json",
+            "--show-runtime-config",
+            "--probe",
+            "dadata",
         ],
         check=False,
         capture_output=True,
@@ -196,6 +199,10 @@ def test_preflight_cli_returns_json_and_does_not_create_runs(tmp_path: Path) -> 
     assert completed.returncode == 0
     assert payload["artifact_type"] == "radar_execution_preflight_report"
     assert payload["ready_for_live_run"]
+    assert payload["runtime_config"]["artifact_type"] == "radar_runtime_config_report"
+    assert payload["runtime_config"]["component"] == "cli"
+    assert payload["live_probes"][0]["code"] == "dadata_probe"
+    assert payload["live_probes"][0]["status"] == "skipped"
     assert "definition_runtime_mismatch" not in payload["summary"]["failed_codes"]
     with session_scope(session_factory) as session:
         assert SqlAlchemyRadarRunRepository(session).list_for_radar("toir-quick-live") == ()

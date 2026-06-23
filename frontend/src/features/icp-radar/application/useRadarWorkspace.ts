@@ -268,6 +268,8 @@ export function useRadarWorkspace({
     resetCandidateSignalValidation,
     resetSignalValidationDecision,
     runState: backend.runState,
+    preflightState: backend.preflightState,
+    checkRadarSetup: backend.checkRadarSetup,
     runRadar: backend.runRadar,
     createRadar,
     deleteRadar,

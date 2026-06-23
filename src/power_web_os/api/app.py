@@ -12,6 +12,10 @@ from power_web_os.api.config import ApiSettings, get_api_settings
 from power_web_os.api.dependencies import default_job_queue
 from power_web_os.api.radar_routes import router as radar_router
 from power_web_os.application.ports import JobQueue
+from power_web_os.application.radar_runtime_config import (
+    build_effective_runtime_config_report,
+    runtime_config_api_overrides,
+)
 from power_web_os.persistence import create_database_engine, create_session_factory
 
 
@@ -52,6 +56,10 @@ def create_app(
     app.state.radar_min_useful_sources_per_discovery_task = api_settings.radar_min_useful_sources_per_discovery_task
     app.state.radar_min_candidates_per_discovery_task = api_settings.radar_min_candidates_per_discovery_task
     app.state.radar_max_discovery_retries_per_task = api_settings.radar_max_discovery_retries_per_task
+    app.state.runtime_config_report = build_effective_runtime_config_report(
+        component="api",
+        overrides=runtime_config_api_overrides(api_settings),
+    ).to_payload()
 
     @app.get("/health", response_model=HealthResponse, tags=["system"])
     def health() -> HealthResponse:
@@ -65,6 +73,10 @@ def create_app(
     @app.get("/api/health", response_model=HealthResponse, tags=["system"])
     def api_health() -> HealthResponse:
         return health()
+
+    @app.get("/api/runtime-config", tags=["system"])
+    def runtime_config() -> dict[str, object]:
+        return dict(app.state.runtime_config_report)
 
     app.include_router(radar_router)
     return app

@@ -330,6 +330,17 @@ It must report failures such as `definition_runtime_mismatch`,
 `evidence_linking_failed`, and `invalid_zero_score_projection` before a worker
 job is queued.
 
+Effective runtime configuration is also part of the Radar execution contract.
+The API, worker, and preflight CLI can produce the same redacted config report:
+model routing, OpenRouter web mode, retrieval provider/engine, DaData mode and
+credential presence, source verification mode, budgets, database kind, Celery
+broker kind, and a deterministic non-secret fingerprint. API execution snapshots
+are stored when a run is queued; worker snapshots are stored when execution
+starts. If critical values diverge, the run records a
+`runtime_config_mismatch` warning in metadata and technical trace instead of
+silently letting a user believe that one provider/model/budget setup was used
+when another process actually ran the job.
+
 The same extraction contract is enforced during runtime provider normalization.
 Repairable shape problems are marked as `extraction_repair_needed`; unresolved
 source refs and unrepaired schema mismatches remain `evidence_linking_failed` or

@@ -627,6 +627,8 @@ export type LiveRadarRunDossier = {
     runtime: string;
     task_context: Record<string, unknown>;
   };
+  runtime_config: Record<string, unknown>;
+  runtime_config_warnings: Array<Record<string, unknown>>;
   radar_snapshot: Record<string, unknown>;
   definition_snapshot: {
     definition_id: string | null;

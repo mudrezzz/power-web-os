@@ -11,6 +11,7 @@ export function useRadarNavigation() {
   const [expandedLiveCandidateId, setExpandedLiveCandidateId] = useState<string | null>(null);
   const [detailLiveCandidateId, setDetailLiveCandidateId] = useState<string | null>(null);
   const [runDiagnosticsOpen, setRunDiagnosticsOpen] = useState(false);
+  const [runPreflightOpen, setRunPreflightOpen] = useState(false);
   const [candidateDetailTab, setCandidateDetailTab] = useState<CandidateDetailTab>('overview');
 
   useEffect(() => {
@@ -26,6 +27,7 @@ export function useRadarNavigation() {
     setExpandedLiveCandidateId(null);
     setDetailLiveCandidateId(null);
     setRunDiagnosticsOpen(false);
+    setRunPreflightOpen(false);
   }
 
   function openRadar(radar: ICPRadarCatalogItem) {
@@ -54,6 +56,8 @@ export function useRadarNavigation() {
     setDetailLiveCandidateId,
     runDiagnosticsOpen,
     setRunDiagnosticsOpen,
+    runPreflightOpen,
+    setRunPreflightOpen,
     candidateDetailTab,
     setCandidateDetailTab,
     clearCandidateState,

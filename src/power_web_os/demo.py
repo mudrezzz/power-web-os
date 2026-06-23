@@ -363,6 +363,14 @@ def main() -> None:
     parser.add_argument("--radar-id", default="toir-quick-live")
     parser.add_argument("--profile", choices=("static", "recorded"), default="recorded")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--show-runtime-config", action="store_true")
+    parser.add_argument("--live-probes", action="store_true")
+    parser.add_argument(
+        "--probe",
+        action="append",
+        choices=("dadata", "openrouter-web", "openrouter-perplexity", "extraction-schema", "all"),
+        default=[],
+    )
     parser.add_argument("--dry-run-plan", action="store_true")
     parser.add_argument("--live", action="store_true")
     args = parser.parse_args()
@@ -423,6 +431,9 @@ def main() -> None:
             radar_id=args.radar_id,
             database_url=args.database_url,
             profile=args.profile,
+            show_runtime_config=args.show_runtime_config,
+            live_probes=args.live_probes,
+            probes=tuple(args.probe),
         )
         _assert_no_secrets(artifact)
         print_preflight_report(artifact, as_json=args.json)

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { RadarApiClient, RadarApiError, type RadarRunSummaryDto } from '../../../api/radarApi';
+import { RadarApiClient, RadarApiError, type RadarPreflightDto, type RadarRunSummaryDto } from '../../../api/radarApi';
 import type {
   ICPRadarCatalogArtifact,
   ICPRadarCatalogItem,
@@ -26,10 +26,18 @@ export type RadarRunControlState = {
   outputPending: boolean;
 };
 
+export type RadarPreflightControlState = {
+  busy: boolean;
+  report: RadarPreflightDto | null;
+  error: string | null;
+};
+
 export type RadarBackendController = {
   catalog: ICPRadarCatalogArtifact | null;
   liveRunArtifact: LiveICPRadarRunArtifact | null;
   runState: RadarRunControlState;
+  preflightState: RadarPreflightControlState;
+  checkRadarSetup: (radarId: string) => Promise<void>;
   runRadar: (radarId: string) => void;
   saveQualificationReview: (
     radarId: string,
@@ -60,6 +68,11 @@ export function useRadarBackend({
     status: null,
     error: null,
     outputPending: false,
+  });
+  const [preflightState, setPreflightState] = useState<RadarPreflightControlState>({
+    busy: false,
+    report: null,
+    error: null,
   });
   const activeRunByRadarId = useRef<Record<string, string>>({});
   const detailsByRadarId = useRef<Record<string, ICPRadarCatalogItem>>({});
@@ -235,6 +248,20 @@ export function useRadarBackend({
       });
   }, [api, pollRun, refreshRunOutput, runState.busy]);
 
+  const checkRadarSetup = useCallback(async (radarId: string) => {
+    setPreflightState((current) => ({ ...current, busy: true, error: null }));
+    try {
+      const report = await api.getRadarPreflight(radarId);
+      setPreflightState({ busy: false, report, error: null });
+    } catch (error) {
+      setPreflightState((current) => ({
+        ...current,
+        busy: false,
+        error: errorMessage(error),
+      }));
+    }
+  }, [api]);
+
   const saveQualificationReview = useCallback(async (
     radarId: string,
     candidateId: string,
@@ -300,6 +327,8 @@ export function useRadarBackend({
     catalog: apiCatalog ?? fallbackCatalog,
     liveRunArtifact: apiLiveArtifact ?? fallbackLiveRunArtifact,
     runState,
+    preflightState,
+    checkRadarSetup,
     runRadar,
     saveQualificationReview,
     saveSignalReview,
