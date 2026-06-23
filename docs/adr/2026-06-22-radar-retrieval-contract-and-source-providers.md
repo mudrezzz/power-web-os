@@ -79,16 +79,19 @@ tests now exist.
   results.
 - DaData and later structured sources can be selected by source policy without
   leaking MCP/API details into domain logic.
-- Perplexity/OpenRouter provider comparisons should happen after prompt,
-  budget, and structured-source semantics are controlled.
+- Perplexity/OpenRouter provider comparisons happen behind the retrieval
+  contract. The first implementation uses OpenRouter server-tools
+  `engine=perplexity` so it can reuse current OpenRouter credentials; direct
+  Perplexity Search API remains a later provider adapter.
 
 ## Alternatives considered
 
 - **Keep heavy JSON prompts and tune only the model.** Rejected because traces
   show the model already reduces them to simpler internal queries; a stronger
   model would not fix redundant context or wrong budget semantics.
-- **Add Perplexity first.** Deferred because provider comparison would be noisy
-  while prompts, budgets, and structured company facts are still uncontrolled.
+- **Add direct Perplexity Search API first.** Deferred because it requires a
+  separate `PERPLEXITY_API_KEY` and a different HTTP contract; the current slice
+  uses OpenRouter's Perplexity engine to validate the retrieval boundary first.
 - **Use DaData as the full discovery engine.** Rejected because registry-style
   facts do not replace open web evidence or intent signal monitoring.
 - **Expose DaData in UI before backend support.** Rejected because source

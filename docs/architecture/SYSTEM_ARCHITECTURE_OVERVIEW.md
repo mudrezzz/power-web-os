@@ -271,13 +271,24 @@ Discovery and coverage tasks also use useful-result budgets; if a bounded task
 returns too few useful sources or candidates, the backend may retry within the
 configured retry limit and records the retry in execution metadata and trace.
 
-Web search is being separated into a managed retrieval pipeline. The application
-layer should own task planning, source policy, useful-result budgets, retry
-decisions, verification semantics, evidence linking, candidate status, and
-scoring. Provider adapters in `integrations` execute bounded retrieval or
-extraction tasks and return structured retrieval/source/citation material. This
-keeps OpenRouter, Perplexity, or later search providers interchangeable without
-letting provider-specific behavior become domain policy.
+Web search is separated into a managed retrieval pipeline. The application
+layer owns task planning, source policy, useful-result budgets, retry decisions,
+verification semantics, evidence linking, candidate status, and scoring.
+Provider adapters in `integrations` execute bounded retrieval or extraction
+tasks and return structured retrieval/source/citation material. The first live
+provider paths are default OpenRouter retrieval and OpenRouter server-tools
+retrieval with `engine=perplexity`; direct Perplexity Search API remains a
+future provider expansion. This keeps OpenRouter, Perplexity, or later search
+providers interchangeable without letting provider-specific behavior become
+domain policy.
+
+Complex LLM pipelines are developed behind a TDD/preflight validation ladder.
+Before a long full live Radar run is treated as meaningful, cheaper checks must
+prove that the active persisted definition is the runtime definition, configured
+source bases are executable, source registry providers such as DaData can be
+selected, recorded retrieval/extraction fixtures pass schema gates, and targeted
+live provider probes can return usable material. Full live runs are final smoke
+or benchmark steps, not the primary debugging loop.
 
 Prompt construction follows the same separation. Planner prompts may receive the
 rich Radar definition, source policy, criterion-role context, and run limits
@@ -512,6 +523,10 @@ The referenced platform should be used as follows:
 - Integration tests for persistence and connectors once added.
 - Smoke tests for demo and API startup once API exists.
 - E2E tests for signal-to-Access-Plan workflow once UI/API exists.
+- For complex LLM pipelines, require fast TDD/preflight layers before broad live
+  runs: static/config checks, recorded pipeline fixtures, negative schema/error
+  fixtures, and small targeted live provider probes. Long live runs are allowed
+  only after those cheaper checks are green or explicitly marked exploratory.
 
 ## Demo Implications
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -17,7 +16,15 @@ from power_web_os.application.live_radar_contracts import (
 )
 from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
+from power_web_os.application.live_radar_web_retrieval import retrieval_request_from_search_plan
 from power_web_os.integrations.openrouter_request_builder import build_openrouter_request, openrouter_compiled_prompt_summary
+from power_web_os.integrations.openrouter_retrieval import retrieval_result_from_openrouter_response
+from power_web_os.integrations.openrouter_trace import (
+    duration_ms as _duration_ms,
+    parse_json_object as _parse_json_object,
+    provider_response_trace_payload as _provider_response_trace_payload,
+    trace_provider as _trace_provider,
+)
 from power_web_os.integrations.live_radar_source_verification import (
     normalize_verification_mode,
     supports_product_evidence,
@@ -64,6 +71,16 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
             or self._model
         )
         self._web_mode = web_mode or self._env.get("OPENROUTER_WEB_MODE") or os.getenv("OPENROUTER_WEB_MODE") or "auto"
+        self._retrieval_provider = (
+            self._env.get("POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER")
+            or os.getenv("POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER")
+            or "openrouter"
+        )
+        self._web_search_engine = (
+            self._env.get("POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE")
+            or os.getenv("POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE")
+            or ("perplexity" if self._retrieval_provider == "openrouter_perplexity" else "auto")
+        )
         self._source_verification_mode = normalize_verification_mode(
             self._env.get("POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE")
             or os.getenv("POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE")
@@ -81,6 +98,14 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
     @property
     def web_mode(self) -> str:
         return self._web_mode
+
+    @property
+    def retrieval_provider(self) -> str:
+        return self._retrieval_provider
+
+    @property
+    def web_search_engine(self) -> str:
+        return self._web_search_engine
 
     def run_search_plan(self, *, radar: dict[str, Any], search_plan: RadarSearchPlan) -> WebSearchProviderResult:
         if not self._api_key:
@@ -116,16 +141,24 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
             search_plan=search_plan,
             model=selected_model,
             web_mode=mode,
+            web_search_engine=self.web_search_engine,
         )
         compiled_prompt = openrouter_compiled_prompt_summary(payload)
+        retrieval_request = retrieval_request_from_search_plan(
+            search_plan=search_plan,
+            provider_id=self.retrieval_provider,
+            engine=self.web_search_engine,
+            source_policy=compiled_prompt.get("task_card", {}).get("source_policy", {}),
+        )
         _trace_provider(
             trace_type="provider_request",
-            title="OpenRouter request",
-            summary=f"OpenRouter request using {mode}.",
+            title="OpenRouter retrieval request",
+            summary=f"OpenRouter retrieval request using {self.retrieval_provider}/{self.web_search_engine}.",
             payload={
                 "url": "https://openrouter.ai/api/v1/chat/completions",
                 "model": selected_model,
                 "web_mode": mode,
+                "retrieval_request": retrieval_request.model_dump(),
                 "task_card": compiled_prompt.get("task_card", {}),
                 "compiled_prompt": compiled_prompt,
                 "request": payload,
@@ -190,13 +223,31 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                     "default_model": self.model,
                     "extractor_model": self.extractor_model,
                     "web_mode": mode,
+                    "retrieval_provider": self.retrieval_provider,
+                    "retrieval_engine": self.web_search_engine,
                     "provider_error": error_payload,
                 },
             )
+        retrieval_result = retrieval_result_from_openrouter_response(
+            response_payload,
+            provider_id=self.retrieval_provider,
+            engine=self.web_search_engine,
+            query=retrieval_request.query,
+        )
         _trace_provider(
             trace_type="provider_response",
-            title="OpenRouter response",
-            summary="OpenRouter returned a structured response payload.",
+            title="OpenRouter retrieval response",
+            summary=f"OpenRouter returned {len(retrieval_result.retrieved_sources)} retrieved sources.",
+            duration_ms=_duration_ms(started_at),
+            payload={
+                "retrieval_request": retrieval_request.model_dump(),
+                "retrieval_result": retrieval_result.model_dump(),
+            },
+        )
+        _trace_provider(
+            trace_type="normalization_result",
+            title="OpenRouter extraction result",
+            summary="OpenRouter response was parsed into Radar extraction observations.",
             duration_ms=_duration_ms(started_at),
             payload=_provider_response_trace_payload(response_payload, model=selected_model, web_mode=mode),
         )
@@ -208,6 +259,11 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                 "default_model": self.model,
                 "extractor_model": self.extractor_model,
                 "web_mode": mode,
+                "retrieval_provider": self.retrieval_provider,
+                "retrieval_engine": self.web_search_engine,
+                "retrieved_sources": [item.model_dump() for item in retrieval_result.retrieved_sources],
+                "retrieval_source_outcomes": [item.model_dump() for item in retrieval_result.source_outcomes],
+                "retrieved_source_count": len(retrieval_result.retrieved_sources),
             },
         )
         return _apply_source_verification(result, mode=self._source_verification_mode)
@@ -406,71 +462,6 @@ def _dedupe_sources(sources: list[RadarSourceEvidence]) -> list[RadarSourceEvide
         seen.add(key)
         result.append(source)
     return result
-
-
-def _parse_json_object(content: str) -> dict[str, Any]:
-    stripped = content.strip()
-    if stripped.startswith("```"):
-        stripped = re.sub(r"^```(?:json)?", "", stripped).strip()
-        stripped = re.sub(r"```$", "", stripped).strip()
-    try:
-        parsed = json.loads(stripped)
-    except json.JSONDecodeError:
-        decoder = json.JSONDecoder()
-        for index, char in enumerate(stripped):
-            if char != "{":
-                continue
-            try:
-                parsed, _ = decoder.raw_decode(stripped[index:])
-            except json.JSONDecodeError:
-                continue
-            if isinstance(parsed, dict):
-                return parsed
-        return {}
-    return parsed if isinstance(parsed, dict) else {}
-
-
-def _provider_response_trace_payload(payload: dict[str, Any], *, model: str, web_mode: str) -> dict[str, Any]:
-    message = payload.get("choices", [{}])[0].get("message", {})
-    content = message.get("content") or ""
-    return {
-        "response_id": payload.get("id"),
-        "model": model,
-        "web_mode": web_mode,
-        "usage": payload.get("usage", {}),
-        "message": {
-            "role": message.get("role"),
-            "content": content,
-            "annotations": message.get("annotations", []),
-        },
-        "parser_status": "json_object" if _parse_json_object(str(content)) else "empty_or_unparseable",
-    }
-
-
-def _duration_ms(started_at: float) -> int:
-    return max(0, int((perf_counter() - started_at) * 1000))
-
-
-def _trace_provider(
-    *,
-    trace_type: str,
-    title: str,
-    summary: str,
-    payload: dict[str, Any],
-    duration_ms: int | None = None,
-) -> None:
-    append_current_trace(
-        RadarRunTechnicalTraceCommand(
-            run_id="",
-            phase="provider",
-            node_name="openrouter_web_search",
-            trace_type=trace_type,
-            title=title,
-            summary=summary,
-            duration_ms=duration_ms,
-            payload=payload,
-        )
-    )
 
 
 def _load_env_file(path: Path) -> dict[str, str]:

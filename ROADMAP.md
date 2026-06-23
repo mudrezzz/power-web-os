@@ -3153,7 +3153,7 @@ Principles:
 
 ### Slice 0.7.6.1.11: Web retrieval provider abstraction and Perplexity adapter
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Make web search provider behavior comparable after task prompts,
   budgets, and structured company sources are under control.
 - Problem being closed:
@@ -3168,11 +3168,12 @@ Principles:
     snippets, retrieval status, and extraction observations.
   - Add a provider-neutral web retrieval port under application contracts and
     keep provider implementations in `integrations`.
-  - Add a Perplexity-backed adapter through OpenRouter or direct provider
-    configuration, depending on available API shape, without leaking provider
-    SDK/HTTP code into application services.
-  - Add environment configuration such as
-    `POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER=openrouter|perplexity`.
+  - Add a Perplexity-backed retrieval path through OpenRouter server tools
+    (`engine=perplexity`) without leaking provider SDK/HTTP code into
+    application services.
+  - Add environment configuration:
+    `POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER=openrouter|openrouter_perplexity`
+    and `POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE=auto|perplexity`.
   - Persist retrieval summaries in output metadata/technical trace without a DB
     migration.
   - Keep extraction/scoring bounded: retrieval returns candidate/source
@@ -3214,6 +3215,178 @@ Principles:
 - Risks:
   - Provider APIs and OpenRouter routing behavior may differ; keep the adapter
     isolated and recorded fixtures provider-specific.
+- Implementation notes:
+  - Done: added provider-neutral retrieval contracts in the application layer.
+  - Done: split OpenRouter web execution trace into retrieval request,
+    retrieval response, and extraction/normalization result records.
+  - Done: added OpenRouter Perplexity engine selection via environment
+    settings, while keeping direct Perplexity Search API as a later provider
+    expansion.
+  - Done: preserved existing `WebSearchProvider.run_search_plan(...)`, API DTOs,
+    and persisted output snapshot compatibility.
+
+### Slice 0.7.6.1.11.1: Radar execution preflight and red tests
+
+- Status: `Ready`
+- Goal: Add a fast TDD/preflight gate for complex live Radar execution before
+  running expensive full live provider jobs.
+- Problem being closed:
+  - Full live Radar runs can take around 30 minutes and currently surface
+    configuration, source-provider, retrieval, extraction, evidence-linking, and
+    scoring failures only after the expensive run has completed.
+  - The recent `radar-run-2dc3d058-639d-4c7a-9bf6-d36442267558` showed that
+    Perplexity retrieval returned many sources, but DaData was not selected by
+    the runtime payload and extraction/source refs collapsed into zero product
+    sources.
+- User value: Developers can know whether a Radar is executable before paying
+  for a long live run, and red tests capture known failure modes before fixes
+  are implemented.
+- Scope:
+  - Add a preflight application service and CLI/API-adjacent command for a
+    Radar id, initially `toir-quick-live`.
+  - Validate that the active persisted definition is the definition used by the
+    live executor, not a hardcoded legacy runtime definition.
+  - Validate source policy references: global source ids, rule-level source ids,
+    signal source ids, DaData/company-registry configuration, and unknown source
+    ids.
+  - Add recorded red tests for current failure classes:
+    `definition_runtime_mismatch`, `source_base_not_executable`,
+    `extraction_schema_invalid`, `evidence_linking_failed`, and
+    `invalid_zero_score_projection`.
+  - Add negative provider fixtures: prose-first output, dict where list is
+    required, missing source refs, numeric refs, unknown refs, invalid
+    `source_outcomes`, and retrievable sources that cannot be linked to
+    candidates.
+  - Add a small targeted live-probe boundary design for DaData lookup,
+    OpenRouter/Perplexity retrieval, and extraction-only schema validation; live
+    probes may be documented first if credentials/network make them optional.
+- Out of scope:
+  - Fixing the runtime definition bug.
+  - Changing scoring semantics.
+  - New UI screens.
+  - Full benchmark execution.
+- Implementation notes:
+  - This slice is intentionally red-first: tests should fail against the current
+    pipeline before the repair slices.
+  - Preflight must be fast enough for normal development and CI-like local
+    use; it must not run a full Radar job.
+  - The preflight result should be structured so UI/CLI can later show
+    actionable failures.
+- Tests:
+  - Unit tests for preflight result shape and severity.
+  - Recorded integration tests proving current DaData/runtime mismatch is
+    detectable.
+  - Negative extraction fixtures that fail schema/evidence-ref gates.
+  - Architecture tests confirming preflight logic stays in application and does
+    not import provider HTTP clients directly.
+- Docs:
+  - Update Developer Guide with preflight command and TDD ladder.
+  - Update SAO/ADR references if the command shape changes.
+- Demo impact:
+  - Manual Radar testing starts with preflight before `Run radar`.
+- Acceptance criteria:
+  - Known current failure classes are represented by tests.
+  - A developer can run a fast preflight command and get structured failures.
+  - Full live run is no longer the first validation step for complex Radar
+    pipeline changes.
+- Risks:
+  - Overbuilding preflight can delay actual fixes; keep it focused on known
+    failure classes and fast feedback.
+
+### Slice 0.7.6.1.11.2: Active Radar definition execution and source-base enforcement
+
+- Status: `Backlog`
+- Goal: Make persisted live execution use the active Radar definition from the
+  database and enforce configured source bases such as DaData.
+- User value: When a user configures DaData or another source in the Radar
+  search base, the actual worker run uses it or explains why it was skipped.
+- Scope:
+  - Replace hardcoded `build_live_mini_radar_definition()` usage in persisted
+    worker execution with active `RadarDefinitionRecord` loading.
+  - Keep the hardcoded definition only for offline/legacy demo paths.
+  - Ensure runtime artifact, planner input, retrieval plan, dossier, and trace
+    all show the same active definition version/source policy.
+  - Add DaData to the Radar common search base projection where it is missing,
+    and verify rule-level source policies reference executable source ids.
+  - Emit explicit source-provider outcomes when DaData is selected, unavailable,
+    skipped, or returns zero observations.
+- Out of scope:
+  - Extraction schema repair.
+  - UI source editor.
+  - Direct Perplexity API.
+- Tests:
+  - Preflight red tests from `0.7.6.1.11.1` turn green for definition/runtime
+    matching and DaData source selection.
+  - Recorded source-registry tests show DaData selected for qualification/entity
+    resolution and not selected for signal search.
+  - Persisted run smoke with recorded providers contains DaData source outcomes
+    in execution metadata/trace.
+- Docs:
+  - Update Developer Guide and demo docs with active-definition execution
+    behavior.
+- Acceptance criteria:
+  - Runtime Radar payload contains `global_search_policy.sources` from the
+    active persisted definition.
+  - DaData source-provider traces/outcomes appear when configured and selected.
+
+### Slice 0.7.6.1.11.3: Strict extraction schema gate and evidence-ref reconciliation
+
+- Status: `Backlog`
+- Goal: Stop converting malformed extraction output into normal zero-score
+  results.
+- User value: A run that retrieved useful sources but failed extraction/linking
+  is diagnosed as extraction/linking failure, not as evidence that all signals
+  are absent.
+- Scope:
+  - Add strict extraction schema validation for source lists, candidate lists,
+    qualification rows, signal rows, and source outcomes.
+  - Add source-ref reconciliation: match returned URLs/titles to backend
+    retrieved source refs where possible.
+  - Convert unrepaired invalid output into explicit states:
+    `extraction_schema_invalid`, `evidence_linking_failed`, or
+    `extraction_repair_needed`.
+  - Prevent invalid extraction/linking from producing normal `not_observed`
+    signal rows or confident zero scores.
+- Out of scope:
+  - New provider integrations.
+  - Entity type model.
+- Tests:
+  - Negative fixtures from `0.7.6.1.11.1` become green.
+  - Numeric refs, unknown refs, missing refs, dict/list mismatch, and prose-first
+    outputs are covered.
+  - Dossier/trace expose extraction repair/failure without secrets or raw hidden
+    chain-of-thought.
+- Acceptance criteria:
+  - A retrieved-source-rich but malformed provider response no longer produces
+    `source_count=0` plus normal zero scores.
+
+### Slice 0.7.6.1.11.4: Entity resolution model for legal entity vs asset/site/project
+
+- Status: `Backlog`
+- Goal: Separate legal entities from production sites, projects, plants, and
+  assets in the Radar candidate universe.
+- User value: Account candidates become actual legal entities/accounts, while
+  sites and projects remain linked facts instead of noisy account rows.
+- Scope:
+  - Add candidate/entity type projection for `legal_entity`, `production_site`,
+    `project`, `asset`, and `unknown_entity`.
+  - Use DaData/source registry to resolve or review legal entities where
+    possible.
+  - Link web evidence about projects/sites/assets back to resolved legal
+    entities.
+  - Mark unresolved sites/projects as review-needed gaps instead of fully scored
+    account candidates.
+- Out of scope:
+  - Normalized candidate/evidence tables.
+  - Full UI source editor.
+- Tests:
+  - Recorded SIBUR-like fixture where `EP-600` is not accepted as a legal-entity
+    account without a linked company.
+  - DaData/entity-resolution fixture mapping site/project terms to legal
+    entities.
+- Acceptance criteria:
+  - Upstream discovery can distinguish account candidates from linked assets and
+    explain unresolved entity gaps.
 
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 
@@ -3247,7 +3420,8 @@ Principles:
 - Implementation notes:
   - Run this only after `Slice 0.7.6.1.7.2`, `Slice 0.7.6.1.7.3`,
     `Slice 0.7.6.1.7.4`, `Slice 0.7.6.1.8`, `Slice 0.7.6.1.9`,
-    `Slice 0.7.6.1.10`, and `Slice 0.7.6.1.11`, so the benchmark tests a
+    `Slice 0.7.6.1.10`, `Slice 0.7.6.1.11`, and the TDD/preflight repair
+    slices `0.7.6.1.11.1` through `0.7.6.1.11.4`, so the benchmark tests a
     source-verification-aware, observable, compact-prompt,
     structured-source-capable retrieval/extraction pipeline rather than an
     opaque web-search prompt path.
@@ -3882,4 +4056,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11: Web retrieval provider abstraction and Perplexity adapter`.
+Implement `Slice 0.7.6.1.11.1: Radar execution preflight and red tests`.

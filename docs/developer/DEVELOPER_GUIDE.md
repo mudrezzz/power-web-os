@@ -700,6 +700,7 @@ POWER_WEB_OS_RADAR_MIN_USEFUL_SOURCES_PER_DISCOVERY_TASK=3
 POWER_WEB_OS_RADAR_MIN_CANDIDATES_PER_DISCOVERY_TASK=5
 POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK=2
 POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER=openrouter
+POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE=auto
 ```
 
 `POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE` controls how provider-returned
@@ -717,10 +718,19 @@ material, the backend can retry the bounded task until
 `POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK` is reached. This prevents a
 single empty or broken retrieval response from freezing the candidate universe.
 
-`POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER` is the planned provider selector
-for the retrieval boundary. `openrouter` remains the first adapter; a
-Perplexity-shaped adapter is planned so retrieval output can be compared before
-candidate extraction/scoring.
+`POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER` selects the web retrieval boundary.
+Use `openrouter` for the default OpenRouter web path. Use
+`openrouter_perplexity` to keep OpenRouter authentication/runtime but request
+the OpenRouter server-tools web-search engine `perplexity`. The direct
+Perplexity Search API is intentionally deferred because it needs its own API key
+and HTTP contract.
+
+`POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE` is passed to OpenRouter server-side
+web search. `auto` keeps the default engine; `perplexity` asks OpenRouter to use
+Perplexity-backed retrieval where supported. Technical trace separates
+`retrieval_request`, `retrieval_response`, and extraction/normalization records,
+so provider URL/snippet/citation behavior can be inspected before candidate
+scoring.
 
 Prompt construction is also a boundary. Planner prompts may carry rich Radar
 context because they produce strategy. Execution prompts are compiled from
@@ -784,7 +794,7 @@ evidence. If OpenRouter rejects the credentials or no usable sources are
 returned, the frontend should show the live radar empty state rather than
 fabricated candidates.
 
-Source, retrieval, and score debugging now has eleven hardening steps before
+Source, retrieval, and score debugging now has a TDD-first hardening path before
 broad quality benchmarking:
 
 1. Source lifecycle visibility: dossier exposes `source_lifecycle` and
@@ -816,16 +826,39 @@ broad quality benchmarking:
 7. DaData source provider and source registry: add a real structured
    company-data source behind a source-provider port before claiming discovery
    quality from web-only runs.
-8. Web retrieval provider abstraction and Perplexity adapter: compare
-   OpenRouter/Perplexity-style retrieval after prompts, budgets, and structured
-   company sources are controlled.
-9. Score contract and quality smoke: recorded fixtures should prove that
+8. Web retrieval provider abstraction and Perplexity adapter: compare default
+   OpenRouter retrieval and OpenRouter Perplexity-engine retrieval after
+   prompts, budgets, and structured company sources are controlled.
+9. Radar execution preflight and red tests: prove active definition wiring,
+   source-provider selection, extraction schema, evidence-ref linking, and
+   controlled failure states with fast fixtures before expensive live runs.
+10. Score contract and quality smoke: recorded fixtures should prove that
    source-backed confirmed qualification and observed signals survive
    persistence/API/frontend mapping and produce nonzero scores before live
    multi-radar benchmarks are treated as meaningful.
-10. Multi-radar benchmark: only after the planning and observability path can
+11. Multi-radar benchmark: only after the planning and observability path can
    explain failures should real-model SIBUR, industry/region/revenue, and
    source-constrained discovery scenarios be used as quality evidence.
+
+Complex LLM pipeline work must follow a TDD/preflight loop. Do not use a
+30-minute full live Radar run as the first validation signal for planning,
+retrieval, extraction, source-provider, evidence-linking, or scoring changes.
+Add fast red/green tests first:
+
+1. Static/config preflight: active persisted definition, runtime definition
+   wiring, source ids, source-provider settings, and source-policy references.
+2. Recorded pipeline fixtures: planner, retrieval, DaData/source registry,
+   extraction, verification, retries, and known malformed provider outputs.
+3. Targeted live probes: one bounded DaData/source-provider lookup, one web
+   retrieval call, and one extraction-only schema check.
+4. Full live run: final smoke or benchmark only after the cheaper layers are
+   green, unless the run is explicitly marked exploratory.
+
+Negative fixtures are required for provider outputs that are prose-first,
+return dicts where lists are required, omit stable source refs, link evidence to
+unknown refs, or return retrievable material that cannot be tied to candidate
+evidence. These cases should become explicit diagnostic states such as
+`extraction_schema_invalid` or `evidence_linking_failed`, not normal zero scores.
 
 Frontend rendering for live radar results must go through the canonical ICP Radar UX contract. Treat `icp_radar_live_run` as a different data adapter, not as permission to create a separate live-only grid, side panel, table column set, preview, or detail surface. Runtime provider metadata belongs in the candidate `Journal` tab.
 

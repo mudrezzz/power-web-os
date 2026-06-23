@@ -20,6 +20,10 @@ provider SDK details.
   qualification-first staged execution plans.
 - `live_radar_retrieval_plan.py` projects accepted execution tasks into compact
   retrieval task cards and backward-compatible search-plan queries.
+- `live_radar_web_retrieval.py` defines provider-neutral web retrieval
+  material: bounded retrieval requests, ranked retrieved sources, source
+  outcomes, and recorded fixtures. It does not own extraction, scoring,
+  verification, or provider HTTP details.
 - `live_radar_discovery_planning.py` owns the discovery planner contracts,
   deterministic fallback planner, source-policy validation, and product-source
   visibility helpers.

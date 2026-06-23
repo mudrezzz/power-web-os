@@ -20,6 +20,7 @@ def build_openrouter_request(
     search_plan: RadarSearchPlan,
     model: str,
     web_mode: str,
+    web_search_engine: str = "auto",
 ) -> dict[str, Any]:
     query = search_plan.queries[0] if len(search_plan.queries) == 1 else None
     prompt = compact_task_prompt(radar=radar, search_plan=search_plan).model_dump()
@@ -38,7 +39,12 @@ def build_openrouter_request(
     if web_mode == "server_tools":
         request["tools"] = [{
             "type": "openrouter:web_search",
-            "parameters": {"engine": "auto", "max_results": 5, "max_total_results": 12, "search_context_size": "low"},
+            "parameters": {
+                "engine": web_search_engine,
+                "max_results": 5,
+                "max_total_results": 12,
+                "search_context_size": "low",
+            },
         }]
     elif web_mode == "plugin_web":
         request["plugins"] = [{"id": "web"}]

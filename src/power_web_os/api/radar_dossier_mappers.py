@@ -304,6 +304,16 @@ def _source_lifecycle(
             usages=[],
         )
 
+    for retrieved in _list(execution_results.get("retrieved_sources")):
+        evidence_ref = str(retrieved.get("source_ref") or retrieved.get("evidence_ref") or retrieved.get("id") or "").strip()
+        if not evidence_ref or evidence_ref in items:
+            continue
+        items[evidence_ref] = RadarRunDossierSourceLifecycleItemResponse(
+            evidence_ref=evidence_ref, title=str(retrieved.get("title", "")), url=str(retrieved.get("url", "")),
+            query_id=str(retrieved.get("query_id")) if retrieved.get("query_id") is not None else None,
+            source_type="web", state="retrieved", reason="retrieved_not_extracted", origin="retrieved_sources", usages=[],
+        )
+
     for outcome in [*_list(execution_results.get("source_outcomes")), *_list(execution_results.get("source_provider_outcomes"))]:
         evidence_ref = str(outcome.get("evidence_ref") or outcome.get("source_ref") or outcome.get("source_id") or outcome.get("id") or "").strip()
         if not evidence_ref or evidence_ref in items:
@@ -386,9 +396,9 @@ def _source_lifecycle_reason(value: str) -> str:
         "irrelevant",
         "insufficient_evidence",
         "provider_metadata_only",
-        "provider_empty",
         "provider_recorded_empty",
         "provider_unavailable",
+        "retrieved_not_extracted",
         "unknown",
     }
     return normalized if normalized in allowed else "unknown"

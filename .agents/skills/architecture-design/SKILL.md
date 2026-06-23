@@ -73,6 +73,27 @@ The guidance must explain allowed imports, forbidden imports, extension path,
 transaction/runtime ownership where relevant, and the architecture contract
 tests that protect the boundary.
 
+## Complex LLM pipeline TDD rules
+
+When the design touches a complex LLM-backed pipeline such as Radar planning,
+retrieval, extraction, source-provider routing, evidence linking, scoring, or
+workflow orchestration, require a fast TDD/preflight validation ladder before
+long live runs:
+
+- static/config preflight for active definitions, source policy, provider
+  settings, source ids, and runtime wiring;
+- recorded pipeline fixtures for planner, retrieval, source-provider,
+  extraction, retry, verification, and scoring behavior;
+- negative fixtures for malformed provider outputs, missing/unknown source refs,
+  prose-first responses, schema mismatches, and evidence-linking failures;
+- targeted live provider probes only after recorded fixtures are green;
+- full live runs only as final smoke/benchmark steps or explicitly exploratory
+  runs.
+
+Do not design a workflow where a 20-30 minute live run is the first meaningful
+validation signal. Record preflight commands, red tests, and accepted diagnostic
+states in `ROADMAP.md` and ADRs.
+
 ## Required outputs
 
 Update or create:

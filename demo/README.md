@@ -96,6 +96,14 @@ zero scores. That means the runner reached a terminal state, not that discovery
 quality is acceptable. The run dossier now includes source lifecycle diagnostics
 showing used and discarded/analyzed source counts and reasons.
 
+Complex live Radar runs should be treated as TDD/preflight-gated work. Before a
+manual `Run radar` is used as evidence of quality, the fast preflight/recorded
+fixture checks should verify active definition wiring, configured source bases,
+DaData/source-provider selection, extraction schema shape, and evidence-ref
+linking. Until the preflight command from `Slice 0.7.6.1.11.1` is implemented,
+manual full live runs are exploratory diagnostics, not pass/fail development
+tests.
+
 Live Radar now uses soft source verification by default. If a provider returns
 source-linked candidates but URLs fail reachability checks, the run keeps those
 candidates as review-needed/risky evidence instead of silently deleting them.
@@ -110,9 +118,20 @@ smoke runs use fixtures. In `live` mode, set `DADATA_API_KEY` and
 trace. DaData supports legal-entity identity and registry facts, while open web
 remains responsible for current evidence and intent signals.
 
-The next live Radar hardening slice focuses on provider-neutral web retrieval
-adapters, so OpenRouter and Perplexity-style retrieval can be compared after
-prompt, budget, and source semantics are controlled.
+Live Radar web retrieval is now a separate diagnostic boundary before
+extraction/normalization. By default it uses OpenRouter web search. To compare
+Perplexity-backed retrieval through the same OpenRouter credentials/runtime,
+set:
+
+```text
+POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER=openrouter_perplexity
+POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE=perplexity
+```
+
+The technical trace shows retrieval request/response records separately from
+extraction results, so URL/snippet/citation quality can be inspected before
+judging candidate scoring. Direct Perplexity Search API support is deferred to a
+future provider-expansion slice.
 
 To refresh documentation screenshots:
 

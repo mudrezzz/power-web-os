@@ -12,6 +12,8 @@
 - Treat worker tasks and schedulers as entrypoints that call application
   services, not as places for scoring, normalization, or persistence logic.
 - Keep recommendations explainable and evidence-backed.
+- For complex LLM pipelines, add fast TDD/preflight checks and recorded
+  malformed-output fixtures before relying on long live provider runs.
 - Do not commit secrets, `.env` files, or `.external/` research checkouts.
 
 ## Before Opening a Change
@@ -27,6 +29,10 @@ When backend boundaries change, also run:
 python -m pytest tests/test_backend_architecture_contract.py
 python -m pytest tests/test_radar_persistence.py
 ```
+
+When Radar planning/retrieval/extraction/source-provider behavior changes,
+prefer fast preflight and recorded fixture tests first. Treat full live runs as
+final smoke/benchmark validation unless the run is explicitly exploratory.
 
 Update documentation when changing architecture, setup, public behavior, demo behavior, or user-facing functionality.
 

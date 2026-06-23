@@ -53,6 +53,13 @@ Use this format in `ROADMAP.md`:
 - Ensure each iteration can leave the product demonstrable.
 - Keep blocked questions explicit.
 - Always identify the next recommended task.
+- For complex LLM-backed pipelines, plan TDD/preflight slices before expensive
+  live-provider or benchmark slices. The roadmap should name the fast red tests,
+  recorded fixtures, negative provider-output fixtures, targeted live probes,
+  and explicit diagnostic states needed before full live runs.
+- Do not schedule a benchmark or broad live quality claim as the next task if
+  known pipeline wiring, source-provider selection, extraction schema, or
+  evidence-linking failures do not yet have fast tests.
 
 ## Completion checklist
 

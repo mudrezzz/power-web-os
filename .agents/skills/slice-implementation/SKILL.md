@@ -39,6 +39,15 @@ Implement one small, complete, tested, documented product increment.
 - For backend layers, add or update local README guidance and concise module
   docstrings so future developers can extend the layer without reading every
   implementation file first.
+- For complex LLM pipelines, implement TDD/preflight coverage before relying on
+  full live provider runs. Add or update static/config checks, recorded
+  fixtures, malformed-output negative fixtures, and targeted provider probes
+  where relevant. A long live run is a final smoke/benchmark step, not the first
+  validation signal.
+- Do not normalize broken LLM/provider output into apparently successful
+  product states. Missing source refs, invalid schemas, evidence-linking
+  failures, and budget/policy skips should become explicit diagnostic states and
+  tests.
 - Comment non-obvious code and tests.
 - Do not expand scope unless required for the slice to work.
 - Record follow-up work in `ROADMAP.md` instead of silently doing it.
@@ -49,6 +58,8 @@ Before finishing:
 
 - Slice behavior works.
 - Tests were added or updated.
+- For complex LLM pipelines, fast preflight/recorded/negative tests were added
+  or explicitly documented as out of scope for the slice.
 - Relevant tests were run.
 - Backend architecture contract tests were run when backend boundaries changed.
 - Docs were updated.

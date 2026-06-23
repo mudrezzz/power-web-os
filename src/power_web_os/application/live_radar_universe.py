@@ -14,7 +14,15 @@ from power_web_os.application.live_radar_contracts import (
 
 def merge_provider_metadata(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
     merged = {**existing, **incoming}
-    for key in ("candidate_universe_gaps", "coverage_findings", "source_outcomes", "source_provider_outcomes", "source_verification_results"):
+    for key in (
+        "candidate_universe_gaps",
+        "coverage_findings",
+        "retrieved_sources",
+        "retrieval_source_outcomes",
+        "source_outcomes",
+        "source_provider_outcomes",
+        "source_verification_results",
+    ):
         merged[key] = [*dict_list(existing.get(key)), *dict_list(incoming.get(key))]
     return merged
 

@@ -7,11 +7,16 @@ CRM tools, and other network-facing infrastructure.
 
 - `openrouter_request_builder.py` owns compact OpenRouter prompt/request
   shaping for one Radar retrieval task card.
+- `openrouter_retrieval.py` maps OpenRouter web-search annotations/citations
+  into provider-neutral retrieved-source records before extraction.
+- `openrouter_trace.py` owns reusable sanitized trace payload helpers for
+  provider responses and normalization outcomes.
 - `openrouter_discovery_planner.py` owns the OpenRouter adapter for structured
   discovery-plan proposals. It does not execute web search and does not decide
   candidate truth.
 - `live_radar_openrouter.py` owns the OpenRouter request/response adapter for
-  the live mini ICP Radar.
+  the live mini ICP Radar. It supports the default OpenRouter web path and the
+  OpenRouter server-tools `perplexity` engine selected by environment settings.
 - `dadata_provider.py` owns the DaData company-registry adapter. It maps DaData
   party suggestions into application-level company observations and source
   outcomes; it is not a web-search or signal-evidence provider.

@@ -18,6 +18,19 @@ Consider:
 - Smoke tests for critical startup and happy-path behavior.
 - E2E tests for important user-facing flows.
 
+For complex LLM-backed pipelines, also consider:
+
+- static/config preflight tests for active definitions, provider settings,
+  source ids, runtime wiring, and policy references;
+- recorded pipeline fixtures for planner, retrieval, source-provider,
+  extraction, verification, retries, and scoring;
+- negative fixtures for malformed provider output, missing source refs,
+  unknown evidence refs, schema shape mismatches, prose-first responses, and
+  provider errors;
+- targeted live provider probes for a single bounded lookup/retrieval/extraction
+  path;
+- full live runs only as final smoke/benchmark validation.
+
 ## Process
 
 1. Inspect the current slice or change.
@@ -29,6 +42,8 @@ Consider:
    - smoke tests for user-visible flows
    - integration tests for cross-component changes
    - full regression when risk is broad
+   - for LLM pipelines, prefer fast preflight/recorded/negative tests before
+     running expensive live-provider flows
 6. Run the selected commands if available.
 7. Report results clearly.
 
@@ -43,6 +58,8 @@ Run or recommend full regression when:
 - authentication, authorization, payments, security, or data integrity paths changed
 - demo-critical flows changed
 - many modules were touched
+- complex LLM pipeline semantics changed and preflight/recorded fixtures were
+  added or repaired
 
 ## Completion checklist
 

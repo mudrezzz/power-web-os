@@ -33,11 +33,18 @@ from power_web_os.application.live_radar_execution_budget import (
 from power_web_os.application.live_radar_normalization import normalize_live_candidate
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan, retrieval_plan_to_search_plan
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
+from power_web_os.application.live_radar_web_retrieval import (
+    RadarWebRetrievalResult,
+    RadarRetrievedSource,
+    RecordedRadarWebRetrievalProvider,
+    retrieval_request_from_search_plan,
+)
 from power_web_os.application.radar_source_providers import RadarSourceRegistry, SourceRegistryWebSearchProvider
 from power_web_os.demo import generate_live_mini_icp_radar_plan
 from power_web_os.integrations.dadata_provider import RecordedDaDataCompanyRegistryProvider
 from power_web_os.integrations import live_radar_openrouter
 from power_web_os.integrations.live_radar_source_verification import SourceReachabilityResult, verify_sources
+from power_web_os.integrations.openrouter_retrieval import retrieval_result_from_openrouter_response
 from power_web_os.live_icp_radar import (
     FRAMEWORK_AVAILABLE,
     LiveICPRadarRunState,
@@ -208,15 +215,38 @@ def test_openrouter_provider_prefers_local_env_file_over_ambient_env(monkeypatch
     assert provider.web_mode == "plugin_web"
 
 
+def test_openrouter_provider_selects_perplexity_retrieval_engine_from_env(tmp_path: Path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join([
+            "OPENROUTER_API_KEY=test-key",
+            "POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER=openrouter_perplexity",
+        ]),
+        encoding="utf-8",
+    )
+
+    provider = OpenRouterWebSearchProvider(env_path=env_file)
+
+    assert provider.retrieval_provider == "openrouter_perplexity"
+    assert provider.web_search_engine == "perplexity"
+
+
 def test_openrouter_request_builder_supports_web_modes() -> None:
     radar = build_live_mini_radar_definition()
     plan = build_live_mini_radar_search_plan(radar)
 
-    server_tools = build_openrouter_request(radar=radar, search_plan=plan, model="test/model", web_mode="server_tools")
+    server_tools = build_openrouter_request(
+        radar=radar,
+        search_plan=plan,
+        model="test/model",
+        web_mode="server_tools",
+        web_search_engine="perplexity",
+    )
     plugin_web = build_openrouter_request(radar=radar, search_plan=plan, model="test/model", web_mode="plugin_web")
     model_native = build_openrouter_request(radar=radar, search_plan=plan, model="test/model", web_mode="model_native")
 
     assert server_tools["tools"][0]["type"] == "openrouter:web_search"
+    assert server_tools["tools"][0]["parameters"]["engine"] == "perplexity"
     assert plugin_web["plugins"][0]["id"] == "web"
     assert "tools" not in model_native
     assert "plugins" not in model_native
@@ -273,6 +303,66 @@ def test_execution_plan_projects_to_retrieval_plan_and_legacy_search_plan() -> N
     assert signal_task.response_contract.schema_id == "signal_finding_v1"
     assert signal_task.expected_evidence == [signal_task.subject_id]
     assert legacy_plan.model_dump() == build_live_mini_radar_search_plan(radar).model_dump()
+
+
+def test_web_retrieval_contracts_preserve_ranked_source_material() -> None:
+    plan = build_live_mini_radar_search_plan(build_live_mini_radar_definition())
+    request = retrieval_request_from_search_plan(
+        search_plan=plan,
+        provider_id="openrouter_perplexity",
+        engine="perplexity",
+    )
+    result = RadarWebRetrievalResult(
+        provider_id="openrouter_perplexity",
+        engine="perplexity",
+        query=request.query,
+        retrieved_sources=[
+            RadarRetrievedSource(
+                source_ref="retrieved_1",
+                title="Result",
+                url="https://example.test/result",
+                snippet="Perplexity-shaped snippet",
+                rank=1,
+                provider_id="openrouter_perplexity",
+                engine="perplexity",
+            )
+        ],
+    )
+    provider = RecordedRadarWebRetrievalProvider(result)
+
+    retrieved = provider.retrieve(request=request)
+
+    assert provider.requests == [request]
+    assert retrieved.retrieved_sources[0].url == "https://example.test/result"
+    assert retrieved.retrieved_sources[0].rank == 1
+
+
+def test_openrouter_response_maps_annotations_to_retrieval_result() -> None:
+    payload = {
+        "choices": [{
+            "message": {
+                "annotations": [{
+                    "url_citation": {
+                        "title": "Perplexity source",
+                        "url": "https://example.test/perplexity",
+                        "content": "Ranked source snippet.",
+                    }
+                }]
+            }
+        }]
+    }
+
+    result = retrieval_result_from_openrouter_response(
+        payload,
+        provider_id="openrouter_perplexity",
+        engine="perplexity",
+        query="test query",
+    )
+
+    assert result.provider_id == "openrouter_perplexity"
+    assert result.engine == "perplexity"
+    assert result.retrieved_sources[0].title == "Perplexity source"
+    assert result.source_outcomes[0].outcome == "retrieved"
 
 
 def test_source_registry_selects_dadata_company_registry_source() -> None:
