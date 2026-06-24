@@ -991,6 +991,19 @@ That recovery loop is not accepted until fast fake/recorded tests prove:
 - signal search starts only after the final pre-signal checkpoint returns
   `continue`.
 
+The red contract for that behavior lives in
+`tests/test_radar_adaptive_execution_red.py`:
+
+```bash
+python -m pytest tests/test_radar_adaptive_execution_red.py -q
+```
+
+The expected result before the recovery loop is implemented is one green safety
+gate test plus strict `xfail` cases for missing retry, source expansion, planner
+revision, retry-limit, and revision-limit behavior. If one of those `xfail`
+cases unexpectedly passes, remove the marker and move the behavior into the
+normal adaptive execution suite instead of leaving it hidden as debt.
+
 Targeted live probes are opt-in and bounded. Use them only after static
 preflight is readable:
 

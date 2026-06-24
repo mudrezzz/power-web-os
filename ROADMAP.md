@@ -3713,7 +3713,7 @@ Principles:
 
 ### Slice 0.7.6.1.11.7.1: Adaptive checkpoint red tests and behavior contract
 
-- Status: `Ready`
+- Status: `Done`
 - Goal: Make the missing adaptive behavior executable as fast tests before
   adding more implementation.
 - User value: We can prove in seconds which adaptive scenarios are missing
@@ -3756,10 +3756,11 @@ Principles:
   - Developer Guide lists these tests as the precondition for implementing
     adaptive recovery.
 - Acceptance criteria:
-  - The suite shows exactly which adaptive actions are not implemented.
-  - Each red/xfail scenario names the required runtime behavior and expected
+  - Done: `tests/test_radar_adaptive_execution_red.py` shows exactly which
+    adaptive actions are not implemented.
+  - Done: each red/xfail scenario names the required runtime behavior and expected
     metadata fields.
-  - The suite runs without network calls and completes in seconds.
+  - Done: the suite runs without network calls and completes in seconds.
 
 ### Slice 0.7.6.1.11.7.2: Adaptive discovery recovery loop
 
@@ -4596,4 +4597,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11.7.1: Adaptive checkpoint red tests and behavior contract`.
+Implement `Slice 0.7.6.1.11.7.2: Adaptive discovery recovery loop`.
