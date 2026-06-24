@@ -36,6 +36,7 @@ from power_web_os.application.live_radar_execution_budget import (
     RadarExecutionBudgetSettings,
     budget_key,
 )
+from power_web_os.application.live_radar_external_budget import reserve_openrouter_http_call
 from power_web_os.application.live_radar_entity_resolution import RadarEntityResolutionService
 from power_web_os.application.live_radar_normalization import normalize_live_candidate
 from power_web_os.application.live_radar_extraction_contract import validate_and_repair_extraction_payload
@@ -439,6 +440,51 @@ def test_source_registry_records_insufficient_lookup_for_broad_holding_discovery
     outcomes = result.provider_metadata["source_provider_outcomes"]
     assert outcomes[0]["outcome"] == "registry_lookup_insufficient"
     assert outcomes[0]["source_id"] == "dadata_registry"
+
+
+def test_source_registry_skips_russian_broad_discovery_without_concrete_lookup_terms() -> None:
+    radar = active_definition_to_live_radar_payload(_toir_quick_live_definition_record())
+    provider = RecordedDaDataCompanyRegistryProvider(fixtures=[{"legal_name": "АО Тест", "inn": "7700000000"}])
+    task = RadarExecutionTask(
+        task_id="discover-holding",
+        stage="qualification_discovery",
+        subject_type="qualification",
+        subject_id="q1-sibur-group",
+        rule_snapshot="Найти все юридические лица холдинга.",
+        query="Найди все юридические лица, входящие в периметр группы СИБУР",
+        purpose="Discover the full holding contour.",
+        source_ids=["dadata_registry"],
+    )
+
+    result = RadarSourceRegistry(company_registry_providers={"dadata": provider}).lookup_for_task(radar=radar, task=task)
+
+    assert provider.requests == []
+    assert result.provider_metadata["source_provider_outcomes"][0]["outcome"] == "registry_lookup_insufficient"
+
+
+def test_source_registry_calls_dadata_for_concrete_legal_name_lookup() -> None:
+    radar = active_definition_to_live_radar_payload(_toir_quick_live_definition_record())
+    provider = RecordedDaDataCompanyRegistryProvider(fixtures=[{
+        "source_ref": "dadata_kzsk",
+        "legal_name": "АО Красноярский завод синтетического каучука",
+        "inn": "2462004363",
+    }])
+    task = RadarExecutionTask(
+        task_id="lookup-kzsk",
+        stage="qualification_gate",
+        subject_type="qualification",
+        subject_id="q2-industrial",
+        rule_snapshot="Проверить юридическое лицо.",
+        query="Проверить АО Красноярский завод синтетического каучука",
+        purpose="Resolve concrete company identity.",
+        source_ids=["dadata_registry"],
+    )
+
+    result = RadarSourceRegistry(company_registry_providers={"dadata": provider}).lookup_for_task(radar=radar, task=task)
+
+    assert len(provider.requests) == 1
+    assert provider.requests[0].lookup_terms
+    assert result.candidate_observations[0]["legal_name"] == "АО Красноярский завод синтетического каучука"
 
 
 def test_source_registry_wrapper_injects_structured_dadata_observations_before_web_call() -> None:
@@ -898,6 +944,75 @@ def test_live_radar_service_executes_explicit_pipeline_phases() -> None:
     assert "candidate_extracted" in event_types
     assert "signal_evaluated" in event_types
     assert "self_check_completed" in event_types
+
+
+def test_live_radar_service_persists_planner_and_web_openrouter_budget_counters() -> None:
+    class BudgetCountingPlanner:
+        runtime_name = "budget-counting-planner"
+
+        def propose_plan(self, *, planning_input, previous_validation=None):
+            _ = previous_validation
+            reserve_openrouter_http_call(role="planner", task_id="planner")
+            return RadarDiscoveryPlan(
+                plan_summary="One bounded discovery step.",
+                steps=[
+                    RadarDiscoveryPlanStep(
+                        step_id="discover-q1",
+                        stage="candidate_universe_discovery",
+                        subject_rule_ids=["Q1"],
+                        query="Find Candidate A.",
+                        purpose="Discover candidates.",
+                        expected_evidence=["candidate identity"],
+                    )
+                ],
+            )
+
+    class BudgetCountingProvider:
+        runtime_name = "budget-counting-provider"
+
+        def run_search_plan(self, *, radar, search_plan):
+            _ = radar
+            reserve_openrouter_http_call(role="web_task", task_id=search_plan.queries[0].query_id)
+            return WebSearchProviderResult(
+                sources=[
+                    RadarSourceEvidence(
+                        evidence_ref="src_a",
+                        title="Candidate A source",
+                        url="https://example.test/a",
+                        snippet="Candidate A is source-backed.",
+                        query_id=search_plan.queries[0].query_id,
+                    )
+                ],
+                candidate_observations=[
+                    {
+                        "legal_name": "Candidate A",
+                        "qualification": [
+                            {"criterion_code": "Q1", "status": "confirmed", "evidence_refs": ["src_a"]}
+                        ],
+                        "evidence_refs": ["src_a"],
+                    }
+                ],
+            )
+
+    radar = {
+        "radar_id": "budget-radar",
+        "qualification_criteria": [{"code": "Q1", "label": "Find companies", "requirement_level": "required"}],
+        "intent_signals": [],
+    }
+    state = LiveICPRadarRunState(
+        radar=radar,
+        task_context={"max_openrouter_calls_per_run": 3},
+        live=False,
+    )
+    service = LiveRadarRunService(BudgetCountingProvider(), discovery_planner=BudgetCountingPlanner())
+
+    result = service.run(state=state, node_name="test", runtime_mode="recorded", framework_available=False)
+    execution_results = result.artifact["run_metadata"]["execution_results"]
+
+    counters = execution_results["external_call_budget_counters"]
+    assert counters["openrouter:run"] == counters["openrouter_planner:run"] + counters["openrouter_web_task:run"]
+    assert counters["openrouter_planner:run"] >= 1
+    assert execution_results["external_call_budget_counters"]["openrouter_web_task:run"] == 1
 
 
 def test_discovery_planning_input_and_validator_apply_source_policy() -> None:
@@ -1761,6 +1876,76 @@ def test_staged_execution_checkpoint_stops_weak_discovery_before_signal_search()
         for action in execution_results["adaptive_actions"]
     )
     assert "execution_stopped_for_review" in [event.event_type for event in events]
+
+
+def test_staged_execution_extracts_review_candidate_from_retrieved_source_before_signals() -> None:
+    class RetrievedLegalEntityProvider:
+        runtime_name = "retrieved-legal-entity"
+
+        def __init__(self) -> None:
+            self.calls = []
+
+        def run_search_plan(self, *, radar, search_plan):
+            _ = radar
+            self.calls.append(search_plan)
+            query = search_plan.queries[0]
+            if query.stage == "qualification_discovery":
+                return WebSearchProviderResult(
+                    provider_metadata={
+                        "provider": "retrieved-legal-entity",
+                        "retrieved_sources": [
+                            {
+                                "source_ref": "retrieved_kzsk",
+                                "title": "АО Красноярский завод синтетического каучука - СИБУР",
+                                "url": "https://example.test/kzsk",
+                                "snippet": "АО Красноярский завод синтетического каучука упоминается как промышленная компания.",
+                                "query_id": query.query_id,
+                            }
+                        ],
+                    }
+                )
+            return WebSearchProviderResult(provider_metadata={"provider": "retrieved-legal-entity"})
+
+    provider = RetrievedLegalEntityProvider()
+    radar = {
+        "radar_id": "retrieved-candidates",
+        "qualification_criteria": [{"code": "Q1", "label": "Find companies", "requirement_level": "required"}],
+        "intent_signals": [{"code": "S1", "label": "Signal", "rule": "Find signal."}],
+    }
+    plan = RadarExecutionPlan(
+        radar_id="retrieved-candidates",
+        tasks=[
+            RadarExecutionTask(
+                task_id="discover-q1",
+                stage="qualification_discovery",
+                subject_type="qualification",
+                subject_id="Q1",
+                query="Find company universe.",
+                purpose="Discover candidates.",
+            ),
+            RadarExecutionTask(
+                task_id="signal-s1",
+                stage="signal_search",
+                subject_type="signal",
+                subject_id="S1",
+                query="Find signal.",
+                purpose="Signal search.",
+            ),
+        ],
+    )
+
+    result, events, execution_results = run_staged_radar_execution(radar=radar, execution_plan=plan, provider=provider)
+
+    assert result.candidate_observations[0]["legal_name"] == "АО Красноярский завод синтетического каучука"
+    assert result.candidate_observations[0]["review_flags"] == [
+        "candidate_universe_from_retrieved_source",
+        "retrieved_source_candidate_requires_review",
+    ]
+    assert result.sources[0].evidence_ref == "retrieved_kzsk"
+    assert execution_results["candidate_scope"] == ["АО Красноярский завод синтетического каучука"]
+    assert execution_results["signal_task_count"] == 1
+    assert execution_results["checkpoint_summary"]["stopped_for_review"] is False
+    assert "candidate_universe_extracted_from_retrieval" in [event.event_type for event in events]
 
 
 def test_staged_execution_checkpoint_allows_signal_search_for_linked_candidates() -> None:

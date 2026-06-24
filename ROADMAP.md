@@ -3004,7 +3004,7 @@ Principles:
 
 ### Slice 0.7.6.1.9: Hierarchical Radar execution budgets and not-searched states
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Replace broad subject-level provider task limits with budgets that match
   Radar semantics: per run, per discovery rule, per candidate + qualification
   criterion, per candidate + signal, and per provider.
@@ -4083,19 +4083,19 @@ Principles:
   retrieved/analyzed sources either become legal-entity candidates or produce a
   clear stopped-for-review/source-obligation diagnostic.
 - Scope:
-  - Make broad web discovery extract legal-entity candidate universe records from
+  - Done: broad web discovery can extract review-needed legal-entity candidate universe records from
     retrieved/analyzed sources when source text contains company names.
-  - Run company-registry lookups only after concrete lookup terms exist, such as
+  - Done: company-registry lookups run only after concrete lookup terms exist, such as
     legal names, INN, OGRN, or strong legal-name-like fragments.
-  - When a registry source is selected but no concrete lookup terms exist, record
-    `not_executed_input_not_available` or `registry_lookup_insufficient`; do not
+  - Done: when a registry source is selected but no concrete lookup terms exist,
+    the run records `registry_lookup_insufficient`; it does not
     call the provider with a broad natural-language universe query and do not
     report the outcome as a clean `no_match`.
-  - Fix dossier summary parity: `retrieved_source_count` must match persisted
+  - Done: dossier summary parity is fixed: `retrieved_source_count` matches persisted
     retrieval metadata and technical trace counts for the same run.
-  - Count OpenRouter planner HTTP calls in external OpenRouter budget counters,
+  - Done: OpenRouter planner HTTP calls are counted in external OpenRouter budget counters,
     not only retrieval/extraction web-task calls.
-  - Make top-level run/dossier diagnostics clearly show
+  - Done: top-level run/dossier diagnostics clearly show
     `stopped_for_review` / `source_obligation_unmet` / `checkpoint_failed`
     states when checkpoints block signal search. A terminal `completed` run with
     zero candidates must not look like a successful negative result.
@@ -4124,11 +4124,11 @@ Principles:
   - Update Developer Guide and demo docs with the expected smoke-run diagnostic
     states.
 - Acceptance criteria:
-  - A smoke run with retrieved sources and zero candidates explains whether the
+  - Done: a smoke run with retrieved sources and zero candidates explains whether the
     blocker is extraction, evidence linking, source obligations, or budget.
-  - A registry source is never called with a broad universe-enumeration query
+  - Done: a registry source is never called with a broad universe-enumeration query
     unless its compiled connector capability explicitly supports enumeration.
-  - The next long live run is gated on this smoke fixture passing.
+  - Done: the next long live run is gated on this smoke fixture passing.
 
 ### Slice 0.7.6.1.11.9.2: Connector profile registry and capability compiler
 
@@ -4887,4 +4887,4 @@ None.
 
 ## Next Recommended Task
 
-Plan or implement `Slice 0.7.6.1.11.9.1: Candidate universe extraction from retrieved sources and smoke diagnostics parity`.
+Plan or implement `Slice 0.7.6.1.11.9.2: Connector profile registry and capability compiler`.

@@ -76,6 +76,13 @@ def dossier_response(
         source_usage_index=source_usage_index,
     )
     source_lifecycle_summary = _source_lifecycle_summary(source_lifecycle)
+    execution_outcome, execution_outcome_reason = _execution_outcome(
+        run=run,
+        output=output,
+        candidate_count=len(candidates),
+        checkpoint_summary=checkpoint_summary,
+        stopped_for_review_reason=stopped_for_review_reason,
+    )
     validation = _list(artifact.get("contract_validation")) or (output.contract_validation_payload if output is not None else [])
     timeline = [journal_event_response(event) for event in events if event.visibility != "debug"]
     used_source_count = sum(1 for item in source_responses if item.usage_status == "used")
@@ -120,10 +127,12 @@ def dossier_response(
         timeline=timeline,
         summary=RadarRunDossierSummaryResponse(
             output_state="available" if output is not None else ("failed" if run.status.value == "failed" else "pending"),
+            execution_outcome=execution_outcome,
+            execution_outcome_reason=execution_outcome_reason,
             query_count=len(queries),
             source_count=len(source_responses),
             used_source_count=used_source_count,
-            retrieved_source_count=source_lifecycle_summary.by_state.get("retrieved", 0),
+            retrieved_source_count=_retrieved_source_count(execution_results, source_lifecycle_summary.by_state.get("retrieved", 0)),
             linked_source_count=source_lifecycle_summary.by_state.get("linked", 0) + source_lifecycle_summary.by_state.get("used", 0),
             linking_failed_source_count=source_lifecycle_summary.by_state.get("linking_failed", 0),
             schema_rejected_source_count=source_lifecycle_summary.by_state.get("schema_rejected", 0),
@@ -137,6 +146,46 @@ def dossier_response(
             coverage_warning_count=len(coverage_warnings) + len(unresolved_candidate_gaps),
         ),
     )
+
+
+def _execution_outcome(
+    *,
+    run: RadarRunRecord,
+    output: RadarRunOutputRecord | None,
+    candidate_count: int,
+    checkpoint_summary: dict[str, Any],
+    stopped_for_review_reason: str,
+) -> tuple[str, str]:
+    if run.status.value == "failed":
+        return "failed", str(run.error_message or "")
+    if output is None:
+        return "pending", ""
+    if bool(checkpoint_summary.get("hard_failure_recommended")):
+        return "blocked_by_policy", _checkpoint_reason(checkpoint_summary) or stopped_for_review_reason
+    if stopped_for_review_reason or bool(checkpoint_summary.get("stopped_for_review")):
+        return "stopped_for_review", stopped_for_review_reason or _checkpoint_reason(checkpoint_summary)
+    if candidate_count:
+        return "completed_with_candidates", ""
+    return "completed_empty", ""
+
+
+def _checkpoint_reason(checkpoint_summary: dict[str, Any]) -> str:
+    by_reason = checkpoint_summary.get("by_reason")
+    if not isinstance(by_reason, dict) or not by_reason:
+        return ""
+    return ", ".join(str(key) for key in sorted(by_reason))
+
+
+def _retrieved_source_count(execution_results: dict[str, Any], fallback: int) -> int:
+    refs = {
+        str(item.get("source_ref") or item.get("evidence_ref") or item.get("id") or "").strip()
+        for item in _list(execution_results.get("retrieved_sources"))
+    }
+    refs.discard("")
+    if refs:
+        return len(refs)
+    explicit = execution_results.get("retrieved_source_count")
+    return explicit if isinstance(explicit, int) and not isinstance(explicit, bool) else fallback
 
 
 def _dossier_context(run: RadarRunRecord) -> RadarRunDossierContextResponse:

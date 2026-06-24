@@ -555,6 +555,35 @@ def test_radar_run_dossier_exposes_retrieved_sources_without_product_sources(tmp
     assert dossier["source_lifecycle"][0]["reason"] == "retrieved_not_extracted"
 
 
+def test_radar_run_dossier_retrieved_source_count_uses_origin_metadata(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    app = _app(tmp_path, database_url=database_url)
+    client = TestClient(app)
+    run = client.post("/api/radars/toir-quick-live/runs", json={"live": True, "requester": "test"}).json()
+    artifact = _artifact()
+    artifact["sources"] = []
+    artifact["candidates"] = []
+    artifact["run_metadata"]["execution_results"].update({
+        "retrieved_sources": [
+            {"source_ref": "retrieved_1", "title": "Retrieved source", "url": "https://example.test/retrieved"}
+        ],
+        "analyzed_sources": [
+            {"source_ref": "retrieved_1", "title": "Retrieved source", "url": "https://example.test/retrieved", "outcome": "not_used_by_candidate"}
+        ],
+    })
+
+    execute_radar_run_once(
+        run_id=run["run_id"],
+        live_executor=_FakeExecutor(artifact),
+        session_factory=app.state.session_factory,
+    )
+
+    dossier = client.get(f"/api/radar-runs/{run['run_id']}/dossier").json()
+    assert dossier["summary"]["retrieved_source_count"] == 1
+    assert dossier["summary"]["analyzed_only_source_count"] == 1
+    assert dossier["source_lifecycle_summary"]["by_state"] == {"analyzed_only": 1}
+
+
 def test_radar_run_dossier_marks_retrieved_sources_with_failed_evidence_linking(tmp_path: Path) -> None:
     database_url = _create_seeded_database(tmp_path)
     app = _app(tmp_path, database_url=database_url)
@@ -618,6 +647,37 @@ def test_radar_run_dossier_marks_retrieved_sources_rejected_by_extraction_schema
     assert dossier["summary"]["schema_rejected_source_count"] == 1
     assert dossier["source_lifecycle"][0]["state"] == "schema_rejected"
     assert dossier["source_lifecycle"][0]["reason"] == "extraction_schema_invalid"
+
+
+def test_radar_run_dossier_summary_exposes_stopped_for_review_outcome(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    app = _app(tmp_path, database_url=database_url)
+    client = TestClient(app)
+    run = client.post("/api/radars/toir-quick-live/runs", json={"live": True, "requester": "test"}).json()
+    artifact = _artifact()
+    artifact["sources"] = []
+    artifact["candidates"] = []
+    artifact["run_metadata"]["execution_results"].update({
+        "stopped_for_review_reason": "No qualified candidate scope is available for signal search.",
+        "checkpoint_summary": {
+            "decision_count": 1,
+            "by_action": {"stop_review_needed": 1},
+            "by_reason": {"no_candidate_scope": 1},
+            "blocking_count": 1,
+            "stopped_for_review": True,
+            "hard_failure_recommended": False,
+        },
+    })
+
+    execute_radar_run_once(
+        run_id=run["run_id"],
+        live_executor=_FakeExecutor(artifact),
+        session_factory=app.state.session_factory,
+    )
+
+    dossier = client.get(f"/api/radar-runs/{run['run_id']}/dossier").json()
+    assert dossier["summary"]["execution_outcome"] == "stopped_for_review"
+    assert dossier["summary"]["execution_outcome_reason"] == "No qualified candidate scope is available for signal search."
 
 
 def test_radar_run_dossier_preserves_verification_limited_source_reason(tmp_path: Path) -> None:

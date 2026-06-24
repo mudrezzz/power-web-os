@@ -120,7 +120,7 @@ class RadarSourceRegistry:
                     query=request.query,
                 ).model_dump())
                 continue
-            if _lookup_is_too_broad(task):
+            if not request.lookup_terms or _safe_lookup_is_too_broad(task, request=request):
                 outcomes.append(CompanySourceOutcome(
                     source_id=request.source_id,
                     provider_id=provider_id,
@@ -223,7 +223,7 @@ def _provider_id(source: dict[str, Any]) -> str:
 
 
 def _lookup_request(*, radar: dict[str, Any], task: RadarExecutionTask, source: dict[str, Any]) -> CompanyLookupRequest:
-    terms = [*task.candidate_scope, *_lookup_terms_from_text(task.query)]
+    terms = [*task.candidate_scope, *_safe_lookup_terms_from_text(task.query)]
     terms.extend(str(item) for item in source.get("keywords", []) if isinstance(item, str))
     return CompanyLookupRequest(
         radar_id=str(radar.get("radar_id") or ""),
@@ -281,6 +281,61 @@ def _is_concrete_lookup_term(term: str) -> bool:
 def _looks_like_broad_discovery(text: str) -> bool:
     lowered = text.lower()
     return any(marker in lowered for marker in ("find ", "all ", "candidate universe", "holding", "contour", "найд", "все ", "периметр", "холдинг"))
+
+
+def _safe_lookup_is_too_broad(task: RadarExecutionTask, *, request: CompanyLookupRequest | None = None) -> bool:
+    if task.candidate_scope:
+        return False
+    terms = list(request.lookup_terms) if request is not None else _safe_lookup_terms_from_text(task.query)
+    if any(_safe_is_concrete_lookup_term(term) for term in terms):
+        return False
+    return task.stage in {"qualification_discovery", "coverage_check"} and _safe_looks_like_broad_discovery(task.query)
+
+
+def _safe_lookup_terms_from_text(text: str) -> list[str]:
+    normalized = " ".join(str(text).split())
+    if not normalized:
+        return []
+    identifiers = re.findall(r"\b\d{10}\b|\b\d{13}\b|\b\d{15}\b", normalized)
+    quoted = re.findall(r"[\"«]([^\"»]{3,120})[\"»]", normalized)
+    legal_patterns = re.findall(
+        r"\b(?:АО|ПАО|ОАО|ЗАО|ООО|НАО|JSC|PJSC|LLC)\s+[\"«]?[A-Za-zА-Яа-яЁё0-9 .,\-]{3,90}",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    terms = [*identifiers, *quoted, *legal_patterns]
+    if _safe_is_concrete_lookup_term(normalized):
+        terms.append(normalized)
+    return _dedupe_text(terms)
+
+
+def _safe_is_concrete_lookup_term(term: str) -> bool:
+    value = " ".join(str(term).split())
+    if re.fullmatch(r"\d{10}|\d{13}|\d{15}", value):
+        return True
+    if re.search(r"\b(АО|ПАО|ОАО|ЗАО|ООО|НАО|JSC|PJSC|LLC)\b", value, flags=re.IGNORECASE):
+        return True
+    return 3 <= len(value) <= 90 and not _safe_looks_like_broad_discovery(value)
+
+
+def _safe_looks_like_broad_discovery(text: str) -> bool:
+    lowered = str(text).lower()
+    return any(marker in lowered for marker in (
+        "find ",
+        "all ",
+        "candidate universe",
+        "holding",
+        "contour",
+        "universe",
+        "найд",
+        "все ",
+        "контур",
+        "периметр",
+        "холдинг",
+        "групп",
+        "юр лиц",
+        "юридическ",
+    ))
 
 
 def _source_evidence_from_observations(

@@ -339,14 +339,14 @@ actions for sanitized payloads. Do not store or display raw hidden
 chain-of-thought. If the backend is unavailable, the same screen stays in
 explicit demo fallback mode and reads the generated JSON files.
 
-Do not treat a bounded smoke run as a discovery-quality benchmark until the
-current post-`0.7.6.1.11.9` repair slices are green. The next gates are:
-candidate-universe extraction from retrieved sources, smoke diagnostics parity,
-connector profile compilation, and capability-based planner validation. A smoke
-run that retrieves/analyzes sources but returns zero candidates should surface a
-blocking diagnostic such as extraction/linking failure, unmet source obligation,
-or stopped-for-review state; it should not be interpreted as a clean negative
-business result.
+Do not treat a bounded smoke run as a discovery-quality benchmark. The
+post-`0.7.6.1.11.9.1` smoke path extracts conservative review-needed legal
+entity candidates from retrieved/analyzed sources when explicit legal names are
+present. If no legal entity candidate can be extracted, the dossier must surface
+a blocking diagnostic such as extraction/linking failure, unmet source
+obligation, budget limit, or stopped-for-review state; it should not be
+interpreted as a clean negative business result. The next gates are connector
+profile compilation and capability-based planner/source validation.
 
 Use `Inspect run` / `Диагностика запуска` from the live run status, empty state,
 failed state, completed state, or zero-candidate state when you need run-level
@@ -811,10 +811,11 @@ tests.
 DaData lookup is bounded identity/enrichment, not holding-contour enumeration.
 The source registry builds concrete lookup terms from candidate scope,
 legal-name-like text, INN, OGRN, and source keywords. If a task only asks for a
-broad universe such as "find all companies in a holding", DaData returns an
-explicit `registry_lookup_insufficient` outcome and the adaptive pipeline should
-use web/coverage strategy instead of pretending the registry enumerated the
-contour.
+broad universe such as "find all companies in a holding" or "найди все юрлица в
+периметре", the backend does not call DaData. It records
+`registry_lookup_insufficient` so the adaptive pipeline can use web/coverage
+strategy instead. `no_match` is reserved for concrete lookup terms where the
+provider actually returned zero records.
 
 When DaData returns observations, the backend injects them into subsequent
 provider calls as `structured_company_observations`: source ref, legal name,
@@ -979,6 +980,11 @@ available but failed the extraction contract; `verification_failed` keeps the
 reachability risk and reason visible. Use `summary.diagnostic_source_count` and
 `source_lifecycle_summary.by_state` to read these cases before opening raw
 technical trace.
+
+Use `summary.execution_outcome` to distinguish `completed_with_candidates`,
+`completed_empty`, `stopped_for_review`, `blocked_by_policy`, `failed`, and
+`pending`. A completed worker job with `execution_outcome=stopped_for_review`
+is a diagnostic stop, not a successful negative market result.
 
 Run the current Radar execution preflight before manual live testing:
 

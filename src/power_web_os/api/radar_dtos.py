@@ -340,6 +340,8 @@ class RadarRunDossierSourceLifecycleSummaryResponse(BaseModel):
 
 class RadarRunDossierSummaryResponse(BaseModel):
     output_state: str
+    execution_outcome: str = ""
+    execution_outcome_reason: str = ""
     query_count: int = 0
     source_count: int = 0
     used_source_count: int = 0

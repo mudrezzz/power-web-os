@@ -35,6 +35,7 @@ from power_web_os.application.live_radar_extraction_diagnostics import (
     extraction_validation_issues,
 )
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan
+from power_web_os.application.live_radar_retrieved_candidates import candidates_from_retrieved_sources
 from power_web_os.application.radar_source_obligations import (
     obligation_decisions_from_plan,
     source_obligation_summary,
@@ -197,6 +198,16 @@ def run_staged_radar_execution(
             )
             events.append(_task_event(task, result, "qualification_discovery_planned"))
 
+        sources, observations, provider_metadata, candidate_scope = _extract_retrieved_candidates(
+            radar=radar,
+            sources=sources,
+            observations=observations,
+            provider_metadata=provider_metadata,
+            candidate_scope=candidate_scope,
+            completed_qualification_ids=completed_qualification_ids,
+            events=events,
+            smoke_candidate_limit=external_budget.settings.smoke_max_candidates,
+        )
         candidate_scope = _limit_smoke_candidates(candidate_scope, external_budget.settings.smoke_max_candidates)
 
         recovery_state, _ = checkpoint_executor.recover(
@@ -362,6 +373,17 @@ def run_staged_radar_execution(
         provider_metadata, candidate_scope = recovery_state.provider_metadata, recovery_state.candidate_scope
         candidate_scope = _limit_smoke_candidates(candidate_scope, external_budget.settings.smoke_max_candidates)
         stopped_for_review_reason = stopped_for_review_reason or recovery_state.stopped_for_review_reason
+
+        sources, observations, provider_metadata, candidate_scope = _extract_retrieved_candidates(
+            radar=radar,
+            sources=sources,
+            observations=observations,
+            provider_metadata=provider_metadata,
+            candidate_scope=candidate_scope,
+            completed_qualification_ids=completed_qualification_ids,
+            events=events,
+            smoke_candidate_limit=external_budget.settings.smoke_max_candidates,
+        )
 
         pre_signal_source_obligations = obligation_decisions_from_plan(
             global_policy=dict(radar.get("global_search_policy") or {}),
@@ -561,6 +583,50 @@ def _limit_smoke_signal_tasks(tasks: list[RadarExecutionTask], limit: int | None
     if limit is None or limit <= 0:
         return tasks
     return tasks[:limit]
+
+
+def _extract_retrieved_candidates(
+    *,
+    radar: dict[str, Any],
+    sources: list[RadarSourceEvidence],
+    observations: list[dict[str, Any]],
+    provider_metadata: dict[str, Any],
+    candidate_scope: list[str],
+    completed_qualification_ids: list[str],
+    events: list[LiveRadarPipelineEvent],
+    smoke_candidate_limit: int | None,
+) -> tuple[list[RadarSourceEvidence], list[dict[str, Any]], dict[str, Any], list[str]]:
+    retrieved_candidates = candidates_from_retrieved_sources(
+        radar=radar,
+        provider_metadata=provider_metadata,
+        known_candidate_names=candidate_name_set(observations),
+        known_source_refs={source.evidence_ref for source in sources if source.evidence_ref},
+    )
+    if not retrieved_candidates.candidate_observations:
+        return sources, observations, provider_metadata, candidate_scope
+    merged_sources, merged_observations, merged_metadata = _merge_result(sources, observations, provider_metadata, retrieved_candidates)
+    merged_scope = _eligible_candidate_names(
+        radar=radar,
+        sources=merged_sources,
+        observations=merged_observations,
+        completed_qualification_ids=completed_qualification_ids,
+    )
+    merged_scope = _limit_smoke_candidates(merged_scope, smoke_candidate_limit)
+    events.append(LiveRadarPipelineEvent(
+        event_type="candidate_universe_extracted_from_retrieval",
+        phase="collection",
+        actor="application",
+        node_name="retrieved_candidate_extraction",
+        visibility="operator",
+        summary=f"Extracted {len(retrieved_candidates.candidate_observations)} review-needed candidates from retrieved sources.",
+        payload={
+            "candidate_observation_count": len(retrieved_candidates.candidate_observations),
+            "source_count": len(retrieved_candidates.sources),
+            "extractions": retrieved_candidates.provider_metadata.get("retrieved_candidate_extractions", []),
+        },
+        source_refs=[source.evidence_ref for source in retrieved_candidates.sources if source.evidence_ref],
+    ))
+    return merged_sources, merged_observations, merged_metadata, merged_scope
 
 
 def _external_budget_events(exhaustion_events: list[dict[str, object]]) -> list[LiveRadarPipelineEvent]:

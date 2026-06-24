@@ -214,13 +214,14 @@ Until the remaining source/provider hardening slices are implemented, a
 manual `Run radar` is useful for diagnostics and smoke testing, not for judging
 final discovery quality.
 
-After `0.7.6.1.11.9`, the next repair gates remain mandatory before a long
-quality run: candidate-universe extraction from retrieved sources, smoke
-diagnostics parity, external connector profile compilation, and
-capability-based planner/source validation. If a smoke run retrieves or
-analyzes sources but returns zero candidates, inspect the stopped-for-review,
-source-obligation, extraction/linking, and budget diagnostics first. Do not
-treat that output as "the market has no matching companies."
+After `0.7.6.1.11.9.1`, smoke diagnostics should no longer look like a clean
+empty result when retrieval produced material. Retrieved/analyzed sources with
+explicit legal names can become conservative review-needed account candidates.
+If candidate extraction still cannot proceed, inspect `summary.execution_outcome`,
+stopped-for-review, source-obligation, extraction/linking, and budget diagnostics
+first. Do not treat that output as "the market has no matching companies." The
+next repair gates are external connector profile compilation and
+capability-based planner/source validation.
 
 The first extraction repair slice is now implemented. In diagnostics, treat
 `extraction_repair_needed` as "the provider returned usable material, but the
@@ -244,11 +245,12 @@ smoke runs use fixtures. In `live` mode, set `DADATA_API_KEY` and
 trace. DaData supports legal-entity identity and registry facts, while open web
 remains responsible for current evidence and intent signals.
 
-DaData is executed by the backend as a bounded company lookup. It works best
+DaData is executed by the backend as a bounded company lookup. It works only
 when the task has a concrete legal name, INN, OGRN, or candidate scope. For broad
-requests such as finding every company in a holding contour, the run records
-`registry_lookup_insufficient` and should continue through web/coverage
-strategy. When DaData does return company observations, those facts are injected
+requests such as finding every company in a holding contour, the backend does
+not call DaData; the run records `registry_lookup_insufficient` and should
+continue through web/coverage strategy. `no_match` means a concrete lookup was
+performed and returned zero records. When DaData does return company observations, those facts are injected
 into later extraction as structured company observations so the LLM does not
 need to simulate a registry lookup in free text.
 
