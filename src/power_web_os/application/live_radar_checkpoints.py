@@ -128,6 +128,29 @@ class RadarExecutionCheckpointService:
         if checkpoint.phase == "before_signal_search":
             return self._before_signal_search(checkpoint)
 
+        if checkpoint.phase in {"after_discovery", "after_coverage"}:
+            if checkpoint.candidate_scope_count < self._policy.min_candidates_before_signals:
+                return _decision(
+                    checkpoint,
+                    action="retry_same_source",
+                    reason_code="weak_candidate_coverage",
+                    severity="warning",
+                    message="Candidate discovery is too weak; retry or source expansion is required before continuing.",
+                    details={"candidate_scope_count": checkpoint.candidate_scope_count},
+                )
+            if checkpoint.linked_source_count < self._policy.min_linked_sources_before_signals:
+                return _decision(
+                    checkpoint,
+                    action="retry_same_source",
+                    reason_code="weak_candidate_coverage",
+                    severity="warning",
+                    message="Discovery candidates do not have enough linked source evidence.",
+                    details={
+                        "linked_source_count": checkpoint.linked_source_count,
+                        "min_linked_sources": self._policy.min_linked_sources_before_signals,
+                    },
+                )
+
         if checkpoint.budget_exhaustion_events:
             return _decision(
                 checkpoint,

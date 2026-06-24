@@ -321,13 +321,14 @@ context, definition version, task context, persisted qualification-first search
 plan, source usage, validation warnings, and non-debug timeline events. The
 dossier also exposes checkpoint metadata: after discovery, gates, coverage, and
 before signal search the application records whether execution continued,
-recommended retry/expansion/revision, stopped for review, or recommended hard
-failure. The current implementation enforces the pre-signal safety gate; actual
-checkpoint-driven retry, source expansion, and planner revision execution must
-be added through the `0.7.6.1.11.7.1` to `0.7.6.1.11.7.3` follow-up slices.
-Treat `stopped_for_review_reason` and `checkpoint_warnings` as the first place
-to inspect why a run did not proceed to signal search. The dossier is safe for
-the normal product UI. API-backed live runs also expose a
+retried a bounded task, expanded to an allowed source scope, attempted a compact
+revision-style recovery, stopped for review, or recommended hard failure. The
+first adaptive recovery loop runs after discovery and coverage checkpoints; it
+does not start signal search until the latest pre-signal checkpoint returns
+`continue`. Treat `stopped_for_review_reason`, `checkpoint_warnings`, and
+`adaptive_actions` as the first place to inspect why a run did or did not
+recover from weak discovery. The dossier is safe for the normal product UI.
+API-backed live runs also expose a
 separate `Trace` tab backed by
 `GET /api/radar-runs/{run_id}/technical-trace`; it is developer/admin oriented
 and contains sanitized per-task pipeline/provider payloads plus redaction
@@ -443,11 +444,10 @@ Rules:
 - Adaptive execution checkpoints should guard expensive live runs. After
   discovery, gates, and coverage, check candidate counts, linked-source counts,
   required-source usage, schema/linking failures, budget pressure, and coverage
-  risk. The current safety gate can continue, stop as review-needed, or
-  recommend hard failure before signal search. Follow-up adaptive recovery must
-  make retry, source expansion, and planner revision executable under explicit
-  budgets. Do not let a weak discovery result silently freeze the candidate
-  universe and proceed to signal search.
+  risk. The first recovery loop can run bounded retry, allowed source expansion,
+  and compact revision-style attempts under explicit budgets; if recovery does
+  not improve the result, execution stops as review-needed instead of silently
+  freezing a weak candidate universe and proceeding to signal search.
 - DaData and future structured registries are backend source providers. The
   backend should call them, normalize typed observations, and pass facts into
   extraction/evaluation. Do not ask the LLM to "use DaData" as if it were a
@@ -979,9 +979,9 @@ POWER_WEB_OS_RADAR_MAX_CHECKPOINT_REVISIONS_PER_RUN=2
 POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE=1
 ```
 
-They keep review checkpoints deterministic. Today they are persisted with the
-checkpoint decisions and will become hard caps for the adaptive recovery loop.
-That recovery loop is not accepted until fast fake/recorded tests prove:
+They keep review checkpoints deterministic. They are persisted with checkpoint
+decisions and enforced by the first adaptive recovery loop. The fast
+fake/recorded tests prove:
 
 - weak discovery can execute a bounded retry and then continue;
 - source expansion creates a bounded allowed-source task, never a broad fallback;
@@ -991,18 +991,17 @@ That recovery loop is not accepted until fast fake/recorded tests prove:
 - signal search starts only after the final pre-signal checkpoint returns
   `continue`.
 
-The red contract for that behavior lives in
-`tests/test_radar_adaptive_execution_red.py`:
+The recovery contract lives in `tests/test_radar_adaptive_execution.py`:
 
 ```bash
-python -m pytest tests/test_radar_adaptive_execution_red.py -q
+python -m pytest tests/test_radar_adaptive_execution.py -q
 ```
 
-The expected result before the recovery loop is implemented is one green safety
-gate test plus strict `xfail` cases for missing retry, source expansion, planner
-revision, retry-limit, and revision-limit behavior. If one of those `xfail`
-cases unexpectedly passes, remove the marker and move the behavior into the
-normal adaptive execution suite instead of leaving it hidden as debt.
+The expected result is a fully green suite. It runs without OpenRouter, DaData,
+Redis, or Celery and verifies retry, allowed source expansion, compact
+revision-style recovery, retry/revision caps, budget exhaustion, and the rule
+that signal search starts only after recovered discovery passes the final
+checkpoint.
 
 Targeted live probes are opt-in and bounded. Use them only after static
 preflight is readable:

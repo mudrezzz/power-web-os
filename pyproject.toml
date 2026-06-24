@@ -48,5 +48,4 @@ testpaths = ["tests"]
 addopts = "-q"
 markers = [
   "live_dadata: opt-in live DaData API probes; requires POWER_WEB_OS_RUN_LIVE_DADATA_TESTS=1 and local credentials",
-  "adaptive_red: fast xfail contracts for adaptive Radar recovery behavior that is intentionally not implemented yet",
 ]

@@ -3681,8 +3681,9 @@ Principles:
     evidence-linking condition.
 - Out of scope:
   - Executing checkpoint actions such as planner revision, source expansion, or
-    checkpoint-driven retry loops. Those are deliberately split into
-    `0.7.6.1.11.7.1` through `0.7.6.1.11.7.3` below.
+    checkpoint-driven retry loops. The first bounded recovery loop is delivered
+    in `0.7.6.1.11.7.2`; broader scenario coverage remains
+    `0.7.6.1.11.7.3`.
   - Long-running autonomous loops without budget limits.
   - Raw hidden chain-of-thought storage.
   - Benchmark quality claims.
@@ -3724,9 +3725,8 @@ Principles:
     decision.
   - Cover weak discovery, empty required source, malformed extraction schema,
     unresolved evidence refs, high coverage risk, and exhausted budgets.
-  - Mark currently missing behavior explicitly with `xfail(strict=True)` or a
-    dedicated `adaptive_red` marker so regular CI remains meaningful while the
-    debt is visible.
+  - The first version used strict red/xfail contracts; `0.7.6.1.11.7.2` turns
+    those contracts into the normal green adaptive execution suite.
 - Out of scope:
   - Implementing retry, source expansion, or planner revision execution.
   - Live OpenRouter, DaData, or Perplexity calls.
@@ -3742,29 +3742,27 @@ Principles:
     called with compact checkpoint facts and the revised executable plan is
     applied.
 - Tests:
-  - `weak_discovery_should_retry_then_continue` starts red/xfail until the
-    executor performs the second bounded call.
-  - `weak_discovery_should_expand_allowed_sources` starts red/xfail until source
-    expansion creates a bounded task.
-  - `schema_failure_should_request_plan_revision` starts red/xfail until planner
-    revision is executed.
-  - `revision_limit_should_stop_for_review` starts red/xfail until revision caps
-    are enforced.
-  - `retry_limit_should_stop_for_review` starts red/xfail until checkpoint retry
-    caps are enforced.
+  - `weak_discovery_should_retry_then_continue` codified that the executor must
+    perform a second bounded call before continuing.
+  - `weak_discovery_should_expand_allowed_sources` codified that source
+    expansion must create a bounded allowed-source task.
+  - `schema_failure_should_request_plan_revision` codified that revision-style
+    recovery must be executed before treating schema failure as recovered.
+  - `revision_limit_should_stop_for_review` codified revision cap behavior.
+  - `retry_limit_should_stop_for_review` codified checkpoint retry cap behavior.
 - Docs:
   - Developer Guide lists these tests as the precondition for implementing
     adaptive recovery.
 - Acceptance criteria:
-  - Done: `tests/test_radar_adaptive_execution_red.py` shows exactly which
-    adaptive actions are not implemented.
-  - Done: each red/xfail scenario names the required runtime behavior and expected
+  - Done: the initial red contract identified which adaptive actions were not
+    implemented.
+  - Done: each scenario names the required runtime behavior and expected
     metadata fields.
   - Done: the suite runs without network calls and completes in seconds.
 
 ### Slice 0.7.6.1.11.7.2: Adaptive discovery recovery loop
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Execute checkpoint-selected adaptive actions during discovery and
   pre-signal review instead of only recording decisions.
 - User value: If the first discovery strategy is weak, the Radar can retry,
@@ -3782,6 +3780,21 @@ Principles:
   - Implement `stop_review_needed` and `fail_hard` as terminal execution
     outcomes with explicit metadata.
   - Re-run the relevant checkpoint after each adaptive action.
+- Implemented:
+  - A backend-owned `RadarCheckpointActionExecutor` runs bounded recovery after
+    discovery and coverage checkpoints.
+  - Weak discovery can execute one capped same-source retry and then continue
+    when the second recorded result is strong.
+  - Weak configured/global discovery can expand to an allowed `additional`
+    source scope when open/additional sources are permitted by policy.
+  - Extraction/schema failure can execute a bounded revision-style recovery
+    attempt and clear the blocking issue only when the revised recorded result is
+    usable.
+  - Retry and revision caps stop the run as review-needed with explicit
+    `stopped_for_review_reason`; signal search does not run after unrecovered
+    weak discovery.
+  - Total run budget exhaustion during recovery stops as review-needed rather
+    than falling through to normal signal search.
 - Runtime limits:
   - `POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE` caps retry and source
     expansion loops per checkpoint stage.
@@ -3818,6 +3831,9 @@ Principles:
     scope, task id, budget key, and outcome.
   - `checkpoint_decisions` show the before/after checkpoint chain.
   - Recorded/fake tests prove recovery without network calls.
+  - Done: `python -m pytest tests/test_radar_adaptive_execution.py -q` passes
+    the retry, source expansion, revision, cap, and budget scenarios as normal
+    green tests.
 
 ### Slice 0.7.6.1.11.7.3: Adaptive execution coverage suite and fast validation harness
 
@@ -4597,4 +4613,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11.7.2: Adaptive discovery recovery loop`.
+Implement `Slice 0.7.6.1.11.7.3: Adaptive execution coverage suite and fast validation harness`.

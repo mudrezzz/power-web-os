@@ -603,6 +603,7 @@ def test_useful_result_budget_retries_weak_discovery_result() -> None:
         min_useful_sources_per_discovery_task=1,
         min_candidates_per_discovery_task=1,
         max_discovery_retries_per_task=1,
+        max_checkpoint_retries_per_stage=0,
     )
 
     assert len(provider.calls) == 2
@@ -1403,7 +1404,11 @@ def test_execution_plan_compilation_is_generic_and_qualification_first() -> None
 def test_staged_execution_does_not_search_signals_for_rejected_candidates() -> None:
     provider = _StageAwareProvider()
     service = LiveRadarRunService(provider)
-    state = LiveICPRadarRunState(radar=build_live_mini_radar_definition(), live=False)
+    state = LiveICPRadarRunState(
+        radar=build_live_mini_radar_definition(),
+        live=False,
+        task_context={"max_checkpoint_retries_per_stage": 0},
+    )
 
     collected = service.run_web_search(service.build_search_plan(state))
 
@@ -1543,7 +1548,12 @@ def test_staged_execution_does_not_score_project_as_legal_entity_candidate() -> 
         ],
     )
 
-    result, _, execution_results = run_staged_radar_execution(radar=radar, execution_plan=plan, provider=provider)
+    result, _, execution_results = run_staged_radar_execution(
+        radar=radar,
+        execution_plan=plan,
+        provider=provider,
+        max_checkpoint_retries_per_stage=0,
+    )
 
     assert result.candidate_observations == []
     assert [call.queries[0].stage for call in provider.calls] == ["qualification_discovery"]
@@ -1603,11 +1613,18 @@ def test_staged_execution_checkpoint_stops_weak_discovery_before_signal_search()
     result, events, execution_results = run_staged_radar_execution(radar=radar, execution_plan=plan, provider=provider)
 
     assert result.candidate_observations == []
-    assert [call.queries[0].stage for call in provider.calls] == ["qualification_discovery"]
+    assert [call.queries[0].stage for call in provider.calls] == [
+        "qualification_discovery",
+        "qualification_discovery",
+    ]
     assert execution_results["signal_task_count"] == 0
-    assert execution_results["stopped_for_review_reason"] == "No qualified candidate scope is available for signal search."
+    assert execution_results["stopped_for_review_reason"] == "Checkpoint retry limit reached before discovery recovered."
     assert execution_results["checkpoint_summary"]["stopped_for_review"] is True
     assert execution_results["checkpoint_decisions"][-1]["action"] == "stop_review_needed"
+    assert any(
+        action.get("action") == "stop_review_needed" and action.get("outcome") == "limit_exhausted"
+        for action in execution_results["adaptive_actions"]
+    )
     assert "execution_stopped_for_review" in [event.event_type for event in events]
 
 

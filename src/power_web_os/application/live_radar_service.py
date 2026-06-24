@@ -487,4 +487,4 @@ def _int_context_value(context: dict[str, Any], key: str) -> int | None:
         parsed = int(value)
     except (TypeError, ValueError):
         return None
-    return parsed if parsed > 0 else None
+    return parsed if parsed >= 0 else None

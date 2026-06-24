@@ -1,15 +1,12 @@
-"""Red contracts for adaptive Radar checkpoint execution.
+"""Fast contracts for adaptive Radar checkpoint execution.
 
 These tests deliberately distinguish a checkpoint *decision* from executed
-adaptive behavior. Most tests are strict xfail until the recovery loop in
-Slice 0.7.6.1.11.7.2 applies retry, source-expansion, and revision actions.
+adaptive behavior.
 """
 
 from __future__ import annotations
 
 from typing import Any
-
-import pytest
 
 from power_web_os.application.live_radar_contracts import (
     RadarExecutionPlan,
@@ -19,8 +16,6 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProviderResult,
 )
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
-
-pytestmark = pytest.mark.adaptive_red
 
 
 def test_unrecovered_weak_discovery_does_not_start_signal_search() -> None:
@@ -33,14 +28,13 @@ def test_unrecovered_weak_discovery_does_not_start_signal_search() -> None:
     )
 
     assert result.candidate_observations == []
-    assert provider.stages == ["qualification_discovery"]
+    assert provider.stages == ["qualification_discovery", "qualification_discovery"]
     assert execution_results["signal_task_count"] == 0
     assert execution_results["checkpoint_summary"]["stopped_for_review"] is True
     assert execution_results["checkpoint_decisions"][-1]["action"] == "stop_review_needed"
     assert "execution_stopped_for_review" in [event.event_type for event in events]
 
 
-@pytest.mark.xfail(strict=True, reason="Slice 0.7.6.1.11.7.2 must execute checkpoint retry_same_source.")
 def test_weak_discovery_should_retry_same_source_then_continue() -> None:
     provider = ScriptedProvider([weak_result(), strong_discovery_result(), signal_result()])
 
@@ -59,7 +53,6 @@ def test_weak_discovery_should_retry_same_source_then_continue() -> None:
     )
 
 
-@pytest.mark.xfail(strict=True, reason="Slice 0.7.6.1.11.7.2 must execute checkpoint expand_sources.")
 def test_weak_discovery_should_expand_allowed_sources() -> None:
     provider = SourceExpansionProvider()
 
@@ -79,7 +72,6 @@ def test_weak_discovery_should_expand_allowed_sources() -> None:
     )
 
 
-@pytest.mark.xfail(strict=True, reason="Slice 0.7.6.1.11.7.2 must execute planner revision from checkpoint facts.")
 def test_schema_failure_should_apply_plan_revision() -> None:
     provider = ScriptedProvider([schema_invalid_result(), strong_discovery_result(), signal_result()])
 
@@ -98,7 +90,6 @@ def test_schema_failure_should_apply_plan_revision() -> None:
     )
 
 
-@pytest.mark.xfail(strict=True, reason="Slice 0.7.6.1.11.7.2 must enforce revision caps during recovery.")
 def test_revision_limit_should_stop_for_review_without_blind_fallback() -> None:
     provider = ScriptedProvider([schema_invalid_result(), schema_invalid_result(), schema_invalid_result()])
 
@@ -115,7 +106,6 @@ def test_revision_limit_should_stop_for_review_without_blind_fallback() -> None:
     assert "revision" in execution_results["stopped_for_review_reason"].lower()
 
 
-@pytest.mark.xfail(strict=True, reason="Slice 0.7.6.1.11.7.2 must enforce checkpoint retry caps during recovery.")
 def test_retry_limit_should_stop_for_review_without_signal_search() -> None:
     provider = ScriptedProvider([weak_result(), weak_result()])
 

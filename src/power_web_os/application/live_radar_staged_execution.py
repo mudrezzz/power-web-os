@@ -13,6 +13,11 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProvider,
     WebSearchProviderResult,
 )
+from power_web_os.application.live_radar_checkpoint_actions import (
+    RadarCheckpointActionExecutor,
+    RadarCheckpointRecoveryContext,
+    RadarCheckpointRecoveryState,
+)
 from power_web_os.application.live_radar_checkpoint_execution import record_execution_checkpoint
 from power_web_os.application.live_radar_checkpoints import RadarExecutionCheckpointPolicy, RadarExecutionCheckpointService, checkpoint_summary
 from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget, budget_settings_from_context
@@ -123,10 +128,11 @@ def run_staged_radar_execution(
     )
     checkpoint_service = RadarExecutionCheckpointService(
         RadarExecutionCheckpointPolicy(
-            max_revisions_per_run=max_checkpoint_revisions_per_run or 2,
-            max_retries_per_stage=max_checkpoint_retries_per_stage or 1,
+            max_revisions_per_run=2 if max_checkpoint_revisions_per_run is None else max_checkpoint_revisions_per_run,
+            max_retries_per_stage=1 if max_checkpoint_retries_per_stage is None else max_checkpoint_retries_per_stage,
         )
     )
+    checkpoint_executor = RadarCheckpointActionExecutor()
     retrieval_plan = retrieval_plan_from_execution_plan(execution_plan)
 
     discovery_tasks = _tasks_for_stage(execution_plan, "qualification_discovery")
@@ -157,26 +163,22 @@ def run_staged_radar_execution(
         )
         events.append(_task_event(task, result, "qualification_discovery_planned"))
 
-    record_execution_checkpoint(
+    recovery_state, _ = checkpoint_executor.recover(
         checkpoint_id="after-discovery",
         phase="after_discovery",
-        service=checkpoint_service,
-        candidate_count=len(_normalized_candidates(radar=radar, sources=sources, observations=observations)),
-        sources=sources,
-        observations=observations,
-        provider_metadata=provider_metadata,
-        candidate_scope=candidate_scope,
-        coverage_checks=coverage_checks,
-        coverage_warnings=coverage_warnings,
-        unresolved_candidate_gaps=unresolved_candidate_gaps,
-        budget=task_budget,
-        useful_result_retry_records=useful_result_retry_records,
-        source_obligation_decisions=[],
-        checkpoint_decisions=checkpoint_decisions,
-        adaptive_actions=adaptive_actions,
-        checkpoint_warnings=checkpoint_warnings,
-        events=events,
+        tasks=discovery_tasks,
+        state=RadarCheckpointRecoveryState(sources, observations, provider_metadata, candidate_scope),
+        context=RadarCheckpointRecoveryContext(
+            radar=radar, execution_plan=execution_plan, provider=provider, service=checkpoint_service,
+            budget=task_budget, completed_qualification_ids=completed_qualification_ids,
+            checkpoint_decisions=checkpoint_decisions, adaptive_actions=adaptive_actions,
+            checkpoint_warnings=checkpoint_warnings, events=events, executed_task_ids=executed_task_ids,
+            useful_result_retry_records=useful_result_retry_records,
+        ),
     )
+    sources, observations = recovery_state.sources, recovery_state.observations
+    provider_metadata, candidate_scope = recovery_state.provider_metadata, recovery_state.candidate_scope
+    stopped_for_review_reason = recovery_state.stopped_for_review_reason
 
     gate_tasks = _tasks_for_stage(execution_plan, "qualification_gate")
     sources, observations, provider_metadata, candidate_scope = _run_gate_pass(
@@ -297,26 +299,24 @@ def run_staged_radar_execution(
             completed_qualification_ids=completed_qualification_ids,
         )
 
-    record_execution_checkpoint(
+    recovery_state, _ = checkpoint_executor.recover(
         checkpoint_id="after-coverage",
         phase="after_coverage",
-        service=checkpoint_service,
-        candidate_count=len(_normalized_candidates(radar=radar, sources=sources, observations=observations)),
-        sources=sources,
-        observations=observations,
-        provider_metadata=provider_metadata,
-        candidate_scope=candidate_scope,
-        coverage_checks=coverage_checks,
-        coverage_warnings=coverage_warnings,
-        unresolved_candidate_gaps=unresolved_candidate_gaps,
-        budget=task_budget,
-        useful_result_retry_records=useful_result_retry_records,
-        source_obligation_decisions=[],
-        checkpoint_decisions=checkpoint_decisions,
-        adaptive_actions=adaptive_actions,
-        checkpoint_warnings=checkpoint_warnings,
-        events=events,
+        tasks=coverage_tasks,
+        state=RadarCheckpointRecoveryState(sources, observations, provider_metadata, candidate_scope),
+        context=RadarCheckpointRecoveryContext(
+            radar=radar, execution_plan=execution_plan, provider=provider, service=checkpoint_service,
+            budget=task_budget, completed_qualification_ids=completed_qualification_ids,
+            checkpoint_decisions=checkpoint_decisions, adaptive_actions=adaptive_actions,
+            checkpoint_warnings=checkpoint_warnings, events=events, executed_task_ids=executed_task_ids,
+            coverage_checks=coverage_checks, coverage_warnings=coverage_warnings,
+            unresolved_candidate_gaps=unresolved_candidate_gaps,
+            useful_result_retry_records=useful_result_retry_records,
+        ),
     )
+    sources, observations = recovery_state.sources, recovery_state.observations
+    provider_metadata, candidate_scope = recovery_state.provider_metadata, recovery_state.candidate_scope
+    stopped_for_review_reason = stopped_for_review_reason or recovery_state.stopped_for_review_reason
 
     pre_signal_source_obligations = obligation_decisions_from_plan(
         global_policy=dict(radar.get("global_search_policy") or {}),
@@ -345,7 +345,7 @@ def run_staged_radar_execution(
         events=events,
     )
     if not pre_signal_decision.should_run_signal_search:
-        stopped_for_review_reason = pre_signal_decision.message
+        stopped_for_review_reason = stopped_for_review_reason or pre_signal_decision.message
 
     signal_task_count = 0
     signal_budget_warnings: list[str] = []

@@ -35,17 +35,19 @@ silent fallbacks.
 Live Radar execution will use application-owned checkpoints after candidate
 discovery, qualification gates, coverage checks, and before signal search.
 Checkpoints evaluate candidate counts, linked-source counts, required-source
-usage, coverage risk, schema/linking failures, and budget pressure. The current
-safety layer records checkpoint decisions and blocks signal search when the
-pre-signal checkpoint is weak or invalid.
+usage, coverage risk, schema/linking failures, and budget pressure. The safety
+layer records checkpoint decisions and blocks signal search when the pre-signal
+checkpoint is weak or invalid.
 
-Full adaptive recovery requires a separate application action executor. A
-checkpoint decision must not be treated as implemented recovery unless the
-executor actually performs the selected action: retry a bounded task, expand to
-an allowed source scope, request and apply a planner revision, stop as
-review-needed, or fail hard. Those actions must be governed by explicit retry,
-revision, source-policy, and total-run budgets and must be covered by
-fake/recorded tests before broad live runs are used as validation.
+Adaptive recovery is executed by an application action executor. A checkpoint
+decision is considered implemented only when the executor actually performs the
+selected bounded action: retry the same task, expand to an allowed source scope,
+attempt compact revision-style recovery, stop as review-needed, or fail hard.
+Those actions are governed by explicit retry, revision, source-policy, and
+total-run budgets and are covered by fake/recorded tests before broad live runs
+are used as validation. Broader scenario consolidation and fixture reuse remain
+a follow-up validation-harness task, not a reason to validate behavior first
+through long live runs.
 
 DaData will be treated as a backend source provider, not as a string in a prompt.
 The backend calls DaData, normalizes company observations, and passes structured
