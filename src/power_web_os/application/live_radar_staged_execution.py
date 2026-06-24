@@ -24,6 +24,7 @@ from power_web_os.application.live_radar_execution_budget import RadarExecutionB
 from power_web_os.application.live_radar_execution_plan import scoped_execution_task
 from power_web_os.application.live_radar_external_budget import (
     RadarExternalCallBudget,
+    current_external_call_budget,
     external_budget_settings_from_context,
     external_call_budget_context,
 )
@@ -100,9 +101,14 @@ def run_staged_radar_execution(
     max_checkpoint_retries_per_stage: int | None = None,
     run_profile: str | None = None,
     max_openrouter_calls_per_run: int | None = None,
+    max_openrouter_planner_calls_per_run: int | None = None,
+    max_openrouter_web_task_calls_per_run: int | None = None,
+    max_openrouter_server_tool_web_searches_per_run: int | None = None,
     max_dadata_lookups_per_run: int | None = None,
     max_source_verification_requests_per_run: int | None = None,
     max_provider_retries_per_task: int | None = None,
+    openrouter_web_max_results_per_call: int | None = None,
+    openrouter_web_max_total_results_per_call: int | None = None,
     smoke_max_candidates: int | None = None,
     smoke_max_signals: int | None = None,
     source_policy_decisions: list[dict[str, Any]] | None = None,
@@ -133,12 +139,17 @@ def run_staged_radar_execution(
         max_total_web_tasks_per_run=max_total_web_tasks_per_run,
     )
     task_budget = RadarExecutionBudget(budget_settings)
-    external_budget = RadarExternalCallBudget(external_budget_settings_from_context({
+    external_budget = current_external_call_budget() or RadarExternalCallBudget(external_budget_settings_from_context({
         "run_profile": run_profile,
         "max_openrouter_calls_per_run": max_openrouter_calls_per_run,
+        "max_openrouter_planner_calls_per_run": max_openrouter_planner_calls_per_run,
+        "max_openrouter_web_task_calls_per_run": max_openrouter_web_task_calls_per_run,
+        "max_openrouter_server_tool_web_searches_per_run": max_openrouter_server_tool_web_searches_per_run,
         "max_dadata_lookups_per_run": max_dadata_lookups_per_run,
         "max_source_verification_requests_per_run": max_source_verification_requests_per_run,
         "max_provider_retries_per_task": max_provider_retries_per_task,
+        "openrouter_web_max_results_per_call": openrouter_web_max_results_per_call,
+        "openrouter_web_max_total_results_per_call": openrouter_web_max_total_results_per_call,
         "smoke_max_candidates": smoke_max_candidates,
         "smoke_max_signals": smoke_max_signals,
     }))
@@ -357,6 +368,8 @@ def run_staged_radar_execution(
             steps=execution_plan.tasks,
             source_policy_decisions=source_policy_decisions or [],
             source_provider_outcomes=provider_metadata.get("source_provider_outcomes", []),
+            sources=sources,
+            observations=observations,
         )
         pre_signal_decision = record_execution_checkpoint(
             checkpoint_id="before-signal-search",
@@ -450,8 +463,11 @@ def run_staged_radar_execution(
         steps=execution_plan.tasks,
         source_policy_decisions=source_policy_decisions or [],
         source_provider_outcomes=provider_metadata.get("source_provider_outcomes", []),
+        sources=sources,
+        observations=observations,
     )
     events.extend(_source_obligation_events(source_obligation_decisions))
+    events.extend(_external_budget_events(external_budget.exhaustion_events))
     return (
         WebSearchProviderResult(
             sources=_dedupe_sources(sources), candidate_observations=_merge_candidate_observations(observations),
@@ -545,3 +561,18 @@ def _limit_smoke_signal_tasks(tasks: list[RadarExecutionTask], limit: int | None
     if limit is None or limit <= 0:
         return tasks
     return tasks[:limit]
+
+
+def _external_budget_events(exhaustion_events: list[dict[str, object]]) -> list[LiveRadarPipelineEvent]:
+    return [
+        LiveRadarPipelineEvent(
+            event_type="external_budget_exhausted",
+            phase="validation",
+            actor="application",
+            node_name="external_call_budget",
+            visibility="operator",
+            summary=str(item.get("message") or "External call budget exhausted."),
+            payload=dict(item),
+        )
+        for item in exhaustion_events
+    ]

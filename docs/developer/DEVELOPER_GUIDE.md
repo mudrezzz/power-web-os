@@ -1029,9 +1029,14 @@ expanding into dozens of provider calls.
 ```text
 POWER_WEB_OS_RADAR_RUN_PROFILE=smoke
 POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN=8
+POWER_WEB_OS_RADAR_MAX_OPENROUTER_PLANNER_CALLS_PER_RUN=2
+POWER_WEB_OS_RADAR_MAX_OPENROUTER_WEB_TASK_CALLS_PER_RUN=6
+POWER_WEB_OS_RADAR_MAX_OPENROUTER_SERVER_TOOL_WEB_SEARCHES_PER_RUN=24
 POWER_WEB_OS_RADAR_MAX_DADATA_LOOKUPS_PER_RUN=3
 POWER_WEB_OS_RADAR_MAX_SOURCE_VERIFICATION_REQUESTS_PER_RUN=20
 POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK=1
+POWER_WEB_OS_RADAR_OPENROUTER_WEB_MAX_RESULTS_PER_CALL=3
+POWER_WEB_OS_RADAR_OPENROUTER_WEB_MAX_TOTAL_RESULTS_PER_CALL=6
 POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES=2
 POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS=1
 ```
@@ -1042,7 +1047,26 @@ over the defaults. Exhausted external actions are recorded as
 `not_executed_budget_limited`; invalid provider responses can retry only while
 `POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK` allows it. The dossier and
 technical trace expose `run_profile`, `external_call_budget_counters`,
+`external_call_budget_counters_by_role`,
+`openrouter_server_tool_usage`, `post_call_budget_overruns`,
 `external_call_budget_exhaustion_events`, and `provider_retry_records`.
+
+OpenRouter has two levels of accounting. `POWER_WEB_OS_RADAR_MAX_OPENROUTER_*`
+caps limit HTTP POST calls made by Power Web OS: planner calls and web
+retrieval/extraction task calls. When OpenRouter server tools perform internal
+web searches inside one completed response, the backend cannot stop that
+already completed call retroactively. It records the reported
+`usage.server_tool_use_details.web_search_requests` as
+`openrouter_server_tool_usage`; if that count exceeds the remaining server-tool
+budget, the run records `post_call_budget_overruns` and blocks later web tasks.
+
+Source obligations are runtime outcomes, not just planner choices. A required
+source is `satisfied` only when it produced useful evidence for the configured
+obligation. A selected source that returned no registry match is
+`attempted_empty`; a source that could not answer a broad lookup is
+`attempted_insufficient`; retrieved web sources with no linked evidence are
+`attempted_unlinked`. Checkpoints treat those outcomes as warnings/blockers
+instead of silently continuing as if the required source had worked.
 
 Targeted live probes are opt-in and bounded. Use them only after static
 preflight is readable:

@@ -12,7 +12,7 @@ from power_web_os.persistence.config import DEFAULT_DATABASE_URL
 class ApiSettings:
     service_name: str = "Power Web OS API"
     environment: str = "local"
-    api_version: str = "0.7.6.1.11.8.1"
+    api_version: str = "0.7.6.1.11.8.2"
     database_url: str = DEFAULT_DATABASE_URL
     cors_origins: tuple[str, ...] = (
         "http://127.0.0.1:5173",
@@ -31,9 +31,14 @@ class ApiSettings:
     radar_max_checkpoint_retries_per_stage: int = 1
     radar_run_profile: str = "live"
     radar_max_openrouter_calls_per_run: int | None = None
+    radar_max_openrouter_planner_calls_per_run: int | None = None
+    radar_max_openrouter_web_task_calls_per_run: int | None = None
+    radar_max_openrouter_server_tool_web_searches_per_run: int | None = None
     radar_max_dadata_lookups_per_run: int | None = None
     radar_max_source_verification_requests_per_run: int | None = None
     radar_max_provider_retries_per_task: int | None = None
+    radar_openrouter_web_max_results_per_call: int | None = None
+    radar_openrouter_web_max_total_results_per_call: int | None = None
     radar_smoke_max_candidates: int | None = None
     radar_smoke_max_signals: int | None = None
 
@@ -87,6 +92,15 @@ def get_api_settings() -> ApiSettings:
         radar_max_openrouter_calls_per_run=_optional_non_negative_int(
             os.getenv("POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN"),
         ),
+        radar_max_openrouter_planner_calls_per_run=_optional_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_MAX_OPENROUTER_PLANNER_CALLS_PER_RUN"),
+        ),
+        radar_max_openrouter_web_task_calls_per_run=_optional_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_MAX_OPENROUTER_WEB_TASK_CALLS_PER_RUN"),
+        ),
+        radar_max_openrouter_server_tool_web_searches_per_run=_optional_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_MAX_OPENROUTER_SERVER_TOOL_WEB_SEARCHES_PER_RUN"),
+        ),
         radar_max_dadata_lookups_per_run=_optional_non_negative_int(
             os.getenv("POWER_WEB_OS_RADAR_MAX_DADATA_LOOKUPS_PER_RUN"),
         ),
@@ -95,6 +109,12 @@ def get_api_settings() -> ApiSettings:
         ),
         radar_max_provider_retries_per_task=_optional_non_negative_int(
             os.getenv("POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK"),
+        ),
+        radar_openrouter_web_max_results_per_call=_optional_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_OPENROUTER_WEB_MAX_RESULTS_PER_CALL"),
+        ),
+        radar_openrouter_web_max_total_results_per_call=_optional_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_OPENROUTER_WEB_MAX_TOTAL_RESULTS_PER_CALL"),
         ),
         radar_smoke_max_candidates=_optional_non_negative_int(os.getenv("POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES")),
         radar_smoke_max_signals=_optional_non_negative_int(os.getenv("POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS")),

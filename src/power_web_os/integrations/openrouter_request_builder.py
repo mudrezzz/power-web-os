@@ -21,6 +21,8 @@ def build_openrouter_request(
     model: str,
     web_mode: str,
     web_search_engine: str = "auto",
+    web_max_results: int | None = None,
+    web_max_total_results: int | None = None,
 ) -> dict[str, Any]:
     query = search_plan.queries[0] if len(search_plan.queries) == 1 else None
     prompt = compact_task_prompt(radar=radar, search_plan=search_plan).model_dump()
@@ -37,12 +39,14 @@ def build_openrouter_request(
         "response_format": {"type": "json_object"},
     }
     if web_mode == "server_tools":
+        max_results = web_max_results if web_max_results is not None and web_max_results > 0 else 5
+        max_total_results = web_max_total_results if web_max_total_results is not None and web_max_total_results > 0 else 12
         request["tools"] = [{
             "type": "openrouter:web_search",
             "parameters": {
                 "engine": web_search_engine,
-                "max_results": 5,
-                "max_total_results": 12,
+                "max_results": max_results,
+                "max_total_results": max_total_results,
                 "search_context_size": "low",
             },
         }]

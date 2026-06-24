@@ -60,9 +60,16 @@ def create_app(
     app.state.radar_max_checkpoint_retries_per_stage = api_settings.radar_max_checkpoint_retries_per_stage
     app.state.radar_run_profile = api_settings.radar_run_profile
     app.state.radar_max_openrouter_calls_per_run = api_settings.radar_max_openrouter_calls_per_run
+    app.state.radar_max_openrouter_planner_calls_per_run = api_settings.radar_max_openrouter_planner_calls_per_run
+    app.state.radar_max_openrouter_web_task_calls_per_run = api_settings.radar_max_openrouter_web_task_calls_per_run
+    app.state.radar_max_openrouter_server_tool_web_searches_per_run = (
+        api_settings.radar_max_openrouter_server_tool_web_searches_per_run
+    )
     app.state.radar_max_dadata_lookups_per_run = api_settings.radar_max_dadata_lookups_per_run
     app.state.radar_max_source_verification_requests_per_run = api_settings.radar_max_source_verification_requests_per_run
     app.state.radar_max_provider_retries_per_task = api_settings.radar_max_provider_retries_per_task
+    app.state.radar_openrouter_web_max_results_per_call = api_settings.radar_openrouter_web_max_results_per_call
+    app.state.radar_openrouter_web_max_total_results_per_call = api_settings.radar_openrouter_web_max_total_results_per_call
     app.state.radar_smoke_max_candidates = api_settings.radar_smoke_max_candidates
     app.state.radar_smoke_max_signals = api_settings.radar_smoke_max_signals
     app.state.runtime_config_report = build_effective_runtime_config_report(

@@ -16,7 +16,11 @@ from power_web_os.application.live_radar_contracts import (
 )
 from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.live_radar_extraction_contract import extraction_validation_state, validate_and_repair_extraction_payload
-from power_web_os.application.live_radar_external_budget import reserve_external_call
+from power_web_os.application.live_radar_external_budget import (
+    current_external_call_budget,
+    record_openrouter_server_tool_usage,
+    reserve_openrouter_http_call,
+)
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 from power_web_os.application.live_radar_web_retrieval import retrieval_request_from_search_plan
 from power_web_os.integrations.openrouter_request_builder import build_openrouter_request, openrouter_compiled_prompt_summary
@@ -144,6 +148,8 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
             model=selected_model,
             web_mode=mode,
             web_search_engine=self.web_search_engine,
+            web_max_results=_current_web_max_results(),
+            web_max_total_results=_current_web_max_total_results(),
         )
         compiled_prompt = openrouter_compiled_prompt_summary(payload)
         retrieval_request = retrieval_request_from_search_plan(
@@ -167,7 +173,7 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
             },
         )
         budget_key = _search_plan_budget_key(search_plan)
-        budget_decision = reserve_external_call("openrouter", key=budget_key, task_id=budget_key)
+        budget_decision = reserve_openrouter_http_call(role="web_task", task_id=budget_key)
         if not budget_decision.accepted:
             _trace_provider(
                 trace_type="provider_error",
@@ -260,6 +266,20 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
             engine=self.web_search_engine,
             query=retrieval_request.query,
         )
+        server_tool_usage = _server_tool_web_search_count(response_payload)
+        server_tool_budget_decision = record_openrouter_server_tool_usage(count=server_tool_usage, task_id=budget_key)
+        if server_tool_usage:
+            _trace_provider(
+                trace_type="normalization_result",
+                title="OpenRouter server-tool usage",
+                summary=f"OpenRouter reported {server_tool_usage} server-tool web searches.",
+                duration_ms=_duration_ms(started_at),
+                payload={
+                    "task_id": budget_key,
+                    "web_search_requests": server_tool_usage,
+                    "budget_decision": server_tool_budget_decision.to_payload(),
+                },
+            )
         _trace_provider(
             trace_type="provider_response",
             title="OpenRouter retrieval response",
@@ -290,6 +310,10 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                 "retrieved_sources": [item.model_dump() for item in retrieval_result.retrieved_sources],
                 "retrieval_source_outcomes": [item.model_dump() for item in retrieval_result.source_outcomes],
                 "retrieved_source_count": len(retrieval_result.retrieved_sources),
+                "openrouter_server_tool_usage": {
+                    "web_search_requests": server_tool_usage,
+                    "budget_decision": server_tool_budget_decision.to_payload(),
+                },
             },
         )
         return _apply_source_verification(result, mode=self._source_verification_mode)
@@ -511,6 +535,29 @@ def _search_plan_budget_key(search_plan: RadarSearchPlan) -> str:
     if search_plan.queries:
         return search_plan.queries[0].query_id or search_plan.radar_id
     return search_plan.radar_id
+
+
+def _server_tool_web_search_count(payload: dict[str, Any]) -> int:
+    usage = payload.get("usage")
+    if not isinstance(usage, dict):
+        return 0
+    details = usage.get("server_tool_use_details")
+    if not isinstance(details, dict):
+        return 0
+    try:
+        return max(0, int(details.get("web_search_requests") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _current_web_max_results() -> int | None:
+    budget = current_external_call_budget()
+    return None if budget is None else budget.settings.openrouter_web_max_results_per_call
+
+
+def _current_web_max_total_results() -> int | None:
+    budget = current_external_call_budget()
+    return None if budget is None else budget.settings.openrouter_web_max_total_results_per_call
 
 
 def _budget_limited_result(

@@ -44,9 +44,14 @@ class RadarApiContext:
     radar_max_checkpoint_retries_per_stage: int
     radar_run_profile: str
     radar_max_openrouter_calls_per_run: int | None
+    radar_max_openrouter_planner_calls_per_run: int | None
+    radar_max_openrouter_web_task_calls_per_run: int | None
+    radar_max_openrouter_server_tool_web_searches_per_run: int | None
     radar_max_dadata_lookups_per_run: int | None
     radar_max_source_verification_requests_per_run: int | None
     radar_max_provider_retries_per_task: int | None
+    radar_openrouter_web_max_results_per_call: int | None
+    radar_openrouter_web_max_total_results_per_call: int | None
     radar_smoke_max_candidates: int | None
     radar_smoke_max_signals: int | None
     runtime_config_report: dict[str, object]
@@ -80,6 +85,15 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
     radar_max_openrouter_calls_per_run = _optional_non_negative_int(
         getattr(request.app.state, "radar_max_openrouter_calls_per_run", None)
     )
+    radar_max_openrouter_planner_calls_per_run = _optional_non_negative_int(
+        getattr(request.app.state, "radar_max_openrouter_planner_calls_per_run", None)
+    )
+    radar_max_openrouter_web_task_calls_per_run = _optional_non_negative_int(
+        getattr(request.app.state, "radar_max_openrouter_web_task_calls_per_run", None)
+    )
+    radar_max_openrouter_server_tool_web_searches_per_run = _optional_non_negative_int(
+        getattr(request.app.state, "radar_max_openrouter_server_tool_web_searches_per_run", None)
+    )
     radar_max_dadata_lookups_per_run = _optional_non_negative_int(
         getattr(request.app.state, "radar_max_dadata_lookups_per_run", None)
     )
@@ -88,6 +102,12 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
     )
     radar_max_provider_retries_per_task = _optional_non_negative_int(
         getattr(request.app.state, "radar_max_provider_retries_per_task", None)
+    )
+    radar_openrouter_web_max_results_per_call = _optional_non_negative_int(
+        getattr(request.app.state, "radar_openrouter_web_max_results_per_call", None)
+    )
+    radar_openrouter_web_max_total_results_per_call = _optional_non_negative_int(
+        getattr(request.app.state, "radar_openrouter_web_max_total_results_per_call", None)
     )
     radar_smoke_max_candidates = _optional_non_negative_int(getattr(request.app.state, "radar_smoke_max_candidates", None))
     radar_smoke_max_signals = _optional_non_negative_int(getattr(request.app.state, "radar_smoke_max_signals", None))
@@ -115,9 +135,14 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
             radar_max_checkpoint_retries_per_stage=radar_max_checkpoint_retries_per_stage,
             radar_run_profile=radar_run_profile,
             radar_max_openrouter_calls_per_run=radar_max_openrouter_calls_per_run,
+            radar_max_openrouter_planner_calls_per_run=radar_max_openrouter_planner_calls_per_run,
+            radar_max_openrouter_web_task_calls_per_run=radar_max_openrouter_web_task_calls_per_run,
+            radar_max_openrouter_server_tool_web_searches_per_run=radar_max_openrouter_server_tool_web_searches_per_run,
             radar_max_dadata_lookups_per_run=radar_max_dadata_lookups_per_run,
             radar_max_source_verification_requests_per_run=radar_max_source_verification_requests_per_run,
             radar_max_provider_retries_per_task=radar_max_provider_retries_per_task,
+            radar_openrouter_web_max_results_per_call=radar_openrouter_web_max_results_per_call,
+            radar_openrouter_web_max_total_results_per_call=radar_openrouter_web_max_total_results_per_call,
             radar_smoke_max_candidates=radar_smoke_max_candidates,
             radar_smoke_max_signals=radar_smoke_max_signals,
             runtime_config_report=runtime_config_report,

@@ -15,9 +15,14 @@ ExternalCallKind = str
 class RadarExternalCallBudgetSettings:
     run_profile: str = "live"
     max_openrouter_calls_per_run: int | None = None
+    max_openrouter_planner_calls_per_run: int | None = None
+    max_openrouter_web_task_calls_per_run: int | None = None
+    max_openrouter_server_tool_web_searches_per_run: int | None = None
     max_dadata_lookups_per_run: int | None = None
     max_source_verification_requests_per_run: int | None = None
     max_provider_retries_per_task: int | None = None
+    openrouter_web_max_results_per_call: int | None = None
+    openrouter_web_max_total_results_per_call: int | None = None
     smoke_max_candidates: int | None = None
     smoke_max_signals: int | None = None
 
@@ -52,6 +57,7 @@ class RadarExternalCallBudget:
     counts: dict[str, int] = field(default_factory=dict)
     exhaustion_events: list[dict[str, object]] = field(default_factory=list)
     retry_records: list[dict[str, object]] = field(default_factory=list)
+    post_call_budget_overruns: list[dict[str, object]] = field(default_factory=list)
 
     def reserve(self, kind: ExternalCallKind, *, key: str = "run", task_id: str = "") -> RadarExternalCallBudgetDecision:
         budget_key = f"{kind}:{key or 'run'}" if kind == "provider_retry" else f"{kind}:run"
@@ -78,6 +84,90 @@ class RadarExternalCallBudget:
             current=current + 1,
         )
 
+    def reserve_openrouter_http_call(
+        self,
+        *,
+        role: str,
+        task_id: str = "",
+    ) -> tuple[RadarExternalCallBudgetDecision, RadarExternalCallBudgetDecision]:
+        role_kind = "openrouter_planner" if role == "planner" else "openrouter_web_task"
+        total_block = self._exhausted_decision("openrouter", budget_key="openrouter:run", key="run", task_id=task_id)
+        if total_block is not None:
+            return total_block, total_block
+        if role_kind == "openrouter_web_task":
+            server_tool_block = self._exhausted_decision(
+                "openrouter_server_tool_web_search",
+                budget_key="openrouter_server_tool_web_search:run",
+                key="run",
+                task_id=task_id,
+            )
+            if server_tool_block is not None:
+                return server_tool_block, server_tool_block
+        role_block = self._exhausted_decision(role_kind, budget_key=f"{role_kind}:run", key="run", task_id=task_id)
+        if role_block is not None:
+            return role_block, role_block
+        role_decision = self.reserve(role_kind, key="run", task_id=task_id)
+        total_decision = self.reserve("openrouter", key="run", task_id=task_id)
+        return total_decision, role_decision
+
+    def _exhausted_decision(
+        self,
+        kind: ExternalCallKind,
+        *,
+        budget_key: str,
+        key: str,
+        task_id: str,
+    ) -> RadarExternalCallBudgetDecision | None:
+        limit = self._limit_for(kind)
+        current = self.counts.get(budget_key, 0)
+        if limit is None or current < limit:
+            return None
+        decision = RadarExternalCallBudgetDecision(
+            accepted=False,
+            kind=kind,
+            key=budget_key,
+            limit=limit,
+            current=current,
+            reason="external_call_budget_exhausted",
+            message=f"External {kind} budget reached for {key or 'run'}: {limit}.",
+        )
+        self.exhaustion_events.append({"task_id": task_id, **decision.to_payload()})
+        return decision
+
+    def record_server_tool_web_search_usage(
+        self,
+        *,
+        count: int,
+        task_id: str = "",
+    ) -> RadarExternalCallBudgetDecision:
+        if count <= 0:
+            return RadarExternalCallBudgetDecision(
+                accepted=True,
+                kind="openrouter_server_tool_web_search",
+                key="openrouter_server_tool_web_search:run",
+                limit=self._limit_for("openrouter_server_tool_web_search"),
+                current=self.counts.get("openrouter_server_tool_web_search:run", 0),
+            )
+        budget_key = "openrouter_server_tool_web_search:run"
+        limit = self._limit_for("openrouter_server_tool_web_search")
+        current = self.counts.get(budget_key, 0)
+        next_value = current + count
+        self.counts[budget_key] = next_value
+        decision = RadarExternalCallBudgetDecision(
+            accepted=limit is None or next_value <= limit,
+            kind="openrouter_server_tool_web_search",
+            key=budget_key,
+            limit=limit,
+            current=next_value,
+            reason="" if limit is None or next_value <= limit else "external_call_budget_overrun",
+            message="" if limit is None or next_value <= limit else (
+                f"OpenRouter server-tool web search usage exceeded run budget: {next_value}/{limit}."
+            ),
+        )
+        if not decision.accepted:
+            self.post_call_budget_overruns.append({"task_id": task_id, "usage_count": count, **decision.to_payload()})
+        return decision
+
     def record_retry(self, *, task_id: str, reason: str, attempt: int, decision: RadarExternalCallBudgetDecision) -> None:
         self.retry_records.append({
             "task_id": task_id,
@@ -91,20 +181,37 @@ class RadarExternalCallBudget:
             "run_profile": self.settings.run_profile,
             "external_call_budget_settings": {
                 "max_openrouter_calls_per_run": self.settings.max_openrouter_calls_per_run,
+                "max_openrouter_planner_calls_per_run": self.settings.max_openrouter_planner_calls_per_run,
+                "max_openrouter_web_task_calls_per_run": self.settings.max_openrouter_web_task_calls_per_run,
+                "max_openrouter_server_tool_web_searches_per_run": self.settings.max_openrouter_server_tool_web_searches_per_run,
                 "max_dadata_lookups_per_run": self.settings.max_dadata_lookups_per_run,
                 "max_source_verification_requests_per_run": self.settings.max_source_verification_requests_per_run,
                 "max_provider_retries_per_task": self.settings.max_provider_retries_per_task,
+                "openrouter_web_max_results_per_call": self.settings.openrouter_web_max_results_per_call,
+                "openrouter_web_max_total_results_per_call": self.settings.openrouter_web_max_total_results_per_call,
                 "smoke_max_candidates": self.settings.smoke_max_candidates,
                 "smoke_max_signals": self.settings.smoke_max_signals,
             },
             "external_call_budget_counters": dict(self.counts),
+            "external_call_budget_counters_by_role": _counts_by_role(self.counts),
             "external_call_budget_exhaustion_events": list(self.exhaustion_events),
             "provider_retry_records": list(self.retry_records),
+            "openrouter_server_tool_usage": {
+                "web_search_requests": self.counts.get("openrouter_server_tool_web_search:run", 0),
+                "limit": self.settings.max_openrouter_server_tool_web_searches_per_run,
+            },
+            "post_call_budget_overruns": list(self.post_call_budget_overruns),
         }
 
     def _limit_for(self, kind: ExternalCallKind) -> int | None:
         if kind == "openrouter":
             return _non_negative(self.settings.max_openrouter_calls_per_run)
+        if kind == "openrouter_planner":
+            return _non_negative(self.settings.max_openrouter_planner_calls_per_run)
+        if kind == "openrouter_web_task":
+            return _non_negative(self.settings.max_openrouter_web_task_calls_per_run)
+        if kind == "openrouter_server_tool_web_search":
+            return _non_negative(self.settings.max_openrouter_server_tool_web_searches_per_run)
         if kind == "dadata":
             return _non_negative(self.settings.max_dadata_lookups_per_run)
         if kind == "source_verification":
@@ -137,6 +244,26 @@ def reserve_external_call(kind: ExternalCallKind, *, key: str = "run", task_id: 
     return budget.reserve(kind, key=key, task_id=task_id)
 
 
+def reserve_openrouter_http_call(*, role: str, task_id: str = "") -> RadarExternalCallBudgetDecision:
+    budget = current_external_call_budget()
+    if budget is None:
+        return RadarExternalCallBudgetDecision(accepted=True, kind=f"openrouter_{role}", key=f"openrouter_{role}:run")
+    _, role_decision = budget.reserve_openrouter_http_call(role=role, task_id=task_id)
+    return role_decision
+
+
+def record_openrouter_server_tool_usage(*, count: int, task_id: str = "") -> RadarExternalCallBudgetDecision:
+    budget = current_external_call_budget()
+    if budget is None:
+        return RadarExternalCallBudgetDecision(
+            accepted=True,
+            kind="openrouter_server_tool_web_search",
+            key="openrouter_server_tool_web_search:run",
+            current=count,
+        )
+    return budget.record_server_tool_web_search_usage(count=count, task_id=task_id)
+
+
 def external_budget_settings_from_context(context: dict[str, object]) -> RadarExternalCallBudgetSettings:
     profile = str(context.get("run_profile") or "live").strip().lower()
     if profile not in {"live", "smoke"}:
@@ -145,9 +272,24 @@ def external_budget_settings_from_context(context: dict[str, object]) -> RadarEx
     return RadarExternalCallBudgetSettings(
         run_profile=profile,
         max_openrouter_calls_per_run=_context_int_or_default(context, "max_openrouter_calls_per_run", 8 if smoke else None),
+        max_openrouter_planner_calls_per_run=_context_int_or_default(
+            context, "max_openrouter_planner_calls_per_run", 2 if smoke else None
+        ),
+        max_openrouter_web_task_calls_per_run=_context_int_or_default(
+            context, "max_openrouter_web_task_calls_per_run", 6 if smoke else None
+        ),
+        max_openrouter_server_tool_web_searches_per_run=_context_int_or_default(
+            context, "max_openrouter_server_tool_web_searches_per_run", 24 if smoke else None
+        ),
         max_dadata_lookups_per_run=_context_int_or_default(context, "max_dadata_lookups_per_run", 3 if smoke else None),
         max_source_verification_requests_per_run=_context_int_or_default(context, "max_source_verification_requests_per_run", 20 if smoke else None),
         max_provider_retries_per_task=_context_int(context, "max_provider_retries_per_task") if _context_int(context, "max_provider_retries_per_task") is not None else (1 if smoke else 0),
+        openrouter_web_max_results_per_call=_context_int_or_default(
+            context, "openrouter_web_max_results_per_call", 3 if smoke else None
+        ),
+        openrouter_web_max_total_results_per_call=_context_int_or_default(
+            context, "openrouter_web_max_total_results_per_call", 6 if smoke else None
+        ),
         smoke_max_candidates=_context_int_or_default(context, "smoke_max_candidates", 2 if smoke else None),
         smoke_max_signals=_context_int_or_default(context, "smoke_max_signals", 1 if smoke else None),
     )
@@ -171,3 +313,11 @@ def _context_int_or_default(context: dict[str, object], key: str, default: int |
 
 def _non_negative(value: int | None) -> int | None:
     return value if value is not None and value >= 0 else None
+
+
+def _counts_by_role(counts: dict[str, int]) -> dict[str, int]:
+    roles: dict[str, int] = {}
+    for key, value in counts.items():
+        role = key.split(":", 1)[0]
+        roles[role] = roles.get(role, 0) + value
+    return roles

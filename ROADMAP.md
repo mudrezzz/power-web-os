@@ -3977,6 +3977,60 @@ Principles:
   - Invalid provider responses get bounded retry and then a diagnostic stop
     state when retry budget is exhausted.
 
+### Slice 0.7.6.1.11.8.2: Smoke budget parity and source obligation outcome semantics
+
+- Status: `Done`
+- Goal: Make smoke runs account for the external calls that actually happen and
+  make required-source outcomes truthful at runtime.
+- User value: After a smoke run, a user can see whether OpenRouter planner
+  calls, OpenRouter web task calls, OpenRouter internal web-search tool calls,
+  DaData lookups, and source verification requests were really bounded by the
+  configured profile. Required sources no longer look `satisfied` just because
+  they were selected or attempted.
+- Scope:
+  - Extended external-call budget accounting so
+    `POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN` applies to all OpenRouter
+    HTTP POST calls, including discovery planning and web retrieval/extraction.
+  - Added role-specific OpenRouter caps:
+    `POWER_WEB_OS_RADAR_MAX_OPENROUTER_PLANNER_CALLS_PER_RUN`,
+    `POWER_WEB_OS_RADAR_MAX_OPENROUTER_WEB_TASK_CALLS_PER_RUN`, and
+    `POWER_WEB_OS_RADAR_MAX_OPENROUTER_SERVER_TOOL_WEB_SEARCHES_PER_RUN`.
+  - Added OpenRouter server-tool result caps:
+    `POWER_WEB_OS_RADAR_OPENROUTER_WEB_MAX_RESULTS_PER_CALL` and
+    `POWER_WEB_OS_RADAR_OPENROUTER_WEB_MAX_TOTAL_RESULTS_PER_CALL`.
+  - Smoke defaults are planner calls `2`, web task calls `6`, server-tool web
+    searches `24`, web results per call `3`, and total web results per call `6`,
+    unless explicit env/task-context values override them.
+  - The OpenRouter provider records reported
+    `usage.server_tool_use_details.web_search_requests` as actual server-tool
+    web-search usage; completed calls that exceed remaining server-tool budget
+    create `post_call_budget_overrun` warnings and block subsequent web tasks.
+  - Required source obligations now distinguish `satisfied` from
+    `attempted_empty`, `attempted_insufficient`, and `attempted_unlinked`.
+    A required source is `satisfied` only when it produces useful evidence for
+    its obligation.
+  - Checkpoints treat unsuccessful required-source runtime outcomes as blocking
+    signals instead of silently continuing as if obligations passed.
+- Out of scope:
+  - Product projection repair for analyzed versus used sources.
+  - Frontend redesign.
+  - New provider integrations or DB schema changes.
+- Tests:
+  - Added fast budget tests for planner/web-task role counters, reported
+    server-tool usage, post-call overruns, smoke web-result caps, and required
+    source runtime outcomes.
+  - Regression keeps live Radar, adaptive execution, preflight, API, runtime
+    config, and architecture contracts green without network calls.
+- Docs:
+  - `.env.example`, Developer Guide, and demo README document OpenRouter POST
+    counters versus OpenRouter internal web-search counters and source
+    obligation runtime outcomes.
+- Acceptance criteria:
+  - Smoke profile limits all OpenRouter POST calls, not only extraction tasks.
+  - OpenRouter internal web-search requests are visible as a separate counter.
+  - A selected required source that returns no match, insufficient lookup terms,
+    or unlinked retrieved sources is not reported as `satisfied`.
+
 ### Slice 0.7.6.1.11.9: Product projection repair for analyzed vs used sources
 
 - Status: `Backlog`

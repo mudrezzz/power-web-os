@@ -14,6 +14,7 @@ from power_web_os.application.live_radar_contracts import (
     RadarDiscoveryPlan,
     RadarDiscoveryPlanValidationResult,
 )
+from power_web_os.application.live_radar_external_budget import reserve_openrouter_http_call
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 from power_web_os.integrations.live_radar_openrouter import _load_env_file
 
@@ -73,6 +74,18 @@ class OpenRouterDiscoveryPlanner(RadarDiscoveryPlanner):
             summary="OpenRouter request for structured discovery plan.",
             payload={"url": "https://openrouter.ai/api/v1/chat/completions", "model": self.model, "request": payload},
         ))
+        budget_decision = reserve_openrouter_http_call(role="planner", task_id="discovery_planner")
+        if not budget_decision.accepted:
+            append_current_trace(RadarRunTechnicalTraceCommand(
+                run_id="",
+                phase="planning",
+                node_name="discovery_planner",
+                trace_type="provider_error",
+                title="OpenRouter discovery planner skipped by external budget",
+                summary=budget_decision.message,
+                payload={"model": self.model, "budget_decision": budget_decision.to_payload()},
+            ))
+            raise RuntimeError(budget_decision.message or "OpenRouter discovery planner skipped by external budget.")
         started_at = perf_counter()
         try:
             response = httpx.post(

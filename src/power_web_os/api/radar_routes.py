@@ -168,6 +168,21 @@ def queue_radar_run(radar_id: str, request: RadarRunRequest, context: RadarConte
                     "max_openrouter_calls_per_run",
                     context.radar_max_openrouter_calls_per_run,
                 ),
+                "max_openrouter_planner_calls_per_run": _task_context_or_default(
+                    request.task_context,
+                    "max_openrouter_planner_calls_per_run",
+                    context.radar_max_openrouter_planner_calls_per_run,
+                ),
+                "max_openrouter_web_task_calls_per_run": _task_context_or_default(
+                    request.task_context,
+                    "max_openrouter_web_task_calls_per_run",
+                    context.radar_max_openrouter_web_task_calls_per_run,
+                ),
+                "max_openrouter_server_tool_web_searches_per_run": _task_context_or_default(
+                    request.task_context,
+                    "max_openrouter_server_tool_web_searches_per_run",
+                    context.radar_max_openrouter_server_tool_web_searches_per_run,
+                ),
                 "max_dadata_lookups_per_run": _task_context_or_default(
                     request.task_context,
                     "max_dadata_lookups_per_run",
@@ -182,6 +197,16 @@ def queue_radar_run(radar_id: str, request: RadarRunRequest, context: RadarConte
                     request.task_context,
                     "max_provider_retries_per_task",
                     context.radar_max_provider_retries_per_task,
+                ),
+                "openrouter_web_max_results_per_call": _task_context_or_default(
+                    request.task_context,
+                    "openrouter_web_max_results_per_call",
+                    context.radar_openrouter_web_max_results_per_call,
+                ),
+                "openrouter_web_max_total_results_per_call": _task_context_or_default(
+                    request.task_context,
+                    "openrouter_web_max_total_results_per_call",
+                    context.radar_openrouter_web_max_total_results_per_call,
                 ),
                 "smoke_max_candidates": _task_context_or_default(
                     request.task_context,

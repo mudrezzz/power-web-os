@@ -167,9 +167,11 @@ def source_obligation_events(decisions: list[dict[str, Any]]) -> list[LiveRadarP
         event_type = (
             "source_obligation_satisfied"
             if status == "satisfied"
+            else "source_obligation_attempted"
+            if status.startswith("attempted_")
             else "source_obligation_skipped"
             if status == "skipped_with_rationale"
-            else "source_obligation_blocked"
+            else "source_obligation_unsatisfied"
         )
         events.append(LiveRadarPipelineEvent(
             event_type=event_type,

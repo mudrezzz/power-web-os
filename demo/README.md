@@ -135,9 +135,14 @@ external actions; it does not prove SIBUR discovery quality.
 ```text
 POWER_WEB_OS_RADAR_RUN_PROFILE=smoke
 POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN=8
+POWER_WEB_OS_RADAR_MAX_OPENROUTER_PLANNER_CALLS_PER_RUN=2
+POWER_WEB_OS_RADAR_MAX_OPENROUTER_WEB_TASK_CALLS_PER_RUN=6
+POWER_WEB_OS_RADAR_MAX_OPENROUTER_SERVER_TOOL_WEB_SEARCHES_PER_RUN=24
 POWER_WEB_OS_RADAR_MAX_DADATA_LOOKUPS_PER_RUN=3
 POWER_WEB_OS_RADAR_MAX_SOURCE_VERIFICATION_REQUESTS_PER_RUN=20
 POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK=1
+POWER_WEB_OS_RADAR_OPENROUTER_WEB_MAX_RESULTS_PER_CALL=3
+POWER_WEB_OS_RADAR_OPENROUTER_WEB_MAX_TOTAL_RESULTS_PER_CALL=6
 POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES=2
 POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS=1
 ```
@@ -145,9 +150,22 @@ POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS=1
 When `POWER_WEB_OS_RADAR_RUN_PROFILE=smoke` is active, omitted caps get the
 defaults above. Explicit values, including `0`, override the defaults. The run
 dossier and trace should show `run_profile=smoke`,
-`external_call_budget_counters`, `external_call_budget_exhaustion_events`, and
-`provider_retry_records`. A skipped provider call should appear as
+`external_call_budget_counters`, `external_call_budget_counters_by_role`,
+`openrouter_server_tool_usage`, `post_call_budget_overruns`,
+`external_call_budget_exhaustion_events`, and `provider_retry_records`.
+A skipped provider call should appear as
 `not_executed_budget_limited`, not as an apparently empty successful search.
+OpenRouter POST calls and OpenRouter internal server-tool web-search requests
+are separate counters: a completed OpenRouter response may report several
+internal web searches, and any overrun is recorded before later web tasks are
+blocked.
+
+Required source status is also runtime-based. `selected` means the source was
+planned; `satisfied` means it produced useful identity, coverage, or signal
+evidence. If DaData returns no match, expect `attempted_empty`; if a broad
+registry lookup cannot enumerate a universe, expect `attempted_insufficient`;
+if web coverage retrieved sources but linked none to evidence, expect
+`attempted_unlinked`.
 
 For the running API process, use:
 

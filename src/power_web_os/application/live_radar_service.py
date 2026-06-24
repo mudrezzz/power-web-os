@@ -26,6 +26,11 @@ from power_web_os.application.live_radar_extraction_contract import qualificatio
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition, build_live_mini_radar_search_plan
 from power_web_os.application.live_radar_discovery_planning import DeterministicRadarDiscoveryPlanner, product_sources_for_candidates
 from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_plan_to_search_plan
+from power_web_os.application.live_radar_external_budget import (
+    RadarExternalCallBudget,
+    external_budget_settings_from_context,
+    external_call_budget_context,
+)
 from power_web_os.application.live_radar_normalization import (
     _dedupe_sources,
     _rank_candidates,
@@ -63,15 +68,17 @@ class LiveRadarRunService:
         runtime_mode: str,
         framework_available: bool,
     ) -> LiveICPRadarRunState:
-        for step in [
-            self.build_search_plan,
-            self.run_web_search,
-            self.normalize_sources,
-            self.extract_candidates,
-            self.evaluate_candidates,
-            self.validate_artifact,
-        ]:
-            state = step(state)
+        external_budget = RadarExternalCallBudget(external_budget_settings_from_context(state.task_context))
+        with external_call_budget_context(external_budget):
+            for step in [
+                self.build_search_plan,
+                self.run_web_search,
+                self.normalize_sources,
+                self.extract_candidates,
+                self.evaluate_candidates,
+                self.validate_artifact,
+            ]:
+                state = step(state)
         return self.shape_artifact(
             state=state,
             node_name=node_name,
@@ -106,9 +113,14 @@ class LiveRadarRunService:
             max_checkpoint_retries_per_stage=_int_context_value(state.task_context, "max_checkpoint_retries_per_stage"),
             run_profile=_str_context_value(state.task_context, "run_profile"),
             max_openrouter_calls_per_run=_int_context_value(state.task_context, "max_openrouter_calls_per_run"),
+            max_openrouter_planner_calls_per_run=_int_context_value(state.task_context, "max_openrouter_planner_calls_per_run"),
+            max_openrouter_web_task_calls_per_run=_int_context_value(state.task_context, "max_openrouter_web_task_calls_per_run"),
+            max_openrouter_server_tool_web_searches_per_run=_int_context_value(state.task_context, "max_openrouter_server_tool_web_searches_per_run"),
             max_dadata_lookups_per_run=_int_context_value(state.task_context, "max_dadata_lookups_per_run"),
             max_source_verification_requests_per_run=_int_context_value(state.task_context, "max_source_verification_requests_per_run"),
             max_provider_retries_per_task=_int_context_value(state.task_context, "max_provider_retries_per_task"),
+            openrouter_web_max_results_per_call=_int_context_value(state.task_context, "openrouter_web_max_results_per_call"),
+            openrouter_web_max_total_results_per_call=_int_context_value(state.task_context, "openrouter_web_max_total_results_per_call"),
             smoke_max_candidates=_int_context_value(state.task_context, "smoke_max_candidates"),
             smoke_max_signals=_int_context_value(state.task_context, "smoke_max_signals"),
             source_policy_decisions=[dict(item) for item in (state.discovery_plan or {}).get("source_policy_decisions", []) if isinstance(item, dict)],

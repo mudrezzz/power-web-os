@@ -283,7 +283,15 @@ def _decision(
 
 
 def _blocking_source_obligations(decisions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    blocking_statuses = {"blocked", "violated", "unavailable", "empty"}
+    blocking_statuses = {
+        "blocked",
+        "violated",
+        "unavailable",
+        "empty",
+        "attempted_empty",
+        "attempted_insufficient",
+        "attempted_unlinked",
+    }
     return [
         dict(item)
         for item in decisions

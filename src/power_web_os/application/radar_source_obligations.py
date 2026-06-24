@@ -53,7 +53,15 @@ def source_obligation_summary(decisions: list[dict[str, Any]]) -> dict[str, Any]
     by_obligation = Counter(str(item.get("usage_obligation") or "preferred") for item in decisions)
     blocked = [
         item for item in decisions
-        if str(item.get("status")) in {"blocked", "violated", "unavailable", "empty"}
+        if str(item.get("status")) in {
+            "blocked",
+            "violated",
+            "unavailable",
+            "empty",
+            "attempted_empty",
+            "attempted_insufficient",
+            "attempted_unlinked",
+        }
     ]
     return {
         "decision_count": len(decisions),
@@ -126,6 +134,8 @@ def obligation_decisions_from_plan(
     steps: list[Any],
     source_policy_decisions: list[Any],
     source_provider_outcomes: list[dict[str, Any]] | None = None,
+    sources: list[Any] | None = None,
+    observations: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     planner_decisions = _decision_index(source_policy_decisions)
     provider_by_source = {
@@ -140,12 +150,16 @@ def obligation_decisions_from_plan(
         provider_outcome = provider_by_source.get(source_id)
         selected = str(planner_decision.get("decision") or "") == "selected"
         skipped = str(planner_decision.get("decision") or "") == "skipped"
-        if provider_outcome:
-            outcome = str(provider_outcome.get("outcome") or "")
-            if outcome in {"provider_unavailable", "unreachable", "empty", "policy_skipped"}:
-                status = "unavailable" if outcome == "provider_unavailable" else ("empty" if outcome == "empty" else "blocked")
-            else:
-                status = "satisfied"
+        runtime_outcome = _runtime_obligation_outcome(
+            obligation=obligation,
+            provider_outcome=provider_outcome,
+            selected=selected,
+            steps=steps,
+            sources=sources or [],
+            observations=observations or [],
+        )
+        if runtime_outcome:
+            status = runtime_outcome["status"]
         elif selected and _source_used_for_any_stage(source_id=source_id, steps=steps):
             status = "satisfied"
         elif skipped:
@@ -159,6 +173,7 @@ def obligation_decisions_from_plan(
             "status": status,
             "planner_decision": planner_decision,
             "provider_outcome": provider_outcome or {},
+            "runtime_outcome": runtime_outcome or {},
             "stage_task_ids": [
                 str(getattr(step, "step_id", getattr(step, "task_id", "")))
                 for step in steps
@@ -166,6 +181,77 @@ def obligation_decisions_from_plan(
             ],
         })
     return result
+
+
+def _runtime_obligation_outcome(
+    *,
+    obligation: dict[str, Any],
+    provider_outcome: dict[str, Any] | None,
+    selected: bool,
+    steps: list[Any],
+    sources: list[Any],
+    observations: list[dict[str, Any]],
+) -> dict[str, Any]:
+    usage = str(obligation.get("usage_obligation") or "")
+    source_id = str(obligation.get("source_id") or "")
+    source_type = str(obligation.get("source_type") or "")
+    required = usage in REQUIRED_OBLIGATIONS
+    if provider_outcome:
+        outcome = str(provider_outcome.get("outcome") or "")
+        observation_count = _int_value(provider_outcome.get("observation_count"))
+        if outcome in {"provider_unavailable", "rate_limited", "invalid_credentials"}:
+            return {"status": "unavailable", "outcome": outcome, "useful": False}
+        if outcome in {"policy_skipped", "not_executed_budget_limited"}:
+            return {"status": "blocked", "outcome": outcome, "useful": False}
+        if outcome in {"empty", "provider_empty", "no_match"} or observation_count == 0 and outcome in {"used", "no_match"}:
+            return {"status": "attempted_empty", "outcome": outcome, "useful": False}
+        if outcome in {"registry_lookup_insufficient", "schema_invalid", "ambiguous_match"}:
+            return {"status": "attempted_insufficient", "outcome": outcome, "useful": False}
+        if observation_count > 0 or outcome == "used":
+            return {"status": "satisfied", "outcome": outcome, "useful": True}
+    if not required or not selected or not _source_used_for_any_stage(source_id=source_id, steps=steps):
+        return {}
+    linked_source_refs = _linked_source_refs(observations)
+    source_refs = {_source_ref(source) for source in sources if _source_ref(source)}
+    if source_type == "search_engine" and source_refs and not (source_refs & linked_source_refs):
+        return {"status": "attempted_unlinked", "outcome": "retrieved_without_linked_evidence", "useful": False}
+    if source_refs & linked_source_refs:
+        return {"status": "satisfied", "outcome": "linked_evidence", "useful": True}
+    return {}
+
+
+def _linked_source_refs(observations: list[dict[str, Any]]) -> set[str]:
+    refs: set[str] = set()
+    for observation in observations:
+        if not isinstance(observation, dict):
+            continue
+        for ref in observation.get("evidence_refs", []):
+            if str(ref).strip():
+                refs.add(str(ref))
+        for section_name in ("qualification", "signals"):
+            section = observation.get(section_name, [])
+            if not isinstance(section, list):
+                continue
+            for item in section:
+                if not isinstance(item, dict):
+                    continue
+                for ref in item.get("evidence_refs", []):
+                    if str(ref).strip():
+                        refs.add(str(ref))
+    return refs
+
+
+def _int_value(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return -1
+
+
+def _source_ref(source: Any) -> str:
+    if isinstance(source, dict):
+        return str(source.get("evidence_ref") or "")
+    return str(getattr(source, "evidence_ref", "") or "")
 
 
 def source_id_for_source(source: dict[str, Any]) -> str:
