@@ -214,6 +214,14 @@ Until the remaining source/provider hardening slices are implemented, a
 manual `Run radar` is useful for diagnostics and smoke testing, not for judging
 final discovery quality.
 
+After `0.7.6.1.11.9`, the next repair gates remain mandatory before a long
+quality run: candidate-universe extraction from retrieved sources, smoke
+diagnostics parity, external connector profile compilation, and
+capability-based planner/source validation. If a smoke run retrieves or
+analyzes sources but returns zero candidates, inspect the stopped-for-review,
+source-obligation, extraction/linking, and budget diagnostics first. Do not
+treat that output as "the market has no matching companies."
+
 The first extraction repair slice is now implemented. In diagnostics, treat
 `extraction_repair_needed` as "the provider returned usable material, but the
 backend had to repair its shape or source refs" and treat
@@ -243,6 +251,14 @@ requests such as finding every company in a holding contour, the run records
 strategy. When DaData does return company observations, those facts are injected
 into later extraction as structured company observations so the LLM does not
 need to simulate a registry lookup in free text.
+
+This DaData behavior is not supposed to be hardcoded as a special case. The
+next connector-profile slices introduce plugin-friendly source descriptions:
+what a source is for, examples of good and bad inputs, facts it returns, and
+limitations. Power Web OS compiles those descriptions into internal capability
+cards for planner input and backend validation. Radar settings still decide
+which sources are selected and whether they are required, preferred, fallback,
+or disabled.
 
 Live Radar also resolves entity type before scoring. The shortlist is an account
 shortlist, so normal candidates are legal entities. Production sites, projects,

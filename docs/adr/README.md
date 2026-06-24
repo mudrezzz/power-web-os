@@ -27,6 +27,7 @@ ADRs capture decisions that shape product architecture.
 - `2026-06-23-tdd-preflight-for-complex-llm-pipelines.md` - Require fast preflight, recorded fixtures, and targeted live probes before expensive full live runs for complex LLM pipelines.
 - `2026-06-23-radar-source-obligations-and-adaptive-checkpoints.md` - Treat Radar source policies as enforceable obligations and add adaptive execution checkpoints before benchmark runs.
 - `2026-06-23-radar-entity-resolution-before-account-scoring.md` - Resolve legal entities separately from sites, projects, and assets before Radar account scoring.
+- `2026-06-25-connector-profiles-compile-to-source-capabilities.md` - Let external source connectors describe themselves in plugin-friendly profiles, then compile them into internal Radar source capabilities for planner and validator use.
 
 ## Template
 

@@ -339,6 +339,15 @@ actions for sanitized payloads. Do not store or display raw hidden
 chain-of-thought. If the backend is unavailable, the same screen stays in
 explicit demo fallback mode and reads the generated JSON files.
 
+Do not treat a bounded smoke run as a discovery-quality benchmark until the
+current post-`0.7.6.1.11.9` repair slices are green. The next gates are:
+candidate-universe extraction from retrieved sources, smoke diagnostics parity,
+connector profile compilation, and capability-based planner validation. A smoke
+run that retrieves/analyzes sources but returns zero candidates should surface a
+blocking diagnostic such as extraction/linking failure, unmet source obligation,
+or stopped-for-review state; it should not be interpreted as a clean negative
+business result.
+
 Use `Inspect run` / `Диагностика запуска` from the live run status, empty state,
 failed state, completed state, or zero-candidate state when you need run-level
 inspection without selecting a candidate. The diagnostics panel shows run
@@ -346,6 +355,14 @@ context, execution counts, coverage warnings, candidate-universe lifecycle,
 source lifecycle, product-safe dossier/journal sections, and trace availability.
 Candidate detail tabs remain the place for candidate-specific evidence, review
 decisions, and signal rows.
+
+Source connector behavior must be configured through connector profiles, not
+hardcoded per provider. External connector profiles are plugin-friendly
+descriptions: what the source is for, examples of good and bad inputs, facts it
+can return, limitations, and credential requirements. They do not reference
+internal Radar stages. The application compiles those profiles into internal
+capability cards used by preflight, planner prompts, source-policy validation,
+and execution.
 
 Default queue settings:
 

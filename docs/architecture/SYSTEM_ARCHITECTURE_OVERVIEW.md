@@ -101,11 +101,15 @@ slices should continue in this order before broad live quality claims:
 3. effective runtime config and targeted live preflight probes;
 4. source usage obligations for required/preferred/optional/fallback sources;
 5. adaptive execution checkpoints after discovery, gates, and coverage;
-6. hardened DaData structured-observation injection;
+6. hardened structured-observation injection for company registry providers;
 7. product projection repair for analyzed versus used sources;
-8. multi-radar discovery benchmark over the repaired workflow pipeline;
-9. normalized candidate/evidence query tables when API usage needs them;
-10. production schedule/cadence controls.
+8. candidate-universe extraction from retrieved sources and smoke diagnostics
+   parity;
+9. external connector profiles compiled into internal source capabilities;
+10. planner source cards plus capability-based source validation;
+11. multi-radar discovery benchmark over the repaired workflow pipeline;
+12. normalized candidate/evidence query tables when API usage needs them;
+13. production schedule/cadence controls.
 
 JSON artifacts remain useful as demo exports and offline fallback, but they are
 not the long-term source of truth. The frontend now prefers the Radar API for
@@ -245,6 +249,19 @@ skipped by planner output, disabled sources cannot be selected, fallback sources
 cannot be used before primary source decisions are resolved, and coverage steps
 must name required coverage sources. Accepted runs persist source-obligation
 decisions in execution metadata, dossier, journal, and technical trace.
+
+Source connector capability must not be hardcoded per provider. The long-term
+source boundary is plugin-like: a connector can provide a human-readable profile
+describing what the source is, examples of good and bad inputs, facts it can
+return, credential needs, and limitations. External connector authors should not
+need to know internal Radar stages such as discovery, gates, coverage, or signal
+search. Power Web OS compiles those connector profiles into an internal
+capability model used by planner input, preflight, source-policy validation, and
+execution. That compiled model can say whether a source is lookup-only,
+enumeration-capable, identity/enrichment-oriented, signal-evidence-capable, and
+what counts as a useful result. The Radar definition remains responsible for
+choosing sources and usage obligations; the connector profile explains what each
+source can actually do.
 
 Candidate universe execution is now iterative. Accepted discovery plans may
 contain executable `coverage_check` stages. The application service runs initial

@@ -4073,6 +4073,152 @@ Principles:
     extraction/linking failure mode, not as "no sources".
   - Product `sources` remains strict and evidence-bearing.
 
+### Slice 0.7.6.1.11.9.1: Candidate universe extraction from retrieved sources and smoke diagnostics parity
+
+- Status: `Backlog`
+- Goal: Fix the current smoke-run failure mode where web retrieval returns
+  sources, but no legal-entity candidate universe is extracted and the run can
+  still look like a normal completed empty output.
+- User value: A user can trust smoke diagnostics before a long live run:
+  retrieved/analyzed sources either become legal-entity candidates or produce a
+  clear stopped-for-review/source-obligation diagnostic.
+- Scope:
+  - Make broad web discovery extract legal-entity candidate universe records from
+    retrieved/analyzed sources when source text contains company names.
+  - Run company-registry lookups only after concrete lookup terms exist, such as
+    legal names, INN, OGRN, or strong legal-name-like fragments.
+  - When a registry source is selected but no concrete lookup terms exist, record
+    `not_executed_input_not_available` or `registry_lookup_insufficient`; do not
+    call the provider with a broad natural-language universe query and do not
+    report the outcome as a clean `no_match`.
+  - Fix dossier summary parity: `retrieved_source_count` must match persisted
+    retrieval metadata and technical trace counts for the same run.
+  - Count OpenRouter planner HTTP calls in external OpenRouter budget counters,
+    not only retrieval/extraction web-task calls.
+  - Make top-level run/dossier diagnostics clearly show
+    `stopped_for_review` / `source_obligation_unmet` / `checkpoint_failed`
+    states when checkpoints block signal search. A terminal `completed` run with
+    zero candidates must not look like a successful negative result.
+- Out of scope:
+  - New connector plugin architecture.
+  - New source providers.
+  - UI source editor changes.
+  - Long benchmark quality claims.
+- Implementation notes:
+  - Keep product `sources` strict and evidence-bearing.
+  - Treat web discovery candidate extraction as an application-layer
+    normalization/evidence-linking repair, not as DaData-specific logic.
+  - Preserve entity-resolution rules: only legal entities can become account
+    candidates; sites/projects/assets remain linked facts or gaps.
+- Tests:
+  - Recorded/fake smoke fixture where OpenRouter Perplexity returns official
+    SIBUR-like pages and company mentions; legal-entity candidates should be
+    extracted or a blocking extraction diagnostic should be produced.
+  - Fixture where retrieved sources exist but no evidence refs link to candidates
+    should set `stopped_for_review`, not produce a plain completed-empty output.
+  - Fixture proving broad query is not sent to a lookup-only registry provider
+    when concrete lookup terms are absent.
+  - API/dossier tests for `retrieved_source_count` parity with metadata/trace.
+  - External-call budget test proving planner calls are counted.
+- Docs:
+  - Update Developer Guide and demo docs with the expected smoke-run diagnostic
+    states.
+- Acceptance criteria:
+  - A smoke run with retrieved sources and zero candidates explains whether the
+    blocker is extraction, evidence linking, source obligations, or budget.
+  - A registry source is never called with a broad universe-enumeration query
+    unless its compiled connector capability explicitly supports enumeration.
+  - The next long live run is gated on this smoke fixture passing.
+
+### Slice 0.7.6.1.11.9.2: Connector profile registry and capability compiler
+
+- Status: `Backlog`
+- Goal: Introduce an external-source connector profile boundary so source
+  behavior is not hardcoded for DaData, SBIS, Perplexity, or future plugins.
+- User value: New data-source developers can describe their connector in a
+  product-neutral way without knowing Power Web OS pipeline stage names, while
+  the application still gets a machine-checkable capability model.
+- Scope:
+  - Add a connector profile registry outside application code. Profiles are
+    human-readable and plugin-friendly: id, display name, description, examples
+    of good/bad inputs, expected returned facts, limitations, and credential
+    requirements.
+  - Compile connector profiles into internal capability cards used by planner,
+    preflight, source-policy validation, and execution.
+  - Keep Radar definition source obligations unchanged: users still choose
+    sources and set `required_for_identity`, `required_for_coverage`,
+    `preferred`, `fallback`, `disabled`, etc.
+  - Move non-secret connector/runtime defaults out of `.env` where practical;
+    `.env` remains for credentials, local endpoints, and deployment-specific
+    overrides.
+  - Add preflight checks for profile loading, compiled capabilities, missing
+    credentials, and connector/profile mismatch.
+- Out of scope:
+  - Full plugin marketplace.
+  - UI for installing third-party connectors.
+  - Replacing current source registry adapters.
+  - Long benchmark runs.
+- Implementation notes:
+  - External connector profiles must not reference internal pipeline stage names
+    such as `qualification_discovery` or `coverage_check`.
+  - The compiler owns translation from human descriptions and examples into
+    internal capability concepts such as lookup-only, enumeration-capable,
+    identity/enrichment/signal/coverage applicability, and useful-result
+    criteria.
+- Tests:
+  - Profile parser/validator tests for DaData, OpenRouter web, and SIBUR site
+    profiles.
+  - Compiler tests proving broad enumeration is rejected for lookup-only
+    profiles and accepted only for enumeration-capable profiles.
+  - Preflight tests for missing/invalid connector profile and missing secrets.
+- Docs:
+  - Add ADR for external connector profiles compiling to internal capabilities.
+  - Update SAO and Developer Guide with connector/profile ownership.
+- Acceptance criteria:
+  - No DaData-specific source-use rule is required in the planner/executor.
+  - A future connector can be introduced by adding a profile and adapter without
+    teaching the profile author Power Web OS pipeline internals.
+
+### Slice 0.7.6.1.11.9.3: Planner source cards and capability-based source validation
+
+- Status: `Backlog`
+- Goal: Make the LLM planner and backend validator use compiled connector
+  capability cards so source selection stays flexible but policy-safe.
+- User value: The planner can choose sources intelligently, and backend can
+  reject invalid source use before a long run wastes budget or returns empty
+  output.
+- Scope:
+  - Add compact source cards to planner input: source name, best-for, not-for,
+    required input shape, returned facts, and useful-result semantics.
+  - Require accepted plan steps to declare intended source use against compiled
+    capabilities, not just a raw `source_id`.
+  - Reject broad universe queries against lookup-only sources unless an
+    enumeration capability is explicitly available.
+  - Reject signal-search use of registry/enrichment-only sources unless the
+    connector profile explicitly supports signal evidence.
+  - Record validation/repair outcomes in dossier, journal, and technical trace:
+    source selected, capability matched, capability rejected, operation skipped,
+    or source obligation unsatisfied.
+- Out of scope:
+  - New source provider adapters.
+  - UI connector installation.
+  - Benchmark quality claims.
+- Tests:
+  - Planner fixture where DaData-like profile is used only after concrete
+    company names exist.
+  - Planner fixture where web/official source is selected for broad universe
+    discovery and registry source is selected for identity enrichment.
+  - Negative fixture where planner tries to send broad holding-contour query to
+    lookup-only source; validator rejects and requests revision or stops review.
+  - Smoke fixture proving source obligations are evaluated against useful
+    capability-compatible outcomes.
+- Docs:
+  - Update Developer Guide/demo docs with capability-card planning diagnostics.
+- Acceptance criteria:
+  - Current DaData broad-query failure is impossible by validation, not by a
+    DaData-specific conditional.
+  - Planner trace explains source choice in terms of connector capability cards.
+
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 
 - Status: `Backlog`
@@ -4106,10 +4252,10 @@ Principles:
   - Run this only after `Slice 0.7.6.1.7.2`, `Slice 0.7.6.1.7.3`,
     `Slice 0.7.6.1.7.4`, `Slice 0.7.6.1.8`, `Slice 0.7.6.1.9`,
     `Slice 0.7.6.1.10`, `Slice 0.7.6.1.11`, and the TDD/preflight repair
-    slices `0.7.6.1.11.1` through `0.7.6.1.11.9`, so the benchmark tests a
+    slices `0.7.6.1.11.1` through `0.7.6.1.11.9.3`, so the benchmark tests a
     source-verification-aware, observable, compact-prompt,
-    structured-source-capable retrieval/extraction pipeline rather than an
-    opaque web-search prompt path.
+    structured-source-capable retrieval/extraction pipeline with explicit
+    connector capabilities rather than an opaque web-search prompt path.
   - The benchmark should use the qualification-first execution plan from
     `Slice 0.7.6.1.3`, LLM-planned discovery from `Slice 0.7.6.1.4`, and
     coverage-enforced candidate universe expansion from `Slice 0.7.6.1.5`;
@@ -4741,4 +4887,4 @@ None.
 
 ## Next Recommended Task
 
-Plan or implement `Slice 0.7.6.2: Multi-radar discovery benchmark`.
+Plan or implement `Slice 0.7.6.1.11.9.1: Candidate universe extraction from retrieved sources and smoke diagnostics parity`.
