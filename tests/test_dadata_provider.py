@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import power_web_os.integrations.dadata_provider as dadata_module
 from power_web_os.application.radar_source_providers import CompanyLookupRequest
 from power_web_os.integrations.dadata_provider import (
     DaDataCompanyRegistryProvider,
@@ -27,9 +28,48 @@ def test_recorded_dadata_lookup_maps_company_observation() -> None:
     result = provider.lookup_companies(_request(query="Тестовый завод", lookup_terms=["Тестовый завод"]))
 
     assert result.observations[0].source_ref == "dadata_test_company"
+    assert result.observations[0].entity_type == "legal_entity"
+    assert result.observations[0].normalized_legal_name
+    assert result.observations[0].matched_by == "legal_name"
     assert result.observations[0].legal_name == "АО Тестовый завод"
     assert result.outcomes[0].outcome == "used"
     assert result.provider_metadata == {"provider": "dadata", "dadata_mode": "recorded"}
+
+
+def test_recorded_dadata_lookup_by_inn_has_high_match_quality() -> None:
+    provider = RecordedDaDataCompanyRegistryProvider(fixtures=[{
+        "legal_name": "AO Test Plant",
+        "inn": "1234567890",
+        "ogrn": "1020000000000",
+        "status": "ACTIVE",
+    }])
+
+    result = provider.lookup_companies(_request(query="1234567890", lookup_terms=["1234567890"]))
+
+    assert result.outcomes[0].outcome == "used"
+    assert result.observations[0].matched_by == "inn"
+    assert result.observations[0].match_quality == "high"
+
+
+def test_recorded_dadata_empty_result_is_no_match() -> None:
+    provider = RecordedDaDataCompanyRegistryProvider(fixtures=[{"legal_name": "AO Other Plant", "inn": "1234567890"}])
+
+    result = provider.lookup_companies(_request(query="Missing Plant", lookup_terms=["Missing Plant"]))
+
+    assert result.observations == []
+    assert result.outcomes[0].outcome == "no_match"
+
+
+def test_recorded_dadata_ambiguous_result_is_not_auto_accepted() -> None:
+    provider = RecordedDaDataCompanyRegistryProvider(fixtures=[
+        {"legal_name": "AO Test Plant North", "status": "ACTIVE"},
+        {"legal_name": "AO Test Plant South", "status": "ACTIVE"},
+    ])
+
+    result = provider.lookup_companies(_request(query="Test Plant", lookup_terms=["Test Plant"]))
+
+    assert len(result.observations) == 2
+    assert result.outcomes[0].outcome == "ambiguous_match"
 
 
 def test_live_dadata_provider_reports_unavailable_without_credentials(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -41,7 +81,29 @@ def test_live_dadata_provider_reports_unavailable_without_credentials(tmp_path: 
 
     assert result.observations == []
     assert result.outcomes[0].outcome == "provider_unavailable"
-    assert "DADATA_API_KEY" in result.outcomes[0].reason
+    assert "credentials" in result.outcomes[0].reason.lower()
+
+
+def test_live_dadata_provider_reports_schema_invalid_for_malformed_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"unexpected": []}'
+
+    monkeypatch.setattr(dadata_module.urllib_request, "urlopen", lambda *args, **kwargs: FakeResponse())
+    provider = DaDataCompanyRegistryProvider(api_key="key", secret_key="secret", timeout_seconds=1)
+
+    result = provider.lookup_companies(_request(query="1234567890", lookup_terms=["1234567890"]))
+
+    assert result.observations == []
+    assert result.outcomes[0].outcome == "schema_invalid"
 
 
 @pytest.mark.live_dadata

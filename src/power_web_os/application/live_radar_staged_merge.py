@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from power_web_os.application.live_radar_contracts import RadarSourceEvidence, WebSearchProviderResult
@@ -38,7 +39,8 @@ def merge_candidate_observations(observations: list[dict[str, Any]]) -> list[dic
         name = str(item.get("legal_name") or item.get("name") or "").strip()
         if not name:
             continue
-        target = merged.setdefault(name.lower(), {"legal_name": name, "qualification": [], "signals": [], "review_flags": []})
+        key = _candidate_merge_key(item, fallback_name=name)
+        target = merged.setdefault(key, {"legal_name": name, "qualification": [], "signals": [], "review_flags": []})
         target["description"] = target.get("description") or item.get("description", "")
         target["qualification"] = _merge_section(target.get("qualification", []), item.get("qualification", []), "criterion_code")
         target["signals"] = _merge_section(target.get("signals", []), item.get("signals", []), "signal_code")
@@ -47,14 +49,31 @@ def merge_candidate_observations(observations: list[dict[str, Any]]) -> list[dic
             for ref in [*_as_list(target.get("evidence_refs")), *_as_list(item.get("evidence_refs"))]
             if str(ref).strip()
         })
-        for key in ("entity_type", "entity_resolution_status", "not_candidate_reason", "inn", "ogrn", "okved"):
-            if item.get(key) and not target.get(key):
-                target[key] = item[key]
+        for metadata_key in ("entity_type", "entity_resolution_status", "not_candidate_reason", "inn", "ogrn", "okved", "normalized_legal_name", "match_quality", "matched_by", "lookup_query"):
+            if item.get(metadata_key) and not target.get(metadata_key):
+                target[metadata_key] = item[metadata_key]
         if isinstance(item.get("registry_facts"), dict):
             target["registry_facts"] = {**target.get("registry_facts", {}), **item["registry_facts"]}
         target["linked_entity_facts"] = _merge_fact_list(target.get("linked_entity_facts", []), item.get("linked_entity_facts", []))
         target["review_flags"] = sorted({str(flag) for flag in [*target.get("review_flags", []), *item.get("review_flags", [])] if str(flag).strip()})
     return list(merged.values())
+
+
+def _candidate_merge_key(item: dict[str, Any], *, fallback_name: str) -> str:
+    for key in ("inn", "ogrn"):
+        value = str(item.get(key) or "").strip().lower()
+        if value:
+            return f"{key}:{value}"
+    normalized_name = str(item.get("normalized_legal_name") or "").strip().lower()
+    if normalized_name:
+        return f"name:{normalized_name}"
+    return f"name:{_normalize_company_name(fallback_name)}"
+
+
+def _normalize_company_name(value: str) -> str:
+    normalized = re.sub(r"[«»\"'.,]", " ", value.lower())
+    normalized = re.sub(r"\b(ао|пао|оао|зао|ооо|нао|jsc|pjsc|llc)\b", " ", normalized, flags=re.IGNORECASE)
+    return " ".join(normalized.split())
 
 
 def candidate_universe_with_entity_metadata(

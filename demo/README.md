@@ -152,15 +152,21 @@ explicitly exploratory.
 Full live Radar quality claims are still gated by the repair slices recorded in
 `ROADMAP.md`: strict extraction schema checks, evidence-ref reconciliation,
 entity resolution, effective runtime config probes, source usage obligations,
-adaptive execution recovery, hardened DaData observation injection, and honest
+adaptive execution harness coverage, hardened DaData observation injection, and honest
 analyzed-versus-used source projection. The current checkpoint layer is a safety
-gate: if discovery, gate, coverage, source-obligation, schema, linking, or
-budget signals are weak, the run dossier records `checkpoint_decisions`,
-`adaptive_actions`, `checkpoint_warnings`, and `stopped_for_review_reason`, and
-signal search may be skipped instead of burning provider calls on an invalid
-candidate universe. The follow-up adaptive recovery slices must still make
-retry, source expansion, and planner revision executable before a weak strategy
-can be repaired automatically. Until the remaining source/provider hardening slices are implemented, a
+gate and recovery loop: if discovery, gate, coverage, source-obligation, schema,
+linking, or budget signals are weak, the run dossier records
+`checkpoint_decisions`, `adaptive_actions`, `checkpoint_warnings`, and
+`stopped_for_review_reason`; bounded retry/source expansion/revision-style
+recovery may run, and signal search is skipped unless the final pre-signal
+checkpoint returns `continue`. Before a long manual run, the adaptive harness
+must be green:
+
+```bash
+python -m pytest tests/test_radar_adaptive_execution.py -q
+```
+
+Until the remaining source/provider hardening slices are implemented, a
 manual `Run radar` is useful for diagnostics and smoke testing, not for judging
 final discovery quality.
 
@@ -185,6 +191,14 @@ smoke runs use fixtures. In `live` mode, set `DADATA_API_KEY` and
 `DADATA_SECRET_KEY` in local `.env`; secrets are not committed or shown in
 trace. DaData supports legal-entity identity and registry facts, while open web
 remains responsible for current evidence and intent signals.
+
+DaData is executed by the backend as a bounded company lookup. It works best
+when the task has a concrete legal name, INN, OGRN, or candidate scope. For broad
+requests such as finding every company in a holding contour, the run records
+`registry_lookup_insufficient` and should continue through web/coverage
+strategy. When DaData does return company observations, those facts are injected
+into later extraction as structured company observations so the LLM does not
+need to simulate a registry lookup in free text.
 
 Live Radar also resolves entity type before scoring. The shortlist is an account
 shortlist, so normal candidates are legal entities. Production sites, projects,

@@ -265,19 +265,15 @@ After candidate discovery, qualification gates, coverage checks, and before
 signal search, the application layer evaluates candidate count, linked-source
 count, required-source usage, coverage risk, schema/linking failures, and budget
 pressure. Checkpoint outcomes are stored as execution metadata and journal
-events. The current runtime enforces the pre-signal safety gate: signal search
-starts only after the checkpoint confirms that there is a qualified,
-source-linked candidate scope and no blocking policy/schema/evidence-linking
-condition.
-
-The next adaptive recovery layer must execute checkpoint-selected actions, not
-only record decisions. `retry_same_source` must make a second bounded provider
-call under budget; `expand_sources` must add a bounded task for an allowed source
-scope; `revise_plan` must call the planner port with compact checkpoint facts
-and apply the validated revision; failed recovery must stop as review-needed or
-hard failure with explicit metadata. These behaviors are required before any
-quality benchmark because long live runs are not an acceptable first validation
-mechanism.
+events. The runtime enforces the pre-signal safety gate: signal search starts
+only after the checkpoint confirms that there is a qualified, source-linked
+candidate scope and no blocking policy/schema/evidence-linking condition.
+Checkpoint-selected recovery is bounded: `retry_same_source` makes another
+provider call under budget, `expand_sources` uses only allowed source scopes,
+and revision-style recovery stays scoped to compact checkpoint facts. Failed
+recovery stops as review-needed or hard failure with explicit metadata.
+`tests/test_radar_adaptive_execution.py -q` is the required fast harness before
+any broad live run or quality benchmark.
 
 Execution budgets are hierarchical. The backend can cap total run tasks,
 discovery tasks per qualification rule, gate tasks per candidate and rule, and
@@ -395,6 +391,14 @@ provider can be used for a rule, but provider SDK/MCP details do not leak into
 domain scoring or API routes. The DaData adapter supports recorded mode for
 tests/local smoke and live mode when `DADATA_API_KEY` and `DADATA_SECRET_KEY`
 are present.
+
+Company-registry lookup is not a candidate-universe enumeration engine. If a
+task lacks a concrete legal name, INN, OGRN, or candidate scope, the source
+registry records `registry_lookup_insufficient` and leaves universe expansion to
+web/coverage execution. Successful registry observations are injected into
+bounded provider prompts as `structured_company_observations`, so the LLM sees
+source-backed company facts rather than an instruction to perform a registry
+lookup itself.
 
 `GET /api/radar-runs/{run_id}/journal` returns ordered structured audit events.
 The journal is not raw hidden chain-of-thought. Application services reject

@@ -44,10 +44,10 @@ decision is considered implemented only when the executor actually performs the
 selected bounded action: retry the same task, expand to an allowed source scope,
 attempt compact revision-style recovery, stop as review-needed, or fail hard.
 Those actions are governed by explicit retry, revision, source-policy, and
-total-run budgets and are covered by fake/recorded tests before broad live runs
-are used as validation. Broader scenario consolidation and fixture reuse remain
-a follow-up validation-harness task, not a reason to validate behavior first
-through long live runs.
+total-run budgets. The adaptive execution harness
+(`python -m pytest tests/test_radar_adaptive_execution.py -q`) is the required
+fast validation gate for strategy changes before broad live runs are used as
+validation.
 
 DaData will be treated as a backend source provider, not as a string in a prompt.
 The backend calls DaData, normalizes company observations, and passes structured
@@ -64,6 +64,8 @@ source for public evidence and signals.
   resolution, effective runtime config checks, source obligations, adaptive
   recovery actions, DaData hardening, and product source projection repair are
   in place.
+- Radar strategy changes must update the adaptive fake/recorded harness before
+  relying on a long live run as evidence.
 - The product may complete runs with explicit review-needed coverage warnings,
   but it must not present unlinked or unsearched results as normal negative
   evidence.

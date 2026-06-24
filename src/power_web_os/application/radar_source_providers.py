@@ -42,6 +42,7 @@ class CompanyLookupRequest(BaseModel):
 class CompanyRegistryObservation(BaseModel):
     source_ref: str = ""
     legal_name: str
+    normalized_legal_name: str = ""
     inn: str = ""
     ogrn: str = ""
     kpp: str = ""
@@ -50,6 +51,11 @@ class CompanyRegistryObservation(BaseModel):
     okved: str = ""
     revenue: str = ""
     registry_url: str = ""
+    entity_type: str = "legal_entity"
+    match_quality: str = "medium"
+    matched_by: str = ""
+    lookup_query: str = ""
+    provider_record_id: str = ""
     facts: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -99,6 +105,7 @@ class RadarSourceRegistry:
         evidence: list[RadarSourceEvidence] = []
         observations: list[dict[str, Any]] = []
         outcomes: list[dict[str, Any]] = []
+        structured_observations: list[dict[str, Any]] = []
         metadata: dict[str, Any] = {"provider": "source_registry"}
         for source in sources:
             provider_id = _provider_id(source)
@@ -113,9 +120,20 @@ class RadarSourceRegistry:
                     query=request.query,
                 ).model_dump())
                 continue
+            if _lookup_is_too_broad(task):
+                outcomes.append(CompanySourceOutcome(
+                    source_id=request.source_id,
+                    provider_id=provider_id,
+                    outcome="registry_lookup_insufficient",
+                    reason="Company registry lookup needs a concrete legal name, INN, OGRN, or candidate scope; broad universe enumeration should use web/coverage strategy.",
+                    query=request.query,
+                    observation_count=0,
+                ).model_dump())
+                continue
             result = provider.lookup_companies(request)
             evidence.extend(_source_evidence_from_observations(result.observations, request=request, provider_id=provider_id))
             observations.extend(_candidate_observations_from_registry(result.observations, task=task))
+            structured_observations.extend(_structured_observations_from_registry(result.observations, request=request, provider_id=provider_id))
             outcomes.extend([item.model_dump() for item in result.outcomes])
             metadata = merge_provider_metadata(metadata, result.provider_metadata)
 
@@ -126,6 +144,7 @@ class RadarSourceRegistry:
                 **metadata,
                 "source_provider_outcomes": outcomes,
                 "source_outcomes": outcomes,
+                "structured_company_observations": structured_observations,
             },
         )
 
@@ -140,8 +159,7 @@ class SourceRegistryWebSearchProvider(WebSearchProvider):
         self._source_registry = source_registry
 
     def run_search_plan(self, *, radar: dict[str, Any], search_plan: RadarSearchPlan) -> WebSearchProviderResult:
-        web_result = self._web_provider.run_search_plan(radar=radar, search_plan=search_plan)
-        registry_result = WebSearchProviderResult()
+        combined_result = WebSearchProviderResult()
         for query in search_plan.queries:
             task = RadarExecutionTask(
                 task_id=query.query_id,
@@ -160,11 +178,14 @@ class SourceRegistryWebSearchProvider(WebSearchProvider):
                 depends_on=list(query.depends_on),
                 candidate_scope=list(query.candidate_scope),
             )
-            registry_result = _combine_results(
-                registry_result,
-                self._source_registry.lookup_for_task(radar=radar, task=task),
+            single_query_plan = RadarSearchPlan(radar_id=search_plan.radar_id, queries=[query])
+            registry_result = self._source_registry.lookup_for_task(radar=radar, task=task)
+            web_result = self._web_provider.run_search_plan(
+                radar=_radar_with_structured_observations(radar, registry_result),
+                search_plan=single_query_plan,
             )
-        return _combine_results(registry_result, web_result)
+            combined_result = _combine_results(combined_result, _combine_results(registry_result, web_result))
+        return combined_result
 
 
 def _combine_results(first: WebSearchProviderResult, second: WebSearchProviderResult) -> WebSearchProviderResult:
@@ -202,7 +223,7 @@ def _provider_id(source: dict[str, Any]) -> str:
 
 
 def _lookup_request(*, radar: dict[str, Any], task: RadarExecutionTask, source: dict[str, Any]) -> CompanyLookupRequest:
-    terms = [*task.candidate_scope, task.query]
+    terms = [*task.candidate_scope, *_lookup_terms_from_text(task.query)]
     terms.extend(str(item) for item in source.get("keywords", []) if isinstance(item, str))
     return CompanyLookupRequest(
         radar_id=str(radar.get("radar_id") or ""),
@@ -216,6 +237,50 @@ def _lookup_request(*, radar: dict[str, Any], task: RadarExecutionTask, source: 
         lookup_terms=[item for item in _dedupe_text(terms) if item],
         candidate_scope=list(task.candidate_scope),
     )
+
+
+def _lookup_is_too_broad(task: RadarExecutionTask) -> bool:
+    if task.candidate_scope:
+        return False
+    terms = _lookup_terms_from_text(task.query)
+    if any(_is_concrete_lookup_term(term) for term in terms):
+        return False
+    lowered = task.query.lower()
+    broad_markers = ("find ", "all ", "holding", "contour", "universe", "найд", "все ", "контур", "периметр", "холдинг")
+    return task.stage in {"qualification_discovery", "coverage_check"} and any(marker in lowered for marker in broad_markers)
+
+
+def _lookup_terms_from_text(text: str) -> list[str]:
+    normalized = " ".join(str(text).split())
+    if not normalized:
+        return []
+    identifiers = re.findall(r"\b\d{10}\b|\b\d{13}\b|\b\d{15}\b", normalized)
+    quoted = re.findall(r"[\"«]([^\"»]{3,120})[\"»]", normalized)
+    legal_patterns = re.findall(
+        r"\b(?:АО|ПАО|ОАО|ЗАО|ООО|НАО|JSC|PJSC|LLC)\s+[\"«]?[A-Za-zА-Яа-я0-9 .,\-]{3,90}",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    terms = [*identifiers, *quoted, *legal_patterns]
+    if _is_concrete_lookup_term(normalized):
+        terms.append(normalized)
+    if not terms and not _looks_like_broad_discovery(normalized):
+        terms.append(normalized)
+    return _dedupe_text(terms)
+
+
+def _is_concrete_lookup_term(term: str) -> bool:
+    value = " ".join(str(term).split())
+    if re.fullmatch(r"\d{10}|\d{13}|\d{15}", value):
+        return True
+    if re.search(r"\b(АО|ПАО|ОАО|ЗАО|ООО|НАО|JSC|PJSC|LLC)\b", value, flags=re.IGNORECASE):
+        return True
+    return 3 <= len(value) <= 90 and not _looks_like_broad_discovery(value)
+
+
+def _looks_like_broad_discovery(text: str) -> bool:
+    lowered = text.lower()
+    return any(marker in lowered for marker in ("find ", "all ", "candidate universe", "holding", "contour", "найд", "все ", "периметр", "холдинг"))
 
 
 def _source_evidence_from_observations(
@@ -253,11 +318,15 @@ def _candidate_observations_from_registry(
             "description": _registry_snippet(observation),
             "evidence_refs": [source_ref],
             "review_flags": ["company_registry_fact_requires_review"],
-            "entity_type": "legal_entity",
+            "entity_type": observation.entity_type or "legal_entity",
             "entity_resolution_status": "resolved",
             "inn": observation.inn,
             "ogrn": observation.ogrn,
             "okved": observation.okved,
+            "normalized_legal_name": observation.normalized_legal_name,
+            "match_quality": observation.match_quality,
+            "matched_by": observation.matched_by,
+            "lookup_query": observation.lookup_query,
             "registry_facts": observation.facts,
             "qualification": [{
                 "criterion_code": task.subject_id,
@@ -271,6 +340,52 @@ def _candidate_observations_from_registry(
     return result
 
 
+def _structured_observations_from_registry(
+    observations: list[CompanyRegistryObservation],
+    *,
+    request: CompanyLookupRequest,
+    provider_id: str,
+) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for observation in observations:
+        result.append({
+            "source_ref": observation.source_ref or _stable_source_ref(provider_id, observation.legal_name),
+            "source_id": request.source_id,
+            "provider_id": provider_id,
+            "entity_type": observation.entity_type or "legal_entity",
+            "legal_name": observation.legal_name,
+            "normalized_legal_name": observation.normalized_legal_name or _normalize_company_name(observation.legal_name),
+            "inn": observation.inn,
+            "ogrn": observation.ogrn,
+            "kpp": observation.kpp,
+            "status": observation.status,
+            "address": observation.address,
+            "okved": observation.okved,
+            "match_quality": observation.match_quality,
+            "matched_by": observation.matched_by,
+            "lookup_query": observation.lookup_query or request.query,
+            "provider_record_id": observation.provider_record_id,
+            "facts": dict(observation.facts),
+        })
+    return result
+
+
+def _radar_with_structured_observations(radar: dict[str, Any], result: WebSearchProviderResult) -> dict[str, Any]:
+    observations = [
+        dict(item)
+        for item in result.provider_metadata.get("structured_company_observations", [])
+        if isinstance(item, dict)
+    ]
+    if not observations:
+        return radar
+    existing = [
+        dict(item)
+        for item in radar.get("structured_company_observations", [])
+        if isinstance(item, dict)
+    ]
+    return {**radar, "structured_company_observations": _dedupe_observations([*existing, *observations])}
+
+
 def _registry_snippet(observation: CompanyRegistryObservation) -> str:
     parts = [
         observation.status,
@@ -280,6 +395,24 @@ def _registry_snippet(observation: CompanyRegistryObservation) -> str:
         f"OKVED {observation.okved}" if observation.okved else "",
     ]
     return "; ".join(part for part in parts if part) or "Structured company registry observation."
+
+
+def _dedupe_observations(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[str] = set()
+    result: list[dict[str, Any]] = []
+    for item in values:
+        key = str(item.get("inn") or item.get("ogrn") or item.get("normalized_legal_name") or item.get("legal_name") or "").lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        result.append(item)
+    return result
+
+
+def _normalize_company_name(value: str) -> str:
+    normalized = re.sub(r"[«»\"'.,]", " ", value.lower())
+    normalized = re.sub(r"\b(ао|пао|оао|зао|ооо|нао|jsc|pjsc|llc)\b", " ", normalized, flags=re.IGNORECASE)
+    return " ".join(normalized.split())
 
 
 def _dedupe_text(values: list[str]) -> list[str]:

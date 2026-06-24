@@ -113,6 +113,7 @@ def compact_task_prompt(*, radar: dict[str, Any], search_plan: RadarSearchPlan) 
         },
         "candidate_scope": task.candidate_scope,
         "depends_on": task.depends_on,
+        "structured_company_observations": _structured_company_observations(radar, candidate_scope=task.candidate_scope),
     }
     return RadarRetrievalTaskPrompt(
         task_card={key: value for key, value in task_card.items() if value not in ("", None, [], {})},
@@ -175,3 +176,46 @@ def _task_rules(query: RadarSearchQuery | None) -> list[str]:
 def _source_policy(radar: dict[str, Any]) -> dict[str, Any]:
     value = radar.get("source_policy")
     return dict(value) if isinstance(value, dict) else {}
+
+
+def _structured_company_observations(radar: dict[str, Any], *, candidate_scope: list[str]) -> list[dict[str, Any]]:
+    values = [
+        dict(item)
+        for item in radar.get("structured_company_observations", [])
+        if isinstance(item, dict)
+    ]
+    if not values:
+        return []
+    scope = {item.lower() for item in candidate_scope if item}
+    if scope:
+        values = [
+            item
+            for item in values
+            if str(item.get("legal_name") or "").lower() in scope
+            or str(item.get("normalized_legal_name") or "").lower() in scope
+        ]
+    return [
+        {
+            key: value
+            for key, value in item.items()
+            if key in {
+                "source_ref",
+                "source_id",
+                "provider_id",
+                "entity_type",
+                "legal_name",
+                "normalized_legal_name",
+                "inn",
+                "ogrn",
+                "kpp",
+                "status",
+                "address",
+                "okved",
+                "match_quality",
+                "matched_by",
+                "lookup_query",
+            }
+            and value not in ("", None, [], {})
+        }
+        for item in values[:10]
+    ]

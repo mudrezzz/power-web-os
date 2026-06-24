@@ -259,7 +259,7 @@ def _decision(
     message: str,
     severity: Literal["info", "warning", "error"] = "info",
     should_continue: bool = True,
-    should_run_signal_search: bool = True,
+    should_run_signal_search: bool | None = None,
     details: dict[str, Any] | None = None,
 ) -> RadarExecutionCheckpointDecision:
     return RadarExecutionCheckpointDecision(
@@ -270,7 +270,7 @@ def _decision(
         severity=severity,
         message=message,
         should_continue=should_continue,
-        should_run_signal_search=should_run_signal_search,
+        should_run_signal_search=should_continue if should_run_signal_search is None else should_run_signal_search,
         details={
             "candidate_count": checkpoint.candidate_count,
             "candidate_scope_count": checkpoint.candidate_scope_count,

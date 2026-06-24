@@ -66,6 +66,10 @@ adapter reads `DADATA_API_KEY`, `DADATA_SECRET_KEY`,
 environment only. Recorded mode is suitable for tests and local smoke runs
 without network credentials. Live mode calls the DaData organization suggestions
 API and stores only sanitized request/response summaries in technical trace.
+The adapter returns normalized company observations and explicit source outcomes
+such as no match, ambiguous match, unavailable provider, invalid credentials,
+rate limit, or schema-invalid response. It must not perform Radar strategy,
+signal scoring, or broad candidate-universe enumeration.
 
 ## How To Extend
 

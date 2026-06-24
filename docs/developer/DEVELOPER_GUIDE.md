@@ -791,6 +791,21 @@ intent signals. Local secrets such as `DADATA_API_KEY` and `DADATA_SECRET_KEY`
 must remain in `.env` only and must not appear in traces, artifacts, docs, or
 tests.
 
+DaData lookup is bounded identity/enrichment, not holding-contour enumeration.
+The source registry builds concrete lookup terms from candidate scope,
+legal-name-like text, INN, OGRN, and source keywords. If a task only asks for a
+broad universe such as "find all companies in a holding", DaData returns an
+explicit `registry_lookup_insufficient` outcome and the adaptive pipeline should
+use web/coverage strategy instead of pretending the registry enumerated the
+contour.
+
+When DaData returns observations, the backend injects them into subsequent
+provider calls as `structured_company_observations`: source ref, legal name,
+normalized name, INN, OGRN, status, address, OKVED, match quality, and match
+reason. The prompt should receive these as already executed source-backed facts,
+not as an instruction for the LLM to "use DaData". Signal-search tasks do not
+call DaData and must still rely on web evidence for intent signals.
+
 Entity resolution runs in the application layer before Radar candidate scoring.
 `RadarEntityResolutionService` classifies provider observations as
 `legal_entity`, `production_site`, `project`, `asset`, or `unknown_entity`.
@@ -991,17 +1006,20 @@ fake/recorded tests prove:
 - signal search starts only after the final pre-signal checkpoint returns
   `continue`.
 
-The recovery contract lives in `tests/test_radar_adaptive_execution.py`:
+The adaptive execution harness lives in `tests/test_radar_adaptive_execution.py`:
 
 ```bash
 python -m pytest tests/test_radar_adaptive_execution.py -q
 ```
 
 The expected result is a fully green suite. It runs without OpenRouter, DaData,
-Redis, or Celery and verifies retry, allowed source expansion, compact
-revision-style recovery, retry/revision caps, budget exhaustion, and the rule
-that signal search starts only after recovered discovery passes the final
-checkpoint.
+Redis, Celery, a database, or a local API server. It verifies weak-discovery
+retry, allowed source expansion, required-source failures, compact
+revision-style recovery, evidence-linking failures, high coverage risk,
+retry/revision caps, budget exhaustion, and the rule that signal search starts
+only after the final pre-signal checkpoint returns `continue`. Treat this suite
+as the fast gate between static preflight/live probes and a long manual Radar
+run.
 
 Targeted live probes are opt-in and bounded. Use them only after static
 preflight is readable:

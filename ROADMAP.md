@@ -3837,20 +3837,28 @@ Principles:
 
 ### Slice 0.7.6.1.11.7.3: Adaptive execution coverage suite and fast validation harness
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Turn adaptive execution into a stable, fast validation harness that must
   pass before any long live Radar run or benchmark.
 - User value: Full live runs become final smoke/benchmark checks, not the first
   way to discover broken adaptive behavior.
 - Scope:
-  - Consolidate adaptive fake providers, fake planner revisions, negative
-    extraction fixtures, source-obligation fixtures, and assertion helpers.
-  - Add a single focused command for adaptive validation:
+  - Consolidate adaptive fake providers, negative extraction fixtures,
+    source-obligation fixtures, and assertion helpers.
+  - Keep a single focused command for adaptive validation:
     `python -m pytest tests/test_radar_adaptive_execution.py -q`.
   - Verify dossier, journal, trace, and execution metadata for each adaptive
     branch.
   - Add a developer checklist: preflight -> targeted live probes -> adaptive
     fixture suite -> full live run.
+- Implemented:
+  - Added `tests/support/radar_adaptive_harness.py` with fake providers, result
+    builders, and diagnostic assertions.
+  - Expanded `tests/test_radar_adaptive_execution.py` to the full no-network
+    scenario matrix.
+  - Fixed pre-signal gating so non-`continue` checkpoint decisions cannot launch
+    signal search and their decision metadata no longer claims signal search is
+    allowed.
 - Out of scope:
   - New provider integrations.
   - UI redesign.
@@ -3867,16 +3875,16 @@ Principles:
   - Total budget exhausted -> stop review-needed.
   - Signal search starts only after final pre-signal checkpoint `continue`.
 - Acceptance criteria:
-  - The adaptive suite completes without OpenRouter, DaData, or Perplexity
+  - Done: the adaptive suite completes without OpenRouter, DaData, or Perplexity
     network calls.
-  - Each adaptive branch asserts both runtime behavior and persisted diagnostic
+  - Done: each adaptive branch asserts both runtime behavior and diagnostic
     metadata.
-  - Developer Guide states that broad live runs should not start until this
+  - Done: Developer Guide states that broad live runs should not start until this
     suite is green.
 
 ### Slice 0.7.6.1.11.8: DaData lookup hardening and structured observation injection
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Make DaData an actual backend source provider for company identity and
   enrichment instead of a source name embedded in an LLM prompt.
 - User value: Structured company facts such as INN, OGRN, status, address, and
@@ -3910,6 +3918,20 @@ Principles:
 - Acceptance criteria:
   - Trace shows backend DaData calls and normalized observations, not only LLM
     text mentioning DaData.
+- Completion notes:
+  - Done: `CompanyRegistryObservation` now carries normalized legal name,
+    legal-entity type, match quality, match reason, lookup query, and provider
+    record id.
+  - Done: DaData recorded/live outcomes distinguish `used`, `no_match`,
+    `ambiguous_match`, `provider_empty`, `provider_unavailable`,
+    `invalid_credentials`, `rate_limited`, and `schema_invalid` paths.
+  - Done: broad universe tasks that lack concrete lookup terms produce
+    `registry_lookup_insufficient` instead of pretending DaData enumerated a
+    holding contour.
+  - Done: source registry executes DaData before web extraction for eligible
+    non-signal tasks and injects `structured_company_observations` into the
+    compact provider task prompt.
+  - Done: signal-search tasks still do not call DaData.
 
 ### Slice 0.7.6.1.11.9: Product projection repair for analyzed vs used sources
 
@@ -4613,4 +4635,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11.7.3: Adaptive execution coverage suite and fast validation harness`.
+Implement `Slice 0.7.6.1.11.9: Product projection repair for analyzed vs used sources`.

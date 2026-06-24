@@ -120,7 +120,12 @@ Structured company facts follow the same rule: application code consumes
 `CompanyRegistryProvider` observations through `RadarSourceRegistry`, while
 DaData HTTP/API details stay in `integrations`. Structured registry observations
 may support candidate identity and qualification evidence; signal searches
-remain web-based.
+remain web-based. Registry lookup requires concrete lookup terms such as a legal
+name, INN, OGRN, or candidate scope; broad universe tasks should record
+`registry_lookup_insufficient` and continue through web/coverage strategy.
+Successful registry observations are injected into bounded provider prompts as
+`structured_company_observations`, not as instructions for the LLM to call a
+registry.
 
 Discovery planning follows the same rule. A `RadarDiscoveryPlanner` may propose
 candidate-universe, source-probe, qualification-gate, and coverage-check steps,

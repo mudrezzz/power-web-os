@@ -344,14 +344,15 @@ def run_staged_radar_execution(
         checkpoint_warnings=checkpoint_warnings,
         events=events,
     )
-    if not pre_signal_decision.should_run_signal_search:
+    can_run_signal_search = pre_signal_decision.action == "continue" and pre_signal_decision.should_continue and pre_signal_decision.should_run_signal_search
+    if not can_run_signal_search:
         stopped_for_review_reason = stopped_for_review_reason or pre_signal_decision.message
 
     signal_task_count = 0
     signal_budget_warnings: list[str] = []
     signal_candidate_scope = list(candidate_scope)
     signal_search_statuses: list[dict[str, Any]] = []
-    if pre_signal_decision.should_run_signal_search:
+    if can_run_signal_search:
         for task in _tasks_for_stage(execution_plan, "signal_search"):
             for scoped_candidate_name in signal_candidate_scope:
                 scoped_task = scoped_execution_task(task, candidate_scope=[scoped_candidate_name])
@@ -385,12 +386,10 @@ def run_staged_radar_execution(
                 }
                 observations.append(_not_searched_signal_observation(scoped_candidate_name, task, decision))
                 signal_search_statuses.append(_signal_status_record(scoped_candidate_name, task, decision))
-    if signal_budget_warnings:
-        coverage_warnings.extend(signal_budget_warnings)
-        events.append(_budget_warning_event(signal_budget_warnings))
-    if task_budget.warnings:
-        coverage_warnings.extend(task_budget.warnings)
-        events.append(_budget_warning_event(task_budget.warnings))
+    for warnings in (signal_budget_warnings, task_budget.warnings):
+        if warnings:
+            coverage_warnings.extend(warnings)
+            events.append(_budget_warning_event(warnings))
     if useful_result_warnings:
         coverage_warnings.extend(useful_result_warnings)
         events.append(_useful_result_warning_event(useful_result_warnings))

@@ -416,6 +416,85 @@ def test_source_registry_selects_dadata_company_registry_source() -> None:
     assert result.provider_metadata["source_provider_outcomes"][0]["provider_id"] == "dadata"
 
 
+def test_source_registry_records_insufficient_lookup_for_broad_holding_discovery() -> None:
+    radar = active_definition_to_live_radar_payload(_toir_quick_live_definition_record())
+    provider = RecordedDaDataCompanyRegistryProvider(fixtures=[{"legal_name": "Candidate A", "inn": "7700000000"}])
+    task = RadarExecutionTask(
+        task_id="discover-holding",
+        stage="qualification_discovery",
+        subject_type="qualification",
+        subject_id="q1-sibur-group",
+        rule_snapshot="Find legal entities in the target holding.",
+        query="Find all legal entities in the holding contour",
+        purpose="Discover the full holding contour.",
+        source_ids=["dadata_registry"],
+    )
+
+    result = RadarSourceRegistry(company_registry_providers={"dadata": provider}).lookup_for_task(radar=radar, task=task)
+
+    assert provider.requests == []
+    assert result.sources == []
+    assert result.candidate_observations == []
+    outcomes = result.provider_metadata["source_provider_outcomes"]
+    assert outcomes[0]["outcome"] == "registry_lookup_insufficient"
+    assert outcomes[0]["source_id"] == "dadata_registry"
+
+
+def test_source_registry_wrapper_injects_structured_dadata_observations_before_web_call() -> None:
+    radar = {
+        "radar_id": "generic-radar",
+        "source_policy": {"allow_open_web": True},
+        "global_search_policy": {
+            "sources": [{
+                "source_id": "dadata_registry",
+                "source_type": "company_registry",
+                "provider_id": "dadata",
+                "label": "DaData",
+                "reference": "company_registry:dadata",
+            }]
+        },
+    }
+    task = RadarExecutionTask(
+        task_id="gate-q1",
+        stage="qualification_gate",
+        subject_type="qualification",
+        subject_id="Q1",
+        rule_snapshot="Confirm industrial company identity.",
+        query="Candidate A",
+        purpose="Gate candidate through registry facts.",
+        source_ids=["dadata_registry"],
+        candidate_scope=["Candidate A"],
+    )
+    dadata = RecordedDaDataCompanyRegistryProvider(fixtures=[{
+        "source_ref": "dadata_candidate_a",
+        "legal_name": "Candidate A",
+        "inn": "7700000000",
+        "ogrn": "1027700000000",
+        "status": "ACTIVE",
+        "okved": "20.17",
+    }])
+    web = _CapturingWebSearchProvider()
+    wrapped = SourceRegistryWebSearchProvider(web, RadarSourceRegistry(company_registry_providers={"dadata": dadata}))
+
+    wrapped.run_search_plan(radar=radar, search_plan=execution_task_to_search_plan(task, radar_id="generic-radar"))
+
+    assert dadata.requests
+    structured = web.radars[0]["structured_company_observations"]
+    assert structured[0]["legal_name"] == "Candidate A"
+    assert structured[0]["inn"] == "7700000000"
+    request = build_openrouter_request(
+        radar=web.radars[0],
+        search_plan=web.calls[0],
+        model="test/model",
+        web_mode="server_tools",
+    )
+    prompt = json.loads(request["messages"][1]["content"])
+    observations = prompt["task_card"]["structured_company_observations"]
+    assert observations[0]["source_ref"] == "dadata_candidate_a"
+    assert observations[0]["matched_by"] in {"legal_name", "query"}
+    assert "full Radar definition" not in json.dumps(prompt, ensure_ascii=False)
+
+
 def test_source_registry_wrapper_does_not_use_dadata_for_signal_search() -> None:
     radar = {
         "radar_id": "generic-radar",
@@ -448,6 +527,16 @@ def test_source_registry_wrapper_does_not_use_dadata_for_signal_search() -> None
 
     assert provider.requests == []
     assert len(web_provider.calls) == 1
+
+
+class _CapturingWebSearchProvider(RecordedWebSearchProvider):
+    def __init__(self) -> None:
+        super().__init__(WebSearchProviderResult())
+        self.radars: list[dict[str, object]] = []
+
+    def run_search_plan(self, *, radar: dict[str, object], search_plan):
+        self.radars.append(dict(radar))
+        return super().run_search_plan(radar=radar, search_plan=search_plan)
 
 
 def test_execution_budget_keys_are_candidate_scoped_for_gate_and_signal_tasks() -> None:
