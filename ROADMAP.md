@@ -2921,7 +2921,7 @@ Principles:
 
 ### Slice 0.7.6.1.8: Compact Radar task prompts and retrieval plan contract
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Stop sending heavy, duplicated Radar JSON into every bounded provider
   call, and make the formal retrieval plan the durable bridge between planning
   and execution.
@@ -3608,7 +3608,7 @@ Principles:
     scope is invalid unless the plan provides a backend-accepted rationale.
   - Add source-obligation decisions to dossier, journal, and trace.
 - Out of scope:
-  - UI source editor controls for usage policy.
+  - UI source editor controls for usage policy in this base policy slice.
   - New provider integrations.
   - Direct Perplexity API.
 - Tests:
@@ -3621,7 +3621,42 @@ Principles:
   - TOIR Quick Live Radar can mark DaData and SIBUR site as high-trust sources
     while still requiring web search for coverage when configured.
 - Acceptance criteria:
-  - Source trust level and source usage obligation are modeled separately.
+  - Done: source trust level and source usage obligation are modeled separately.
+  - Done: TOIR Quick Live Radar marks DaData as `required_for_identity`,
+    OpenRouter web as `required_for_coverage`, and SIBUR site as `preferred`.
+  - Done: planner validation rejects skipped required sources, disabled-source
+    selection, early fallback use, and coverage steps that omit required
+    coverage sources.
+  - Done: run dossier exposes `source_obligations`,
+    `source_obligation_decisions`, and `source_obligation_summary`.
+
+### Slice 0.7.6.1.11.6.1: Source usage obligation UI and persistence
+
+- Status: `Done`
+- Goal: Move source usage obligations from catalog seed defaults into a
+  user-editable Radar setting persisted as the active backend definition.
+- User value: A user can decide per source whether DaData, web search, an
+  official site, or any other configured base is required, preferred, optional,
+  fallback-only, or disabled before running the Radar.
+- Scope:
+  - Add `usage_obligation` controls to the frontend source editor and summary
+    table in `Settings -> Global search base`.
+  - Add `PUT /api/radars/{radar_id}/definition` so API-backed settings save the
+    active definition used by preflight and workers.
+  - Keep catalog TOIR values as initial demo defaults only.
+  - Validate unsupported obligation values in the application layer and reject
+    them with `422`.
+- Out of scope:
+  - New source provider integrations.
+  - A separate version-history UI for definitions.
+  - Auth or multi-user edit locking.
+- Acceptance criteria:
+  - Done: source obligation is visible and editable per source in the UI.
+  - Done: API-backed `Save draft` persists the active definition instead of
+    only writing a local browser override.
+  - Done: preflight and later worker runs read the saved active definition.
+  - Done: invalid obligation values are rejected and no run/output rows are
+    created by definition editing.
 
 ### Slice 0.7.6.1.11.7: Adaptive execution review checkpoints
 
@@ -4397,4 +4432,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11.6: Source usage policy and mandatory source obligations`.
+Implement `Slice 0.7.6.1.11.7: Adaptive execution review checkpoints`.

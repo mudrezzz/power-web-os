@@ -39,6 +39,12 @@ export type RadarDefinitionDto = {
   updated_at: string | null;
 };
 
+export type RadarDefinitionUpdateDto = {
+  definition_payload: Record<string, unknown>;
+  definition_version?: string | null;
+  is_active?: boolean;
+};
+
 export type RadarDetailDto = RadarSummaryDto & {
   active_definition: RadarDefinitionDto | null;
   runs: RadarRunSummaryDto[];
@@ -323,6 +329,9 @@ export type RadarRunDossierDto = {
   definition_snapshot: RadarRunDossierDefinitionDto | null;
   discovery_plan: Record<string, unknown>;
   source_policy_decisions: Array<Record<string, unknown>>;
+  source_obligations: Array<Record<string, unknown>>;
+  source_obligation_decisions: Array<Record<string, unknown>>;
+  source_obligation_summary: Record<string, unknown>;
   coverage_summary: Record<string, unknown>;
   candidate_universe: Array<Record<string, unknown>>;
   coverage_checks: Array<Record<string, unknown>>;
@@ -404,6 +413,13 @@ export class RadarApiClient {
 
   getRadarPreflight(radarId: string) {
     return this.request<RadarPreflightDto>(`/api/radars/${encodeURIComponent(radarId)}/preflight`);
+  }
+
+  updateRadarDefinition(radarId: string, request: RadarDefinitionUpdateDto) {
+    return this.request<RadarDetailDto>(`/api/radars/${encodeURIComponent(radarId)}/definition`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
   }
 
   queueRadarRun(radarId: string, request: RadarRunRequestDto) {

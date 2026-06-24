@@ -52,6 +52,7 @@ class SourceDefinition:
     label: str
     reference: str
     trust_level: str
+    usage_obligation: str = "preferred"
 
 
 @dataclass(frozen=True, slots=True)
@@ -736,6 +737,7 @@ def source_definition_to_payload(source: SourceDefinition) -> dict[str, Any]:
         "label": source.label,
         "reference": source.reference,
         "trust_level": source.trust_level,
+        "usage_obligation": source.usage_obligation,
     }
 
 

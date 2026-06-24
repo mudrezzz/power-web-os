@@ -125,6 +125,30 @@ def test_preflight_is_ready_when_definition_sources_and_runtime_match() -> None:
     assert all(check.status in {"passed", "skipped"} for check in report.checks)
 
 
+def test_preflight_rejects_invalid_source_usage_obligation() -> None:
+    definition = _toir_quick_live_definition()
+    payload = json.loads(json.dumps(definition.definition_payload, ensure_ascii=False))
+    payload["global_search_policy"]["sources"][0]["usage_obligation"] = "must_use_somehow"
+    invalid_definition = RadarDefinitionRecord(
+        definition_id=definition.definition_id,
+        radar_id=definition.radar_id,
+        definition_payload=payload,
+        definition_version=definition.definition_version,
+    )
+    service = RadarExecutionPreflightService(
+        definition_repository=_Repo(invalid_definition),
+        runtime_definition_provider=lambda: active_definition_to_live_radar_payload(invalid_definition),
+        company_registry_provider_ids={"dadata"},
+    )
+
+    report = service.run(radar_id="toir-quick-live", profile="static")
+
+    assert not report.ready_for_live_run
+    check = _checks_by_code(report.checks)["source_usage_obligation_invalid"][0]
+    assert check.status == "failed"
+    assert check.details["usage_obligation"] == "must_use_somehow"
+
+
 def test_provider_fixture_gate_detects_malformed_shapes_and_evidence_refs() -> None:
     malformed_payload = {
         "sources": [{"evidence_ref": "src_1", "title": "A", "url": "https://example.test", "snippet": "A"}],

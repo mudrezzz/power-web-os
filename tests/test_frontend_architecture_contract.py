@@ -130,7 +130,7 @@ def test_icp_radar_has_application_and_adapter_boundaries() -> None:
         "useRadarConfigOverrides.ts": ["radarConfigStorageKey", "window.localStorage"],
         "useSignalValidationOverlay.ts": ["signalValidationStorageKey", "window.localStorage"],
         "useQualificationReviewOverlay.ts": ["qualificationReviewStorageKey", "window.localStorage"],
-        "useRadarBackend.ts": ["RadarApiClient", "queueRadarRun", "getRunCandidates", "getRunDossier", "getRunTechnicalTrace", "getRadarPreflight"],
+        "useRadarBackend.ts": ["RadarApiClient", "queueRadarRun", "getRunCandidates", "getRunDossier", "getRunTechnicalTrace", "getRadarPreflight", "updateRadarDefinition"],
     }
 
     for file_name, expected_symbols in adapters.items():

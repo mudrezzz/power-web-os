@@ -251,6 +251,9 @@ function runDossier(dossier: RadarRunDossierDto): LiveRadarRunDossier {
       warnings: stringArray(dossier.discovery_plan.warnings),
     },
     source_policy_decisions: dossier.source_policy_decisions.map(sourcePolicyDecision),
+    source_obligations: arrayField(dossier.source_obligations),
+    source_obligation_decisions: arrayField(dossier.source_obligation_decisions),
+    source_obligation_summary: recordField(dossier.source_obligation_summary),
     coverage_summary: {
       ...dossier.coverage_summary,
       hypotheses: arrayField(dossier.coverage_summary.hypotheses),
@@ -332,6 +335,8 @@ function sourcePolicyDecision(value: Record<string, unknown>) {
     decision: stringField(value.decision, ''),
     reason: stringField(value.reason, ''),
     rule_ids: stringArray(value.rule_ids),
+    usage_obligation: nullableString(value.usage_obligation) ?? undefined,
+    obligation_status: nullableString(value.obligation_status) ?? undefined,
   };
 }
 
@@ -342,6 +347,13 @@ function recordNumberField(value: unknown): Record<string, number> {
   return Object.fromEntries(
     Object.entries(value).map(([key, entry]) => [key, numberField(entry, 0)]),
   );
+}
+
+function recordField(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  return value as Record<string, unknown>;
 }
 
 function signalResult(

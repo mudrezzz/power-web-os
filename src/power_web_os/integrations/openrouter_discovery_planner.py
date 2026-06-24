@@ -161,7 +161,15 @@ def build_openrouter_discovery_planner_request(
                 "depends_on": ["step ids"],
                 "candidate_scope": ["candidate names only when already known"],
             }],
-            "source_policy_decisions": [{"source_id": "id", "source_label": "label", "decision": "selected|skipped", "reason": "why", "rule_ids": ["Q1"]}],
+            "source_policy_decisions": [{
+                "source_id": "id",
+                "source_label": "label",
+                "decision": "selected|skipped",
+                "reason": "why",
+                "rule_ids": ["Q1"],
+                "usage_obligation": "required|preferred|optional|fallback|disabled|required_for_identity|required_for_coverage|required_for_signal",
+                "obligation_status": "planned|skipped_with_rationale|not_applicable",
+            }],
             "coverage_hypotheses": [{"summary": "coverage hypothesis", "expected_candidate_count": "range or unknown", "completeness_risk": "low|medium|high"}],
             "warnings": ["product-safe warning"],
         },
@@ -177,6 +185,9 @@ def build_openrouter_discovery_planner_request(
             "Separate source_base from application_scope: a globally configured source can be applied to one rule_scope without marking it as rule_local.",
             "If configured sources are useful, select them before open web sources.",
             "If a configured source is not useful, skip it with a concise reason.",
+            "Never skip a source whose usage_obligation starts with required; plan it for the matching identity, coverage, or signal stage.",
+            "Never select disabled sources.",
+            "Use fallback sources only after required and preferred sources are selected or explicitly skipped with rationale.",
         ],
     }
     return {

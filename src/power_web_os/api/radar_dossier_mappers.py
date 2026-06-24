@@ -44,6 +44,9 @@ def dossier_response(
     execution_results = _dict(run_metadata.get("execution_results"))
     retrieval_plan = _dict(execution_results.get("retrieval_plan"))
     source_policy_decisions = _list(discovery_plan.get("source_policy_decisions"))
+    source_obligations = _list(execution_results.get("source_obligations"))
+    source_obligation_decisions = _list(execution_results.get("source_obligation_decisions"))
+    source_obligation_summary = _dict(execution_results.get("source_obligation_summary"))
     coverage_summary = _coverage_summary(discovery_plan, execution_results)
     budget_summary = _budget_summary(execution_results)
     budget_exhaustion_events = _list(execution_results.get("budget_exhaustion_events"))
@@ -79,6 +82,9 @@ def dossier_response(
         discovery_plan=discovery_plan,
         retrieval_plan=retrieval_plan,
         source_policy_decisions=source_policy_decisions,
+        source_obligations=source_obligations,
+        source_obligation_decisions=source_obligation_decisions,
+        source_obligation_summary=source_obligation_summary,
         coverage_summary=coverage_summary,
         budget_summary=budget_summary,
         budget_exhaustion_events=budget_exhaustion_events,

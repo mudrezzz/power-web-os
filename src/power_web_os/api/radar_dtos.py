@@ -29,6 +29,12 @@ class RadarDefinitionResponse(BaseModel):
     updated_at: datetime | None = None
 
 
+class RadarDefinitionUpdateRequest(BaseModel):
+    definition_payload: dict[str, Any]
+    definition_version: str | None = None
+    is_active: bool = True
+
+
 class RadarDetailResponse(RadarSummaryResponse):
     active_definition: RadarDefinitionResponse | None = None
     runs: list["RadarRunSummaryResponse"] = Field(default_factory=list)
@@ -354,6 +360,9 @@ class RadarRunDossierResponse(BaseModel):
     discovery_plan: dict[str, Any] = Field(default_factory=dict)
     retrieval_plan: dict[str, Any] = Field(default_factory=dict)
     source_policy_decisions: list[dict[str, Any]] = Field(default_factory=list)
+    source_obligations: list[dict[str, Any]] = Field(default_factory=list)
+    source_obligation_decisions: list[dict[str, Any]] = Field(default_factory=list)
+    source_obligation_summary: dict[str, Any] = Field(default_factory=dict)
     coverage_summary: dict[str, Any] = Field(default_factory=dict)
     budget_summary: dict[str, Any] = Field(default_factory=dict)
     budget_exhaustion_events: list[dict[str, Any]] = Field(default_factory=list)

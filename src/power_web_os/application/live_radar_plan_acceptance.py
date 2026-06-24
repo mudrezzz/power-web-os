@@ -13,6 +13,7 @@ from power_web_os.application.live_radar_contracts import (
     RadarDiscoveryPlanStep,
     RadarDiscoveryPlanValidationResult,
 )
+from power_web_os.application.radar_source_obligations import source_obligations_for_policy
 from power_web_os.application.live_radar_discovery_planning import (
     RadarDiscoveryPlanValidator,
     global_source_ids,
@@ -127,9 +128,14 @@ def _normalize_plan(
         for step in normalized_steps
     ]
     enriched_steps = [_with_default_source_fields(step) for step in rewritten_steps]
+    enriched_source_decisions = _with_source_obligations(
+        planning_input=planning_input,
+        plan=plan,
+    )
     return plan.model_copy(update={
         "criterion_role_decisions": role_decisions,
         "steps": enriched_steps,
+        "source_policy_decisions": enriched_source_decisions,
         "acceptance_metadata": {
             **plan.acceptance_metadata,
             "fallback_used": fallback_used,
@@ -137,6 +143,24 @@ def _normalize_plan(
             "normalized_step_count": len(enriched_steps),
         },
     }), corrections
+
+
+def _with_source_obligations(
+    *,
+    planning_input: RadarDiscoveryPlanningInput,
+    plan: RadarDiscoveryPlan,
+):
+    obligations = {
+        str(item["source_id"]): str(item["usage_obligation"])
+        for item in source_obligations_for_policy(planning_input.global_search_policy)
+    }
+    return [
+        decision.model_copy(update={
+            "usage_obligation": obligations.get(decision.source_id, decision.usage_obligation),
+            "obligation_status": decision.obligation_status or ("planned" if decision.decision == "selected" else "skipped_with_rationale"),
+        })
+        for decision in plan.source_policy_decisions
+    ]
 
 
 def _normalize_source_scope(

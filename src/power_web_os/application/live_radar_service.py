@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
-
 from power_web_os.application.live_radar_contracts import (
     LiveRadarCollectionResult,
     LiveRadarEvaluationResult,
@@ -115,6 +114,7 @@ class LiveRadarRunService:
                 state.task_context,
                 "max_discovery_retries_per_task",
             ),
+            source_policy_decisions=[dict(item) for item in (state.discovery_plan or {}).get("source_policy_decisions", []) if isinstance(item, dict)],
         )
         result = LiveRadarCollectionResult(
             sources=provider_result.sources,

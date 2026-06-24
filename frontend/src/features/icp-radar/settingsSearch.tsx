@@ -2,7 +2,18 @@ import { Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Mono } from '../../components/primitives';
 import type { EditableRadarDefinitionDraft, RadarDefinition, SourceDefinition } from '../../types';
-import { newSourceDefinition, replaceAt, sourceTypeKey, trustPolicyKey, trustPolicyTone, trustPolicyValue } from './model';
+import {
+  newSourceDefinition,
+  replaceAt,
+  sourceTypeKey,
+  sourceUsageObligations,
+  sourceUsageObligationKey,
+  sourceUsageObligationTone,
+  sourceUsageObligationValue,
+  trustPolicyKey,
+  trustPolicyTone,
+  trustPolicyValue,
+} from './model';
 import { ArrayTextAreaField, ListSection, SelectField, TextField, ToggleField } from './settingsFields';
 
 export function GlobalSearchSummary({ definition }: { definition: RadarDefinition }) {
@@ -68,6 +79,7 @@ export function SourceTable({ sources }: { sources: SourceDefinition[] }) {
             <th>{t('icpRadar.settings.sourceLabel')}</th>
             <th>{t('icpRadar.settings.sourceType')}</th>
             <th>{t('icpRadar.settings.trustLevel')}</th>
+            <th>{t('icpRadar.settings.usageObligation')}</th>
             <th>{t('icpRadar.settings.sourceReference')}</th>
           </tr>
         </thead>
@@ -78,6 +90,7 @@ export function SourceTable({ sources }: { sources: SourceDefinition[] }) {
               <td><strong>{source.label}</strong></td>
               <td>{t(sourceTypeKey(source.source_type))}</td>
               <td><Badge tone={trustPolicyTone(source.trust_level)}>{t(trustPolicyKey(source.trust_level))}</Badge></td>
+              <td><Badge tone={sourceUsageObligationTone(source.usage_obligation)}>{t(sourceUsageObligationKey(source.usage_obligation))}</Badge></td>
               <td><span className="source-reference-cell">{source.reference}</span></td>
             </tr>
           ))}
@@ -103,6 +116,7 @@ export function SourceListEditor({
           <TextField label={t('icpRadar.settings.sourceLabel')} value={source.label} onChange={(label) => onChange(replaceAt(sources, index, { ...source, label }))} />
           <TextField label={t('icpRadar.settings.sourceReference')} value={source.reference} onChange={(reference) => onChange(replaceAt(sources, index, { ...source, reference }))} />
           <SelectField label={t('icpRadar.settings.trustLevel')} options={['trusted', 'cross_check', 'hitl_required']} value={trustPolicyValue(source.trust_level)} onChange={(trust_level) => onChange(replaceAt(sources, index, { ...source, trust_level }))} optionLabel={(option) => t(trustPolicyKey(option))} />
+          <SelectField label={t('icpRadar.settings.usageObligation')} options={[...sourceUsageObligations]} value={sourceUsageObligationValue(source.usage_obligation)} onChange={(usage_obligation) => onChange(replaceAt(sources, index, { ...source, usage_obligation }))} optionLabel={(option) => t(sourceUsageObligationKey(option))} />
           <Button icon={<X aria-hidden="true" />} variant="default" onClick={() => onChange(sources.filter((_, currentIndex) => currentIndex !== index))}>
             {t('icpRadar.settings.remove')}
           </Button>

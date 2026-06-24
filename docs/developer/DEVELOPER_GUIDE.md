@@ -1007,6 +1007,27 @@ RadarCandidate
 RadarRun
 ```
 
+`SourceDefinition.trust_level` and `SourceDefinition.usage_obligation` are
+separate controls. Trust describes how much weight a source deserves when it is
+used. Usage obligation describes whether the planner is allowed to skip it.
+Supported obligations are `required`, `preferred`, `optional`, `fallback`,
+`disabled`, `required_for_identity`, `required_for_coverage`, and
+`required_for_signal`. The backend validates planner output against these
+obligations before execution: required sources must appear in the matching
+stage, preferred sources need a skip rationale, disabled sources are rejected,
+and fallback sources cannot be used before required/preferred source decisions
+are resolved. Inspect the result in the run dossier fields
+`source_obligations`, `source_obligation_decisions`, and
+`source_obligation_summary`.
+
+In API-backed mode, Radar settings save the full active definition through
+`PUT /api/radars/{radar_id}/definition`. The UI source editor exposes
+`usage_obligation` per source in the global search base, so catalog seed values
+are only defaults. Persisted worker execution and preflight read the updated
+active definition, not hardcoded TOIR source modes. Presentation components do
+not call the API directly; `RadarApiClient.updateRadarDefinition` is used from
+the ICP Radar application hook.
+
 Current catalog artifact:
 
 ```text

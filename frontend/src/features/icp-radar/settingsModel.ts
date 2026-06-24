@@ -56,6 +56,41 @@ export function trustPolicyTone(value: string) {
   return 'neutral';
 }
 
+export const sourceUsageObligations = [
+  'required',
+  'preferred',
+  'optional',
+  'fallback',
+  'disabled',
+  'required_for_identity',
+  'required_for_coverage',
+  'required_for_signal',
+] as const;
+
+export function sourceUsageObligationValue(value: string | undefined) {
+  return sourceUsageObligations.includes(value as typeof sourceUsageObligations[number])
+    ? value as typeof sourceUsageObligations[number]
+    : 'preferred';
+}
+
+export function sourceUsageObligationKey(value: string | undefined) {
+  return `icpRadar.settings.sourceUsageObligations.${sourceUsageObligationValue(value)}`;
+}
+
+export function sourceUsageObligationTone(value: string | undefined): 'ally' | 'blocker' | 'unsurfaced' | 'cobalt' | 'neutral' {
+  const obligation = sourceUsageObligationValue(value);
+  if (obligation === 'disabled') {
+    return 'neutral';
+  }
+  if (obligation === 'optional' || obligation === 'fallback') {
+    return 'unsurfaced';
+  }
+  if (obligation.startsWith('required')) {
+    return 'blocker';
+  }
+  return 'cobalt';
+}
+
 export function logicalOperatorKey(value: string) {
   return `icpRadar.settings.logicalOperators.${value}`;
 }
@@ -158,6 +193,7 @@ export function newSourceDefinition(): SourceDefinition {
     label: '',
     reference: '',
     trust_level: 'cross_check',
+    usage_obligation: 'preferred',
   };
 }
 
@@ -493,6 +529,7 @@ export function normalizeSourceDefinition(source: SourceDefinition): SourceDefin
     label,
     reference,
     trust_level: fallbackSource.trust_level || 'cross_check',
+    usage_obligation: fallbackSource.usage_obligation || 'preferred',
   };
 }
 

@@ -106,16 +106,21 @@
 
 .source-table--settings th:nth-child(2),
 .source-table--settings td:nth-child(2) {
-  width: 27%;
+  width: 24%;
 }
 
 .source-table--settings th:nth-child(3),
 .source-table--settings td:nth-child(3) {
-  width: 15%;
+  width: 13%;
 }
 
 .source-table--settings th:nth-child(4),
 .source-table--settings td:nth-child(4) {
+  width: 14%;
+}
+
+.source-table--settings th:nth-child(5),
+.source-table--settings td:nth-child(5) {
   width: 18%;
 }
 
@@ -169,7 +174,7 @@
 
 .source-editor-row {
   display: grid;
-  grid-template-columns: minmax(calc(var(--s-20) * 1.6), 0.8fr) minmax(0, 1.5fr) minmax(0, 2fr) minmax(calc(var(--s-20) * 1.2), 0.8fr) auto;
+  grid-template-columns: minmax(calc(var(--s-20) * 1.6), 0.8fr) minmax(0, 1.3fr) minmax(0, 1.8fr) minmax(calc(var(--s-20) * 1.2), 0.8fr) minmax(calc(var(--s-20) * 1.5), 1fr) auto;
   gap: var(--s-3);
   align-items: end;
   min-width: 0;

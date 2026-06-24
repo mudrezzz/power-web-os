@@ -6,7 +6,6 @@ recorded provider-output shapes before a developer pays for a long live run.
 """
 
 from __future__ import annotations
-
 import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, Literal
@@ -17,10 +16,10 @@ from power_web_os.application.live_radar_extraction_contract import (
     validate_and_repair_extraction_payload,
 )
 from power_web_os.application.ports import RadarDefinitionRepository
+from power_web_os.application.radar_source_obligations import SOURCE_USAGE_OBLIGATIONS, source_usage_obligation
 
 RadarPreflightCheckStatus = Literal["passed", "failed", "warning", "skipped"]
 RadarPreflightSeverity = Literal["info", "warning", "error"]
-
 
 @dataclass(frozen=True, slots=True)
 class RadarPreflightCheckResult:
@@ -312,6 +311,22 @@ def _source_policy_checks(
         ))
 
     for source in sources:
+        raw_obligation = str(source.get("usage_obligation") or source.get("usage_mode") or "preferred").strip().lower()
+        obligation = source_usage_obligation(source)
+        obligation_source_id = str(source.get("source_id") or source.get("reference") or "")
+        if raw_obligation not in SOURCE_USAGE_OBLIGATIONS:
+            checks.append(_failed(
+                "source_usage_obligation_invalid",
+                f"Source {obligation_source_id} has unsupported usage obligation {raw_obligation}.",
+                details={"source_id": obligation_source_id, "usage_obligation": raw_obligation, "allowed_values": sorted(SOURCE_USAGE_OBLIGATIONS)},
+                remediation="Use one of the documented source usage obligations before live execution.",
+            ))
+        else:
+            checks.append(_passed(
+                "source_usage_obligation_valid",
+                f"Source {obligation_source_id} uses source obligation {obligation}.",
+                details={"source_id": obligation_source_id, "usage_obligation": obligation, "trust_level": str(source.get("trust_level") or "")},
+            ))
         source_type = str(source.get("source_type") or "")
         source_id = str(source.get("source_id") or source.get("reference") or "")
         if source_type == "company_registry":

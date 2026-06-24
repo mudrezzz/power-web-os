@@ -17,6 +17,7 @@ from power_web_os.application.live_radar_retrieval_plan import (
     retrieval_task_to_search_plan,
     retrieval_task_to_search_query,
 )
+from power_web_os.application.radar_source_obligations import source_obligations_for_policy
 
 
 def compile_radar_execution_plan(radar: dict[str, Any]) -> RadarExecutionPlan:
@@ -69,6 +70,10 @@ def compile_radar_execution_plan(radar: dict[str, Any]) -> RadarExecutionPlan:
         query=_compact_query([str(radar.get("name", radar_id)), "candidate universe coverage check"]),
         purpose="Check whether the candidate universe has source-backed gaps before signal search.",
         expected_evidence=["candidate_universe_gaps", "coverage_findings"],
+        source_scope="global" if _required_coverage_source_ids(radar) else "additional",
+        source_base="global_configured" if _required_coverage_source_ids(radar) else None,
+        application_scope="whole_universe" if _required_coverage_source_ids(radar) else None,
+        source_ids=_required_coverage_source_ids(radar),
         depends_on=[previous_task_id],
     ))
     previous_task_id = coverage_task_id
@@ -143,6 +148,17 @@ def _source_ids_from_rule(rule: dict[str, Any]) -> list[str]:
     if not isinstance(policy, dict) or not policy.get("use_global_search_policy", True):
         return []
     return [str(item) for item in policy.get("source_ids", []) if str(item).strip()]
+
+
+def _required_coverage_source_ids(radar: dict[str, Any]) -> list[str]:
+    policy = radar.get("global_search_policy")
+    if not isinstance(policy, dict):
+        return []
+    return [
+        str(item["source_id"])
+        for item in source_obligations_for_policy(policy)
+        if item["usage_obligation"] == "required_for_coverage"
+    ]
 
 
 def _compact_query(parts: list[str]) -> str:

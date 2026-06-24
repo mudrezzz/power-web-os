@@ -233,12 +233,18 @@ inside discovery, and invalid rule references still force revision or fallback.
 
 Source policy is more than a ranked hint list. The architecture separates source
 trust from source usage obligation: a source can be high-trust but optional, or
-lower-trust but required for coverage. Future source definitions should support
-obligations such as required, preferred, optional, fallback, disabled, and
-stage-scoped variants such as required for identity, coverage, or signal
-evidence. Backend validation remains authoritative: a required source cannot be
-silently skipped by planner output, and coverage steps must name the concrete
-sources they use or stop with an explicit review/failure state.
+lower-trust but required for coverage. Source definitions support obligations:
+`required`, `preferred`, `optional`, `fallback`, `disabled`,
+`required_for_identity`, `required_for_coverage`, and `required_for_signal`.
+These obligations are active-definition settings. Catalog seed values are
+defaults for demo setup only; once a user edits the global search base, the
+frontend persists the updated active definition through the Radar API and the
+worker reads that persisted definition before execution.
+Backend validation remains authoritative: a required source cannot be silently
+skipped by planner output, disabled sources cannot be selected, fallback sources
+cannot be used before primary source decisions are resolved, and coverage steps
+must name required coverage sources. Accepted runs persist source-obligation
+decisions in execution metadata, dossier, journal, and technical trace.
 
 Candidate universe execution is now iterative. Accepted discovery plans may
 contain executable `coverage_check` stages. The application service runs initial

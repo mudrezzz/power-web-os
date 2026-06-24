@@ -279,6 +279,19 @@ based. If DaData is selected but unavailable or empty, the run records explicit
 source-provider outcomes in dossier/trace instead of silently using the legacy
 hardcoded radar.
 
+Source usage policy is enforced by the backend. In the current TOIR Quick Live
+Radar demo seed, `dadata_registry` starts as required for identity resolution,
+`openrouter_web` starts as required for coverage checks, and `sibur_site` starts
+as a preferred official source. These are editable settings, not hardcoded run
+logic: open Settings -> Global search base / Общая поисковая база and change
+each source `Usage mode` / `Режим использования`, then save the block. In
+API-backed mode the UI persists the active definition through
+`PUT /api/radars/{radar_id}/definition`, so the next preflight and worker run
+use the saved source obligations. Planner output that skips a required source is
+rejected or revised before execution. After a run, open Diagnostics/Dossier and
+check `source_obligation_decisions` to see whether each configured source was
+satisfied, skipped with rationale, unavailable, empty, blocked, or violated.
+
 The API can expose the same persisted backend state. With Docker Compose use
 host port `8001`; with the manual local `power-web-os-api` process use `8000`
 unless you changed the uvicorn port.

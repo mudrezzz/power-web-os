@@ -24,6 +24,10 @@ from power_web_os.application.live_radar_extraction_diagnostics import (
 )
 from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan
+from power_web_os.application.radar_source_obligations import (
+    obligation_decisions_from_plan,
+    source_obligation_summary,
+)
 from power_web_os.application.live_radar_staged_merge import (
     candidate_universe_with_entity_metadata as _candidate_universe_with_entity_metadata,
     merge_candidate_observations as _merge_candidate_observations,
@@ -41,6 +45,7 @@ from power_web_os.application.live_radar_staged_support import (
     rejected_candidate_summaries as _rejected_candidate_summaries,
     signal_planned_event as _signal_planned_event,
     signal_status_record as _signal_status_record,
+    source_obligation_events as _source_obligation_events,
     not_searched_signal_observation as _not_searched_signal_observation,
     task_event as _task_event,
     useful_result_warning_event as _useful_result_warning_event,
@@ -76,6 +81,7 @@ def run_staged_radar_execution(
     min_useful_sources_per_discovery_task: int | None = None,
     min_candidates_per_discovery_task: int | None = None,
     max_discovery_retries_per_task: int | None = None,
+    source_policy_decisions: list[dict[str, Any]] | None = None,
 ) -> tuple[WebSearchProviderResult, list[LiveRadarPipelineEvent], dict[str, Any]]:
     sources: list[RadarSourceEvidence] = []
     observations: list[dict[str, Any]] = []
@@ -284,6 +290,13 @@ def run_staged_radar_execution(
         _candidate_universe_with_signal_statuses(candidate_universe, signal_search_statuses),
         observations,
     )
+    source_obligation_decisions = obligation_decisions_from_plan(
+        global_policy=dict(radar.get("global_search_policy") or {}),
+        steps=execution_plan.tasks,
+        source_policy_decisions=source_policy_decisions or [],
+        source_provider_outcomes=provider_metadata.get("source_provider_outcomes", []),
+    )
+    events.extend(_source_obligation_events(source_obligation_decisions))
     return (
         WebSearchProviderResult(
             sources=_dedupe_sources(sources), candidate_observations=_merge_candidate_observations(observations),
@@ -327,6 +340,19 @@ def run_staged_radar_execution(
             "retrieved_source_count": provider_metadata.get("retrieved_source_count", 0),
             "source_outcomes": provider_metadata.get("source_outcomes", []),
             "source_provider_outcomes": provider_metadata.get("source_provider_outcomes", []),
+            "source_obligations": [
+                {
+                    "source_id": item.get("source_id"),
+                    "source_label": item.get("source_label"),
+                    "source_type": item.get("source_type"),
+                    "trust_level": item.get("trust_level"),
+                    "usage_obligation": item.get("usage_obligation"),
+                    "required": item.get("required"),
+                }
+                for item in source_obligation_decisions
+            ],
+            "source_obligation_decisions": source_obligation_decisions,
+            "source_obligation_summary": source_obligation_summary(source_obligation_decisions),
             "extraction_validation_results": provider_metadata.get("extraction_validation_results", []),
             "extraction_validation_issues": extraction_issues,
             "extraction_repair_results": repair_results,

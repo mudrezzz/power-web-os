@@ -303,6 +303,7 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "QualificationRulesEditor",
         "SimpleRuleEditor",
         "SourceListEditor",
+        "sourceUsageObligationValue",
         "SimpleSourcePolicyEditor",
         "IntentSignalsEditor",
         "SignalRubricOverride",
@@ -451,6 +452,8 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "sourceTypes",
         "formulaPresets",
         "validConfiguration",
+        "usageObligation",
+        "sourceUsageObligations",
     ]:
         assert editable_key in i18n
     assert "onEditHeader" in screen
@@ -763,6 +766,7 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
     assert "getRunDossier" in api_client
     assert "getRunTechnicalTrace" in api_client
     assert "getRadarPreflight" in api_client
+    assert "updateRadarDefinition" in api_client
     assert "RadarPreflightDto" in api_client
     assert "RadarRunDossierDto" in api_client
     assert "RadarRunTechnicalTraceDto" in api_client

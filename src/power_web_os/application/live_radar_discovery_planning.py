@@ -17,6 +17,11 @@ from power_web_os.application.live_radar_contracts import (
     RadarExecutionTask,
     RadarSourceEvidence,
 )
+from power_web_os.application.radar_source_obligations import (
+    source_obligations_for_policy,
+    source_usage_obligation,
+    validate_source_obligations,
+)
 
 
 class DeterministicRadarDiscoveryPlanner(RadarDiscoveryPlanner):
@@ -57,12 +62,18 @@ class DeterministicRadarDiscoveryPlanner(RadarDiscoveryPlanner):
             previous_step_id = step_id
 
         if previous_step_id:
+            coverage_source_ids = _required_coverage_source_ids(planning_input.global_search_policy)
+            coverage_source_scope = "global" if coverage_source_ids else (
+                "additional" if planning_input.global_search_policy.get("allow_system_sources", True) else "global"
+            )
             steps.append(RadarDiscoveryPlanStep(
                 step_id="coverage-check-candidate-universe",
                 stage="coverage_check",
                 subject_rule_ids=[],
-                source_scope="additional" if planning_input.global_search_policy.get("allow_system_sources", True) else "global",
-                source_ids=[] if planning_input.global_search_policy.get("allow_system_sources", True) else global_source_ids_for_policy(planning_input.global_search_policy),
+                source_scope=coverage_source_scope,
+                source_ids=coverage_source_ids if coverage_source_ids else (
+                    [] if planning_input.global_search_policy.get("allow_system_sources", True) else global_source_ids_for_policy(planning_input.global_search_policy)
+                ),
                 query=_compact_query([planning_input.name, "candidate universe coverage check"]),
                 purpose="Check whether the candidate universe has obvious source-backed gaps before signal search.",
                 expected_evidence=["candidate_universe_gaps", "coverage_findings"],
@@ -142,6 +153,13 @@ class RadarDiscoveryPlanValidator:
         for source_id in global_source_ids:
             if source_id not in selected and source_id not in skipped:
                 errors.append(f"Global source {source_id} must be selected or skipped with rationale.")
+        obligation_errors, obligation_warnings, _ = validate_source_obligations(
+            global_policy=planning_input.global_search_policy,
+            steps=plan.steps,
+            source_policy_decisions=plan.source_policy_decisions,
+        )
+        errors.extend(obligation_errors)
+        warnings.extend(obligation_warnings)
 
         first_gate_index = next((index for index, step in enumerate(plan.steps) if step.stage == "qualification_gate"), None)
         first_discovery_index = next((index for index, step in enumerate(plan.steps) if step.stage == "candidate_universe_discovery"), None)
@@ -324,12 +342,19 @@ def _source_policy_decisions(planning_input: RadarDiscoveryPlanningInput) -> lis
         source_id = str(source.get("source_id") or source.get("reference") or source.get("label") or "")
         if not source_id:
             continue
+        obligation = source_usage_obligation(source)
         decisions.append(RadarDiscoverySourcePolicyDecision(
             source_id=source_id,
             source_label=str(source.get("label") or source_id),
-            decision="selected" if rules_using_global else "skipped",
-            reason="Configured global source is allowed by qualification source policy." if rules_using_global else "No qualification rule requested the global source policy.",
+            decision="selected" if rules_using_global and obligation != "disabled" else "skipped",
+            reason=(
+                "Configured global source is allowed by qualification source policy."
+                if rules_using_global and obligation != "disabled"
+                else "No qualification rule requested the global source policy."
+            ),
             rule_ids=rules_using_global,
+            usage_obligation=obligation,  # type: ignore[arg-type]
+            obligation_status="planned" if rules_using_global and obligation != "disabled" else "not_applicable",
         ))
     return decisions
 
@@ -365,6 +390,14 @@ def global_source_ids_for_policy(global_policy: dict[str, Any]) -> list[str]:
         str(item.get("source_id") or item.get("reference") or item.get("label"))
         for item in global_policy.get("sources", [])
         if isinstance(item, dict) and str(item.get("source_id") or item.get("reference") or item.get("label") or "").strip()
+    ]
+
+
+def _required_coverage_source_ids(global_policy: dict[str, Any]) -> list[str]:
+    return [
+        str(item["source_id"])
+        for item in source_obligations_for_policy(global_policy)
+        if item["usage_obligation"] == "required_for_coverage"
     ]
 
 

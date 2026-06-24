@@ -41,7 +41,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-            "version": "0.7.6.1.11.5",
+            "version": "0.7.6.1.11.6.1",
         "environment": "test",
     }
 
@@ -58,13 +58,14 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.6.1.11.5"
+    assert schema["info"]["version"] == "0.7.6.1.11.6.1"
     for path in [
         "/health",
         "/api/health",
         "/api/runtime-config",
         "/api/radars",
         "/api/radars/{radar_id}",
+        "/api/radars/{radar_id}/definition",
         "/api/radars/{radar_id}/preflight",
         "/api/radars/{radar_id}/runs",
         "/api/radar-runs/{run_id}",
@@ -177,6 +178,69 @@ def test_radar_catalog_and_detail_read_persisted_data(tmp_path: Path) -> None:
     assert detail["runs"] == []
 
 
+def test_update_radar_definition_persists_source_usage_obligations_without_creating_runs(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    client = TestClient(_app(tmp_path, database_url=database_url))
+    payload = {
+        "definition_id": "radar-def-live",
+        "metadata": {"name": "TOIR Quick Live Radar"},
+        "global_search_policy": {
+            "allow_system_sources": True,
+            "keywords": [],
+            "exclusions": [],
+            "sources": [
+                {
+                    "source_id": "dadata_registry",
+                    "source_type": "api",
+                    "label": "DaData",
+                    "reference": "company_registry:dadata",
+                    "trust_level": "high",
+                    "usage_obligation": "required_for_identity",
+                },
+                {
+                    "source_id": "openrouter_web",
+                    "source_type": "search_engine",
+                    "label": "Open web",
+                    "reference": "openrouter:web",
+                    "trust_level": "cross_check",
+                    "usage_obligation": "required_for_coverage",
+                },
+            ],
+        },
+    }
+
+    response = client.put(
+        "/api/radars/toir-quick-live/definition",
+        json={"definition_payload": payload, "definition_version": "ui-test"},
+    )
+
+    assert response.status_code == 200
+    detail = response.json()
+    sources = detail["active_definition"]["definition_payload"]["global_search_policy"]["sources"]
+    assert [source["usage_obligation"] for source in sources] == ["required_for_identity", "required_for_coverage"]
+    assert detail["active_definition"]["definition_version"] == "ui-test"
+    assert detail["run_count"] == 0
+    preflight = client.get("/api/radars/toir-quick-live/preflight").json()
+    assert any(
+        check["code"] == "source_usage_obligation_valid" and check["status"] == "passed"
+        for check in preflight["checks"]
+    )
+
+    invalid = dict(payload)
+    invalid["global_search_policy"] = {
+        **payload["global_search_policy"],
+        "sources": [{**sources[0], "usage_obligation": "must_use_because_i_say_so"}],
+    }
+    assert client.put(
+        "/api/radars/toir-quick-live/definition",
+        json={"definition_payload": invalid},
+    ).status_code == 422
+    assert client.put(
+        "/api/radars/missing/definition",
+        json={"definition_payload": payload},
+    ).status_code == 404
+
+
 def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execution(tmp_path: Path) -> None:
     database_url = _create_seeded_database(tmp_path)
     queue = _RecordingJobQueue()
@@ -265,6 +329,10 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["discovery_plan"]["plan_summary"] == "Test discovery plan."
     assert dossier["discovery_plan"]["steps"][0]["stage"] == "candidate_universe_discovery"
     assert dossier["source_policy_decisions"][0]["decision"] == "selected"
+    assert dossier["source_policy_decisions"][0]["usage_obligation"] == "required_for_identity"
+    assert dossier["source_obligations"][0]["usage_obligation"] == "required_for_identity"
+    assert dossier["source_obligation_decisions"][0]["status"] == "satisfied"
+    assert dossier["source_obligation_summary"]["by_obligation"] == {"required_for_identity": 1}
     assert dossier["coverage_summary"]["analyzed_source_reasons"] == ["not_used_by_candidate"]
     assert dossier["candidate_universe"][0]["status"] == "qualified"
     assert dossier["candidate_universe"][0]["entity_type"] == "legal_entity"
@@ -600,6 +668,8 @@ def _artifact() -> dict[str, Any]:
                         "decision": "selected",
                         "reason": "Best source for legal entity identity.",
                         "rule_ids": ["rule-q1"],
+                        "usage_obligation": "required_for_identity",
+                        "obligation_status": "planned",
                     },
                     {
                         "source_id": "open-web",
@@ -607,6 +677,8 @@ def _artifact() -> dict[str, Any]:
                         "decision": "skipped",
                         "reason": "Registry is sufficient for this fixture.",
                         "rule_ids": ["rule-q1"],
+                        "usage_obligation": "preferred",
+                        "obligation_status": "skipped_with_rationale",
                     },
                 ],
                 "coverage_hypotheses": [
@@ -661,6 +733,35 @@ def _artifact() -> dict[str, Any]:
                     }
                 ],
                 "entity_resolution_warnings": [],
+                "source_obligations": [
+                    {
+                        "source_id": "registry",
+                        "source_label": "Registry",
+                        "source_type": "company_registry",
+                        "trust_level": "high",
+                        "usage_obligation": "required_for_identity",
+                        "required": True,
+                    }
+                ],
+                "source_obligation_decisions": [
+                    {
+                        "source_id": "registry",
+                        "source_label": "Registry",
+                        "source_type": "company_registry",
+                        "trust_level": "high",
+                        "usage_obligation": "required_for_identity",
+                        "required": True,
+                        "status": "satisfied",
+                        "stage_task_ids": ["discover-q1"],
+                    }
+                ],
+                "source_obligation_summary": {
+                    "decision_count": 1,
+                    "by_status": {"satisfied": 1},
+                    "by_obligation": {"required_for_identity": 1},
+                    "blocking_count": 0,
+                    "blocking_source_ids": [],
+                },
                 "coverage_checks": [
                     {
                         "task_id": "coverage-q1",

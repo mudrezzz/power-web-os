@@ -920,6 +920,188 @@ def test_discovery_plan_acceptance_splits_multi_rule_strategic_step() -> None:
     assert any(correction["type"] == "multi_rule_step_split" for correction in acceptance.corrections)
 
 
+def test_source_obligation_rejects_required_coverage_source_skipped_by_planner() -> None:
+    radar = _generic_definition(
+        radar_id="required-coverage",
+        rules=[("Q1", "Holding contour", "Find legal entities in the holding.")],
+        global_sources=[
+            {
+                "source_id": "open-web",
+                "label": "Open web",
+                "source_type": "search_engine",
+                "usage_obligation": "required_for_coverage",
+            }
+        ],
+    )
+    planning_input = build_discovery_planning_input(radar=radar, task_context={}, live=True, provider_metadata={})
+    plan = RadarDiscoveryPlan(
+        plan_summary="Skipped required coverage source.",
+        steps=[
+            RadarDiscoveryPlanStep(
+                step_id="discover-q1",
+                stage="candidate_universe_discovery",
+                subject_rule_ids=["Q1"],
+                source_scope="additional",
+                query="Find candidates.",
+                purpose="Discover candidates.",
+                expected_evidence=["Q1"],
+                acceptance_criteria=["Q1"],
+            ),
+            RadarDiscoveryPlanStep(
+                step_id="coverage-q1",
+                stage="coverage_check",
+                subject_rule_ids=[],
+                source_scope="additional",
+                query="Check coverage.",
+                purpose="Check gaps.",
+                expected_evidence=["candidate_universe_gaps"],
+                acceptance_criteria=["Coverage checked."],
+                depends_on=["discover-q1"],
+            ),
+        ],
+        source_policy_decisions=[
+            RadarDiscoverySourcePolicyDecision(
+                source_id="open-web",
+                source_label="Open web",
+                decision="skipped",
+                reason="Planner preferred configured registry.",
+                rule_ids=["Q1"],
+            )
+        ],
+    )
+
+    validation = RadarDiscoveryPlanAcceptanceService().accept(planning_input=planning_input, plan=plan).validation
+
+    assert not validation.accepted
+    assert any("Required source open-web cannot be skipped" in error for error in validation.errors)
+    assert any("required_for_coverage source open-web" in error for error in validation.errors)
+
+
+def test_source_obligation_allows_preferred_source_skipped_with_rationale() -> None:
+    radar = _generic_definition(
+        radar_id="preferred-source",
+        rules=[("Q1", "Registry criterion", "Find companies through a registry.")],
+        global_sources=[
+            {
+                "source_id": "official-site",
+                "label": "Official site",
+                "source_type": "url",
+                "usage_obligation": "preferred",
+            }
+        ],
+    )
+    planning_input = build_discovery_planning_input(radar=radar, task_context={}, live=True, provider_metadata={})
+    plan = RadarDiscoveryPlan(
+        plan_summary="Preferred source skipped.",
+        steps=[
+            RadarDiscoveryPlanStep(
+                step_id="discover-q1",
+                stage="candidate_universe_discovery",
+                subject_rule_ids=["Q1"],
+                source_scope="additional",
+                query="Find candidates.",
+                purpose="Discover candidates.",
+                expected_evidence=["Q1"],
+                acceptance_criteria=["Q1"],
+            ),
+            RadarDiscoveryPlanStep(
+                step_id="coverage-q1",
+                stage="coverage_check",
+                subject_rule_ids=[],
+                source_scope="additional",
+                query="Check coverage.",
+                purpose="Check gaps.",
+                expected_evidence=["candidate_universe_gaps"],
+                acceptance_criteria=["Coverage checked."],
+                depends_on=["discover-q1"],
+            ),
+        ],
+        source_policy_decisions=[
+            RadarDiscoverySourcePolicyDecision(
+                source_id="official-site",
+                source_label="Official site",
+                decision="skipped",
+                reason="The official site does not expose the needed registry facts.",
+                rule_ids=["Q1"],
+            )
+        ],
+    )
+
+    validation = RadarDiscoveryPlanAcceptanceService().accept(planning_input=planning_input, plan=plan).validation
+
+    assert validation.accepted
+    assert any("Preferred source official-site was skipped" in warning for warning in validation.warnings)
+
+
+def test_source_obligation_rejects_disabled_source_selection_and_early_fallback() -> None:
+    radar = _generic_definition(
+        radar_id="disabled-and-fallback",
+        rules=[("Q1", "Registry criterion", "Find companies through a registry.")],
+        global_sources=[
+            {"source_id": "disabled-source", "label": "Disabled", "usage_obligation": "disabled"},
+            {"source_id": "preferred-source", "label": "Preferred", "usage_obligation": "preferred"},
+            {"source_id": "fallback-web", "label": "Fallback web", "usage_obligation": "fallback"},
+        ],
+    )
+    planning_input = build_discovery_planning_input(radar=radar, task_context={}, live=True, provider_metadata={})
+    plan = RadarDiscoveryPlan(
+        plan_summary="Invalid disabled and fallback source use.",
+        steps=[
+            RadarDiscoveryPlanStep(
+                step_id="discover-q1",
+                stage="candidate_universe_discovery",
+                subject_rule_ids=["Q1"],
+                source_scope="global",
+                source_ids=["disabled-source", "fallback-web"],
+                query="Find candidates.",
+                purpose="Discover candidates.",
+                expected_evidence=["Q1"],
+                acceptance_criteria=["Q1"],
+            ),
+            RadarDiscoveryPlanStep(
+                step_id="coverage-q1",
+                stage="coverage_check",
+                subject_rule_ids=[],
+                source_scope="additional",
+                query="Check coverage.",
+                purpose="Check gaps.",
+                expected_evidence=["candidate_universe_gaps"],
+                acceptance_criteria=["Coverage checked."],
+                depends_on=["discover-q1"],
+            ),
+        ],
+        source_policy_decisions=[
+            RadarDiscoverySourcePolicyDecision(
+                source_id="disabled-source",
+                source_label="Disabled",
+                decision="selected",
+                reason="Invalidly selected.",
+                rule_ids=["Q1"],
+            ),
+            RadarDiscoverySourcePolicyDecision(
+                source_id="fallback-web",
+                source_label="Fallback web",
+                decision="selected",
+                reason="Invalidly selected too early.",
+                rule_ids=["Q1"],
+            ),
+            RadarDiscoverySourcePolicyDecision(
+                source_id="preferred-source",
+                source_label="Preferred",
+                decision="skipped",
+                reason="",
+                rule_ids=["Q1"],
+            ),
+        ],
+    )
+
+    validation = RadarDiscoveryPlanAcceptanceService().accept(planning_input=planning_input, plan=plan).validation
+
+    assert not validation.accepted
+    assert any("Disabled source disabled-source" in error for error in validation.errors)
+    assert any("Fallback source fallback-web" in error for error in validation.errors)
+
+
 def test_discovery_plan_accepts_llm_nulls_for_optional_step_fields() -> None:
     plan = RadarDiscoveryPlan.model_validate({
         "plan_summary": "Plan with null optional fields.",
@@ -1107,6 +1289,8 @@ def test_openrouter_discovery_planner_request_uses_planning_scope_only() -> None
     assert "criterion_role_decisions" in prompt["output_schema"]
     assert "source_base" in prompt["output_schema"]["steps"][0]
     assert "application_scope" in prompt["output_schema"]["steps"][0]
+    assert "usage_obligation" in prompt["output_schema"]["source_policy_decisions"][0]
+    assert "obligation_status" in prompt["output_schema"]["source_policy_decisions"][0]
     assert prompt["planning_input"]["max_iterations"] == 2
     assert request["metadata"]["planner_role"] == "discovery_strategy"
 
@@ -1961,6 +2145,9 @@ def test_active_definition_adapter_preserves_source_policy_and_runtime_projectio
     assert runtime_payload["definition_id"] == "radar-def-toir-quick-live"
     assert runtime_payload["definition_version"] == record.definition_version
     assert runtime_payload["global_search_policy"]["sources"][0]["source_id"] == "dadata_registry"
+    assert runtime_payload["global_search_policy"]["sources"][0]["usage_obligation"] == "required_for_identity"
+    assert runtime_payload["global_search_policy"]["sources"][1]["source_id"] == "openrouter_web"
+    assert runtime_payload["global_search_policy"]["sources"][1]["usage_obligation"] == "required_for_coverage"
     assert runtime_payload["qualification_criteria"][0]["code"] == "q1-sibur-group"
     assert runtime_payload["qualification_criteria"][0]["source_policy"]["source_ids"][0] == "dadata_registry"
     assert runtime_payload["intent_signals"][0]["code"] == "S1"

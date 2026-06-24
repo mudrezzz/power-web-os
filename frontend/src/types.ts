@@ -207,6 +207,7 @@ export type SourceDefinition = {
   label: string;
   reference: string;
   trust_level: 'high' | 'medium' | 'low' | string;
+  usage_obligation?: 'required' | 'preferred' | 'optional' | 'fallback' | 'disabled' | 'required_for_identity' | 'required_for_coverage' | 'required_for_signal' | string;
 };
 
 export type SourcePolicy = {
@@ -608,6 +609,8 @@ export type LiveRadarSourcePolicyDecision = {
   decision: string;
   reason: string;
   rule_ids?: string[];
+  usage_obligation?: string;
+  obligation_status?: string;
 };
 
 export type LiveRadarRunDossier = {
@@ -644,6 +647,9 @@ export type LiveRadarRunDossier = {
     warnings?: string[];
   };
   source_policy_decisions: LiveRadarSourcePolicyDecision[];
+  source_obligations: Array<Record<string, unknown>>;
+  source_obligation_decisions: Array<Record<string, unknown>>;
+  source_obligation_summary: Record<string, unknown>;
   coverage_summary: {
     hypotheses?: Array<Record<string, unknown>>;
     warnings?: string[];

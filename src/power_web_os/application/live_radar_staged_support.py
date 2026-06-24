@@ -157,6 +157,32 @@ def useful_result_warning_event(warnings: list[str]) -> LiveRadarPipelineEvent:
     )
 
 
+def source_obligation_events(decisions: list[dict[str, Any]]) -> list[LiveRadarPipelineEvent]:
+    events: list[LiveRadarPipelineEvent] = []
+    for decision in decisions:
+        status = str(decision.get("status") or "")
+        source_id = str(decision.get("source_id") or "")
+        if status == "not_applicable" or not source_id:
+            continue
+        event_type = (
+            "source_obligation_satisfied"
+            if status == "satisfied"
+            else "source_obligation_skipped"
+            if status == "skipped_with_rationale"
+            else "source_obligation_blocked"
+        )
+        events.append(LiveRadarPipelineEvent(
+            event_type=event_type,
+            phase="collection",
+            actor="application",
+            node_name="source_obligation_policy",
+            visibility="operator",
+            summary=f"{source_id}: {decision.get('usage_obligation')} -> {status}",
+            payload=decision,
+        ))
+    return events
+
+
 def budget_decision(result: WebSearchProviderResult) -> dict[str, Any]:
     decision = result.provider_metadata.get("budget_decision")
     return dict(decision) if isinstance(decision, dict) and not decision.get("accepted", True) else {}

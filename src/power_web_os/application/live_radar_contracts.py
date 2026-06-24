@@ -26,6 +26,7 @@ RadarDiscoverySourceScope = Literal["global", "local", "additional", "system"]
 RadarCriterionRole = Literal["upstream_discovery", "downstream_gate", "attribute_enrichment", "exclusion"]
 RadarSourceBase = Literal["global_configured", "rule_local", "additional", "system"]
 RadarSourceApplicationScope = Literal["whole_universe", "rule_scope", "candidate_scope"]
+RadarSourceUsageObligation = Literal["required", "preferred", "optional", "fallback", "disabled", "required_for_identity", "required_for_coverage", "required_for_signal"]
 RadarEntityType = Literal["legal_entity", "production_site", "project", "asset", "unknown_entity"]
 RadarEntityResolutionStatus = Literal["resolved", "linked_to_legal_entity", "unresolved_gap", "rejected_as_account", "review_needed"]
 
@@ -163,6 +164,18 @@ class RadarDiscoverySourcePolicyDecision(BaseModel):
     decision: Literal["selected", "skipped"]
     reason: str
     rule_ids: list[str] = Field(default_factory=list)
+    usage_obligation: RadarSourceUsageObligation = "preferred"
+    obligation_status: str = ""
+
+    @field_validator("rule_ids", mode="before")
+    @classmethod
+    def _empty_list_for_null(cls, value: Any) -> Any:
+        return [] if value is None else value
+
+    @field_validator("reason", "obligation_status", mode="before")
+    @classmethod
+    def _empty_string_for_null(cls, value: Any) -> Any:
+        return "" if value is None else value
 
 
 class RadarDiscoveryCoverageHypothesis(BaseModel):

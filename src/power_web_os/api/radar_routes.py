@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from power_web_os.api.dependencies import RadarApiContext, get_radar_api_context
 from power_web_os.api.radar_dtos import (
     RadarDetailResponse,
+    RadarDefinitionUpdateRequest,
     RadarPreflightResponse,
     RadarRunCandidatesResponse,
     RadarRunDossierResponse,
@@ -33,6 +34,11 @@ from power_web_os.api.radar_mappers import (
     technical_trace_response,
 )
 from power_web_os.application.persisted_live_radar import PersistedLiveRadarRunCommand, QueuedLiveRadarRunService
+from power_web_os.application.radar_definition_update import (
+    RadarDefinitionUpdateCommand,
+    RadarDefinitionUpdateError,
+    RadarDefinitionUpdateService,
+)
 from power_web_os.application.live_radar_definition_runtime import active_definition_to_live_radar_payload
 from power_web_os.application.radar_preflight import RadarExecutionPreflightService
 from power_web_os.application.radar_run_journal import RadarRunJournal
@@ -65,6 +71,35 @@ def get_radar(radar_id: str, context: RadarContext) -> RadarDetailResponse:
     radar = context.radar_repository.get(radar_id)
     if radar is None:
         raise HTTPException(status_code=404, detail=f"Radar not found: {radar_id}")
+    runs = context.run_repository.list_for_radar(radar_id)
+    return radar_detail_response(
+        radar,
+        active_definition=context.definition_repository.get_active(radar_id),
+        runs=runs,
+        outputs_by_run_id=_outputs_for_runs(context, runs),
+    )
+
+
+@router.put("/radars/{radar_id}/definition", response_model=RadarDetailResponse)
+def update_radar_definition(
+    radar_id: str,
+    request: RadarDefinitionUpdateRequest,
+    context: RadarContext,
+) -> RadarDetailResponse:
+    radar = context.radar_repository.get(radar_id)
+    if radar is None:
+        raise HTTPException(status_code=404, detail=f"Radar not found: {radar_id}")
+    try:
+        RadarDefinitionUpdateService(context.definition_repository).update_active(
+            RadarDefinitionUpdateCommand(
+                radar_id=radar_id,
+                definition_payload=request.definition_payload,
+                definition_version=request.definition_version,
+                is_active=request.is_active,
+            )
+        )
+    except RadarDefinitionUpdateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     runs = context.run_repository.list_for_radar(radar_id)
     return radar_detail_response(
         radar,

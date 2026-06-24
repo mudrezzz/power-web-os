@@ -5,9 +5,10 @@ import type {
   ICPRadarCatalogItem,
   LiveICPRadarRunArtifact,
   QualificationReviewDecision,
+  RadarDefinition,
   SignalValidationDecision,
 } from '../../../types';
-import { apiDetailsToCatalogArtifact, apiRunToLiveArtifact } from '../adapters/apiRadarAdapter';
+import { apiDetailToCatalogItem, apiDetailsToCatalogArtifact, apiRunToLiveArtifact } from '../adapters/apiRadarAdapter';
 
 const liveRadarId = 'toir-quick-live';
 const terminalStatuses = new Set(['completed', 'failed']);
@@ -37,6 +38,7 @@ export type RadarBackendController = {
   liveRunArtifact: LiveICPRadarRunArtifact | null;
   runState: RadarRunControlState;
   preflightState: RadarPreflightControlState;
+  saveRadarDefinition: (radarId: string, definition: RadarDefinition) => Promise<ICPRadarCatalogItem | null>;
   checkRadarSetup: (radarId: string) => Promise<void>;
   runRadar: (radarId: string) => void;
   saveQualificationReview: (
@@ -262,6 +264,29 @@ export function useRadarBackend({
     }
   }, [api]);
 
+  const saveRadarDefinition = useCallback(async (radarId: string, definition: RadarDefinition) => {
+    if (runState.mode !== 'api') {
+      return null;
+    }
+    const detail = await api.updateRadarDefinition(radarId, {
+      definition_payload: definition as unknown as Record<string, unknown>,
+      definition_version: undefined,
+      is_active: true,
+    });
+    const saved = apiDetailToCatalogItem(detail);
+    detailsByRadarId.current[radarId] = saved;
+    setApiCatalog((current) => {
+      if (!current) {
+        return current;
+      }
+      return {
+        ...current,
+        radars: current.radars.map((item) => (item.radar_id === radarId ? saved : item)),
+      };
+    });
+    return saved;
+  }, [api, runState.mode]);
+
   const saveQualificationReview = useCallback(async (
     radarId: string,
     candidateId: string,
@@ -328,6 +353,7 @@ export function useRadarBackend({
     liveRunArtifact: apiLiveArtifact ?? fallbackLiveRunArtifact,
     runState,
     preflightState,
+    saveRadarDefinition,
     checkRadarSetup,
     runRadar,
     saveQualificationReview,

@@ -56,6 +56,7 @@ export function useRadarWorkspace({
   const [settingsDraft, setSettingsDraft] = useState<EditableRadarDefinitionDraft | null>(null);
   const [savedSettingsDraftSnapshot, setSavedSettingsDraftSnapshot] = useState('');
   const [editingBlock, setEditingBlock] = useState<SettingsBlockId | null>(null);
+  const [settingsSaveError, setSettingsSaveError] = useState('');
 
   const mergedRadars = useMemo(() => mergeCatalogWithOverrides(catalog, radarOverrides), [catalog, radarOverrides]);
   const selectedRadar = mergedRadars.find((item) => item.radar_id === navigation.selectedRadarId) ?? null;
@@ -74,6 +75,7 @@ export function useRadarWorkspace({
     return new Map(entries as Array<[string, SourceDefinition]>);
   }, [selectedFixtureArtifact]);
   const validationErrors = settingsDraft ? validateRadarDraft(settingsDraft, t) : [];
+  const settingsErrors = settingsSaveError ? [...validationErrors, settingsSaveError] : validationErrors;
   const settingsDirty = settingsDraft ? JSON.stringify(settingsDraft) !== savedSettingsDraftSnapshot : false;
   const detailValidatedScore = detailCandidate && selectedRadar
     ? buildValidatedCandidateScore(detailCandidate, validationForCandidate(signalValidation, selectedRadar.radar_id, detailCandidate.account_id))
@@ -90,6 +92,7 @@ export function useRadarWorkspace({
     setSettingsDraft(nextDraft);
     setSavedSettingsDraftSnapshot(JSON.stringify(nextDraft));
     setEditingBlock(null);
+    setSettingsSaveError('');
   }, [selectedRadar?.radar_id]);
 
   function createRadar() {
@@ -189,11 +192,25 @@ export function useRadarWorkspace({
     setEditingBlock('overview');
   }
 
-  function saveSettingsDraft() {
+  async function saveSettingsDraft() {
     if (!selectedRadar || !settingsDraft || validationErrors.length) {
       return;
     }
     const nextRadar = radarFromDraft(selectedRadar, settingsDraft);
+    setSettingsSaveError('');
+    try {
+      const saved = await backend.saveRadarDefinition(selectedRadar.radar_id, nextRadar.definition);
+      if (saved) {
+        const nextDraft = draftFromRadar(saved);
+        setSettingsDraft(nextDraft);
+        setSavedSettingsDraftSnapshot(JSON.stringify(nextDraft));
+        setEditingBlock(null);
+        return;
+      }
+    } catch (error) {
+      setSettingsSaveError(error instanceof Error ? error.message : t('icpRadar.settings.saveFailed'));
+      return;
+    }
     saveRadarDraft(
       nextRadar,
       selectedRadarOverride?.override_type === 'created' ? 'created' : 'edited',
@@ -210,6 +227,7 @@ export function useRadarWorkspace({
     setSettingsDraft(nextDraft);
     setSavedSettingsDraftSnapshot(JSON.stringify(nextDraft));
     setEditingBlock(null);
+    setSettingsSaveError('');
   }
 
   async function saveLiveQualificationReviewDecision(
@@ -256,7 +274,7 @@ export function useRadarWorkspace({
     setEditingBlock,
     settingsDirty,
     sourcesById,
-    validationErrors,
+    validationErrors: settingsErrors,
     signalValidation,
     liveSignalValidation: apiBackedLiveArtifact ? {} : signalValidation,
     qualificationReview,
