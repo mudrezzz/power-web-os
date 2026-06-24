@@ -12,7 +12,7 @@ from power_web_os.persistence.config import DEFAULT_DATABASE_URL
 class ApiSettings:
     service_name: str = "Power Web OS API"
     environment: str = "local"
-    api_version: str = "0.7.6.1.11.6.1"
+    api_version: str = "0.7.6.1.11.7"
     database_url: str = DEFAULT_DATABASE_URL
     cors_origins: tuple[str, ...] = (
         "http://127.0.0.1:5173",
@@ -27,6 +27,8 @@ class ApiSettings:
     radar_min_useful_sources_per_discovery_task: int = 3
     radar_min_candidates_per_discovery_task: int = 5
     radar_max_discovery_retries_per_task: int = 2
+    radar_max_checkpoint_revisions_per_run: int = 2
+    radar_max_checkpoint_retries_per_stage: int = 1
 
 
 def get_api_settings() -> ApiSettings:
@@ -65,6 +67,14 @@ def get_api_settings() -> ApiSettings:
         radar_max_discovery_retries_per_task=_non_negative_int(
             os.getenv("POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK"),
             ApiSettings.radar_max_discovery_retries_per_task,
+        ),
+        radar_max_checkpoint_revisions_per_run=_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_REVISIONS_PER_RUN"),
+            ApiSettings.radar_max_checkpoint_revisions_per_run,
+        ),
+        radar_max_checkpoint_retries_per_stage=_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE"),
+            ApiSettings.radar_max_checkpoint_retries_per_stage,
         ),
     )
 

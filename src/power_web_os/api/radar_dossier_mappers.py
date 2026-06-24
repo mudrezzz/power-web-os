@@ -50,6 +50,15 @@ def dossier_response(
     coverage_summary = _coverage_summary(discovery_plan, execution_results)
     budget_summary = _budget_summary(execution_results)
     budget_exhaustion_events = _list(execution_results.get("budget_exhaustion_events"))
+    checkpoint_summary = _dict(execution_results.get("checkpoint_summary"))
+    checkpoint_decisions = _list(execution_results.get("checkpoint_decisions"))
+    adaptive_actions = _list(execution_results.get("adaptive_actions"))
+    checkpoint_warnings = [
+        str(value)
+        for value in execution_results.get("checkpoint_warnings", [])
+        if isinstance(value, str)
+    ]
+    stopped_for_review_reason = str(execution_results.get("stopped_for_review_reason") or "")
     signal_search_statuses = _list(execution_results.get("signal_search_statuses"))
     entity_resolution_results = _list(execution_results.get("entity_resolution_results"))
     linked_entity_facts = _list(execution_results.get("linked_entity_facts"))
@@ -88,6 +97,11 @@ def dossier_response(
         coverage_summary=coverage_summary,
         budget_summary=budget_summary,
         budget_exhaustion_events=budget_exhaustion_events,
+        checkpoint_summary=checkpoint_summary,
+        checkpoint_decisions=checkpoint_decisions,
+        adaptive_actions=adaptive_actions,
+        checkpoint_warnings=checkpoint_warnings,
+        stopped_for_review_reason=stopped_for_review_reason,
         signal_search_statuses=signal_search_statuses,
         entity_resolution_results=entity_resolution_results,
         linked_entity_facts=linked_entity_facts,

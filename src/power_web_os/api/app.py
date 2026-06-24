@@ -56,6 +56,8 @@ def create_app(
     app.state.radar_min_useful_sources_per_discovery_task = api_settings.radar_min_useful_sources_per_discovery_task
     app.state.radar_min_candidates_per_discovery_task = api_settings.radar_min_candidates_per_discovery_task
     app.state.radar_max_discovery_retries_per_task = api_settings.radar_max_discovery_retries_per_task
+    app.state.radar_max_checkpoint_revisions_per_run = api_settings.radar_max_checkpoint_revisions_per_run
+    app.state.radar_max_checkpoint_retries_per_stage = api_settings.radar_max_checkpoint_retries_per_stage
     app.state.runtime_config_report = build_effective_runtime_config_report(
         component="api",
         overrides=runtime_config_api_overrides(api_settings),

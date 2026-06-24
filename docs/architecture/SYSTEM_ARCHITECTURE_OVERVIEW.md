@@ -260,13 +260,24 @@ limit for backend-controlled provider/search tasks. The repository
 `.env.example` uses a smoke-safe value of `1`; the code fallback remains `20`
 when no environment value is configured.
 
-Execution will add adaptive checkpoints before broad benchmark work. After
-candidate discovery, qualification gates, coverage checks, and before signal
-search, the application layer should evaluate candidate count, linked-source
+Execution has application-owned review checkpoints before broad benchmark work.
+After candidate discovery, qualification gates, coverage checks, and before
+signal search, the application layer evaluates candidate count, linked-source
 count, required-source usage, coverage risk, schema/linking failures, and budget
-pressure. Checkpoint outcomes may continue, retry, expand sources, request plan
-revision, stop as review-needed, or fail hard. This prevents a weak initial plan
-from freezing an empty or under-covered candidate universe.
+pressure. Checkpoint outcomes are stored as execution metadata and journal
+events. The current runtime enforces the pre-signal safety gate: signal search
+starts only after the checkpoint confirms that there is a qualified,
+source-linked candidate scope and no blocking policy/schema/evidence-linking
+condition.
+
+The next adaptive recovery layer must execute checkpoint-selected actions, not
+only record decisions. `retry_same_source` must make a second bounded provider
+call under budget; `expand_sources` must add a bounded task for an allowed source
+scope; `revise_plan` must call the planner port with compact checkpoint facts
+and apply the validated revision; failed recovery must stop as review-needed or
+hard failure with explicit metadata. These behaviors are required before any
+quality benchmark because long live runs are not an acceptable first validation
+mechanism.
 
 Execution budgets are hierarchical. The backend can cap total run tasks,
 discovery tasks per qualification rule, gate tasks per candidate and rule, and

@@ -76,6 +76,14 @@ def _task_context_with_runtime_defaults(task_context: dict[str, object]) -> dict
         "max_discovery_retries_per_task",
         _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK"), 2),
     )
+    context.setdefault(
+        "max_checkpoint_revisions_per_run",
+        _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_REVISIONS_PER_RUN"), 2),
+    )
+    context.setdefault(
+        "max_checkpoint_retries_per_stage",
+        _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE"), 1),
+    )
     return context
 
 

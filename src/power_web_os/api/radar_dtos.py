@@ -366,6 +366,11 @@ class RadarRunDossierResponse(BaseModel):
     coverage_summary: dict[str, Any] = Field(default_factory=dict)
     budget_summary: dict[str, Any] = Field(default_factory=dict)
     budget_exhaustion_events: list[dict[str, Any]] = Field(default_factory=list)
+    checkpoint_summary: dict[str, Any] = Field(default_factory=dict)
+    checkpoint_decisions: list[dict[str, Any]] = Field(default_factory=list)
+    adaptive_actions: list[dict[str, Any]] = Field(default_factory=list)
+    checkpoint_warnings: list[str] = Field(default_factory=list)
+    stopped_for_review_reason: str = ""
     signal_search_statuses: list[dict[str, Any]] = Field(default_factory=list)
     entity_resolution_results: list[dict[str, Any]] = Field(default_factory=list)
     linked_entity_facts: list[dict[str, Any]] = Field(default_factory=list)

@@ -319,7 +319,15 @@ OpenRouter probes. Then click `Run radar`. The UI posts a queued run, polls
 `GET /api/radar-runs/{run_id}/dossier` to show the product run dossier: run
 context, definition version, task context, persisted qualification-first search
 plan, source usage, validation warnings, and non-debug timeline events. The
-dossier is safe for the normal product UI. API-backed live runs also expose a
+dossier also exposes checkpoint metadata: after discovery, gates, coverage, and
+before signal search the application records whether execution continued,
+recommended retry/expansion/revision, stopped for review, or recommended hard
+failure. The current implementation enforces the pre-signal safety gate; actual
+checkpoint-driven retry, source expansion, and planner revision execution must
+be added through the `0.7.6.1.11.7.1` to `0.7.6.1.11.7.3` follow-up slices.
+Treat `stopped_for_review_reason` and `checkpoint_warnings` as the first place
+to inspect why a run did not proceed to signal search. The dossier is safe for
+the normal product UI. API-backed live runs also expose a
 separate `Trace` tab backed by
 `GET /api/radar-runs/{run_id}/technical-trace`; it is developer/admin oriented
 and contains sanitized per-task pipeline/provider payloads plus redaction
@@ -435,9 +443,11 @@ Rules:
 - Adaptive execution checkpoints should guard expensive live runs. After
   discovery, gates, and coverage, check candidate counts, linked-source counts,
   required-source usage, schema/linking failures, budget pressure, and coverage
-  risk. The application layer may continue, retry, expand sources, revise the
-  plan, stop as review-needed, or fail hard. Do not let a weak discovery result
-  silently freeze the candidate universe and proceed to signal search.
+  risk. The current safety gate can continue, stop as review-needed, or
+  recommend hard failure before signal search. Follow-up adaptive recovery must
+  make retry, source expansion, and planner revision executable under explicit
+  budgets. Do not let a weak discovery result silently freeze the candidate
+  universe and proceed to signal search.
 - DaData and future structured registries are backend source providers. The
   backend should call them, normalize typed observations, and pass facts into
   extraction/evaluation. Do not ask the LLM to "use DaData" as if it were a
@@ -961,6 +971,25 @@ presence, source verification mode, budgets, database kind, Celery broker kind,
 and a deterministic non-secret fingerprint. This is the first check before a
 manual live run because it catches stale Docker/env mismatches before a long
 worker job starts.
+
+Adaptive checkpoint caps are part of that same runtime contract:
+
+```text
+POWER_WEB_OS_RADAR_MAX_CHECKPOINT_REVISIONS_PER_RUN=2
+POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE=1
+```
+
+They keep review checkpoints deterministic. Today they are persisted with the
+checkpoint decisions and will become hard caps for the adaptive recovery loop.
+That recovery loop is not accepted until fast fake/recorded tests prove:
+
+- weak discovery can execute a bounded retry and then continue;
+- source expansion creates a bounded allowed-source task, never a broad fallback;
+- planner revision is called with compact checkpoint facts and the validated
+  revision is applied;
+- retry/revision limits stop as review-needed instead of continuing blindly;
+- signal search starts only after the final pre-signal checkpoint returns
+  `continue`.
 
 Targeted live probes are opt-in and bounded. Use them only after static
 preflight is readable:

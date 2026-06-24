@@ -160,6 +160,8 @@ def queue_radar_run(radar_id: str, request: RadarRunRequest, context: RadarConte
                 "min_useful_sources_per_discovery_task": context.radar_min_useful_sources_per_discovery_task,
                 "min_candidates_per_discovery_task": context.radar_min_candidates_per_discovery_task,
                 "max_discovery_retries_per_task": context.radar_max_discovery_retries_per_task,
+                "max_checkpoint_revisions_per_run": context.radar_max_checkpoint_revisions_per_run,
+                "max_checkpoint_retries_per_stage": context.radar_max_checkpoint_retries_per_stage,
             },
             api_runtime_config=context.runtime_config_report,
         )

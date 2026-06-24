@@ -41,7 +41,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-            "version": "0.7.6.1.11.6.1",
+            "version": "0.7.6.1.11.7",
         "environment": "test",
     }
 
@@ -58,7 +58,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.6.1.11.6.1"
+    assert schema["info"]["version"] == "0.7.6.1.11.7"
     for path in [
         "/health",
         "/api/health",
@@ -352,6 +352,11 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["budget_summary"]["counters"]["total"] == 4
     assert dossier["budget_summary"]["signal_not_searched_count"] == 1
     assert dossier["budget_exhaustion_events"][0]["state"] == "not_searched_budget_limited"
+    assert dossier["checkpoint_summary"]["by_action"] == {"continue": 1}
+    assert dossier["checkpoint_decisions"][0]["phase"] == "before_signal_search"
+    assert dossier["adaptive_actions"] == []
+    assert dossier["checkpoint_warnings"] == []
+    assert dossier["stopped_for_review_reason"] == ""
     assert dossier["signal_search_statuses"][1]["search_status"] == "not_searched_budget_limited"
     assert dossier["search_plan"][0]["query_id"] == "q1"
     assert dossier["search_plan"][0]["source_refs"] == ["src_1"]
@@ -835,6 +840,27 @@ def _artifact() -> dict[str, Any]:
                         "message": "Total Radar web task budget reached: 4 tasks.",
                     }
                 ],
+                "checkpoint_summary": {
+                    "decision_count": 1,
+                    "by_action": {"continue": 1},
+                    "by_reason": {"quality_sufficient": 1},
+                    "blocking_count": 0,
+                    "stopped_for_review": False,
+                    "hard_failure_recommended": False,
+                },
+                "checkpoint_decisions": [
+                    {
+                        "checkpoint_id": "before-signal-search",
+                        "phase": "before_signal_search",
+                        "action": "continue",
+                        "reason_code": "quality_sufficient",
+                        "severity": "info",
+                        "message": "Checkpoint quality gates passed.",
+                    }
+                ],
+                "adaptive_actions": [],
+                "checkpoint_warnings": [],
+                "stopped_for_review_reason": "",
                 "signal_search_statuses": [
                     {
                         "candidate_name": "Candidate A",

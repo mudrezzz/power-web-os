@@ -143,6 +143,20 @@ preflight service depends on repository/source-provider contracts and recorded
 fixtures; it must not enqueue jobs, call OpenRouter, call DaData, or normalize
 broken provider output into apparently successful product states.
 
+Staged live Radar execution uses application-owned adaptive checkpoints between
+discovery, gate, coverage, and signal phases. `RadarExecutionCheckpointService`
+reviews candidate coverage, linked source evidence, source obligations,
+schema/linking issues, and budget pressure before the next expensive phase can
+run. Provider adapters may supply observations, but they do not decide whether a
+weak candidate universe is good enough for signal search.
+
+The checkpoint decision service is not enough to claim full adaptive execution.
+The follow-up recovery layer must apply checkpoint actions explicitly in the
+application layer: retry a bounded task, expand to an allowed source scope,
+request a compact planner revision, stop as review-needed, or fail hard. Each
+action must be budgeted, recorded in execution metadata, and covered by
+fake/recorded tests before broad live runs are used as evidence.
+
 ## How To Extend
 
 1. Add or extend an application record when a use case needs a stable internal

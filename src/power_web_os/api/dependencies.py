@@ -40,6 +40,8 @@ class RadarApiContext:
     radar_min_useful_sources_per_discovery_task: int
     radar_min_candidates_per_discovery_task: int
     radar_max_discovery_retries_per_task: int
+    radar_max_checkpoint_revisions_per_run: int
+    radar_max_checkpoint_retries_per_stage: int
     runtime_config_report: dict[str, object]
 
 
@@ -65,6 +67,8 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
     )
     radar_min_candidates_per_discovery_task = int(getattr(request.app.state, "radar_min_candidates_per_discovery_task", 5))
     radar_max_discovery_retries_per_task = int(getattr(request.app.state, "radar_max_discovery_retries_per_task", 2))
+    radar_max_checkpoint_revisions_per_run = int(getattr(request.app.state, "radar_max_checkpoint_revisions_per_run", 2))
+    radar_max_checkpoint_retries_per_stage = int(getattr(request.app.state, "radar_max_checkpoint_retries_per_stage", 1))
     runtime_config_report = dict(getattr(request.app.state, "runtime_config_report", {}))
     with session_scope(session_factory) as session:
         yield RadarApiContext(
@@ -85,6 +89,8 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
             radar_min_useful_sources_per_discovery_task=radar_min_useful_sources_per_discovery_task,
             radar_min_candidates_per_discovery_task=radar_min_candidates_per_discovery_task,
             radar_max_discovery_retries_per_task=radar_max_discovery_retries_per_task,
+            radar_max_checkpoint_revisions_per_run=radar_max_checkpoint_revisions_per_run,
+            radar_max_checkpoint_retries_per_stage=radar_max_checkpoint_retries_per_stage,
             runtime_config_report=runtime_config_report,
         )
 

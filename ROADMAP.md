@@ -3590,7 +3590,7 @@ Principles:
 
 ### Slice 0.7.6.1.11.6: Source usage policy and mandatory source obligations
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Treat configured source bases as executable obligations, not only as
   planner hints.
 - User value: When a user adds web search, DaData, or an official site to the
@@ -3658,15 +3658,15 @@ Principles:
   - Done: invalid obligation values are rejected and no run/output rows are
     created by definition editing.
 
-### Slice 0.7.6.1.11.7: Adaptive execution review checkpoints
+### Slice 0.7.6.1.11.7: Adaptive checkpoint decision layer and signal-search safety gate
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Add runtime checkpoints that review discovery/gate/coverage quality and
-  revise or expand execution before moving to the next stage.
-- User value: A bad initial strategy no longer runs to completion blindly; the
-  Radar can notice weak candidate coverage, missing required sources, schema
-  failures, or source-linking gaps and adapt before spending the rest of the
-  budget.
+  prevent signal search from starting when the candidate universe is weak or
+  invalid.
+- User value: A bad initial strategy no longer runs all the way into signal
+  search blindly; the Radar records why discovery/gates/coverage were not good
+  enough and stops as review-needed instead of producing fake zero scores.
 - Scope:
   - Add checkpoints after candidate discovery, qualification gates, coverage
     checks, and before signal search.
@@ -3674,24 +3674,188 @@ Principles:
     gaps, schema/linking failures, budget pressure, and coverage risk.
   - Add backend decisions: `continue`, `retry_same_source`, `expand_sources`,
     `revise_plan`, `stop_review_needed`, `fail_hard`.
-  - Feed compact checkpoint facts into an adaptive plan revision prompt when
-    backend policy permits revision.
+  - Persist checkpoint decisions and warnings into execution metadata, dossier,
+    journal, and trace.
+  - Enforce the pre-signal checkpoint: signal search starts only if there is a
+    qualified, source-linked candidate scope and no blocking policy/schema/
+    evidence-linking condition.
 - Out of scope:
+  - Executing checkpoint actions such as planner revision, source expansion, or
+    checkpoint-driven retry loops. Those are deliberately split into
+    `0.7.6.1.11.7.1` through `0.7.6.1.11.7.3` below.
   - Long-running autonomous loops without budget limits.
   - Raw hidden chain-of-thought storage.
   - Benchmark quality claims.
 - Tests:
-  - Recorded discovery with too few linked candidates triggers `expand_sources`
-    or `revise_plan`.
+  - Unit tests cover `continue`, `stop_review_needed`, and `revise_plan`
+    decisions.
   - Weak coverage stops before signal search when source obligations are unmet.
   - Checkpoint decisions appear in dossier/trace without secrets.
 - Docs:
-  - Document checkpoint states and when a run can complete with warnings versus
-    stop as review-needed.
+  - Document checkpoint states, current safety-gate behavior, and the separate
+    adaptive recovery follow-up slices.
 - Demo impact:
-  - Diagnostics explains why the Radar changed strategy or refused to continue.
+  - Diagnostics explains why the Radar refused to continue to signal search.
 - Acceptance criteria:
   - A weak discovery result is no longer treated as a valid universe freeze.
+  - `RadarExecutionCheckpointService` records checkpoint decisions after
+    discovery, qualification gates, coverage, and before signal search.
+  - Signal search is skipped when the pre-signal checkpoint has no qualified,
+    source-linked candidate scope or detects blocking source/schema/linking
+    issues.
+  - Dossier output exposes `checkpoint_summary`, `checkpoint_decisions`,
+    `adaptive_actions`, `checkpoint_warnings`, and
+    `stopped_for_review_reason`.
+  - Explicitly not accepted as complete adaptive behavior: a checkpoint decision
+    of `retry_same_source`, `expand_sources`, or `revise_plan` does not yet
+    prove that the staged executor performed that action. Follow-up slices must
+    add red tests and then real action execution.
+
+### Slice 0.7.6.1.11.7.1: Adaptive checkpoint red tests and behavior contract
+
+- Status: `Ready`
+- Goal: Make the missing adaptive behavior executable as fast tests before
+  adding more implementation.
+- User value: We can prove in seconds which adaptive scenarios are missing
+  before spending 30 minutes on a live Radar run.
+- Scope:
+  - Add a dedicated recorded/fake test module for adaptive checkpoint behavior.
+  - Tests must assert actual staged behavior, not only the returned checkpoint
+    decision.
+  - Cover weak discovery, empty required source, malformed extraction schema,
+    unresolved evidence refs, high coverage risk, and exhausted budgets.
+  - Mark currently missing behavior explicitly with `xfail(strict=True)` or a
+    dedicated `adaptive_red` marker so regular CI remains meaningful while the
+    debt is visible.
+- Out of scope:
+  - Implementing retry, source expansion, or planner revision execution.
+  - Live OpenRouter, DaData, or Perplexity calls.
+- Expected behavior to codify:
+  - Weak discovery must not proceed to signal search until it either improves
+    through an adaptive action or stops as review-needed.
+  - A `retry_same_source` decision is valid only when a second bounded provider
+    call is made or the test explicitly documents that execution is still
+    missing.
+  - An `expand_sources` decision is valid only when a bounded task is added for
+    an allowed source scope; broad fallback is not acceptable.
+  - A `revise_plan` decision is valid only when the planner revision port is
+    called with compact checkpoint facts and the revised executable plan is
+    applied.
+- Tests:
+  - `weak_discovery_should_retry_then_continue` starts red/xfail until the
+    executor performs the second bounded call.
+  - `weak_discovery_should_expand_allowed_sources` starts red/xfail until source
+    expansion creates a bounded task.
+  - `schema_failure_should_request_plan_revision` starts red/xfail until planner
+    revision is executed.
+  - `revision_limit_should_stop_for_review` starts red/xfail until revision caps
+    are enforced.
+  - `retry_limit_should_stop_for_review` starts red/xfail until checkpoint retry
+    caps are enforced.
+- Docs:
+  - Developer Guide lists these tests as the precondition for implementing
+    adaptive recovery.
+- Acceptance criteria:
+  - The suite shows exactly which adaptive actions are not implemented.
+  - Each red/xfail scenario names the required runtime behavior and expected
+    metadata fields.
+  - The suite runs without network calls and completes in seconds.
+
+### Slice 0.7.6.1.11.7.2: Adaptive discovery recovery loop
+
+- Status: `Backlog`
+- Goal: Execute checkpoint-selected adaptive actions during discovery and
+  pre-signal review instead of only recording decisions.
+- User value: If the first discovery strategy is weak, the Radar can retry,
+  expand sources, or ask for a compact plan revision under backend controls
+  before it gives up or moves to signal search.
+- Scope:
+  - Add a `RadarCheckpointActionExecutor` in the application layer.
+  - Implement `retry_same_source`: repeat the same bounded task with a compact
+    "previous result was weak" instruction and merge/dedupe the result.
+  - Implement `expand_sources`: create bounded discovery/coverage tasks only
+    for source scopes allowed by source policy and obligations.
+  - Implement `revise_plan`: call the existing planner port with compact
+    checkpoint facts, validation errors, and budget/source-policy constraints;
+    compile the accepted revision into executable tasks.
+  - Implement `stop_review_needed` and `fail_hard` as terminal execution
+    outcomes with explicit metadata.
+  - Re-run the relevant checkpoint after each adaptive action.
+- Runtime limits:
+  - `POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE` caps retry and source
+    expansion loops per checkpoint stage.
+  - `POWER_WEB_OS_RADAR_MAX_CHECKPOINT_REVISIONS_PER_RUN` caps planner revision
+    calls per run.
+  - All adaptive provider calls count against existing discovery/gate/coverage
+    and total run budgets.
+- Out of scope:
+  - Broad autonomous agent loops.
+  - Raw hidden chain-of-thought.
+  - New UI screens.
+  - Benchmark quality claims.
+- Expected behavior:
+  - Signal search is allowed only after the latest pre-signal checkpoint returns
+    `continue`.
+  - If adaptive retry/expansion/revision improves the candidate universe, the
+    run continues with the improved universe.
+  - If all allowed adaptive attempts fail, the run stops as review-needed with
+    `stopped_for_review_reason`, `checkpoint_decisions`, and `adaptive_actions`.
+  - A planner revision that is invalid after the allowed attempts must not fall
+    back to a blind broad search.
+- Tests:
+  - Fake provider: attempt 1 weak, attempt 2 strong -> retry action executed,
+    then signal search runs.
+  - Fake provider: required source empty, allowed source expansion strong ->
+    expansion action executed, then signal search runs.
+  - Fake planner: initial plan invalid, revision valid -> revision action
+    executed and applied.
+  - Fake planner always invalid -> revision cap reached, stop review-needed.
+  - Total budget exhausted during recovery -> stop review-needed, no signal
+    search.
+- Acceptance criteria:
+  - `adaptive_actions` contains executed actions with attempt number, source
+    scope, task id, budget key, and outcome.
+  - `checkpoint_decisions` show the before/after checkpoint chain.
+  - Recorded/fake tests prove recovery without network calls.
+
+### Slice 0.7.6.1.11.7.3: Adaptive execution coverage suite and fast validation harness
+
+- Status: `Backlog`
+- Goal: Turn adaptive execution into a stable, fast validation harness that must
+  pass before any long live Radar run or benchmark.
+- User value: Full live runs become final smoke/benchmark checks, not the first
+  way to discover broken adaptive behavior.
+- Scope:
+  - Consolidate adaptive fake providers, fake planner revisions, negative
+    extraction fixtures, source-obligation fixtures, and assertion helpers.
+  - Add a single focused command for adaptive validation:
+    `python -m pytest tests/test_radar_adaptive_execution.py -q`.
+  - Verify dossier, journal, trace, and execution metadata for each adaptive
+    branch.
+  - Add a developer checklist: preflight -> targeted live probes -> adaptive
+    fixture suite -> full live run.
+- Out of scope:
+  - New provider integrations.
+  - UI redesign.
+  - SIBUR benchmark scoring claims.
+- Required scenario matrix:
+  - Weak discovery -> retry -> success -> continue.
+  - Weak discovery -> retry limit -> stop review-needed.
+  - Required source empty -> allowed source expansion -> continue.
+  - Required source unavailable -> stop/fail with explicit reason.
+  - Malformed extraction -> revise plan -> success.
+  - Malformed extraction -> revision limit -> stop/fail.
+  - Evidence refs unresolved -> no signal search.
+  - High coverage risk -> no signal search until recovery improves it.
+  - Total budget exhausted -> stop review-needed.
+  - Signal search starts only after final pre-signal checkpoint `continue`.
+- Acceptance criteria:
+  - The adaptive suite completes without OpenRouter, DaData, or Perplexity
+    network calls.
+  - Each adaptive branch asserts both runtime behavior and persisted diagnostic
+    metadata.
+  - Developer Guide states that broad live runs should not start until this
+    suite is green.
 
 ### Slice 0.7.6.1.11.8: DaData lookup hardening and structured observation injection
 
@@ -4432,4 +4596,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11.7: Adaptive execution review checkpoints`.
+Implement `Slice 0.7.6.1.11.7.1: Adaptive checkpoint red tests and behavior contract`.

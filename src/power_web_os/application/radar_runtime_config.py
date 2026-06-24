@@ -38,6 +38,8 @@ CRITICAL_FINGERPRINT_PATHS = (
     ("radar", "max_gate_tasks_per_candidate_rule"),
     ("radar", "max_signal_tasks_per_candidate_signal"),
     ("radar", "max_total_web_tasks_per_run"),
+    ("radar", "max_checkpoint_revisions_per_run"),
+    ("radar", "max_checkpoint_retries_per_stage"),
 )
 
 
@@ -181,6 +183,8 @@ def build_effective_runtime_config_report(
             "min_useful_sources_per_discovery_task": _int_value(value("POWER_WEB_OS_RADAR_MIN_USEFUL_SOURCES_PER_DISCOVERY_TASK", 3), 3),
             "min_candidates_per_discovery_task": _int_value(value("POWER_WEB_OS_RADAR_MIN_CANDIDATES_PER_DISCOVERY_TASK", 5), 5),
             "max_discovery_retries_per_task": _int_value(value("POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK", 2), 2),
+            "max_checkpoint_revisions_per_run": _int_value(value("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_REVISIONS_PER_RUN", 2), 2),
+            "max_checkpoint_retries_per_stage": _int_value(value("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE", 1), 1),
         },
         "persistence": {
             "database_kind": _url_kind(database_url),
@@ -240,6 +244,8 @@ def runtime_config_api_overrides(settings: Any) -> dict[str, Any]:
         "POWER_WEB_OS_RADAR_MIN_USEFUL_SOURCES_PER_DISCOVERY_TASK": getattr(settings, "radar_min_useful_sources_per_discovery_task", None),
         "POWER_WEB_OS_RADAR_MIN_CANDIDATES_PER_DISCOVERY_TASK": getattr(settings, "radar_min_candidates_per_discovery_task", None),
         "POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK": getattr(settings, "radar_max_discovery_retries_per_task", None),
+        "POWER_WEB_OS_RADAR_MAX_CHECKPOINT_REVISIONS_PER_RUN": getattr(settings, "radar_max_checkpoint_revisions_per_run", None),
+        "POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE": getattr(settings, "radar_max_checkpoint_retries_per_stage", None),
     }
 
 

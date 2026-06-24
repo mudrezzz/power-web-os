@@ -62,6 +62,14 @@ def build_live_mini_radar_artifact(
         "max_discovery_retries_per_task",
         _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK"), 2),
     )
+    default_task_context.setdefault(
+        "max_checkpoint_revisions_per_run",
+        _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_REVISIONS_PER_RUN"), 2),
+    )
+    default_task_context.setdefault(
+        "max_checkpoint_retries_per_stage",
+        _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE"), 1),
+    )
     state = LiveICPRadarRunState(
         task_context=default_task_context,
         radar=radar or build_live_mini_radar_definition(),

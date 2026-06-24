@@ -97,23 +97,13 @@ class LiveRadarRunService:
             max_web_tasks_per_subject=_int_context_value(state.task_context, "max_web_tasks_per_subject"),
             max_discovery_tasks_per_rule=_int_context_value(state.task_context, "max_discovery_tasks_per_rule"),
             max_gate_tasks_per_candidate_rule=_int_context_value(state.task_context, "max_gate_tasks_per_candidate_rule"),
-            max_signal_tasks_per_candidate_signal=_int_context_value(
-                state.task_context,
-                "max_signal_tasks_per_candidate_signal",
-            ),
+            max_signal_tasks_per_candidate_signal=_int_context_value(state.task_context, "max_signal_tasks_per_candidate_signal"),
             max_total_web_tasks_per_run=_int_context_value(state.task_context, "max_total_web_tasks_per_run"),
-            min_useful_sources_per_discovery_task=_int_context_value(
-                state.task_context,
-                "min_useful_sources_per_discovery_task",
-            ),
-            min_candidates_per_discovery_task=_int_context_value(
-                state.task_context,
-                "min_candidates_per_discovery_task",
-            ),
-            max_discovery_retries_per_task=_int_context_value(
-                state.task_context,
-                "max_discovery_retries_per_task",
-            ),
+            min_useful_sources_per_discovery_task=_int_context_value(state.task_context, "min_useful_sources_per_discovery_task"),
+            min_candidates_per_discovery_task=_int_context_value(state.task_context, "min_candidates_per_discovery_task"),
+            max_discovery_retries_per_task=_int_context_value(state.task_context, "max_discovery_retries_per_task"),
+            max_checkpoint_revisions_per_run=_int_context_value(state.task_context, "max_checkpoint_revisions_per_run"),
+            max_checkpoint_retries_per_stage=_int_context_value(state.task_context, "max_checkpoint_retries_per_stage"),
             source_policy_decisions=[dict(item) for item in (state.discovery_plan or {}).get("source_policy_decisions", []) if isinstance(item, dict)],
         )
         result = LiveRadarCollectionResult(

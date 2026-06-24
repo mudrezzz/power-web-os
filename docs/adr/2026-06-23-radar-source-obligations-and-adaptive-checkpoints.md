@@ -32,12 +32,20 @@ coverage work, and provides explicit skip rationale where skipping is allowed.
 Required source omissions are blocking validation or review-stop conditions, not
 silent fallbacks.
 
-Live Radar execution will add adaptive checkpoints after candidate discovery,
-qualification gates, coverage checks, and before signal search. Checkpoints
-evaluate candidate counts, linked-source counts, required-source usage, coverage
-risk, schema/linking failures, and budget pressure. The application layer can
-continue, retry the same source, expand sources, ask for a revised plan,
-review-stop, or fail hard.
+Live Radar execution will use application-owned checkpoints after candidate
+discovery, qualification gates, coverage checks, and before signal search.
+Checkpoints evaluate candidate counts, linked-source counts, required-source
+usage, coverage risk, schema/linking failures, and budget pressure. The current
+safety layer records checkpoint decisions and blocks signal search when the
+pre-signal checkpoint is weak or invalid.
+
+Full adaptive recovery requires a separate application action executor. A
+checkpoint decision must not be treated as implemented recovery unless the
+executor actually performs the selected action: retry a bounded task, expand to
+an allowed source scope, request and apply a planner revision, stop as
+review-needed, or fail hard. Those actions must be governed by explicit retry,
+revision, source-policy, and total-run budgets and must be covered by
+fake/recorded tests before broad live runs are used as validation.
 
 DaData will be treated as a backend source provider, not as a string in a prompt.
 The backend calls DaData, normalizes company observations, and passes structured
@@ -52,8 +60,8 @@ source for public evidence and signals.
   decisions, and analyzed-versus-used source lifecycle.
 - Full live benchmarks must wait until strict extraction gates, entity
   resolution, effective runtime config checks, source obligations, adaptive
-  checkpoints, DaData hardening, and product source projection repair are in
-  place.
+  recovery actions, DaData hardening, and product source projection repair are
+  in place.
 - The product may complete runs with explicit review-needed coverage warnings,
   but it must not present unlinked or unsearched results as normal negative
   evidence.

@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 from power_web_os.application.live_radar_contracts import (
-    LiveRadarCandidate,
     LiveRadarPipelineEvent,
     RadarCoverageCheckRecord,
     RadarExecutionPlan,
@@ -14,19 +13,31 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProvider,
     WebSearchProviderResult,
 )
+from power_web_os.application.live_radar_checkpoint_execution import record_execution_checkpoint
+from power_web_os.application.live_radar_checkpoints import RadarExecutionCheckpointPolicy, RadarExecutionCheckpointService, checkpoint_summary
 from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget, budget_settings_from_context
-from power_web_os.application.live_radar_execution_plan import execution_task_to_search_plan, scoped_execution_task
+from power_web_os.application.live_radar_execution_plan import scoped_execution_task
 from power_web_os.application.live_radar_extraction_diagnostics import (
     extraction_contract_state,
     extraction_repair_results,
     extraction_validation_event,
     extraction_validation_issues,
 )
-from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan
 from power_web_os.application.radar_source_obligations import (
     obligation_decisions_from_plan,
     source_obligation_summary,
+)
+from power_web_os.application.live_radar_staged_helpers import (
+    candidate_names_matching as _candidate_names_matching,
+    combine_task_results as _combine_task_results,
+    dedupe_sources as _dedupe_sources,
+    eligible_candidate_names as _eligible_candidate_names,
+    normalized_candidates as _normalized_candidates,
+    run_gate_pass as _run_gate_pass,
+    run_task as _run_task,
+    tasks_for_stage as _tasks_for_stage,
+    useful_result_warning_event as _useful_result_warning_event,
 )
 from power_web_os.application.live_radar_staged_merge import (
     candidate_universe_with_entity_metadata as _candidate_universe_with_entity_metadata,
@@ -36,19 +47,13 @@ from power_web_os.application.live_radar_staged_merge import (
 from power_web_os.application.live_radar_staged_support import (
     budget_warning_event as _budget_warning_event,
     budget_decision as _budget_decision,
-    candidate_filtered_events as _candidate_filtered_events,
     candidate_universe_with_signal_statuses as _candidate_universe_with_signal_statuses,
-    candidate_names_matching as _support_candidate_names_matching,
-    candidate_rejected as _candidate_rejected,
-    gate_summary as _gate_summary,
-    normalized_candidates as _normalized_candidates_support,
     rejected_candidate_summaries as _rejected_candidate_summaries,
     signal_planned_event as _signal_planned_event,
     signal_status_record as _signal_status_record,
     source_obligation_events as _source_obligation_events,
     not_searched_signal_observation as _not_searched_signal_observation,
     task_event as _task_event,
-    useful_result_warning_event as _useful_result_warning_event,
 )
 from power_web_os.application.live_radar_useful_budget import UsefulResultBudget, run_task_with_useful_retries
 from power_web_os.application.live_radar_universe import (
@@ -81,6 +86,8 @@ def run_staged_radar_execution(
     min_useful_sources_per_discovery_task: int | None = None,
     min_candidates_per_discovery_task: int | None = None,
     max_discovery_retries_per_task: int | None = None,
+    max_checkpoint_revisions_per_run: int | None = None,
+    max_checkpoint_retries_per_stage: int | None = None,
     source_policy_decisions: list[dict[str, Any]] | None = None,
 ) -> tuple[WebSearchProviderResult, list[LiveRadarPipelineEvent], dict[str, Any]]:
     sources: list[RadarSourceEvidence] = []
@@ -96,6 +103,10 @@ def run_staged_radar_execution(
     coverage_warnings: list[str] = []
     useful_result_warnings: list[str] = []
     useful_result_retry_records: list[dict[str, Any]] = []
+    checkpoint_decisions: list[dict[str, Any]] = []
+    adaptive_actions: list[dict[str, Any]] = []
+    checkpoint_warnings: list[str] = []
+    stopped_for_review_reason = ""
     discovery_iteration_count = 0
     budget_settings = budget_settings_from_context(
         max_web_tasks_per_subject=max_web_tasks_per_subject,
@@ -109,6 +120,12 @@ def run_staged_radar_execution(
         min_sources=min_useful_sources_per_discovery_task,
         min_candidates=min_candidates_per_discovery_task,
         max_retries=max_discovery_retries_per_task,
+    )
+    checkpoint_service = RadarExecutionCheckpointService(
+        RadarExecutionCheckpointPolicy(
+            max_revisions_per_run=max_checkpoint_revisions_per_run or 2,
+            max_retries_per_stage=max_checkpoint_retries_per_stage or 1,
+        )
     )
     retrieval_plan = retrieval_plan_from_execution_plan(execution_plan)
 
@@ -140,6 +157,27 @@ def run_staged_radar_execution(
         )
         events.append(_task_event(task, result, "qualification_discovery_planned"))
 
+    record_execution_checkpoint(
+        checkpoint_id="after-discovery",
+        phase="after_discovery",
+        service=checkpoint_service,
+        candidate_count=len(_normalized_candidates(radar=radar, sources=sources, observations=observations)),
+        sources=sources,
+        observations=observations,
+        provider_metadata=provider_metadata,
+        candidate_scope=candidate_scope,
+        coverage_checks=coverage_checks,
+        coverage_warnings=coverage_warnings,
+        unresolved_candidate_gaps=unresolved_candidate_gaps,
+        budget=task_budget,
+        useful_result_retry_records=useful_result_retry_records,
+        source_obligation_decisions=[],
+        checkpoint_decisions=checkpoint_decisions,
+        adaptive_actions=adaptive_actions,
+        checkpoint_warnings=checkpoint_warnings,
+        events=events,
+    )
+
     gate_tasks = _tasks_for_stage(execution_plan, "qualification_gate")
     sources, observations, provider_metadata, candidate_scope = _run_gate_pass(
         radar=radar,
@@ -155,6 +193,27 @@ def run_staged_radar_execution(
         events=events,
         executed_task_ids=executed_task_ids,
         budget=task_budget,
+    )
+
+    record_execution_checkpoint(
+        checkpoint_id="after-qualification-gates",
+        phase="after_qualification_gates",
+        service=checkpoint_service,
+        candidate_count=len(_normalized_candidates(radar=radar, sources=sources, observations=observations)),
+        sources=sources,
+        observations=observations,
+        provider_metadata=provider_metadata,
+        candidate_scope=candidate_scope,
+        coverage_checks=coverage_checks,
+        coverage_warnings=coverage_warnings,
+        unresolved_candidate_gaps=unresolved_candidate_gaps,
+        budget=task_budget,
+        useful_result_retry_records=useful_result_retry_records,
+        source_obligation_decisions=[],
+        checkpoint_decisions=checkpoint_decisions,
+        adaptive_actions=adaptive_actions,
+        checkpoint_warnings=checkpoint_warnings,
+        events=events,
     )
 
     coverage_tasks = _tasks_for_stage(execution_plan, "coverage_check")
@@ -238,32 +297,94 @@ def run_staged_radar_execution(
             completed_qualification_ids=completed_qualification_ids,
         )
 
+    record_execution_checkpoint(
+        checkpoint_id="after-coverage",
+        phase="after_coverage",
+        service=checkpoint_service,
+        candidate_count=len(_normalized_candidates(radar=radar, sources=sources, observations=observations)),
+        sources=sources,
+        observations=observations,
+        provider_metadata=provider_metadata,
+        candidate_scope=candidate_scope,
+        coverage_checks=coverage_checks,
+        coverage_warnings=coverage_warnings,
+        unresolved_candidate_gaps=unresolved_candidate_gaps,
+        budget=task_budget,
+        useful_result_retry_records=useful_result_retry_records,
+        source_obligation_decisions=[],
+        checkpoint_decisions=checkpoint_decisions,
+        adaptive_actions=adaptive_actions,
+        checkpoint_warnings=checkpoint_warnings,
+        events=events,
+    )
+
+    pre_signal_source_obligations = obligation_decisions_from_plan(
+        global_policy=dict(radar.get("global_search_policy") or {}),
+        steps=execution_plan.tasks,
+        source_policy_decisions=source_policy_decisions or [],
+        source_provider_outcomes=provider_metadata.get("source_provider_outcomes", []),
+    )
+    pre_signal_decision = record_execution_checkpoint(
+        checkpoint_id="before-signal-search",
+        phase="before_signal_search",
+        service=checkpoint_service,
+        candidate_count=len(_normalized_candidates(radar=radar, sources=sources, observations=observations)),
+        sources=sources,
+        observations=observations,
+        provider_metadata=provider_metadata,
+        candidate_scope=candidate_scope,
+        coverage_checks=coverage_checks,
+        coverage_warnings=coverage_warnings,
+        unresolved_candidate_gaps=unresolved_candidate_gaps,
+        budget=task_budget,
+        useful_result_retry_records=useful_result_retry_records,
+        source_obligation_decisions=pre_signal_source_obligations,
+        checkpoint_decisions=checkpoint_decisions,
+        adaptive_actions=adaptive_actions,
+        checkpoint_warnings=checkpoint_warnings,
+        events=events,
+    )
+    if not pre_signal_decision.should_run_signal_search:
+        stopped_for_review_reason = pre_signal_decision.message
+
     signal_task_count = 0
     signal_budget_warnings: list[str] = []
     signal_candidate_scope = list(candidate_scope)
     signal_search_statuses: list[dict[str, Any]] = []
-    for task in _tasks_for_stage(execution_plan, "signal_search"):
-        for scoped_candidate_name in signal_candidate_scope:
-            scoped_task = scoped_execution_task(task, candidate_scope=[scoped_candidate_name])
-            events.append(_signal_planned_event(scoped_task))
-            result = _run_task(provider=provider, radar=radar, task=scoped_task, radar_id=execution_plan.radar_id, budget=task_budget)
-            budget_decision = _budget_decision(result)
-            if budget_decision:
-                observations.append(_not_searched_signal_observation(scoped_candidate_name, task, budget_decision))
-                signal_search_statuses.append(_signal_status_record(scoped_candidate_name, task, budget_decision))
-                continue
-            result = filter_signal_result(result, allowed_candidate_names={scoped_candidate_name})
-            unresolved_candidate_gaps.extend(gap_payloads(gap_items(result), origin_task_id=task.task_id))
-            sources, observations, provider_metadata = _merge_result(sources, observations, provider_metadata, result)
-            executed_task_ids.append(f"{task.task_id}:{scoped_candidate_name}")
-            signal_search_statuses.append({
-                "candidate_name": scoped_candidate_name,
-                "signal_id": task.subject_id,
-                "task_id": task.task_id,
-                "search_status": "searched",
-                "not_searched_reason": "",
-            })
-            signal_task_count += 1
+    if pre_signal_decision.should_run_signal_search:
+        for task in _tasks_for_stage(execution_plan, "signal_search"):
+            for scoped_candidate_name in signal_candidate_scope:
+                scoped_task = scoped_execution_task(task, candidate_scope=[scoped_candidate_name])
+                events.append(_signal_planned_event(scoped_task))
+                result = _run_task(provider=provider, radar=radar, task=scoped_task, radar_id=execution_plan.radar_id, budget=task_budget)
+                budget_decision = _budget_decision(result)
+                if budget_decision:
+                    observations.append(_not_searched_signal_observation(scoped_candidate_name, task, budget_decision))
+                    signal_search_statuses.append(_signal_status_record(scoped_candidate_name, task, budget_decision))
+                    continue
+                result = filter_signal_result(result, allowed_candidate_names={scoped_candidate_name})
+                unresolved_candidate_gaps.extend(gap_payloads(gap_items(result), origin_task_id=task.task_id))
+                sources, observations, provider_metadata = _merge_result(sources, observations, provider_metadata, result)
+                executed_task_ids.append(f"{task.task_id}:{scoped_candidate_name}")
+                signal_search_statuses.append({
+                    "candidate_name": scoped_candidate_name,
+                    "signal_id": task.subject_id,
+                    "task_id": task.task_id,
+                    "search_status": "searched",
+                    "not_searched_reason": "",
+                })
+                signal_task_count += 1
+    else:
+        for task in _tasks_for_stage(execution_plan, "signal_search"):
+            for scoped_candidate_name in signal_candidate_scope:
+                decision = {
+                    "state": "not_searched_policy_limited",
+                    "reason": pre_signal_decision.reason_code,
+                    "message": pre_signal_decision.message,
+                    "key": f"checkpoint:{pre_signal_decision.checkpoint_id}",
+                }
+                observations.append(_not_searched_signal_observation(scoped_candidate_name, task, decision))
+                signal_search_statuses.append(_signal_status_record(scoped_candidate_name, task, decision))
     if signal_budget_warnings:
         coverage_warnings.extend(signal_budget_warnings)
         events.append(_budget_warning_event(signal_budget_warnings))
@@ -353,6 +474,13 @@ def run_staged_radar_execution(
             ],
             "source_obligation_decisions": source_obligation_decisions,
             "source_obligation_summary": source_obligation_summary(source_obligation_decisions),
+            "checkpoint_summary": checkpoint_summary(checkpoint_decisions),
+            "checkpoint_decisions": checkpoint_decisions,
+            "adaptive_actions": adaptive_actions,
+            "checkpoint_warnings": sorted(set(checkpoint_warnings)),
+            "stopped_for_review_reason": stopped_for_review_reason,
+            "max_checkpoint_revisions_per_run": checkpoint_service.policy.max_revisions_per_run,
+            "max_checkpoint_retries_per_stage": checkpoint_service.policy.max_retries_per_stage,
             "extraction_validation_results": provider_metadata.get("extraction_validation_results", []),
             "extraction_validation_issues": extraction_issues,
             "extraction_repair_results": repair_results,
@@ -370,129 +498,3 @@ def run_staged_radar_execution(
             "rejected_candidates": _rejected_candidate_summaries(normalized_candidates),
         },
     )
-
-
-def _run_gate_pass(
-    *,
-    radar: dict[str, Any],
-    execution_plan: RadarExecutionPlan,
-    provider: WebSearchProvider,
-    tasks: list[RadarExecutionTask],
-    sources: list[RadarSourceEvidence],
-    observations: list[dict[str, Any]],
-    provider_metadata: dict[str, Any],
-    candidate_scope: list[str],
-    completed_qualification_ids: list[str],
-    gate_results: list[dict[str, Any]],
-    events: list[LiveRadarPipelineEvent],
-    executed_task_ids: list[str],
-    budget: RadarExecutionBudget,
-) -> tuple[list[RadarSourceEvidence], list[dict[str, Any]], dict[str, Any], list[str]]:
-    for task in tasks:
-        scopes = candidate_scope if task.stage == "qualification_gate" and candidate_scope else [None]
-        for scoped_candidate_name in scopes:
-            scoped_scope = [scoped_candidate_name] if scoped_candidate_name else candidate_scope
-            scoped_task = scoped_execution_task(task, candidate_scope=scoped_scope)
-            result = _run_task(provider=provider, radar=radar, task=scoped_task, radar_id=execution_plan.radar_id, budget=budget)
-            sources, observations, provider_metadata = _merge_result(sources, observations, provider_metadata, result)
-            executed_task_ids.append(task.task_id if not scoped_scope else f"{task.task_id}:{','.join(scoped_scope)}")
-        candidates = _normalized_candidates(radar=radar, sources=sources, observations=observations)
-        gate_summary = _gate_summary(candidates, task.subject_id)
-        gate_results.append(gate_summary)
-        events.append(_task_event(scoped_task, result, "qualification_gate_applied", payload=gate_summary))
-        events.extend(_candidate_filtered_events(task, candidates))
-        if task.subject_id not in completed_qualification_ids:
-            completed_qualification_ids.append(task.subject_id)
-        candidate_scope = _eligible_candidate_names(
-            radar=radar,
-            sources=sources,
-            observations=observations,
-            completed_qualification_ids=completed_qualification_ids,
-        )
-    return sources, observations, provider_metadata, candidate_scope
-
-
-def _run_task(
-    *,
-    provider: WebSearchProvider,
-    radar: dict[str, Any],
-    task: RadarExecutionTask,
-    radar_id: str,
-    budget: RadarExecutionBudget,
-) -> WebSearchProviderResult:
-    if not budget.reserve(task):
-        decision = budget.last_decision
-        return WebSearchProviderResult(
-            sources=[],
-            candidate_observations=[],
-            provider_metadata={
-                "provider": "execution_budget",
-                "budget_decision": {
-                    "accepted": decision.accepted,
-                    "key": decision.key,
-                    "limit": decision.limit,
-                    "current": decision.current,
-                    "state": decision.state,
-                    "reason": decision.reason,
-                    "message": decision.message,
-                },
-                "coverage_findings": [{
-                    "summary": decision.message or f"Web task budget reached for {task.subject_id}.",
-                    "completeness_risk": "medium",
-                    "warnings": [decision.message] if decision.message else [],
-                }],
-            },
-        )
-    return provider.run_search_plan(radar=radar, search_plan=execution_task_to_search_plan(task, radar_id=radar_id))
-
-
-def _combine_task_results(first: WebSearchProviderResult, second: WebSearchProviderResult) -> WebSearchProviderResult:
-    sources, observations, metadata = _merge_result(
-        first.sources,
-        first.candidate_observations,
-        first.provider_metadata,
-        second,
-    )
-    return WebSearchProviderResult(sources=sources, candidate_observations=observations, provider_metadata=metadata)
-
-
-def _useful_result_warning_event(warnings: list[str]) -> LiveRadarPipelineEvent:
-    return LiveRadarPipelineEvent(
-        event_type="validation_warning",
-        phase="collection",
-        actor="application",
-        node_name="useful_result_budget",
-        visibility="operator",
-        summary="Useful-result budget triggered bounded discovery retries.",
-        payload={"warnings": warnings},
-    )
-
-
-def _tasks_for_stage(execution_plan: RadarExecutionPlan, stage: str) -> list[RadarExecutionTask]:
-    return [task for task in execution_plan.tasks if task.stage == stage]
-
-
-def _eligible_candidate_names(
-    *,
-    radar: dict[str, Any],
-    sources: list[RadarSourceEvidence],
-    observations: list[dict[str, Any]],
-    completed_qualification_ids: list[str],
-) -> list[str]:
-    return [candidate.legal_name for candidate in _normalized_candidates(radar=radar, sources=sources, observations=observations) if not _candidate_rejected(candidate, completed_qualification_ids=completed_qualification_ids)]
-
-
-def _candidate_names_matching(observations: list[dict[str, Any]], lower_names: set[str]) -> list[str]:
-    return _support_candidate_names_matching(observations, lower_names)
-
-
-def _normalized_candidates(*, radar: dict[str, Any], sources: list[RadarSourceEvidence], observations: list[dict[str, Any]]) -> list[LiveRadarCandidate]:
-    return _normalized_candidates_support(
-        radar=radar, sources=sources, observations=observations, merge_observations=_merge_candidate_observations,
-    )
-
-
-def _list(value: object) -> list[dict[str, Any]]:
-    if not isinstance(value, list):
-        return []
-    return [dict(item) for item in value if isinstance(item, dict)]

@@ -18,6 +18,10 @@ from power_web_os.application.live_radar_contracts import (
     RadarExecutionTask,
     RadarSourceEvidence,
 )
+from power_web_os.application.live_radar_checkpoints import (
+    RadarExecutionCheckpointInput,
+    RadarExecutionCheckpointService,
+)
 from power_web_os.application.live_radar_discovery_planning import (
     DeterministicRadarDiscoveryPlanner,
     RadarDiscoveryPlanValidator,
@@ -609,6 +613,58 @@ def test_useful_result_budget_retries_weak_discovery_result() -> None:
     assert execution_results["useful_result_retry_records"][0]["reason"] == "verification_limited"
     assert execution_results["useful_result_warnings"]
     assert "validation_warning" in [event.event_type for event in events]
+
+
+def test_checkpoint_service_continues_strong_pre_signal_result() -> None:
+    decision = RadarExecutionCheckpointService().review(
+        RadarExecutionCheckpointInput(
+            checkpoint_id="before-signal-search",
+            phase="before_signal_search",
+            candidate_count=2,
+            candidate_scope_count=2,
+            source_count=2,
+            linked_source_count=2,
+            coverage_checks=[{"completeness_risk": "low"}],
+        )
+    )
+
+    assert decision.action == "continue"
+    assert decision.should_run_signal_search
+
+
+def test_checkpoint_service_stops_before_signal_search_without_candidate_scope() -> None:
+    decision = RadarExecutionCheckpointService().review(
+        RadarExecutionCheckpointInput(
+            checkpoint_id="before-signal-search",
+            phase="before_signal_search",
+            candidate_count=0,
+            candidate_scope_count=0,
+            source_count=3,
+            linked_source_count=0,
+        )
+    )
+
+    assert decision.action == "stop_review_needed"
+    assert decision.reason_code == "no_candidate_scope"
+    assert not decision.should_run_signal_search
+
+
+def test_checkpoint_service_recommends_revision_for_extraction_schema_failure() -> None:
+    decision = RadarExecutionCheckpointService().review(
+        RadarExecutionCheckpointInput(
+            checkpoint_id="after-coverage",
+            phase="after_coverage",
+            candidate_count=1,
+            candidate_scope_count=1,
+            source_count=1,
+            linked_source_count=1,
+            extraction_issue_codes=["extraction_schema_invalid"],
+        )
+    )
+
+    assert decision.action == "revise_plan"
+    assert decision.reason_code == "extraction_schema_failed"
+    assert not decision.should_continue
 
 
 def test_extraction_contract_repairs_single_candidate_object_and_reconciles_refs() -> None:
@@ -1495,6 +1551,156 @@ def test_staged_execution_does_not_score_project_as_legal_entity_candidate() -> 
     assert execution_results["unresolved_candidate_gaps"][0]["legal_name"] == "EP-600"
     assert execution_results["unresolved_candidate_gaps"][0]["reason"] == "entity_type_not_account"
     assert execution_results["entity_resolution_results"][0]["entity_type"] == "project"
+
+
+def test_staged_execution_checkpoint_stops_weak_discovery_before_signal_search() -> None:
+    class EmptyDiscoveryProvider:
+        runtime_name = "empty-discovery"
+
+        def __init__(self) -> None:
+            self.calls = []
+
+        def run_search_plan(self, *, radar, search_plan):
+            _ = radar
+            self.calls.append(search_plan)
+            return WebSearchProviderResult(
+                provider_metadata={
+                    "provider": "empty-discovery",
+                    "retrieval_source_outcomes": [
+                        {"source_ref": "retrieved-1", "outcome": "not_used_by_candidate", "reason": "No entity evidence."}
+                    ],
+                }
+            )
+
+    provider = EmptyDiscoveryProvider()
+    radar = {
+        "radar_id": "checkpoint-test",
+        "qualification_criteria": [{"code": "Q1", "label": "Find companies", "requirement_level": "required"}],
+        "intent_signals": [{"code": "S1", "label": "Signal", "rule": "Find signal."}],
+    }
+    plan = RadarExecutionPlan(
+        radar_id="checkpoint-test",
+        tasks=[
+            RadarExecutionTask(
+                task_id="discover-q1",
+                stage="qualification_discovery",
+                subject_type="qualification",
+                subject_id="Q1",
+                query="Find company universe.",
+                purpose="Discover candidates.",
+            ),
+            RadarExecutionTask(
+                task_id="signal-s1",
+                stage="signal_search",
+                subject_type="signal",
+                subject_id="S1",
+                query="Find signal.",
+                purpose="Signal search.",
+            ),
+        ],
+    )
+
+    result, events, execution_results = run_staged_radar_execution(radar=radar, execution_plan=plan, provider=provider)
+
+    assert result.candidate_observations == []
+    assert [call.queries[0].stage for call in provider.calls] == ["qualification_discovery"]
+    assert execution_results["signal_task_count"] == 0
+    assert execution_results["stopped_for_review_reason"] == "No qualified candidate scope is available for signal search."
+    assert execution_results["checkpoint_summary"]["stopped_for_review"] is True
+    assert execution_results["checkpoint_decisions"][-1]["action"] == "stop_review_needed"
+    assert "execution_stopped_for_review" in [event.event_type for event in events]
+
+
+def test_staged_execution_checkpoint_allows_signal_search_for_linked_candidates() -> None:
+    class StrongDiscoveryProvider:
+        runtime_name = "strong-discovery"
+
+        def __init__(self) -> None:
+            self.calls = []
+
+        def run_search_plan(self, *, radar, search_plan):
+            _ = radar
+            self.calls.append(search_plan)
+            query = search_plan.queries[0]
+            if query.stage == "qualification_discovery":
+                return WebSearchProviderResult(
+                    sources=[
+                        RadarSourceEvidence(
+                            evidence_ref="src_a",
+                            title="Candidate A source",
+                            url="https://example.test/a",
+                            snippet="Candidate A is a legal entity in the target universe.",
+                            query_id=query.query_id,
+                        )
+                    ],
+                    candidate_observations=[
+                        {
+                            "legal_name": "Candidate A",
+                            "entity_type": "legal_entity",
+                            "qualification": [
+                                {"criterion_code": "Q1", "status": "confirmed", "evidence_refs": ["src_a"]}
+                            ],
+                            "evidence_refs": ["src_a"],
+                        }
+                    ],
+                    provider_metadata={"provider": "strong-discovery"},
+                )
+            return WebSearchProviderResult(
+                sources=[
+                    RadarSourceEvidence(
+                        evidence_ref="src_s1",
+                        title="Signal source",
+                        url="https://example.test/signal",
+                        snippet="Candidate A has the target signal.",
+                        query_id=query.query_id,
+                    )
+                ],
+                candidate_observations=[
+                    {
+                        "legal_name": "Candidate A",
+                        "signals": [
+                            {"signal_code": "S1", "status": "observed", "score": 1, "evidence_refs": ["src_s1"]}
+                        ],
+                    }
+                ],
+                provider_metadata={"provider": "strong-discovery"},
+            )
+
+    provider = StrongDiscoveryProvider()
+    radar = {
+        "radar_id": "checkpoint-strong",
+        "qualification_criteria": [{"code": "Q1", "label": "Find companies", "requirement_level": "required"}],
+        "intent_signals": [{"code": "S1", "label": "Signal", "rule": "Find signal."}],
+    }
+    plan = RadarExecutionPlan(
+        radar_id="checkpoint-strong",
+        tasks=[
+            RadarExecutionTask(
+                task_id="discover-q1",
+                stage="qualification_discovery",
+                subject_type="qualification",
+                subject_id="Q1",
+                query="Find company universe.",
+                purpose="Discover candidates.",
+            ),
+            RadarExecutionTask(
+                task_id="signal-s1",
+                stage="signal_search",
+                subject_type="signal",
+                subject_id="S1",
+                query="Find signal.",
+                purpose="Signal search.",
+            ),
+        ],
+    )
+
+    result, _, execution_results = run_staged_radar_execution(radar=radar, execution_plan=plan, provider=provider)
+
+    assert [call.queries[0].stage for call in provider.calls] == ["qualification_discovery", "signal_search"]
+    assert execution_results["signal_task_count"] == 1
+    assert execution_results["stopped_for_review_reason"] == ""
+    assert execution_results["checkpoint_summary"]["by_action"]["continue"] == 4
+    assert result.candidate_observations[0]["legal_name"] == "Candidate A"
 
 
 def test_staged_execution_searches_each_candidate_signal_when_total_budget_allows() -> None:

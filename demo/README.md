@@ -152,8 +152,15 @@ explicitly exploratory.
 Full live Radar quality claims are still gated by the repair slices recorded in
 `ROADMAP.md`: strict extraction schema checks, evidence-ref reconciliation,
 entity resolution, effective runtime config probes, source usage obligations,
-adaptive execution checkpoints, hardened DaData observation injection, and
-honest analyzed-versus-used source projection. Until those are implemented, a
+adaptive execution recovery, hardened DaData observation injection, and honest
+analyzed-versus-used source projection. The current checkpoint layer is a safety
+gate: if discovery, gate, coverage, source-obligation, schema, linking, or
+budget signals are weak, the run dossier records `checkpoint_decisions`,
+`adaptive_actions`, `checkpoint_warnings`, and `stopped_for_review_reason`, and
+signal search may be skipped instead of burning provider calls on an invalid
+candidate universe. The follow-up adaptive recovery slices must still make
+retry, source expansion, and planner revision executable before a weak strategy
+can be repaired automatically. Until the remaining source/provider hardening slices are implemented, a
 manual `Run radar` is useful for diagnostics and smoke testing, not for judging
 final discovery quality.
 
