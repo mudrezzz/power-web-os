@@ -1,0 +1,4 @@
+interface:
+  display_name: "Radar run diagnostics"
+  short_description: "Analyze a persisted Radar run"
+  default_prompt: "Diagnose Radar run <run_id>"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Radar run self-test"
+  short_description: "Run Radar and diagnose result"
+  default_prompt: "Run Radar and diagnose the completed run"
