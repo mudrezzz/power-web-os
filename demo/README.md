@@ -255,12 +255,12 @@ into later extraction as structured company observations so the LLM does not
 need to simulate a registry lookup in free text.
 
 This DaData behavior is not supposed to be hardcoded as a special case. The
-next connector-profile slices introduce plugin-friendly source descriptions:
-what a source is for, examples of good and bad inputs, facts it returns, and
-limitations. Power Web OS compiles those descriptions into internal capability
-cards for planner input and backend validation. Radar settings still decide
-which sources are selected and whether they are required, preferred, fallback,
-or disabled.
+connector-profile layer now provides plugin-friendly source descriptions in
+`config/connectors/*.json`: what a source is for, examples of good and bad
+inputs, facts it returns, limitations, credentials, and runtime provider id.
+Power Web OS compiles those descriptions into internal capability cards for
+preflight and execution guards. Radar settings still decide which sources are
+selected and whether they are required, preferred, fallback, or disabled.
 
 Live Radar also resolves entity type before scoring. The shortlist is an account
 shortlist, so normal candidates are legal entities. Production sites, projects,

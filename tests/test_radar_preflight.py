@@ -9,6 +9,7 @@ from typing import Any
 
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition
 from power_web_os.application.live_radar_definition_runtime import active_definition_to_live_radar_payload
+from power_web_os.application.connector_profiles import ConnectorProfile, ConnectorProfileRegistry
 from power_web_os.application.radar_preflight import (
     RadarExecutionPreflightService,
     RadarPreflightCheckResult,
@@ -123,6 +124,112 @@ def test_preflight_is_ready_when_definition_sources_and_runtime_match() -> None:
 
     assert report.ready_for_live_run
     assert all(check.status in {"passed", "skipped"} for check in report.checks)
+
+
+def test_preflight_resolves_active_definition_sources_to_connector_profiles() -> None:
+    definition = _toir_quick_live_definition()
+    service = RadarExecutionPreflightService(
+        definition_repository=_Repo(definition),
+        runtime_definition_provider=lambda: active_definition_to_live_radar_payload(definition),
+        company_registry_provider_ids={"dadata"},
+    )
+
+    report = service.run(radar_id="toir-quick-live", profile="static")
+
+    checks = _checks_by_code(report.checks)
+    resolved = checks["source_connector_profile_resolved"]
+    assert {check.details["connector_profile_id"] for check in resolved} == {
+        "dadata_registry",
+        "openrouter_web",
+        "sibur_site",
+    }
+    compiled = checks["source_connector_capability_compiled"]
+    assert any(check.details["capability"]["requires_concrete_input"] for check in compiled)
+
+
+def test_preflight_rejects_unknown_connector_profile() -> None:
+    definition = _toir_quick_live_definition()
+    payload = json.loads(json.dumps(definition.definition_payload, ensure_ascii=False))
+    payload["global_search_policy"]["sources"][0]["connector_profile_id"] = "missing_profile"
+    invalid_definition = RadarDefinitionRecord(
+        definition_id=definition.definition_id,
+        radar_id=definition.radar_id,
+        definition_payload=payload,
+        definition_version=definition.definition_version,
+    )
+    registry = ConnectorProfileRegistry.from_profiles([
+        ConnectorProfile(
+            id="openrouter_web",
+            display_name="OpenRouter web",
+            description="Open web search for broad discovery and signal evidence.",
+            source_type="search_engine",
+            runtime_provider_id="openrouter_web",
+            good_inputs=("free text web search",),
+            bad_inputs=("secrets",),
+            expected_facts=("url", "snippet", "signal evidence"),
+            limitations=("requires extraction",),
+        )
+    ])
+    service = RadarExecutionPreflightService(
+        definition_repository=_Repo(invalid_definition),
+        runtime_definition_provider=lambda: active_definition_to_live_radar_payload(invalid_definition),
+        company_registry_provider_ids={"dadata"},
+        connector_profile_registry=registry,
+    )
+
+    report = service.run(radar_id="toir-quick-live", profile="static")
+
+    assert not report.ready_for_live_run
+    check = _checks_by_code(report.checks)["source_connector_profile_resolved"][0]
+    assert check.status == "failed"
+    assert check.details["connector_profile_id"] == "missing_profile"
+
+
+def test_preflight_rejects_source_connector_profile_type_mismatch() -> None:
+    definition = _toir_quick_live_definition()
+    payload = json.loads(json.dumps(definition.definition_payload, ensure_ascii=False))
+    payload["global_search_policy"]["sources"][0]["connector_profile_id"] = "openrouter_web"
+    invalid_definition = RadarDefinitionRecord(
+        definition_id=definition.definition_id,
+        radar_id=definition.radar_id,
+        definition_payload=payload,
+        definition_version=definition.definition_version,
+    )
+    service = RadarExecutionPreflightService(
+        definition_repository=_Repo(invalid_definition),
+        runtime_definition_provider=lambda: active_definition_to_live_radar_payload(invalid_definition),
+        company_registry_provider_ids={"dadata"},
+    )
+
+    report = service.run(radar_id="toir-quick-live", profile="static")
+
+    assert not report.ready_for_live_run
+    check = _checks_by_code(report.checks)["source_connector_profile_mismatch"][0]
+    assert check.status == "failed"
+    assert check.details["source_type"] == "company_registry"
+    assert check.details["profile_source_type"] == "search_engine"
+
+
+def test_preflight_strict_credentials_blocks_required_live_connector() -> None:
+    definition = _toir_quick_live_definition()
+    service = RadarExecutionPreflightService(
+        definition_repository=_Repo(definition),
+        runtime_definition_provider=lambda: active_definition_to_live_radar_payload(definition),
+        company_registry_provider_ids={"dadata"},
+        environment={},
+        require_connector_credentials=True,
+    )
+
+    report = service.run(radar_id="toir-quick-live", profile="static")
+
+    assert not report.ready_for_live_run
+    failed_credentials = [
+        check
+        for check in _checks_by_code(report.checks)["connector_credentials_present"]
+        if check.status == "failed"
+    ]
+    assert failed_credentials
+    assert failed_credentials[0].details["missing_credential_count"] > 0
 
 
 def test_preflight_rejects_invalid_source_usage_obligation() -> None:

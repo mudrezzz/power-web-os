@@ -364,6 +364,17 @@ internal Radar stages. The application compiles those profiles into internal
 capability cards used by preflight, planner prompts, source-policy validation,
 and execution.
 
+Connector profile configs live in `config/connectors/*.json`. The first
+profiles are `dadata_registry`, `openrouter_web`, and `sibur_site`. Keep
+profile fields product-facing: display name, description, good/bad inputs,
+expected facts, limitations, credentials, and runtime provider id. Do not put
+`qualification_discovery`, `coverage_check`, `signal_search`, or other internal
+pipeline stage names into a profile. `.env` remains for secrets and local
+runtime overrides; non-secret connector behavior belongs in profile config.
+Preflight resolves every Radar source to a connector profile, compiles its
+capability card, checks source/profile type compatibility, and can enforce
+credential presence in strict live mode.
+
 Default queue settings:
 
 ```text

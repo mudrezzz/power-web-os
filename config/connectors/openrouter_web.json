@@ -1,0 +1,34 @@
+{
+  "id": "openrouter_web",
+  "display_name": "OpenRouter web search",
+  "description": "Open web retrieval through OpenRouter for broad discovery, coverage checks, current evidence, citations, snippets, and intent signal evidence.",
+  "source_type": "search_engine",
+  "runtime_provider_id": "openrouter_web",
+  "aliases": ["openrouter", "openrouter:web_search", "openrouter_perplexity"],
+  "good_inputs": [
+    "Broad candidate universe discovery query",
+    "Coverage query",
+    "Current event or intent signal query",
+    "Free text natural-language web search"
+  ],
+  "bad_inputs": [
+    "Secret values",
+    "Requests for hidden reasoning",
+    "Private registry-only facts without public source evidence"
+  ],
+  "expected_facts": [
+    "URL",
+    "Title",
+    "Snippet",
+    "Citation",
+    "Web evidence",
+    "Signal evidence",
+    "Coverage findings"
+  ],
+  "limitations": [
+    "Can return weak, duplicate, or unlinked sources",
+    "Requires extraction and evidence-ref reconciliation before product use",
+    "Does not replace structured registry lookup"
+  ],
+  "credential_env_vars": ["OPENROUTER_API_KEY"]
+}

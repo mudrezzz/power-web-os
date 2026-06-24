@@ -1,0 +1,32 @@
+{
+  "id": "sibur_site",
+  "display_name": "SIBUR official site",
+  "description": "Official domain source for SIBUR-related pages, coverage evidence, company mentions, project news, and public source-backed facts from sibur.ru.",
+  "source_type": "url",
+  "runtime_provider_id": "official_domain",
+  "aliases": ["sibur.ru", "https://www.sibur.ru"],
+  "good_inputs": [
+    "Domain-scoped web query for sibur.ru",
+    "Official company page URL",
+    "Coverage or evidence check against the official site"
+  ],
+  "bad_inputs": [
+    "Structured registry lookup",
+    "INN-only lookup",
+    "Private company registry enrichment"
+  ],
+  "expected_facts": [
+    "Official URL",
+    "Title",
+    "Snippet",
+    "Company mention",
+    "Project mention",
+    "Coverage finding"
+  ],
+  "limitations": [
+    "Official-domain web source, not a company registry",
+    "May mention production sites or projects that need entity resolution",
+    "Does not guarantee full holding-contour enumeration"
+  ],
+  "credential_env_vars": []
+}

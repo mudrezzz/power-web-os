@@ -1,0 +1,36 @@
+{
+  "id": "dadata_registry",
+  "display_name": "DaData company registry",
+  "description": "Structured company registry lookup and enrichment for Russian legal entities. Best for confirming legal identity and registry facts after a concrete company name, INN, OGRN, or candidate scope is known.",
+  "source_type": "company_registry",
+  "runtime_provider_id": "dadata",
+  "aliases": ["dadata", "company_registry:dadata"],
+  "good_inputs": [
+    "Concrete legal entity name",
+    "INN",
+    "OGRN",
+    "Candidate scope with company names"
+  ],
+  "bad_inputs": [
+    "Broad natural-language holding contour discovery",
+    "Find all companies in a group",
+    "Open web monitoring queries",
+    "Intent signal search"
+  ],
+  "expected_facts": [
+    "Legal entity name",
+    "INN",
+    "OGRN",
+    "KPP",
+    "Status",
+    "Address",
+    "OKVED",
+    "Registry facts"
+  ],
+  "limitations": [
+    "Lookup-only source; not a broad enumeration engine",
+    "Requires concrete legal name, INN, OGRN, or candidate scope",
+    "Does not provide current intent signal evidence"
+  ],
+  "credential_env_vars": ["DADATA_API_KEY", "DADATA_SECRET_KEY"]
+}

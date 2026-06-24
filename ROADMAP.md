@@ -4132,27 +4132,29 @@ Principles:
 
 ### Slice 0.7.6.1.11.9.2: Connector profile registry and capability compiler
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Introduce an external-source connector profile boundary so source
   behavior is not hardcoded for DaData, SBIS, Perplexity, or future plugins.
 - User value: New data-source developers can describe their connector in a
   product-neutral way without knowing Power Web OS pipeline stage names, while
   the application still gets a machine-checkable capability model.
 - Scope:
-  - Add a connector profile registry outside application code. Profiles are
+  - Done: added a connector profile registry backed by `config/connectors/*.json`.
+    Profiles are
     human-readable and plugin-friendly: id, display name, description, examples
     of good/bad inputs, expected returned facts, limitations, and credential
     requirements.
-  - Compile connector profiles into internal capability cards used by planner,
-    preflight, source-policy validation, and execution.
+  - Done: compile connector profiles into internal capability cards used by
+    preflight and source-registry execution guards; planner-facing source cards
+    remain the next slice.
   - Keep Radar definition source obligations unchanged: users still choose
     sources and set `required_for_identity`, `required_for_coverage`,
     `preferred`, `fallback`, `disabled`, etc.
   - Move non-secret connector/runtime defaults out of `.env` where practical;
     `.env` remains for credentials, local endpoints, and deployment-specific
     overrides.
-  - Add preflight checks for profile loading, compiled capabilities, missing
-    credentials, and connector/profile mismatch.
+  - Done: added preflight checks for profile loading, compiled capabilities,
+    missing credentials in strict mode, and connector/profile mismatch.
 - Out of scope:
   - Full plugin marketplace.
   - UI for installing third-party connectors.
@@ -4175,8 +4177,10 @@ Principles:
   - Add ADR for external connector profiles compiling to internal capabilities.
   - Update SAO and Developer Guide with connector/profile ownership.
 - Acceptance criteria:
-  - No DaData-specific source-use rule is required in the planner/executor.
-  - A future connector can be introduced by adding a profile and adapter without
+  - Done: broad lookup rejection for registry sources is driven by compiled
+    `requires_concrete_input` capability, not by a DaData-specific source-use
+    rule.
+  - Done: a future connector can be introduced by adding a profile and adapter without
     teaching the profile author Power Web OS pipeline internals.
 
 ### Slice 0.7.6.1.11.9.3: Planner source cards and capability-based source validation

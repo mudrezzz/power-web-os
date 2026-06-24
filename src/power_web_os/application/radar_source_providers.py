@@ -13,6 +13,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from power_web_os.application.connector_profiles import (
+    ConnectorCapabilityCard,
+    ConnectorProfileRegistry,
+    default_connector_profile_registry,
+)
 from power_web_os.application.live_radar_contracts import (
     RadarExecutionTask,
     RadarSearchPlan,
@@ -63,6 +68,7 @@ class CompanySourceOutcome(BaseModel):
     source_ref: str = ""
     source_id: str
     provider_id: str
+    connector_profile_id: str = ""
     source_type: str = "company_registry"
     outcome: str
     reason: str
@@ -92,8 +98,14 @@ class CompanyRegistryProvider(RadarSourceProvider):
 class RadarSourceRegistry:
     """Select structured source providers from Radar source policy."""
 
-    def __init__(self, *, company_registry_providers: dict[str, CompanyRegistryProvider] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        company_registry_providers: dict[str, CompanyRegistryProvider] | None = None,
+        connector_profile_registry: ConnectorProfileRegistry | None = None,
+    ) -> None:
         self._company_registry_providers = company_registry_providers or {}
+        self._connector_profile_registry = connector_profile_registry or default_connector_profile_registry()
 
     def lookup_for_task(self, *, radar: dict[str, Any], task: RadarExecutionTask) -> WebSearchProviderResult:
         if task.stage == "signal_search":
@@ -109,23 +121,30 @@ class RadarSourceRegistry:
         metadata: dict[str, Any] = {"provider": "source_registry"}
         for source in sources:
             provider_id = _provider_id(source)
+            capability = self._connector_profile_registry.capability_for_source(source)
+            connector_profile_id = capability.profile_id if capability else ""
             provider = self._company_registry_providers.get(provider_id)
             request = _lookup_request(radar=radar, task=task, source=source)
             if provider is None:
                 outcomes.append(CompanySourceOutcome(
                     source_id=request.source_id,
                     provider_id=provider_id,
+                    connector_profile_id=connector_profile_id,
                     outcome="provider_unavailable",
                     reason=f"No company registry provider is configured for {provider_id}.",
                     query=request.query,
                 ).model_dump())
                 continue
-            if not request.lookup_terms or _safe_lookup_is_too_broad(task, request=request):
+            if not request.lookup_terms or _lookup_is_insufficient_for_capability(task, request=request, capability=capability):
                 outcomes.append(CompanySourceOutcome(
                     source_id=request.source_id,
                     provider_id=provider_id,
+                    connector_profile_id=connector_profile_id,
                     outcome="registry_lookup_insufficient",
-                    reason="Company registry lookup needs a concrete legal name, INN, OGRN, or candidate scope; broad universe enumeration should use web/coverage strategy.",
+                    reason=(
+                        "Connector capability requires concrete legal name, INN, OGRN, or candidate scope; "
+                        "broad universe enumeration should use a source that supports broad discovery."
+                    ),
                     query=request.query,
                     observation_count=0,
                 ).model_dump())
@@ -136,6 +155,9 @@ class RadarSourceRegistry:
             structured_observations.extend(_structured_observations_from_registry(result.observations, request=request, provider_id=provider_id))
             outcomes.extend([item.model_dump() for item in result.outcomes])
             metadata = merge_provider_metadata(metadata, result.provider_metadata)
+            metadata.setdefault("compiled_source_capabilities", [])
+            if capability:
+                metadata["compiled_source_capabilities"].append(_safe_capability_payload(capability))
 
         return WebSearchProviderResult(
             sources=evidence,
@@ -239,50 +261,6 @@ def _lookup_request(*, radar: dict[str, Any], task: RadarExecutionTask, source: 
     )
 
 
-def _lookup_is_too_broad(task: RadarExecutionTask) -> bool:
-    if task.candidate_scope:
-        return False
-    terms = _lookup_terms_from_text(task.query)
-    if any(_is_concrete_lookup_term(term) for term in terms):
-        return False
-    lowered = task.query.lower()
-    broad_markers = ("find ", "all ", "holding", "contour", "universe", "найд", "все ", "контур", "периметр", "холдинг")
-    return task.stage in {"qualification_discovery", "coverage_check"} and any(marker in lowered for marker in broad_markers)
-
-
-def _lookup_terms_from_text(text: str) -> list[str]:
-    normalized = " ".join(str(text).split())
-    if not normalized:
-        return []
-    identifiers = re.findall(r"\b\d{10}\b|\b\d{13}\b|\b\d{15}\b", normalized)
-    quoted = re.findall(r"[\"«]([^\"»]{3,120})[\"»]", normalized)
-    legal_patterns = re.findall(
-        r"\b(?:АО|ПАО|ОАО|ЗАО|ООО|НАО|JSC|PJSC|LLC)\s+[\"«]?[A-Za-zА-Яа-я0-9 .,\-]{3,90}",
-        normalized,
-        flags=re.IGNORECASE,
-    )
-    terms = [*identifiers, *quoted, *legal_patterns]
-    if _is_concrete_lookup_term(normalized):
-        terms.append(normalized)
-    if not terms and not _looks_like_broad_discovery(normalized):
-        terms.append(normalized)
-    return _dedupe_text(terms)
-
-
-def _is_concrete_lookup_term(term: str) -> bool:
-    value = " ".join(str(term).split())
-    if re.fullmatch(r"\d{10}|\d{13}|\d{15}", value):
-        return True
-    if re.search(r"\b(АО|ПАО|ОАО|ЗАО|ООО|НАО|JSC|PJSC|LLC)\b", value, flags=re.IGNORECASE):
-        return True
-    return 3 <= len(value) <= 90 and not _looks_like_broad_discovery(value)
-
-
-def _looks_like_broad_discovery(text: str) -> bool:
-    lowered = text.lower()
-    return any(marker in lowered for marker in ("find ", "all ", "candidate universe", "holding", "contour", "найд", "все ", "периметр", "холдинг"))
-
-
 def _safe_lookup_is_too_broad(task: RadarExecutionTask, *, request: CompanyLookupRequest | None = None) -> bool:
     if task.candidate_scope:
         return False
@@ -290,6 +268,28 @@ def _safe_lookup_is_too_broad(task: RadarExecutionTask, *, request: CompanyLooku
     if any(_safe_is_concrete_lookup_term(term) for term in terms):
         return False
     return task.stage in {"qualification_discovery", "coverage_check"} and _safe_looks_like_broad_discovery(task.query)
+
+
+def _lookup_is_insufficient_for_capability(
+    task: RadarExecutionTask,
+    *,
+    request: CompanyLookupRequest,
+    capability: ConnectorCapabilityCard | None,
+) -> bool:
+    if capability is None:
+        return _safe_lookup_is_too_broad(task, request=request)
+    if capability.supports_broad_discovery:
+        return False
+    if capability.requires_concrete_input:
+        return _safe_lookup_is_too_broad(task, request=request)
+    return False
+
+
+def _safe_capability_payload(capability: ConnectorCapabilityCard) -> dict[str, Any]:
+    payload = capability.to_payload()
+    payload.pop("credential_env_vars", None)
+    payload["credential_count"] = len(capability.credential_env_vars)
+    return payload
 
 
 def _safe_lookup_terms_from_text(text: str) -> list[str]:

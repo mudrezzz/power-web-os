@@ -29,6 +29,10 @@ provider SDK details.
   candidate normalization.
 - `live_radar_extraction_diagnostics.py` projects extraction gate issues into
   execution metadata and product-safe journal events.
+- `connector_profiles.py` loads external connector descriptions from config
+  and compiles them into internal source capability cards for preflight,
+  planning, source validation, and execution guards. Profiles must not expose
+  internal Radar stage names to connector authors.
 - `radar_preflight.py` owns fast live Radar readiness checks before expensive
   provider execution: active definition wiring, source-policy references,
   source-provider availability, recorded extraction schemas, evidence linking,
@@ -122,7 +126,9 @@ DaData HTTP/API details stay in `integrations`. Structured registry observations
 may support candidate identity and qualification evidence; signal searches
 remain web-based. Registry lookup requires concrete lookup terms such as a legal
 name, INN, OGRN, or candidate scope; broad universe tasks should record
-`registry_lookup_insufficient` and continue through web/coverage strategy.
+`registry_lookup_insufficient` and continue through web/coverage strategy. The
+decision that a source is lookup-only comes from the compiled connector
+capability card, not from hardcoded provider names.
 Successful registry observations are injected into bounded provider prompts as
 `structured_company_observations`, not as instructions for the LLM to call a
 registry.

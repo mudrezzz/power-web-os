@@ -6,10 +6,12 @@ recorded provider-output shapes before a developer pays for a long live run.
 """
 
 from __future__ import annotations
+import os
 import json
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable, Literal
+from typing import Any, Callable, Iterable, Literal, Mapping
 
+from power_web_os.application.connector_profiles import ConnectorProfileRegistry, default_connector_profile_registry
 from power_web_os.application.live_radar_definition_runtime import active_definition_to_live_radar_payload
 from power_web_os.application.live_radar_extraction_contract import (
     ExtractionValidationIssue,
@@ -71,10 +73,16 @@ class RadarExecutionPreflightService:
         definition_repository: RadarDefinitionRepository,
         runtime_definition_provider: Callable[[], dict[str, Any]],
         company_registry_provider_ids: Iterable[str] = (),
+        connector_profile_registry: ConnectorProfileRegistry | None = None,
+        environment: Mapping[str, str] | None = None,
+        require_connector_credentials: bool = False,
     ) -> None:
         self._definition_repository = definition_repository
         self._runtime_definition_provider = runtime_definition_provider
         self._company_registry_provider_ids = {str(item) for item in company_registry_provider_ids if str(item)}
+        self._connector_profile_registry = connector_profile_registry or default_connector_profile_registry()
+        self._environment = dict(environment or os.environ)
+        self._require_connector_credentials = require_connector_credentials
 
     def run(self, *, radar_id: str, profile: Literal["static", "recorded"] = "recorded") -> RadarPreflightReport:
         checks: list[RadarPreflightCheckResult] = []
@@ -94,6 +102,14 @@ class RadarExecutionPreflightService:
             details={"definition_version": active_definition.definition_version},
         ))
         checks.append(self._runtime_definition_check(payload))
+        from power_web_os.application.radar_preflight_connectors import connector_profile_checks
+
+        checks.extend(connector_profile_checks(
+            payload,
+            connector_profile_registry=self._connector_profile_registry,
+            environment=self._environment,
+            require_credentials=self._require_connector_credentials,
+        ))
         checks.extend(_source_policy_checks(payload, company_registry_provider_ids=self._company_registry_provider_ids))
         if profile == "recorded":
             checks.extend(recorded_provider_fixture_checks(payload))
@@ -225,65 +241,6 @@ def _issue_to_preflight_check(issue: ExtractionValidationIssue) -> RadarPrefligh
         details=issue.details,
         remediation=issue.remediation,
     )
-
-
-def _shape_checks(payload: dict[str, Any]) -> list[RadarPreflightCheckResult]:
-    checks: list[RadarPreflightCheckResult] = []
-    for field_name in ["sources", "candidates", "candidate_observations", "source_outcomes"]:
-        if field_name in payload and not isinstance(payload[field_name], list):
-            checks.append(_failed(
-                "extraction_schema_invalid",
-                f"Provider output field {field_name} must be a list.",
-                details={"field": field_name, "actual_type": type(payload[field_name]).__name__},
-                remediation="Keep extraction schemas strict and reject dict/list mismatches before normalization.",
-            ))
-    return checks
-
-
-def _evidence_linking_checks(payload: dict[str, Any]) -> list[RadarPreflightCheckResult]:
-    source_refs = {
-        ref for source in _list(payload.get("sources"))
-        for ref in [_source_ref(source)]
-        if ref
-    }
-    bad_refs: list[dict[str, str]] = []
-    for candidate in [*_list(payload.get("candidates")), *_list(payload.get("candidate_observations"))]:
-        for ref in _candidate_source_refs(candidate):
-            if not isinstance(ref, str) or not ref.strip():
-                bad_refs.append({"source_ref": str(ref), "reason": "non_string_or_empty"})
-            elif ref not in source_refs:
-                bad_refs.append({"source_ref": ref, "reason": "unknown_source_ref"})
-    if not bad_refs:
-        return []
-    return [_failed(
-        "evidence_linking_failed",
-        "Provider output references evidence refs that cannot be linked to normalized sources.",
-        details={"invalid_refs": bad_refs[:20], "known_source_refs": sorted(source_refs)},
-        remediation="Reject or repair evidence refs before product projection so sources do not collapse silently.",
-    )]
-
-
-def _zero_score_projection_checks(payload: dict[str, Any]) -> list[RadarPreflightCheckResult]:
-    invalid: list[dict[str, str]] = []
-    for candidate in [*_list(payload.get("candidates")), *_list(payload.get("candidate_observations"))]:
-        candidate_name = str(candidate.get("legal_name") or candidate.get("name") or "")
-        for signal in _list(candidate.get("signals")):
-            search_status = str(signal.get("search_status") or "")
-            status = str(signal.get("status") or "")
-            if search_status.startswith("not_searched") and status == "not_observed":
-                invalid.append({
-                    "candidate": candidate_name,
-                    "signal_code": str(signal.get("signal_code") or signal.get("code") or ""),
-                    "search_status": search_status,
-                })
-    if not invalid:
-        return []
-    return [_failed(
-        "invalid_zero_score_projection",
-        "Unsearched signal output is projected as normal not_observed zero score.",
-        details={"signals": invalid},
-        remediation="Represent unsearched signals as review-needed/not_searched states, not searched-negative evidence.",
-    )]
 
 
 def _source_policy_checks(
