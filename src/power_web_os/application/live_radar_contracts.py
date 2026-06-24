@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
+from power_web_os.application.live_radar_source_cards import RadarPlannerSourceCard, RadarPlannerSourceUse
 
 QualificationStatus = Literal["confirmed", "weak", "unknown", "rejected"]
 SignalStatus = Literal["observed", "not_observed", "unclear"]
@@ -118,6 +119,7 @@ class RadarDiscoveryPlanStep(BaseModel):
     skip_rationale: str = ""
     depends_on: list[str] = Field(default_factory=list)
     candidate_scope: list[str] = Field(default_factory=list)
+    source_use: list[RadarPlannerSourceUse] = Field(default_factory=list)
 
     @field_validator("query", "purpose", "skip_rationale", mode="before")
     @classmethod
@@ -132,6 +134,7 @@ class RadarDiscoveryPlanStep(BaseModel):
         "acceptance_criteria",
         "depends_on",
         "candidate_scope",
+        "source_use",
         mode="before",
     )
     @classmethod
@@ -200,6 +203,7 @@ class RadarDiscoveryPlanningInput(BaseModel):
     description: str = ""
     qualification_rules: list[dict[str, Any]] = Field(default_factory=list)
     global_search_policy: dict[str, Any] = Field(default_factory=dict)
+    source_cards: list[RadarPlannerSourceCard] = Field(default_factory=list)
     task_context: dict[str, Any] = Field(default_factory=dict)
     requester: str = ""
     live: bool = False

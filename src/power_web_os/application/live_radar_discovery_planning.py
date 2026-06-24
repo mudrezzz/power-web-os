@@ -17,6 +17,15 @@ from power_web_os.application.live_radar_contracts import (
     RadarExecutionTask,
     RadarSourceEvidence,
 )
+from power_web_os.application.connector_profiles import ConnectorProfileRegistry
+from power_web_os.application.live_radar_source_cards import (
+    broad_discovery_source_ids,
+    compatibility_source_use_for_step,
+    lookup_only_identity_source_ids,
+    planner_source_cards_for_policy,
+    source_use_for_step,
+    validate_source_capability_uses,
+)
 from power_web_os.application.radar_source_obligations import (
     source_obligations_for_policy,
     source_usage_obligation,
@@ -43,12 +52,23 @@ class DeterministicRadarDiscoveryPlanner(RadarDiscoveryPlanner):
             stage = "candidate_universe_discovery" if index == 0 else "qualification_gate"
             step_id = f"discover-{rule_id.lower()}" if index == 0 else f"gate-{rule_id.lower()}"
             source_scope, source_ids = _preferred_source_scope(rule, planning_input.global_search_policy)
+            if stage == "candidate_universe_discovery":
+                source_ids = broad_discovery_source_ids(source_ids, planning_input)
+                if not source_ids and source_scope == "global":
+                    source_scope = "additional"
             steps.append(RadarDiscoveryPlanStep(
                 step_id=step_id,
                 stage=stage,
                 subject_rule_ids=[rule_id],
                 source_scope=source_scope,
                 source_ids=source_ids,
+                source_use=source_use_for_step(
+                    step_id=step_id,
+                    stage=stage,
+                    source_ids=source_ids,
+                    candidate_scope=[],
+                    planning_input=planning_input,
+                ),
                 query=_compact_query([planning_input.name, str(rule.get("label", "")), str(rule.get("rule", rule.get("description", "")))]),
                 purpose=(
                     "Discover the candidate universe for the first qualification rule."
@@ -60,6 +80,31 @@ class DeterministicRadarDiscoveryPlanner(RadarDiscoveryPlanner):
                 depends_on=[previous_step_id] if previous_step_id else [],
             ))
             previous_step_id = step_id
+            if index == 0:
+                identity_source_ids = lookup_only_identity_source_ids(planning_input)
+                if identity_source_ids:
+                    identity_step_id = "source-probe-identity"
+                    steps.append(RadarDiscoveryPlanStep(
+                        step_id=identity_step_id,
+                        stage="source_probe",
+                        subject_rule_ids=[rule_id],
+                        source_scope="global",
+                        source_ids=identity_source_ids,
+                        source_use=source_use_for_step(
+                            step_id=identity_step_id,
+                            stage="source_probe",
+                            source_ids=identity_source_ids,
+                            candidate_scope=["candidate universe from previous discovery step"],
+                            planning_input=planning_input,
+                        ),
+                        query=_compact_query([planning_input.name, "resolve legal entity identity for discovered candidates"]),
+                        purpose="Resolve legal entity identity for discovered candidates with configured lookup-only identity sources.",
+                        expected_evidence=["legal_entity_identity"],
+                        acceptance_criteria=["Use only concrete company names, INN, OGRN, or the discovered candidate scope."],
+                        depends_on=[previous_step_id],
+                        candidate_scope=["candidate universe from previous discovery step"],
+                    ))
+                    previous_step_id = identity_step_id
 
         if previous_step_id:
             coverage_source_ids = _required_coverage_source_ids(planning_input.global_search_policy)
@@ -73,6 +118,13 @@ class DeterministicRadarDiscoveryPlanner(RadarDiscoveryPlanner):
                 source_scope=coverage_source_scope,
                 source_ids=coverage_source_ids if coverage_source_ids else (
                     [] if planning_input.global_search_policy.get("allow_system_sources", True) else global_source_ids_for_policy(planning_input.global_search_policy)
+                ),
+                source_use=source_use_for_step(
+                    step_id="coverage-check-candidate-universe",
+                    stage="coverage_check",
+                    source_ids=coverage_source_ids,
+                    candidate_scope=[],
+                    planning_input=planning_input,
                 ),
                 query=_compact_query([planning_input.name, "candidate universe coverage check"]),
                 purpose="Check whether the candidate universe has obvious source-backed gaps before signal search.",
@@ -160,6 +212,13 @@ class RadarDiscoveryPlanValidator:
         )
         errors.extend(obligation_errors)
         warnings.extend(obligation_warnings)
+        capability_errors, capability_warnings, capability_records = validate_source_capability_uses(
+            planning_input=planning_input,
+            steps=plan.steps,
+        )
+        errors.extend(capability_errors)
+        warnings.extend(capability_warnings)
+        corrections.extend(capability_records)
 
         first_gate_index = next((index for index, step in enumerate(plan.steps) if step.stage == "qualification_gate"), None)
         first_discovery_index = next((index for index, step in enumerate(plan.steps) if step.stage == "candidate_universe_discovery"), None)
@@ -182,15 +241,21 @@ def build_discovery_planning_input(
     task_context: dict[str, Any],
     live: bool,
     provider_metadata: dict[str, Any] | None = None,
+    connector_profile_registry: ConnectorProfileRegistry | None = None,
 ) -> RadarDiscoveryPlanningInput:
     provider_metadata = provider_metadata or {}
     rules = _qualification_rules(radar)
+    global_search_policy = _global_search_policy(radar)
     return RadarDiscoveryPlanningInput(
         radar_id=str(radar.get("radar_id") or "radar"),
         name=str(radar.get("name") or radar.get("radar_id") or "Radar"),
         description=str(radar.get("description") or ""),
         qualification_rules=rules,
-        global_search_policy=_global_search_policy(radar),
+        global_search_policy=global_search_policy,
+        source_cards=planner_source_cards_for_policy(
+            global_search_policy,
+            connector_profile_registry=connector_profile_registry,
+        ),
         task_context=dict(task_context),
         requester=str(task_context.get("requester", "")),
         live=live,
@@ -403,7 +468,6 @@ def _required_coverage_source_ids(global_policy: dict[str, Any]) -> list[str]:
 
 def rule_id(rule: dict[str, Any], *, fallback: str) -> str:
     return _rule_id(rule, fallback=fallback)
-
 
 def global_source_ids(global_policy: dict[str, Any]) -> list[str]:
     return global_source_ids_for_policy(global_policy)

@@ -262,6 +262,15 @@ Power Web OS compiles those descriptions into internal capability cards for
 preflight and execution guards. Radar settings still decide which sources are
 selected and whether they are required, preferred, fallback, or disabled.
 
+The discovery planner now receives compact source cards generated from those
+capabilities instead of guessing from source ids. Plan steps must declare
+`source_use` with intended use and input shape. Backend validation rejects
+lookup-only sources for broad universe discovery and rejects registry/enrichment
+sources as signal evidence unless the connector capability explicitly allows
+that use. In the dossier, inspect `source_cards`,
+`source_capability_decisions`, and `source_capability_validation` to see why a
+source choice was accepted or rejected before any provider call.
+
 Live Radar also resolves entity type before scoring. The shortlist is an account
 shortlist, so normal candidates are legal entities. Production sites, projects,
 installations, and assets found during discovery are linked to a resolved legal

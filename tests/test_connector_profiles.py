@@ -9,6 +9,7 @@ from power_web_os.application.connector_profiles import (
     load_connector_profile,
     validate_connector_profile,
 )
+from power_web_os.application.live_radar_discovery_planning import build_discovery_planning_input
 from power_web_os.application.live_radar_contracts import RadarExecutionTask
 from power_web_os.application.radar_source_providers import RadarSourceRegistry
 
@@ -87,6 +88,37 @@ def test_human_profile_compiles_to_lookup_only_capability() -> None:
     assert capability.requires_concrete_input
     assert not capability.supports_broad_discovery
     assert "legal_identity" in capability.returned_fact_kinds
+
+
+def test_planner_source_cards_are_compiled_without_credentials() -> None:
+    planning_input = build_discovery_planning_input(
+        radar={
+            "radar_id": "source-card-radar",
+            "qualification_criteria": [{"code": "Q1", "label": "Find companies"}],
+            "global_search_policy": {
+                "sources": [
+                    {"source_id": "dadata_registry", "connector_profile_id": "dadata_registry", "usage_obligation": "required_for_identity"},
+                    {"source_id": "openrouter_web", "connector_profile_id": "openrouter_web", "usage_obligation": "required_for_coverage"},
+                    {"source_id": "sibur_site", "connector_profile_id": "sibur_site", "usage_obligation": "preferred"},
+                ]
+            },
+        },
+        task_context={},
+        live=False,
+        provider_metadata={},
+    )
+
+    cards = {card.source_id: card for card in planning_input.source_cards}
+    serialized = str([card.model_dump() for card in planning_input.source_cards])
+
+    assert cards["dadata_registry"].requires_concrete_input
+    assert not cards["dadata_registry"].supports_broad_discovery
+    assert cards["openrouter_web"].supports_broad_discovery
+    assert cards["openrouter_web"].supports_signal_evidence
+    assert cards["sibur_site"].source_type == "url"
+    assert "DADATA_API_KEY" not in serialized
+    assert "DADATA_SECRET_KEY" not in serialized
+    assert "OPENROUTER_API_KEY" not in serialized
 
 
 def test_lookup_only_profile_blocks_broad_registry_lookup_without_provider_call() -> None:

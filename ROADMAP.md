@@ -4075,7 +4075,7 @@ Principles:
 
 ### Slice 0.7.6.1.11.9.1: Candidate universe extraction from retrieved sources and smoke diagnostics parity
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Fix the current smoke-run failure mode where web retrieval returns
   sources, but no legal-entity candidate universe is extracted and the run can
   still look like a normal completed empty output.
@@ -4222,6 +4222,18 @@ Principles:
   - Current DaData broad-query failure is impossible by validation, not by a
     DaData-specific conditional.
   - Planner trace explains source choice in terms of connector capability cards.
+- Done:
+  - Added backend-generated planner source cards compiled from connector
+    capability profiles and source obligations.
+  - Added `source_use` to discovery plan steps and projected legacy `source_ids`
+    into capability-checkable source-use records before acceptance.
+  - Capability validation now rejects broad discovery through lookup-only
+    registry sources and signal evidence through registry/enrichment-only
+    sources, while accepting concrete identity lookup after candidate scope
+    exists.
+  - Dossier and technical planning metadata expose source cards, capability
+    decisions, and capability validation summaries without credentials or raw
+    provider payloads.
 
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 

@@ -216,8 +216,14 @@ def _plan_events(plan, *, accepted_plan, validation, revised: bool) -> list[Live
     ))
     for correction in validation.corrections:
         correction_type = str(correction.get("type") or "discovery_plan_corrected")
+        if correction_type in {"source_capability_matched", "source_capability_rejected", "source_use_projected"}:
+            event_type = correction_type
+        elif correction_type == "source_scope_corrected":
+            event_type = "source_scope_corrected"
+        else:
+            event_type = "discovery_plan_corrected"
         events.append(LiveRadarPipelineEvent(
-            event_type="source_scope_corrected" if correction_type == "source_scope_corrected" else "discovery_plan_corrected",
+            event_type=event_type,
             phase="planning",
             actor="validator",
             node_name="discovery_plan_acceptance",

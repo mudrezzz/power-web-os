@@ -367,6 +367,9 @@ class RadarRunDossierResponse(BaseModel):
     definition_snapshot: RadarRunDossierDefinitionResponse | None = None
     discovery_plan: dict[str, Any] = Field(default_factory=dict)
     retrieval_plan: dict[str, Any] = Field(default_factory=dict)
+    source_cards: list[dict[str, Any]] = Field(default_factory=list)
+    source_capability_decisions: list[dict[str, Any]] = Field(default_factory=list)
+    source_capability_validation: dict[str, Any] = Field(default_factory=dict)
     source_policy_decisions: list[dict[str, Any]] = Field(default_factory=list)
     source_obligations: list[dict[str, Any]] = Field(default_factory=list)
     source_obligation_decisions: list[dict[str, Any]] = Field(default_factory=list)

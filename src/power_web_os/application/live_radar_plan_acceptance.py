@@ -19,6 +19,7 @@ from power_web_os.application.live_radar_discovery_planning import (
     global_source_ids,
     rule_id,
 )
+from power_web_os.application.live_radar_source_cards import compatibility_source_use_for_step
 
 
 class RadarDiscoveryPlanAcceptanceResult(BaseModel):
@@ -49,6 +50,12 @@ class RadarDiscoveryPlanAcceptanceService:
         )
         validation = self._validator.validate(planning_input=planning_input, plan=normalized_plan)
         validation = validation.model_copy(update={"corrections": [*validation.corrections, *corrections]})
+        capability_decisions = [
+            item
+            for item in validation.corrections
+            if str(item.get("type") or "").startswith("source_capability_")
+            or str(item.get("type") or "") == "source_use_projected"
+        ]
         normalized_plan = normalized_plan.model_copy(update={
             "acceptance_metadata": {
                 **normalized_plan.acceptance_metadata,
@@ -58,6 +65,13 @@ class RadarDiscoveryPlanAcceptanceService:
                 "corrections": validation.corrections,
                 "validation_errors": list(validation.errors),
                 "validation_warnings": list(validation.warnings),
+                "source_cards": [card.model_dump() for card in planning_input.source_cards],
+                "source_capability_decisions": capability_decisions,
+                "source_capability_validation": {
+                    "accepted": validation.accepted,
+                    "error_count": len([error for error in validation.errors if "connector profile" in error]),
+                    "decision_count": len(capability_decisions),
+                },
             }
         })
         return RadarDiscoveryPlanAcceptanceResult(
@@ -127,7 +141,10 @@ def _normalize_plan(
         step.model_copy(update={"depends_on": [_rewrite_dependency(item, dependency_rewrites) for item in step.depends_on]})
         for step in normalized_steps
     ]
-    enriched_steps = [_with_default_source_fields(step) for step in rewritten_steps]
+    enriched_steps = [
+        _with_default_source_fields(step, planning_input=planning_input)
+        for step in rewritten_steps
+    ]
     enriched_source_decisions = _with_source_obligations(
         planning_input=planning_input,
         plan=plan,
@@ -215,7 +232,11 @@ def _split_multi_rule_step(
     }]
 
 
-def _with_default_source_fields(step: RadarDiscoveryPlanStep) -> RadarDiscoveryPlanStep:
+def _with_default_source_fields(
+    step: RadarDiscoveryPlanStep,
+    *,
+    planning_input: RadarDiscoveryPlanningInput,
+) -> RadarDiscoveryPlanStep:
     source_base = step.source_base or _source_base_from_scope(step.source_scope)
     if step.application_scope:
         application_scope = step.application_scope
@@ -225,7 +246,12 @@ def _with_default_source_fields(step: RadarDiscoveryPlanStep) -> RadarDiscoveryP
         application_scope = "whole_universe"
     else:
         application_scope = "rule_scope"
-    return step.model_copy(update={"source_base": source_base, "application_scope": application_scope})
+    source_use = list(step.source_use) or compatibility_source_use_for_step(step=step, planning_input=planning_input)
+    return step.model_copy(update={
+        "source_base": source_base,
+        "application_scope": application_scope,
+        "source_use": source_use,
+    })
 
 
 def _source_base_from_scope(source_scope: str) -> str:

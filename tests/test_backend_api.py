@@ -335,6 +335,9 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["summary"]["linked_source_count"] == 1
     assert dossier["discovery_plan"]["plan_summary"] == "Test discovery plan."
     assert dossier["discovery_plan"]["steps"][0]["stage"] == "candidate_universe_discovery"
+    assert dossier["source_cards"][0]["connector_profile_id"] == "generic_registry"
+    assert dossier["source_capability_decisions"][0]["type"] == "source_capability_matched"
+    assert dossier["source_capability_validation"]["accepted"] is True
     assert dossier["source_policy_decisions"][0]["decision"] == "selected"
     assert dossier["source_policy_decisions"][0]["usage_obligation"] == "required_for_identity"
     assert dossier["source_obligations"][0]["usage_obligation"] == "required_for_identity"
@@ -890,6 +893,40 @@ def _artifact() -> dict[str, Any]:
             "source_count": 1,
             "discovery_plan": {
                 "plan_summary": "Test discovery plan.",
+                "acceptance_metadata": {
+                    "source_cards": [
+                        {
+                            "source_id": "registry",
+                            "source_label": "Registry",
+                            "connector_profile_id": "generic_registry",
+                            "source_type": "company_registry",
+                            "usage_obligation": "required_for_identity",
+                            "best_for": ["legal entity identity"],
+                            "not_for": ["broad natural-language universe discovery without concrete company input"],
+                            "required_input_kinds": ["legal_name", "inn", "ogrn"],
+                            "returned_fact_kinds": ["legal_identity"],
+                            "useful_result_criteria": ["resolved legal entity identity"],
+                            "supports_identity": True,
+                            "requires_concrete_input": True,
+                        }
+                    ],
+                    "source_capability_decisions": [
+                        {
+                            "type": "source_capability_matched",
+                            "step_id": "discover-q1",
+                            "source_id": "registry",
+                            "connector_profile_id": "generic_registry",
+                            "intended_use": "identity_lookup",
+                            "input_shape": "candidate_scope",
+                            "reason": "source use matches compiled connector capability",
+                        }
+                    ],
+                    "source_capability_validation": {
+                        "accepted": True,
+                        "error_count": 0,
+                        "decision_count": 1,
+                    },
+                },
                 "steps": [
                     {
                         "step_id": "discover-q1",

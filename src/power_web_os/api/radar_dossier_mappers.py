@@ -41,6 +41,7 @@ def dossier_response(
     sources = _list(artifact.get("sources"))
     run_metadata = _dict(artifact.get("run_metadata"))
     discovery_plan = _dict(run_metadata.get("discovery_plan"))
+    acceptance_metadata = _dict(discovery_plan.get("acceptance_metadata"))
     execution_results = _dict(run_metadata.get("execution_results"))
     retrieval_plan = _dict(execution_results.get("retrieval_plan"))
     source_policy_decisions = _list(discovery_plan.get("source_policy_decisions"))
@@ -98,6 +99,9 @@ def dossier_response(
         definition_snapshot=_definition_snapshot(active_definition),
         discovery_plan=discovery_plan,
         retrieval_plan=retrieval_plan,
+        source_cards=_list(acceptance_metadata.get("source_cards")),
+        source_capability_decisions=_list(acceptance_metadata.get("source_capability_decisions")),
+        source_capability_validation=_dict(acceptance_metadata.get("source_capability_validation")),
         source_policy_decisions=source_policy_decisions,
         source_obligations=source_obligations,
         source_obligation_decisions=source_obligation_decisions,

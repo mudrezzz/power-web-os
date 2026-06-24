@@ -48,6 +48,12 @@ selected sources can actually do. The planner receives compact source cards
 derived from compiled capabilities, and backend validators enforce capability
 compatibility before execution.
 
+Accepted planner steps must declare, or be normalized into, explicit
+`source_use` records: selected source, intended use, input shape, expected fact
+kinds, and rationale. The validator checks those records against the compiled
+source card. This keeps provider-specific behavior out of the planner and out
+of hardcoded executor branches.
+
 ## Consequences
 
 - DaData-specific behavior must not be hardcoded in planner or executor logic.
@@ -58,6 +64,8 @@ compatibility before execution.
   exist.
 - Source capability compilation becomes part of static preflight before long
   live runs.
+- Planner source-card validation prevents invalid source use before provider
+  calls spend live budget.
 - Future connector/plugin authors can provide source descriptions without
   learning the Power Web OS execution pipeline.
 

@@ -16,6 +16,7 @@ from power_web_os.application.live_radar_contracts import (
     RadarDiscoverySourcePolicyDecision,
     RadarExecutionPlan,
     RadarExecutionTask,
+    RadarPlannerSourceUse,
     RadarSourceEvidence,
 )
 from power_web_os.application.live_radar_checkpoints import (
@@ -1124,6 +1125,190 @@ def test_discovery_plan_acceptance_repairs_global_source_id_marked_local() -> No
     assert any(correction["type"] == "source_scope_corrected" for correction in validation.corrections)
 
 
+def test_capability_validation_rejects_broad_query_against_lookup_only_registry() -> None:
+    radar = _generic_definition(
+        radar_id="capability-registry",
+        rules=[("Q1", "Holding contour", "Find legal entities in the holding.")],
+        global_sources=[
+            {
+                "source_id": "dadata_registry",
+                "connector_profile_id": "dadata_registry",
+                "label": "DaData registry",
+                "source_type": "company_registry",
+                "usage_obligation": "required_for_identity",
+            }
+        ],
+    )
+    planning_input = build_discovery_planning_input(radar=radar, task_context={}, live=True, provider_metadata={})
+    plan = RadarDiscoveryPlan(
+        plan_summary="Invalid registry broad discovery.",
+        steps=[
+            RadarDiscoveryPlanStep(
+                step_id="discover-q1",
+                stage="candidate_universe_discovery",
+                subject_rule_ids=["Q1"],
+                source_scope="global",
+                source_ids=["dadata_registry"],
+                source_use=[
+                    RadarPlannerSourceUse(
+                        source_id="dadata_registry",
+                        connector_profile_id="dadata_registry",
+                        intended_use="broad_discovery",
+                        input_shape="broad_query",
+                    )
+                ],
+                query="Find all legal entities in the holding contour.",
+                purpose="Invalidly use registry as a broad enumeration engine.",
+                expected_evidence=["Q1"],
+                acceptance_criteria=["Q1"],
+            )
+        ],
+        source_policy_decisions=[
+            RadarDiscoverySourcePolicyDecision(
+                source_id="dadata_registry",
+                source_label="DaData registry",
+                decision="selected",
+                reason="Required identity source.",
+                rule_ids=["Q1"],
+            )
+        ],
+        coverage_hypotheses=[{"summary": "Low risk for this unit fixture.", "completeness_risk": "low"}],
+    )
+
+    validation = RadarDiscoveryPlanAcceptanceService().accept(planning_input=planning_input, plan=plan).validation
+
+    assert not validation.accepted
+    assert any("requires concrete company input" in error for error in validation.errors)
+    assert any(item["type"] == "source_capability_rejected" for item in validation.corrections)
+
+
+def test_capability_validation_accepts_concrete_registry_identity_lookup() -> None:
+    radar = _generic_definition(
+        radar_id="capability-concrete-registry",
+        rules=[("Q1", "Holding contour", "Find legal entities in the holding.")],
+        global_sources=[
+            {
+                "source_id": "dadata_registry",
+                "connector_profile_id": "dadata_registry",
+                "label": "DaData registry",
+                "source_type": "company_registry",
+                "usage_obligation": "required_for_identity",
+            }
+        ],
+    )
+    planning_input = build_discovery_planning_input(radar=radar, task_context={}, live=True, provider_metadata={})
+    plan = RadarDiscoveryPlan(
+        plan_summary="Valid concrete registry lookup.",
+        steps=[
+            RadarDiscoveryPlanStep(
+                step_id="discover-q1",
+                stage="candidate_universe_discovery",
+                subject_rule_ids=["Q1"],
+                source_scope="additional",
+                query="Find candidate companies through allowed web discovery.",
+                purpose="Discover candidate names before registry lookup.",
+                expected_evidence=["Q1"],
+                acceptance_criteria=["Q1"],
+            ),
+            RadarDiscoveryPlanStep(
+                step_id="resolve-identity",
+                stage="source_probe",
+                subject_rule_ids=["Q1"],
+                source_scope="global",
+                source_ids=["dadata_registry"],
+                source_use=[
+                    RadarPlannerSourceUse(
+                        source_id="dadata_registry",
+                        connector_profile_id="dadata_registry",
+                        intended_use="identity_lookup",
+                        input_shape="candidate_scope",
+                        expected_fact_kinds=["legal_identity"],
+                    )
+                ],
+                query="Resolve discovered candidate names with registry lookup.",
+                purpose="Resolve legal entity identity.",
+                expected_evidence=["legal_entity_identity"],
+                acceptance_criteria=["Use concrete candidate names only."],
+                depends_on=["discover-q1"],
+                candidate_scope=["candidate universe from previous discovery step"],
+            ),
+        ],
+        source_policy_decisions=[
+            RadarDiscoverySourcePolicyDecision(
+                source_id="dadata_registry",
+                source_label="DaData registry",
+                decision="selected",
+                reason="Required identity source after concrete candidates exist.",
+                rule_ids=["Q1"],
+            )
+        ],
+        coverage_hypotheses=[{"summary": "Low risk for this unit fixture.", "completeness_risk": "low"}],
+    )
+
+    acceptance = RadarDiscoveryPlanAcceptanceService().accept(planning_input=planning_input, plan=plan)
+
+    assert acceptance.validation.accepted, acceptance.validation.errors
+    metadata = acceptance.accepted_plan.acceptance_metadata
+    assert metadata["source_capability_validation"]["accepted"] is True
+    assert any(item["type"] == "source_capability_matched" for item in metadata["source_capability_decisions"])
+
+
+def test_capability_validation_rejects_registry_as_signal_evidence_source() -> None:
+    radar = _generic_definition(
+        radar_id="capability-signal-registry",
+        rules=[("Q1", "Holding contour", "Find legal entities in the holding.")],
+        global_sources=[
+            {
+                "source_id": "dadata_registry",
+                "connector_profile_id": "dadata_registry",
+                "label": "DaData registry",
+                "source_type": "company_registry",
+            }
+        ],
+    )
+    planning_input = build_discovery_planning_input(radar=radar, task_context={}, live=True, provider_metadata={})
+    plan = RadarDiscoveryPlan(
+        plan_summary="Invalid registry signal evidence.",
+        steps=[
+            RadarDiscoveryPlanStep(
+                step_id="resolve-signal",
+                stage="source_probe",
+                subject_rule_ids=["Q1"],
+                source_scope="global",
+                source_ids=["dadata_registry"],
+                source_use=[
+                    RadarPlannerSourceUse(
+                        source_id="dadata_registry",
+                        connector_profile_id="dadata_registry",
+                        intended_use="signal_evidence",
+                        input_shape="candidate_scope",
+                    )
+                ],
+                query="Use registry for current intent signal evidence.",
+                purpose="Invalidly use registry for signal evidence.",
+                expected_evidence=["S1"],
+                acceptance_criteria=["S1"],
+                candidate_scope=["Candidate A"],
+            )
+        ],
+        source_policy_decisions=[
+            RadarDiscoverySourcePolicyDecision(
+                source_id="dadata_registry",
+                source_label="DaData registry",
+                decision="selected",
+                reason="Planner selected registry.",
+                rule_ids=["Q1"],
+            )
+        ],
+        coverage_hypotheses=[{"summary": "Low risk for this unit fixture.", "completeness_risk": "low"}],
+    )
+
+    validation = RadarDiscoveryPlanAcceptanceService().accept(planning_input=planning_input, plan=plan).validation
+
+    assert not validation.accepted
+    assert any("does not support intent signal evidence" in error for error in validation.errors)
+
+
 def test_discovery_plan_acceptance_splits_multi_rule_strategic_step() -> None:
     radar = _generic_definition(
         radar_id="multi-rule-strategy",
@@ -1592,10 +1777,12 @@ def test_openrouter_discovery_planner_request_uses_planning_scope_only() -> None
 
     assert "discovery plan" in prompt["task"]
     assert "qualification_rules" in prompt["planning_input"]
+    assert "source_cards" in prompt["planning_input"]
     assert "intent_signals" not in prompt["planning_input"]
     assert "criterion_role_decisions" in prompt["output_schema"]
     assert "source_base" in prompt["output_schema"]["steps"][0]
     assert "application_scope" in prompt["output_schema"]["steps"][0]
+    assert "source_use" in prompt["output_schema"]["steps"][0]
     assert "usage_obligation" in prompt["output_schema"]["source_policy_decisions"][0]
     assert "obligation_status" in prompt["output_schema"]["source_policy_decisions"][0]
     assert prompt["planning_input"]["max_iterations"] == 2

@@ -274,7 +274,7 @@ def compile_connector_capability(profile: ConnectorProfile) -> ConnectorCapabili
     supports_identity = _has_any(text, ["identity", "legal entity", "inn", "ogrn", "registry", "company"])
     supports_enrichment = _has_any(text, ["enrichment", "address", "okved", "status", "registry facts"])
     supports_coverage = _has_any(text, ["coverage", "source", "citation", "snippet", "web page", "official site"])
-    supports_signal = _has_any(text, ["signal", "intent", "event", "news", "current evidence", "web evidence"])
+    supports_signal = _has_any(positive_text, ["signal", "intent", "event", "news", "current evidence", "web evidence"])
     requires_concrete = _has_any(text, ["concrete", "not broad", "bad input: broad", "broad natural-language"]) or (
         source_type == "company_registry" and not supports_broad
     )

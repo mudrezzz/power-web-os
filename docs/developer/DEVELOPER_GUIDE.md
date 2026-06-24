@@ -375,6 +375,17 @@ Preflight resolves every Radar source to a connector profile, compiles its
 capability card, checks source/profile type compatibility, and can enforce
 credential presence in strict live mode.
 
+The planner does not receive raw connector secrets or full connector profiles.
+It receives backend-generated source cards derived from compiled capabilities:
+best-for, not-for, required input kinds, returned fact kinds, useful-result
+criteria, and the source usage obligation chosen in the Radar definition. Each
+accepted planner step is normalized to `source_use`, where the intended use and
+input shape are checked against the compiled capability before execution. A
+lookup-only registry source can be used for concrete legal-entity lookup after
+candidate names exist; it is rejected for broad universe enumeration. A
+registry/enrichment-only source is rejected as intent-signal evidence unless
+its connector profile explicitly supports signal evidence.
+
 Default queue settings:
 
 ```text
