@@ -58,6 +58,13 @@ def create_app(
     app.state.radar_max_discovery_retries_per_task = api_settings.radar_max_discovery_retries_per_task
     app.state.radar_max_checkpoint_revisions_per_run = api_settings.radar_max_checkpoint_revisions_per_run
     app.state.radar_max_checkpoint_retries_per_stage = api_settings.radar_max_checkpoint_retries_per_stage
+    app.state.radar_run_profile = api_settings.radar_run_profile
+    app.state.radar_max_openrouter_calls_per_run = api_settings.radar_max_openrouter_calls_per_run
+    app.state.radar_max_dadata_lookups_per_run = api_settings.radar_max_dadata_lookups_per_run
+    app.state.radar_max_source_verification_requests_per_run = api_settings.radar_max_source_verification_requests_per_run
+    app.state.radar_max_provider_retries_per_task = api_settings.radar_max_provider_retries_per_task
+    app.state.radar_smoke_max_candidates = api_settings.radar_smoke_max_candidates
+    app.state.radar_smoke_max_signals = api_settings.radar_smoke_max_signals
     app.state.runtime_config_report = build_effective_runtime_config_report(
         component="api",
         overrides=runtime_config_api_overrides(api_settings),

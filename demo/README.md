@@ -128,6 +128,27 @@ python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json --
 python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json --show-runtime-config --live-probes --probe extraction-schema
 ```
 
+After preflight/probes and the adaptive test harness are green, run a bounded
+smoke profile before a long live run. Smoke limits the number of actual
+external actions; it does not prove SIBUR discovery quality.
+
+```text
+POWER_WEB_OS_RADAR_RUN_PROFILE=smoke
+POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN=8
+POWER_WEB_OS_RADAR_MAX_DADATA_LOOKUPS_PER_RUN=3
+POWER_WEB_OS_RADAR_MAX_SOURCE_VERIFICATION_REQUESTS_PER_RUN=20
+POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK=1
+POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES=2
+POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS=1
+```
+
+When `POWER_WEB_OS_RADAR_RUN_PROFILE=smoke` is active, omitted caps get the
+defaults above. Explicit values, including `0`, override the defaults. The run
+dossier and trace should show `run_profile=smoke`,
+`external_call_budget_counters`, `external_call_budget_exhaustion_events`, and
+`provider_retry_records`. A skipped provider call should appear as
+`not_executed_budget_limited`, not as an apparently empty successful search.
+
 For the running API process, use:
 
 ```bash

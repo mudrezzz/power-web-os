@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
+from power_web_os.application.live_radar_external_budget import reserve_external_call
 from power_web_os.application.live_radar_contracts import RadarSourceEvidence, SourceVerificationMode, SourceVerificationState
 
 
@@ -48,6 +49,19 @@ def verify_sources(
     checker = reachability_check or check_source_url
     verified = []
     for source in sources:
+        decision = reserve_external_call(
+            "source_verification",
+            key=source.evidence_ref or source.url or "source",
+            task_id=source.query_id or "",
+        )
+        if not decision.accepted:
+            verified.append(source.model_copy(update={
+                "verification_mode": mode,
+                "verification_state": "not_checked",
+                "verification_reason": decision.message or "Source verification skipped by external-call budget.",
+                "verification_status_code": None,
+            }))
+            continue
         result = checker(source.url)
         verified.append(source.model_copy(update={
             "verification_mode": mode,

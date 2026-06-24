@@ -1021,6 +1021,29 @@ only after the final pre-signal checkpoint returns `continue`. Treat this suite
 as the fast gate between static preflight/live probes and a long manual Radar
 run.
 
+After the offline gates are green, use the Radar smoke profile before a broad
+live run. Smoke does not judge discovery quality. It proves that the live path
+obeys external-call budgets and reaches a terminal diagnostic state without
+expanding into dozens of provider calls.
+
+```text
+POWER_WEB_OS_RADAR_RUN_PROFILE=smoke
+POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN=8
+POWER_WEB_OS_RADAR_MAX_DADATA_LOOKUPS_PER_RUN=3
+POWER_WEB_OS_RADAR_MAX_SOURCE_VERIFICATION_REQUESTS_PER_RUN=20
+POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK=1
+POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES=2
+POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS=1
+```
+
+If `POWER_WEB_OS_RADAR_RUN_PROFILE=smoke` is set and a specific cap is omitted,
+the backend applies those smoke defaults. Explicit values, including `0`, win
+over the defaults. Exhausted external actions are recorded as
+`not_executed_budget_limited`; invalid provider responses can retry only while
+`POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK` allows it. The dossier and
+technical trace expose `run_profile`, `external_call_budget_counters`,
+`external_call_budget_exhaustion_events`, and `provider_retry_records`.
+
 Targeted live probes are opt-in and bounded. Use them only after static
 preflight is readable:
 

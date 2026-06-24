@@ -41,7 +41,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-            "version": "0.7.6.1.11.7",
+            "version": "0.7.6.1.11.8.1",
         "environment": "test",
     }
 
@@ -58,7 +58,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.6.1.11.7"
+    assert schema["info"]["version"] == "0.7.6.1.11.8.1"
     for path in [
         "/health",
         "/api/health",
@@ -280,6 +280,9 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert queued_dossier["run_context"]["task_context"]["min_useful_sources_per_discovery_task"] == 3
     assert queued_dossier["run_context"]["task_context"]["min_candidates_per_discovery_task"] == 5
     assert queued_dossier["run_context"]["task_context"]["max_discovery_retries_per_task"] == 2
+    assert queued_dossier["run_context"]["task_context"]["run_profile"] == "live"
+    assert queued_dossier["run_context"]["task_context"]["max_openrouter_calls_per_run"] is None
+    assert queued_dossier["run_context"]["task_context"]["max_provider_retries_per_task"] is None
     assert queued_dossier["runtime_config"]["component"] == "api"
     assert queued_dossier["runtime_config_warnings"] == []
     assert queued_dossier["search_plan"] == []
@@ -438,6 +441,41 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert reset.status_code == 204
     after_reset = client.get(f"/api/radar-runs/{run['run_id']}/candidates").json()
     assert after_reset["candidates"][0]["signals"][0]["review_decision"] is None
+
+
+def test_post_radar_run_preserves_explicit_smoke_task_context(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    queue = _RecordingJobQueue()
+    app = _app(tmp_path, database_url=database_url, job_queue=queue)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/radars/toir-quick-live/runs",
+        json={
+            "live": True,
+            "requester": "test",
+            "task_context": {
+                "run_profile": "smoke",
+                "max_openrouter_calls_per_run": 0,
+                "max_dadata_lookups_per_run": 1,
+                "max_source_verification_requests_per_run": 2,
+                "max_provider_retries_per_task": 0,
+                "smoke_max_candidates": 1,
+                "smoke_max_signals": 1,
+            },
+        },
+    )
+
+    assert response.status_code == 202
+    run_id = response.json()["run_id"]
+    task_context = client.get(f"/api/radar-runs/{run_id}/dossier").json()["run_context"]["task_context"]
+    assert task_context["run_profile"] == "smoke"
+    assert task_context["max_openrouter_calls_per_run"] == 0
+    assert task_context["max_dadata_lookups_per_run"] == 1
+    assert task_context["max_source_verification_requests_per_run"] == 2
+    assert task_context["max_provider_retries_per_task"] == 0
+    assert task_context["smoke_max_candidates"] == 1
+    assert task_context["smoke_max_signals"] == 1
 
 
 def test_radar_run_dossier_explains_zero_product_sources(tmp_path: Path) -> None:

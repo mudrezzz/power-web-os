@@ -15,6 +15,7 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProvider,
 )
 from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
+from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
 from power_web_os.application.live_radar_staged_helpers import eligible_candidate_names, run_task
 from power_web_os.application.live_radar_staged_merge import merge_result
 
@@ -46,6 +47,7 @@ class RadarCheckpointRecoveryContext:
     unresolved_candidate_gaps: list[dict[str, Any]] = field(default_factory=list)
     useful_result_retry_records: list[dict[str, Any]] = field(default_factory=list)
     source_obligation_decisions: list[dict[str, Any]] = field(default_factory=list)
+    external_budget: RadarExternalCallBudget | None = None
 
 
 class RadarExecutionPlanReviser(Protocol):
@@ -132,6 +134,7 @@ class RadarCheckpointActionExecutor:
                 task=task,
                 radar_id=context.execution_plan.radar_id,
                 budget=context.budget,
+                external_budget=context.external_budget,
             )
             state.sources, state.observations, state.provider_metadata = merge_result(
                 state.sources,

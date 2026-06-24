@@ -16,6 +16,7 @@ from power_web_os.application.live_radar_contracts import (
 )
 from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.live_radar_extraction_contract import extraction_validation_state, validate_and_repair_extraction_payload
+from power_web_os.application.live_radar_external_budget import reserve_external_call
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 from power_web_os.application.live_radar_web_retrieval import retrieval_request_from_search_plan
 from power_web_os.integrations.openrouter_request_builder import build_openrouter_request, openrouter_compiled_prompt_summary
@@ -165,6 +166,30 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                 "request": payload,
             },
         )
+        budget_key = _search_plan_budget_key(search_plan)
+        budget_decision = reserve_external_call("openrouter", key=budget_key, task_id=budget_key)
+        if not budget_decision.accepted:
+            _trace_provider(
+                trace_type="provider_error",
+                title="OpenRouter call skipped by external budget",
+                summary=budget_decision.message,
+                payload={
+                    "model": selected_model,
+                    "web_mode": mode,
+                    "retrieval_provider": self.retrieval_provider,
+                    "retrieval_engine": self.web_search_engine,
+                    "budget_decision": budget_decision.to_payload(),
+                },
+            )
+            return _budget_limited_result(
+                model=selected_model,
+                default_model=self.model,
+                extractor_model=self.extractor_model,
+                web_mode=mode,
+                retrieval_provider=self.retrieval_provider,
+                retrieval_engine=self.web_search_engine,
+                budget_decision=budget_decision.to_payload(),
+            )
         started_at = perf_counter()
         try:
             response = httpx.post(
@@ -480,6 +505,46 @@ def _dedupe_sources(sources: list[RadarSourceEvidence]) -> list[RadarSourceEvide
         seen.add(key)
         result.append(source)
     return result
+
+
+def _search_plan_budget_key(search_plan: RadarSearchPlan) -> str:
+    if search_plan.queries:
+        return search_plan.queries[0].query_id or search_plan.radar_id
+    return search_plan.radar_id
+
+
+def _budget_limited_result(
+    *,
+    model: str,
+    default_model: str,
+    extractor_model: str,
+    web_mode: str,
+    retrieval_provider: str,
+    retrieval_engine: str,
+    budget_decision: dict[str, object],
+) -> WebSearchProviderResult:
+    return WebSearchProviderResult(
+        sources=[],
+        candidate_observations=[],
+        provider_metadata={
+            "provider": "openrouter",
+            "model": model,
+            "default_model": default_model,
+            "extractor_model": extractor_model,
+            "web_mode": web_mode,
+            "retrieval_provider": retrieval_provider,
+            "retrieval_engine": retrieval_engine,
+            "budget_decision": {
+                **budget_decision,
+                "state": "not_executed_budget_limited",
+            },
+            "coverage_findings": [{
+                "summary": budget_decision.get("message", "OpenRouter external-call budget exhausted."),
+                "completeness_risk": "medium",
+                "warnings": [str(budget_decision.get("message", "OpenRouter external-call budget exhausted."))],
+            }],
+        },
+    )
 
 
 def _load_env_file(path: Path) -> dict[str, str]:

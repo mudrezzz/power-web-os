@@ -104,6 +104,13 @@ class LiveRadarRunService:
             max_discovery_retries_per_task=_int_context_value(state.task_context, "max_discovery_retries_per_task"),
             max_checkpoint_revisions_per_run=_int_context_value(state.task_context, "max_checkpoint_revisions_per_run"),
             max_checkpoint_retries_per_stage=_int_context_value(state.task_context, "max_checkpoint_retries_per_stage"),
+            run_profile=_str_context_value(state.task_context, "run_profile"),
+            max_openrouter_calls_per_run=_int_context_value(state.task_context, "max_openrouter_calls_per_run"),
+            max_dadata_lookups_per_run=_int_context_value(state.task_context, "max_dadata_lookups_per_run"),
+            max_source_verification_requests_per_run=_int_context_value(state.task_context, "max_source_verification_requests_per_run"),
+            max_provider_retries_per_task=_int_context_value(state.task_context, "max_provider_retries_per_task"),
+            smoke_max_candidates=_int_context_value(state.task_context, "smoke_max_candidates"),
+            smoke_max_signals=_int_context_value(state.task_context, "smoke_max_signals"),
             source_policy_decisions=[dict(item) for item in (state.discovery_plan or {}).get("source_policy_decisions", []) if isinstance(item, dict)],
         )
         result = LiveRadarCollectionResult(
@@ -488,3 +495,11 @@ def _int_context_value(context: dict[str, Any], key: str) -> int | None:
     except (TypeError, ValueError):
         return None
     return parsed if parsed >= 0 else None
+
+
+def _str_context_value(context: dict[str, Any], key: str) -> str | None:
+    value = context.get(key)
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None

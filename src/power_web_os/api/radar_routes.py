@@ -162,6 +162,37 @@ def queue_radar_run(radar_id: str, request: RadarRunRequest, context: RadarConte
                 "max_discovery_retries_per_task": context.radar_max_discovery_retries_per_task,
                 "max_checkpoint_revisions_per_run": context.radar_max_checkpoint_revisions_per_run,
                 "max_checkpoint_retries_per_stage": context.radar_max_checkpoint_retries_per_stage,
+                "run_profile": _task_context_or_default(request.task_context, "run_profile", context.radar_run_profile),
+                "max_openrouter_calls_per_run": _task_context_or_default(
+                    request.task_context,
+                    "max_openrouter_calls_per_run",
+                    context.radar_max_openrouter_calls_per_run,
+                ),
+                "max_dadata_lookups_per_run": _task_context_or_default(
+                    request.task_context,
+                    "max_dadata_lookups_per_run",
+                    context.radar_max_dadata_lookups_per_run,
+                ),
+                "max_source_verification_requests_per_run": _task_context_or_default(
+                    request.task_context,
+                    "max_source_verification_requests_per_run",
+                    context.radar_max_source_verification_requests_per_run,
+                ),
+                "max_provider_retries_per_task": _task_context_or_default(
+                    request.task_context,
+                    "max_provider_retries_per_task",
+                    context.radar_max_provider_retries_per_task,
+                ),
+                "smoke_max_candidates": _task_context_or_default(
+                    request.task_context,
+                    "smoke_max_candidates",
+                    context.radar_smoke_max_candidates,
+                ),
+                "smoke_max_signals": _task_context_or_default(
+                    request.task_context,
+                    "smoke_max_signals",
+                    context.radar_smoke_max_signals,
+                ),
             },
             api_runtime_config=context.runtime_config_report,
         )
@@ -393,3 +424,9 @@ def _payload_list(value: object) -> list[dict[str, object]]:
     if not isinstance(value, list):
         return []
     return [dict(item) for item in value if isinstance(item, dict)]
+
+
+def _task_context_or_default(task_context: dict[str, object], key: str, default: object) -> object:
+    if key in task_context:
+        return task_context[key]
+    return default

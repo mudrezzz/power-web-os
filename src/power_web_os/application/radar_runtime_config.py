@@ -40,6 +40,13 @@ CRITICAL_FINGERPRINT_PATHS = (
     ("radar", "max_total_web_tasks_per_run"),
     ("radar", "max_checkpoint_revisions_per_run"),
     ("radar", "max_checkpoint_retries_per_stage"),
+    ("radar", "run_profile"),
+    ("radar", "max_openrouter_calls_per_run"),
+    ("radar", "max_dadata_lookups_per_run"),
+    ("radar", "max_source_verification_requests_per_run"),
+    ("radar", "max_provider_retries_per_task"),
+    ("radar", "smoke_max_candidates"),
+    ("radar", "smoke_max_signals"),
 )
 
 
@@ -185,6 +192,13 @@ def build_effective_runtime_config_report(
             "max_discovery_retries_per_task": _int_value(value("POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK", 2), 2),
             "max_checkpoint_revisions_per_run": _int_value(value("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_REVISIONS_PER_RUN", 2), 2),
             "max_checkpoint_retries_per_stage": _int_value(value("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE", 1), 1),
+            "run_profile": str(value("POWER_WEB_OS_RADAR_RUN_PROFILE", "live") or "live"),
+            "max_openrouter_calls_per_run": _optional_non_negative_int_value(value("POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN", "")),
+            "max_dadata_lookups_per_run": _optional_non_negative_int_value(value("POWER_WEB_OS_RADAR_MAX_DADATA_LOOKUPS_PER_RUN", "")),
+            "max_source_verification_requests_per_run": _optional_non_negative_int_value(value("POWER_WEB_OS_RADAR_MAX_SOURCE_VERIFICATION_REQUESTS_PER_RUN", "")),
+            "max_provider_retries_per_task": _optional_non_negative_int_value(value("POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK", "")),
+            "smoke_max_candidates": _optional_non_negative_int_value(value("POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES", "")),
+            "smoke_max_signals": _optional_non_negative_int_value(value("POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS", "")),
         },
         "persistence": {
             "database_kind": _url_kind(database_url),
@@ -246,6 +260,13 @@ def runtime_config_api_overrides(settings: Any) -> dict[str, Any]:
         "POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK": getattr(settings, "radar_max_discovery_retries_per_task", None),
         "POWER_WEB_OS_RADAR_MAX_CHECKPOINT_REVISIONS_PER_RUN": getattr(settings, "radar_max_checkpoint_revisions_per_run", None),
         "POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE": getattr(settings, "radar_max_checkpoint_retries_per_stage", None),
+        "POWER_WEB_OS_RADAR_RUN_PROFILE": getattr(settings, "radar_run_profile", None),
+        "POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN": getattr(settings, "radar_max_openrouter_calls_per_run", None),
+        "POWER_WEB_OS_RADAR_MAX_DADATA_LOOKUPS_PER_RUN": getattr(settings, "radar_max_dadata_lookups_per_run", None),
+        "POWER_WEB_OS_RADAR_MAX_SOURCE_VERIFICATION_REQUESTS_PER_RUN": getattr(settings, "radar_max_source_verification_requests_per_run", None),
+        "POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK": getattr(settings, "radar_max_provider_retries_per_task", None),
+        "POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES": getattr(settings, "radar_smoke_max_candidates", None),
+        "POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS": getattr(settings, "radar_smoke_max_signals", None),
     }
 
 
@@ -366,6 +387,14 @@ def _optional_int_value(value: Any) -> int | None:
     except (TypeError, ValueError):
         return None
     return parsed if parsed > 0 else None
+
+
+def _optional_non_negative_int_value(value: Any) -> int | None:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed >= 0 else None
 
 
 def _fingerprint_payload(config: dict[str, Any]) -> dict[str, Any]:

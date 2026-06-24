@@ -63,6 +63,13 @@ def _task_context_with_runtime_defaults(task_context: dict[str, object]) -> dict
     _set_optional_positive(context, "max_gate_tasks_per_candidate_rule", "POWER_WEB_OS_RADAR_MAX_GATE_TASKS_PER_CANDIDATE_RULE")
     _set_optional_positive(context, "max_signal_tasks_per_candidate_signal", "POWER_WEB_OS_RADAR_MAX_SIGNAL_TASKS_PER_CANDIDATE_SIGNAL")
     _set_optional_positive(context, "max_total_web_tasks_per_run", "POWER_WEB_OS_RADAR_MAX_TOTAL_WEB_TASKS_PER_RUN")
+    context.setdefault("run_profile", _run_profile(os.getenv("POWER_WEB_OS_RADAR_RUN_PROFILE"), "live"))
+    _set_optional_non_negative(context, "max_openrouter_calls_per_run", "POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN")
+    _set_optional_non_negative(context, "max_dadata_lookups_per_run", "POWER_WEB_OS_RADAR_MAX_DADATA_LOOKUPS_PER_RUN")
+    _set_optional_non_negative(context, "max_source_verification_requests_per_run", "POWER_WEB_OS_RADAR_MAX_SOURCE_VERIFICATION_REQUESTS_PER_RUN")
+    _set_optional_non_negative(context, "max_provider_retries_per_task", "POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK")
+    _set_optional_non_negative(context, "smoke_max_candidates", "POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES")
+    _set_optional_non_negative(context, "smoke_max_signals", "POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS")
     context.setdefault("source_verification_mode", _verification_mode(os.getenv("POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE"), "soft"))
     context.setdefault(
         "min_useful_sources_per_discovery_task",
@@ -95,6 +102,14 @@ def _set_optional_positive(context: dict[str, object], key: str, env_name: str) 
         context[key] = value
 
 
+def _set_optional_non_negative(context: dict[str, object], key: str, env_name: str) -> None:
+    if key in context and context[key] is not None:
+        return
+    value = _optional_non_negative_int(os.getenv(env_name))
+    if value is not None:
+        context[key] = value
+
+
 def _positive_int(raw: str | None, default: int) -> int:
     try:
         value = int(raw or "")
@@ -117,6 +132,19 @@ def _optional_positive_int(raw: str | None) -> int | None:
     except ValueError:
         return None
     return value if value > 0 else None
+
+
+def _optional_non_negative_int(raw: str | None) -> int | None:
+    try:
+        value = int(raw or "")
+    except ValueError:
+        return None
+    return value if value >= 0 else None
+
+
+def _run_profile(raw: str | None, default: str) -> str:
+    value = (raw or default).strip().lower()
+    return value if value in {"live", "smoke"} else default
 
 
 def _verification_mode(raw: str | None, default: str) -> str:

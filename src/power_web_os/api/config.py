@@ -12,7 +12,7 @@ from power_web_os.persistence.config import DEFAULT_DATABASE_URL
 class ApiSettings:
     service_name: str = "Power Web OS API"
     environment: str = "local"
-    api_version: str = "0.7.6.1.11.7"
+    api_version: str = "0.7.6.1.11.8.1"
     database_url: str = DEFAULT_DATABASE_URL
     cors_origins: tuple[str, ...] = (
         "http://127.0.0.1:5173",
@@ -29,6 +29,13 @@ class ApiSettings:
     radar_max_discovery_retries_per_task: int = 2
     radar_max_checkpoint_revisions_per_run: int = 2
     radar_max_checkpoint_retries_per_stage: int = 1
+    radar_run_profile: str = "live"
+    radar_max_openrouter_calls_per_run: int | None = None
+    radar_max_dadata_lookups_per_run: int | None = None
+    radar_max_source_verification_requests_per_run: int | None = None
+    radar_max_provider_retries_per_task: int | None = None
+    radar_smoke_max_candidates: int | None = None
+    radar_smoke_max_signals: int | None = None
 
 
 def get_api_settings() -> ApiSettings:
@@ -76,6 +83,21 @@ def get_api_settings() -> ApiSettings:
             os.getenv("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE"),
             ApiSettings.radar_max_checkpoint_retries_per_stage,
         ),
+        radar_run_profile=_run_profile(os.getenv("POWER_WEB_OS_RADAR_RUN_PROFILE"), ApiSettings.radar_run_profile),
+        radar_max_openrouter_calls_per_run=_optional_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN"),
+        ),
+        radar_max_dadata_lookups_per_run=_optional_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_MAX_DADATA_LOOKUPS_PER_RUN"),
+        ),
+        radar_max_source_verification_requests_per_run=_optional_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_MAX_SOURCE_VERIFICATION_REQUESTS_PER_RUN"),
+        ),
+        radar_max_provider_retries_per_task=_optional_non_negative_int(
+            os.getenv("POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK"),
+        ),
+        radar_smoke_max_candidates=_optional_non_negative_int(os.getenv("POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES")),
+        radar_smoke_max_signals=_optional_non_negative_int(os.getenv("POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS")),
     )
 
 
@@ -109,6 +131,19 @@ def _optional_positive_int(raw: str | None) -> int | None:
     return value if value > 0 else None
 
 
+def _optional_non_negative_int(raw: str | None) -> int | None:
+    try:
+        value = int(raw or "")
+    except ValueError:
+        return None
+    return value if value >= 0 else None
+
+
 def _verification_mode(raw: str | None, default: str) -> str:
     value = (raw or default).strip().lower()
     return value if value in {"strict", "soft", "off"} else default
+
+
+def _run_profile(raw: str | None, default: str) -> str:
+    value = (raw or default).strip().lower()
+    return value if value in {"live", "smoke"} else default

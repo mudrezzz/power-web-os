@@ -16,6 +16,7 @@ from typing import Any
 from urllib import request as urllib_request
 from urllib.error import HTTPError, URLError
 
+from power_web_os.application.live_radar_external_budget import reserve_external_call
 from power_web_os.application.radar_source_providers import (
     CompanyLookupRequest,
     CompanyLookupResult,
@@ -38,6 +39,14 @@ class RecordedDaDataCompanyRegistryProvider(CompanyRegistryProvider):
 
     def lookup_companies(self, request: CompanyLookupRequest) -> CompanyLookupResult:
         self.requests.append(request)
+        budget_decision = reserve_external_call("dadata", key=request.source_id or self.provider_id, task_id=request.task_id)
+        if not budget_decision.accepted:
+            return _budget_limited_lookup_result(
+                request,
+                provider_id=self.provider_id,
+                mode="recorded",
+                decision=budget_decision.to_payload(),
+            )
         observations = [
             _with_match_metadata(_observation_from_fixture(item), request=request, matched_by=_matched_by_fixture(item, request))
             for item in self._fixtures
@@ -95,6 +104,14 @@ class DaDataCompanyRegistryProvider(CompanyRegistryProvider):
     def lookup_companies(self, request: CompanyLookupRequest) -> CompanyLookupResult:
         if not self._api_key or not self._secret_key:
             return _unavailable_result(request, provider_id=self.provider_id, reason="DaData live credentials are required for live company lookup.")
+        budget_decision = reserve_external_call("dadata", key=request.source_id or self.provider_id, task_id=request.task_id)
+        if not budget_decision.accepted:
+            return _budget_limited_lookup_result(
+                request,
+                provider_id=self.provider_id,
+                mode="live",
+                decision=budget_decision.to_payload(),
+            )
         query = _best_query(request)
         payload = {"query": query, "count": request.limit}
         _trace_dadata(
@@ -219,6 +236,38 @@ def _schema_invalid_result(request: CompanyLookupRequest, *, provider_id: str, r
         payload={"source_id": request.source_id, "query": request.query, "outcome": "schema_invalid"},
     )
     return CompanyLookupResult(outcomes=[outcome], provider_metadata={"provider": provider_id, "dadata_mode": "schema_invalid"})
+
+
+def _budget_limited_lookup_result(
+    request: CompanyLookupRequest,
+    *,
+    provider_id: str,
+    mode: str,
+    decision: dict[str, object],
+) -> CompanyLookupResult:
+    reason = str(decision.get("message") or "DaData external-call budget exhausted.")
+    outcome = CompanySourceOutcome(
+        source_id=request.source_id,
+        provider_id=provider_id,
+        outcome="not_executed_budget_limited",
+        reason=reason,
+        query=request.query,
+        observation_count=0,
+    )
+    _trace_dadata(
+        trace_type="provider_error",
+        title="DaData lookup skipped by external budget",
+        summary=reason,
+        payload={"source_id": request.source_id, "query": request.query, "budget_decision": decision},
+    )
+    return CompanyLookupResult(
+        outcomes=[outcome],
+        provider_metadata={
+            "provider": provider_id,
+            "dadata_mode": mode,
+            "budget_decision": {**decision, "state": "not_executed_budget_limited"},
+        },
+    )
 
 
 def _observation_from_fixture(item: dict[str, Any]) -> CompanyRegistryObservation:

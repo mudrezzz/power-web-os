@@ -26,6 +26,13 @@ def test_runtime_config_report_redacts_secrets_and_builds_fingerprint() -> None:
             "POWER_WEB_OS_DATABASE_URL": "postgresql://user:password@db.example.test:5432/power",
             "POWER_WEB_OS_CELERY_BROKER_URL": "redis://:password@redis.example.test:6379/0",
             "POWER_WEB_OS_RADAR_MAX_SIGNAL_TASKS_PER_CANDIDATE_SIGNAL": "2",
+            "POWER_WEB_OS_RADAR_RUN_PROFILE": "smoke",
+            "POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN": "8",
+            "POWER_WEB_OS_RADAR_MAX_DADATA_LOOKUPS_PER_RUN": "0",
+            "POWER_WEB_OS_RADAR_MAX_SOURCE_VERIFICATION_REQUESTS_PER_RUN": "20",
+            "POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK": "1",
+            "POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES": "2",
+            "POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS": "1",
         },
     ).to_payload()
 
@@ -37,6 +44,13 @@ def test_runtime_config_report_redacts_secrets_and_builds_fingerprint() -> None:
     assert report["config"]["retrieval"]["provider"] == "openrouter_perplexity"
     assert report["config"]["retrieval"]["openrouter_web_search_engine"] == "perplexity"
     assert report["config"]["radar"]["max_signal_tasks_per_candidate_signal"] == 2
+    assert report["config"]["radar"]["run_profile"] == "smoke"
+    assert report["config"]["radar"]["max_openrouter_calls_per_run"] == 8
+    assert report["config"]["radar"]["max_dadata_lookups_per_run"] == 0
+    assert report["config"]["radar"]["max_source_verification_requests_per_run"] == 20
+    assert report["config"]["radar"]["max_provider_retries_per_task"] == 1
+    assert report["config"]["radar"]["smoke_max_candidates"] == 2
+    assert report["config"]["radar"]["smoke_max_signals"] == 1
     assert "[REDACTED]@db.example.test:5432" in serialized
     assert "[REDACTED]@redis.example.test:6379" in serialized
     assert not any(secret in serialized for secret in ["sk-or-test-secret", "dadata-key", "dadata-secret", "password@"])

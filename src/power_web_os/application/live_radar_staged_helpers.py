@@ -14,6 +14,7 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProviderResult,
 )
 from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
+from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
 from power_web_os.application.live_radar_execution_plan import execution_task_to_search_plan, scoped_execution_task
 from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.live_radar_staged_merge import merge_candidate_observations, merge_result
@@ -34,6 +35,7 @@ def run_task(
     task: RadarExecutionTask,
     radar_id: str,
     budget: RadarExecutionBudget,
+    external_budget: RadarExternalCallBudget | None = None,
 ) -> WebSearchProviderResult:
     if not budget.reserve(task):
         decision = budget.last_decision
@@ -58,7 +60,21 @@ def run_task(
                 }],
             },
         )
-    return provider.run_search_plan(radar=radar, search_plan=execution_task_to_search_plan(task, radar_id=radar_id))
+    result = provider.run_search_plan(radar=radar, search_plan=execution_task_to_search_plan(task, radar_id=radar_id))
+    retries = 0
+    while _provider_schema_invalid(result) and external_budget is not None:
+        decision = external_budget.reserve("provider_retry", key=task.task_id, task_id=task.task_id)
+        if not decision.accepted:
+            return _result_with_retry_exhaustion(result, decision.to_payload())
+        retries += 1
+        external_budget.record_retry(
+            task_id=task.task_id,
+            reason="provider_schema_invalid",
+            attempt=retries,
+            decision=decision,
+        )
+        result = provider.run_search_plan(radar=radar, search_plan=execution_task_to_search_plan(task, radar_id=radar_id))
+    return result
 
 
 def combine_task_results(first: WebSearchProviderResult, second: WebSearchProviderResult) -> WebSearchProviderResult:
@@ -138,13 +154,21 @@ def run_gate_pass(
     events: list[LiveRadarPipelineEvent],
     executed_task_ids: list[str],
     budget: RadarExecutionBudget,
+    external_budget: RadarExternalCallBudget | None = None,
 ) -> tuple[list[RadarSourceEvidence], list[dict[str, Any]], dict[str, Any], list[str]]:
     for task in tasks:
         scopes = candidate_scope if task.stage == "qualification_gate" and candidate_scope else [None]
         for scoped_candidate_name in scopes:
             scoped_scope = [scoped_candidate_name] if scoped_candidate_name else candidate_scope
             scoped_task = scoped_execution_task(task, candidate_scope=scoped_scope)
-            result = run_task(provider=provider, radar=radar, task=scoped_task, radar_id=execution_plan.radar_id, budget=budget)
+            result = run_task(
+                provider=provider,
+                radar=radar,
+                task=scoped_task,
+                radar_id=execution_plan.radar_id,
+                budget=budget,
+                external_budget=external_budget,
+            )
             sources, observations, provider_metadata = merge_result(sources, observations, provider_metadata, result)
             executed_task_ids.append(task.task_id if not scoped_scope else f"{task.task_id}:{','.join(scoped_scope)}")
         candidates = normalized_candidates(radar=radar, sources=sources, observations=observations)
@@ -161,3 +185,36 @@ def run_gate_pass(
             completed_qualification_ids=completed_qualification_ids,
         )
     return sources, observations, provider_metadata, candidate_scope
+
+
+def _provider_schema_invalid(result: WebSearchProviderResult) -> bool:
+    metadata = result.provider_metadata
+    if metadata.get("provider_error"):
+        return True
+    for issue in metadata.get("extraction_validation_issues", []):
+        if isinstance(issue, dict) and issue.get("severity") == "error":
+            return True
+    return False
+
+
+def _result_with_retry_exhaustion(result: WebSearchProviderResult, decision: dict[str, object]) -> WebSearchProviderResult:
+    return result.model_copy(update={
+        "provider_metadata": {
+            **result.provider_metadata,
+            "provider_retry_exhausted": True,
+            "budget_decision": {
+                "accepted": False,
+                "key": decision.get("key", "provider_retry"),
+                "limit": decision.get("limit"),
+                "current": decision.get("current"),
+                "state": "not_executed_budget_limited",
+                "reason": decision.get("reason", "external_call_budget_exhausted"),
+                "message": decision.get("message", "Provider retry budget exhausted."),
+            },
+            "coverage_findings": [{
+                "summary": decision.get("message", "Provider retry budget exhausted."),
+                "completeness_risk": "medium",
+                "warnings": [str(decision.get("message", "Provider retry budget exhausted."))],
+            }],
+        },
+    })

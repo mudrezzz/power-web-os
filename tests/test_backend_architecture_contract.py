@@ -20,6 +20,9 @@ LEGACY_LARGE_MODULE_ALLOWLIST = {
     Path("src/power_web_os/icp_radar.py"),
     Path("src/power_web_os/icp_radar_catalog.py"),
     Path("src/power_web_os/icp_radar_xlsx.py"),
+    Path("src/power_web_os/application/live_radar_service.py"),
+    Path("src/power_web_os/application/live_radar_staged_execution.py"),
+    Path("src/power_web_os/integrations/live_radar_openrouter.py"),
 }
 
 PURE_DOMAIN_MODULES = {

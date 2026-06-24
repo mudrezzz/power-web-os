@@ -3933,6 +3933,50 @@ Principles:
     compact provider task prompt.
   - Done: signal-search tasks still do not call DaData.
 
+### Slice 0.7.6.1.11.8.1: External-call budgets and Radar smoke profile
+
+- Status: `Done`
+- Goal: Add a controlled smoke profile for live Radar that limits actual
+  external actions instead of relying on a wall-clock timeout.
+- User value: Before a long manual Radar run, a user can verify that provider
+  calls, retries, DaData lookups, and URL verification are bounded by config and
+  that failures become diagnostic states instead of an unbounded run.
+- Scope:
+  - Added application-level `RadarExternalCallBudget` for OpenRouter calls,
+    DaData lookups, source verification requests, and provider retries.
+  - Added `POWER_WEB_OS_RADAR_RUN_PROFILE=live|smoke` and explicit external-call
+    budget env vars.
+  - In `smoke` profile, default caps are OpenRouter calls `8`, DaData lookups
+    `3`, source verification requests `20`, provider retries per task `1`,
+    candidates `2`, and signals `1`, unless explicitly overridden.
+  - Provider calls now reserve budget before network work; exhausted calls are
+    recorded as `not_executed_budget_limited`.
+  - Schema/provider-error responses can retry only while provider retry budget
+    remains.
+  - Execution metadata/dossier/trace can show run profile, external budget
+    counters, exhaustion events, and retry records.
+- Out of scope:
+  - Quality benchmark claims.
+  - New provider integrations.
+  - Frontend controls for selecting smoke versus live profile.
+- Tests:
+  - Added fast tests for OpenRouter budget exhaustion, DaData lookup budget,
+    source verification request budget, and provider retry behavior.
+  - Regression keeps live Radar/preflight/API/worker contracts green without
+    requiring network calls.
+- Docs:
+  - `.env.example`, Developer Guide, demo README, and SAO describe smoke profile
+    as a required controlled step before broad live experiments.
+- Demo impact:
+  - Manual smoke can be run by setting `POWER_WEB_OS_RADAR_RUN_PROFILE=smoke`
+    and starting the normal Radar run path; no separate UI flow is required.
+- Acceptance criteria:
+  - A smoke run cannot expand into dozens of OpenRouter/DaData/URL verification
+    calls.
+  - Slow OpenRouter latency is not treated as failure by itself.
+  - Invalid provider responses get bounded retry and then a diagnostic stop
+    state when retry budget is exhausted.
+
 ### Slice 0.7.6.1.11.9: Product projection repair for analyzed vs used sources
 
 - Status: `Backlog`

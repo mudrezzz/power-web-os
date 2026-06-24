@@ -354,6 +354,15 @@ starts. If critical values diverge, the run records a
 silently letting a user believe that one provider/model/budget setup was used
 when another process actually ran the job.
 
+External-call budgets sit below semantic Radar execution budgets. Semantic
+budgets decide how many discovery, gate, coverage, and signal tasks may be
+attempted. External-call budgets guard the actual expensive actions inside
+those tasks: OpenRouter requests, DaData lookups, source verification HTTP
+requests, and provider retries. In `smoke` profile, those guards make a live
+run bounded by call counts instead of wall-clock time; exhausted calls become
+`not_executed_budget_limited` diagnostics that are visible in dossier and
+technical trace.
+
 The same extraction contract is enforced during runtime provider normalization.
 Repairable shape problems are marked as `extraction_repair_needed`; unresolved
 source refs and unrepaired schema mismatches remain `evidence_linking_failed` or
