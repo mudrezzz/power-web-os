@@ -94,7 +94,12 @@ unsearched candidates look like negative results.
 With the smoke budget, a completed run may still show `0` product sources and
 zero scores. That means the runner reached a terminal state, not that discovery
 quality is acceptable. The run dossier now includes source lifecycle diagnostics
-showing used and discarded/analyzed source counts and reasons.
+showing used, retrieved, analyzed-only, linking-failed, schema-rejected,
+verification-failed, skipped, and budget-limited source counts and reasons.
+Product `sources` remains strict: it lists only sources that went into candidate
+or signal evidence. If product sources are zero, inspect
+`source_lifecycle_summary` and `summary.diagnostic_source_count` before
+concluding that retrieval found nothing.
 
 Complex live Radar runs should be treated as TDD/preflight-gated work. Before a
 manual `Run radar` is used as evidence of quality, the fast preflight/recorded

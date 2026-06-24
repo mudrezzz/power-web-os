@@ -883,7 +883,10 @@ broad quality benchmarking:
    `source_lifecycle_summary`, explaining how many sources were collected,
    parsed, verified, linked to candidate evidence, used in product, or
    discarded. Product `sources` still contains only evidence-bearing used
-   sources.
+   sources. Diagnostic lifecycle states are more granular than product sources:
+   `retrieved`, `verified`, `parsed`, `linked`, `used`, `analyzed_only`,
+   `skipped`, `linking_failed`, `schema_rejected`, `verification_failed`, and
+   `budget_limited`.
 2. Soft source verification and useful-result budgets: verification should
    preserve evidence-bearing sources with explicit risk state instead of
    silently losing useful sources because a site blocks `HEAD`/`GET`; discovery
@@ -948,6 +951,17 @@ as one candidate object instead of a one-item list are recorded as
 cannot link them to candidate evidence, the run dossier must show extraction
 issues and retrieved/analyzed source counts instead of looking like a clean
 "nothing found" result.
+
+Product and diagnostic source projections are intentionally different. Product
+candidate/source lists stay strict and include only evidence-bearing `used`
+sources. Dossier diagnostics may show many more source lifecycle rows:
+retrieved-only rows mean retrieval produced material that extraction did not
+turn into evidence; `linking_failed` means candidate/finding refs did not
+resolve to normalized sources; `schema_rejected` means provider material was
+available but failed the extraction contract; `verification_failed` keeps the
+reachability risk and reason visible. Use `summary.diagnostic_source_count` and
+`source_lifecycle_summary.by_state` to read these cases before opening raw
+technical trace.
 
 Run the current Radar execution preflight before manual live testing:
 

@@ -41,7 +41,7 @@ def test_health_endpoint_returns_backend_identity(tmp_path: Path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "Power Web OS API",
-            "version": "0.7.6.1.11.8.2",
+            "version": "0.7.6.1.11.9",
         "environment": "test",
     }
 
@@ -58,7 +58,7 @@ def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:
     schema = client.get("/openapi.json").json()
 
     assert schema["info"]["title"] == "Power Web OS API"
-    assert schema["info"]["version"] == "0.7.6.1.11.8.2"
+    assert schema["info"]["version"] == "0.7.6.1.11.9"
     for path in [
         "/health",
         "/api/health",
@@ -322,13 +322,17 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["summary"]["analyzed_source_count"] == 1
     assert dossier["summary"]["skipped_source_count"] == 1
     assert dossier["source_lifecycle_summary"]["total_count"] == 2
-    assert dossier["source_lifecycle_summary"]["by_state"] == {"discarded": 1, "used_in_product": 1}
+    assert dossier["source_lifecycle_summary"]["by_state"] == {"analyzed_only": 1, "used": 1}
     assert dossier["source_lifecycle_summary"]["by_reason"]["used_by_candidate"] == 1
     assert dossier["source_lifecycle_summary"]["by_reason"]["not_used_by_candidate"] == 1
     assert dossier["source_lifecycle"][0]["evidence_ref"] == "src_1"
-    assert dossier["source_lifecycle"][0]["state"] == "used_in_product"
+    assert dossier["source_lifecycle"][0]["state"] == "used"
     assert dossier["source_lifecycle"][1]["evidence_ref"] == "unused_src"
+    assert dossier["source_lifecycle"][1]["state"] == "analyzed_only"
     assert dossier["source_lifecycle"][1]["reason"] == "not_used_by_candidate"
+    assert dossier["summary"]["diagnostic_source_count"] == 2
+    assert dossier["summary"]["analyzed_only_source_count"] == 1
+    assert dossier["summary"]["linked_source_count"] == 1
     assert dossier["discovery_plan"]["plan_summary"] == "Test discovery plan."
     assert dossier["discovery_plan"]["steps"][0]["stage"] == "candidate_universe_discovery"
     assert dossier["source_policy_decisions"][0]["decision"] == "selected"
@@ -511,11 +515,146 @@ def test_radar_run_dossier_explains_zero_product_sources(tmp_path: Path) -> None
     assert dossier["summary"]["analyzed_source_count"] == 2
     assert dossier["sources"] == []
     assert dossier["source_lifecycle_summary"]["total_count"] == 2
-    assert dossier["source_lifecycle_summary"]["by_state"] == {"discarded": 2}
+    assert dossier["source_lifecycle_summary"]["by_state"] == {"analyzed_only": 1, "verification_failed": 1}
     assert dossier["source_lifecycle_summary"]["by_reason"] == {"not_used_by_candidate": 1, "unreachable": 1}
     assert {item["evidence_ref"] for item in dossier["source_lifecycle"]} == {"blocked_src", "unlinked_src"}
+    assert dossier["summary"]["diagnostic_source_count"] == 2
+    assert dossier["summary"]["analyzed_only_source_count"] == 1
     serialized = json.dumps(dossier)
     assert not any(marker in serialized for marker in ["chain_of_thought", "hidden_reasoning", "internal_thoughts"])
+
+
+def test_radar_run_dossier_exposes_retrieved_sources_without_product_sources(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    app = _app(tmp_path, database_url=database_url)
+    client = TestClient(app)
+    run = client.post("/api/radars/toir-quick-live/runs", json={"live": True, "requester": "test"}).json()
+    artifact = _artifact()
+    artifact["sources"] = []
+    artifact["candidates"] = []
+    artifact["run_metadata"]["execution_results"].update({
+        "used_source_count": 0,
+        "analyzed_source_count": 0,
+        "analyzed_sources": [],
+        "retrieved_sources": [
+            {"source_ref": "retrieved_1", "title": "Retrieved source", "url": "https://example.test/retrieved"}
+        ],
+    })
+
+    execute_radar_run_once(
+        run_id=run["run_id"],
+        live_executor=_FakeExecutor(artifact),
+        session_factory=app.state.session_factory,
+    )
+
+    dossier = client.get(f"/api/radar-runs/{run['run_id']}/dossier").json()
+    assert dossier["summary"]["source_count"] == 0
+    assert dossier["summary"]["retrieved_source_count"] == 1
+    assert dossier["summary"]["diagnostic_source_count"] == 1
+    assert dossier["source_lifecycle_summary"]["by_state"] == {"retrieved": 1}
+    assert dossier["source_lifecycle"][0]["reason"] == "retrieved_not_extracted"
+
+
+def test_radar_run_dossier_marks_retrieved_sources_with_failed_evidence_linking(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    app = _app(tmp_path, database_url=database_url)
+    client = TestClient(app)
+    run = client.post("/api/radars/toir-quick-live/runs", json={"live": True, "requester": "test"}).json()
+    artifact = _artifact()
+    artifact["sources"] = []
+    artifact["candidates"] = []
+    artifact["run_metadata"]["execution_results"].update({
+        "used_source_count": 0,
+        "analyzed_source_count": 0,
+        "analyzed_sources": [],
+        "retrieved_sources": [
+            {"source_ref": "unresolved_src", "title": "Unresolved source", "url": "https://example.test/unresolved"}
+        ],
+        "extraction_validation_results": [
+            {"state": "evidence_linking_failed", "issues": [{"code": "evidence_linking_failed"}]},
+        ],
+    })
+
+    execute_radar_run_once(
+        run_id=run["run_id"],
+        live_executor=_FakeExecutor(artifact),
+        session_factory=app.state.session_factory,
+    )
+
+    dossier = client.get(f"/api/radar-runs/{run['run_id']}/dossier").json()
+    assert dossier["sources"] == []
+    assert dossier["summary"]["linking_failed_source_count"] == 1
+    assert dossier["source_lifecycle"][0]["state"] == "linking_failed"
+    assert dossier["source_lifecycle"][0]["reason"] == "evidence_linking_failed"
+
+
+def test_radar_run_dossier_marks_retrieved_sources_rejected_by_extraction_schema(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    app = _app(tmp_path, database_url=database_url)
+    client = TestClient(app)
+    run = client.post("/api/radars/toir-quick-live/runs", json={"live": True, "requester": "test"}).json()
+    artifact = _artifact()
+    artifact["sources"] = []
+    artifact["candidates"] = []
+    artifact["run_metadata"]["execution_results"].update({
+        "used_source_count": 0,
+        "analyzed_source_count": 0,
+        "analyzed_sources": [],
+        "retrieved_sources": [
+            {"source_ref": "schema_src", "title": "Schema rejected source", "url": "https://example.test/schema"}
+        ],
+        "extraction_validation_results": [
+            {"state": "extraction_schema_invalid", "issues": [{"code": "extraction_schema_invalid"}]},
+        ],
+    })
+
+    execute_radar_run_once(
+        run_id=run["run_id"],
+        live_executor=_FakeExecutor(artifact),
+        session_factory=app.state.session_factory,
+    )
+
+    dossier = client.get(f"/api/radar-runs/{run['run_id']}/dossier").json()
+    assert dossier["summary"]["schema_rejected_source_count"] == 1
+    assert dossier["source_lifecycle"][0]["state"] == "schema_rejected"
+    assert dossier["source_lifecycle"][0]["reason"] == "extraction_schema_invalid"
+
+
+def test_radar_run_dossier_preserves_verification_limited_source_reason(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    app = _app(tmp_path, database_url=database_url)
+    client = TestClient(app)
+    run = client.post("/api/radars/toir-quick-live/runs", json={"live": True, "requester": "test"}).json()
+    artifact = _artifact()
+    artifact["sources"] = []
+    artifact["candidates"] = []
+    artifact["run_metadata"]["execution_results"].update({
+        "used_source_count": 0,
+        "analyzed_source_count": 0,
+        "analyzed_sources": [],
+        "source_verification_results": [
+            {
+                "evidence_ref": "timeout_src",
+                "title": "Timeout source",
+                "url": "https://example.test/timeout",
+                "verification_state": "timeout",
+                "verification_mode": "soft",
+                "verification_reason": "request_timeout",
+            }
+        ],
+    })
+
+    execute_radar_run_once(
+        run_id=run["run_id"],
+        live_executor=_FakeExecutor(artifact),
+        session_factory=app.state.session_factory,
+    )
+
+    dossier = client.get(f"/api/radar-runs/{run['run_id']}/dossier").json()
+    assert dossier["source_lifecycle"][0]["state"] == "verification_failed"
+    assert dossier["source_lifecycle"][0]["reason"] == "timeout"
+    assert dossier["source_lifecycle"][0]["verification_state"] == "timeout"
+    assert dossier["source_lifecycle"][0]["verification_reason"] == "request_timeout"
 
 
 def test_post_radar_run_idempotency_does_not_enqueue_duplicate(tmp_path: Path) -> None:

@@ -343,7 +343,13 @@ class RadarRunDossierSummaryResponse(BaseModel):
     query_count: int = 0
     source_count: int = 0
     used_source_count: int = 0
+    retrieved_source_count: int = 0
+    linked_source_count: int = 0
+    linking_failed_source_count: int = 0
+    schema_rejected_source_count: int = 0
     analyzed_source_count: int = 0
+    analyzed_only_source_count: int = 0
+    diagnostic_source_count: int = 0
     skipped_source_count: int = 0
     candidate_count: int = 0
     validation_issue_count: int = 0

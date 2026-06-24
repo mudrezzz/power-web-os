@@ -744,7 +744,13 @@ export type LiveRadarRunDossier = {
     query_count: number;
     source_count: number;
     used_source_count: number;
+    retrieved_source_count?: number;
+    linked_source_count?: number;
+    linking_failed_source_count?: number;
+    schema_rejected_source_count?: number;
     analyzed_source_count: number;
+    analyzed_only_source_count?: number;
+    diagnostic_source_count?: number;
     skipped_source_count: number;
     candidate_count: number;
     validation_issue_count: number;

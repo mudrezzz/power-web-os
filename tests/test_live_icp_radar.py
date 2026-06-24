@@ -27,6 +27,7 @@ from power_web_os.application.live_radar_discovery_planning import (
     RadarDiscoveryPlanValidator,
     build_discovery_planning_input,
     discovery_plan_to_execution_plan,
+    product_sources_for_candidates,
 )
 from power_web_os.application.live_radar_plan_acceptance import RadarDiscoveryPlanAcceptanceService
 from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_task_to_search_plan
@@ -1412,6 +1413,51 @@ def test_product_output_hides_analyzed_but_unused_sources() -> None:
     execution_results = artifact["run_metadata"]["execution_results"]
     assert execution_results["analyzed_source_count"] == 1
     assert execution_results["analyzed_sources"][0]["evidence_ref"] == "unused_src"
+
+
+def test_product_sources_for_candidates_keeps_diagnostic_metadata_for_unused_sources() -> None:
+    sources = [
+        RadarSourceEvidence(
+            evidence_ref="used_src",
+            title="Used",
+            url="https://example.test/used",
+            snippet="Used evidence.",
+            query_id="q1",
+            verification_state="reachable",
+            verification_mode="soft",
+        ),
+        RadarSourceEvidence(
+            evidence_ref="unused_src",
+            title="Unused",
+            url="https://example.test/unused",
+            snippet="Unused evidence.",
+            query_id="q2",
+            verification_state="timeout",
+            verification_mode="soft",
+            verification_reason="request_timeout",
+            verification_status_code=504,
+        ),
+    ]
+
+    used, analyzed = product_sources_for_candidates(
+        sources=sources,
+        candidates=[{"evidence_refs": ["used_src"], "qualification": [], "signals": []}],
+    )
+
+    assert [source.evidence_ref for source in used] == ["used_src"]
+    assert analyzed == [
+        {
+            "evidence_ref": "unused_src",
+            "title": "Unused",
+            "url": "https://example.test/unused",
+            "query_id": "q2",
+            "reason": "not_used_by_candidate",
+            "verification_state": "timeout",
+            "verification_mode": "soft",
+            "verification_reason": "request_timeout",
+            "verification_status_code": 504,
+        }
+    ]
 
 
 def test_openrouter_discovery_planner_request_uses_planning_scope_only() -> None:

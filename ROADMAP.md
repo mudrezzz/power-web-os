@@ -4033,37 +4033,45 @@ Principles:
 
 ### Slice 0.7.6.1.11.9: Product projection repair for analyzed vs used sources
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Make source lifecycle honest in product and diagnostics projections when
   retrieval succeeds but evidence linking fails.
 - User value: A user can distinguish "no sources were found" from "sources were
   retrieved/analyzed but not linked to candidates", and a developer can see why
   sources did or did not reach the product evidence list.
 - Scope:
-  - Keep product candidate source lists evidence-bearing, but expose summarized
+  - Done: kept product candidate source lists evidence-bearing, but exposed summarized
     analyzed/retrieved/skipped counts in run dossier and diagnostics.
-  - Add source lifecycle categories: `retrieved`, `verified`, `parsed`,
+  - Done: added source lifecycle categories: `retrieved`, `verified`, `parsed`,
     `linked`, `used`, `analyzed_only`, `skipped`, `linking_failed`,
-    `schema_rejected`.
-  - Surface extraction/linking failure summaries when `sources_count=0` in the
+    `schema_rejected`, `verification_failed`, and `budget_limited`.
+  - Done: surfaced extraction/linking failure summaries when `sources_count=0` in the
     product output but analyzed sources exist.
-  - Add UI-safe projection fields without dumping raw provider payloads.
+  - Done: added UI-safe projection fields without dumping raw provider payloads:
+    retrieved, linked, linking-failed, schema-rejected, analyzed-only, and
+    diagnostic source counts.
+  - Done: frontend dossier/diagnostics labels and tones now support the richer
+    lifecycle states while keeping old artifact states compatible.
 - Out of scope:
   - Normalized evidence tables.
   - New retrieval providers.
   - Changing scoring logic.
 - Tests:
-  - Fixture with many analyzed sources and zero linked candidates produces an
+  - Done: fixture with analyzed sources and zero linked candidates produces an
     explicit linking/schema warning, not an apparently empty run.
-  - Product used-source list stays clean while diagnostics shows analyzed-only
+  - Done: product used-source list stays clean while diagnostics shows analyzed-only
     source lifecycle.
+  - Done: API fixtures cover retrieved-only sources, failed evidence linking,
+    schema-rejected retrieved sources, and verification-limited sources.
 - Docs:
-  - Document product evidence versus diagnostic source lifecycle.
+  - Done: documented product evidence versus diagnostic source lifecycle in
+    Developer Guide and demo README.
 - Demo impact:
   - Zero-candidate runs become interpretable without opening raw trace JSON.
 - Acceptance criteria:
   - A run with 37 analyzed sources and 0 linked candidates is displayed as an
     extraction/linking failure mode, not as "no sources".
+  - Product `sources` remains strict and evidence-bearing.
 
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 
@@ -4733,4 +4741,4 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11.9: Product projection repair for analyzed vs used sources`.
+Plan or implement `Slice 0.7.6.2: Multi-radar discovery benchmark`.

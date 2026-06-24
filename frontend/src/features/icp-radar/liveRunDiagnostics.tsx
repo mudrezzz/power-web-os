@@ -373,10 +373,13 @@ function candidateUniverseTone(status: string): 'ally' | 'blocker' | 'unsurfaced
 }
 
 function sourceLifecycleTone(state: string): 'ally' | 'blocker' | 'unsurfaced' | 'neutral' {
-  if (state === 'used_in_product') {
+  if (state === 'used' || state === 'used_in_product' || state === 'linked' || state === 'verified') {
     return 'ally';
   }
-  if (state === 'discarded') {
+  if (state === 'schema_rejected' || state === 'verification_failed') {
+    return 'blocker';
+  }
+  if (state === 'discarded' || state === 'analyzed_only' || state === 'skipped' || state === 'linking_failed' || state === 'budget_limited') {
     return 'unsurfaced';
   }
   return 'neutral';

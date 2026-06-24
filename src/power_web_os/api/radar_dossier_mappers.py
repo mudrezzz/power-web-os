@@ -9,8 +9,6 @@ from power_web_os.api.radar_dtos import (
     RadarRunDossierDefinitionResponse,
     RadarRunDossierQueryResponse,
     RadarRunDossierResponse,
-    RadarRunDossierSourceLifecycleItemResponse,
-    RadarRunDossierSourceLifecycleSummaryResponse,
     RadarRunDossierSourceResponse,
     RadarRunDossierSourceUsageResponse,
     RadarRunDossierSummaryResponse,
@@ -18,6 +16,8 @@ from power_web_os.api.radar_dtos import (
 from power_web_os.api.radar_dossier_summaries import budget_summary as _budget_summary
 from power_web_os.api.radar_dossier_summaries import coverage_summary as _coverage_summary
 from power_web_os.api.radar_mappers import journal_event_response
+from power_web_os.api.radar_source_lifecycle import source_lifecycle as _source_lifecycle
+from power_web_os.api.radar_source_lifecycle import source_lifecycle_summary as _source_lifecycle_summary
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarReviewDecisionRecord,
@@ -75,6 +75,7 @@ def dossier_response(
         execution_results=execution_results,
         source_usage_index=source_usage_index,
     )
+    source_lifecycle_summary = _source_lifecycle_summary(source_lifecycle)
     validation = _list(artifact.get("contract_validation")) or (output.contract_validation_payload if output is not None else [])
     timeline = [journal_event_response(event) for event in events if event.visibility != "debug"]
     used_source_count = sum(1 for item in source_responses if item.usage_status == "used")
@@ -114,7 +115,7 @@ def dossier_response(
         search_plan=queries,
         sources=source_responses,
         source_lifecycle=source_lifecycle,
-        source_lifecycle_summary=_source_lifecycle_summary(source_lifecycle),
+        source_lifecycle_summary=source_lifecycle_summary,
         validation=validation,
         timeline=timeline,
         summary=RadarRunDossierSummaryResponse(
@@ -122,7 +123,13 @@ def dossier_response(
             query_count=len(queries),
             source_count=len(source_responses),
             used_source_count=used_source_count,
+            retrieved_source_count=source_lifecycle_summary.by_state.get("retrieved", 0),
+            linked_source_count=source_lifecycle_summary.by_state.get("linked", 0) + source_lifecycle_summary.by_state.get("used", 0),
+            linking_failed_source_count=source_lifecycle_summary.by_state.get("linking_failed", 0),
+            schema_rejected_source_count=source_lifecycle_summary.by_state.get("schema_rejected", 0),
             analyzed_source_count=analyzed_source_count,
+            analyzed_only_source_count=source_lifecycle_summary.by_state.get("analyzed_only", 0),
+            diagnostic_source_count=source_lifecycle_summary.total_count,
             skipped_source_count=skipped_source_count,
             candidate_count=len(candidates),
             validation_issue_count=len(validation),
@@ -241,171 +248,6 @@ def _dossier_source_response(
         usage_status="used" if usages else "collected_not_used",
         usages=usages,
     )
-
-
-def _source_lifecycle(
-    *,
-    sources: list[dict[str, Any]],
-    execution_results: dict[str, Any],
-    source_usage_index: dict[str, list[RadarRunDossierSourceUsageResponse]],
-) -> list[RadarRunDossierSourceLifecycleItemResponse]:
-    items: dict[str, RadarRunDossierSourceLifecycleItemResponse] = {}
-    for source in sources:
-        evidence_ref = str(source.get("evidence_ref", "")).strip()
-        if not evidence_ref:
-            continue
-        usages = source_usage_index.get(evidence_ref, [])
-        reason = "used_by_candidate" if usages else "missing_evidence_ref"
-        state = "used_in_product" if usages else "parsed"
-        items[evidence_ref] = RadarRunDossierSourceLifecycleItemResponse(
-            evidence_ref=evidence_ref,
-            title=str(source.get("title", "")),
-            url=str(source.get("url", "")),
-            query_id=str(source.get("query_id")) if source.get("query_id") is not None else None,
-            source_type=str(source.get("source_type", "web")),
-            state=state,
-            reason=reason,
-            origin="product_sources",
-            verification_state=_optional_text(source.get("verification_state")),
-            verification_mode=_optional_text(source.get("verification_mode")),
-            verification_reason=_optional_text(source.get("verification_reason")),
-            verification_status_code=_optional_int(source.get("verification_status_code")),
-            usages=usages,
-        )
-
-    for analyzed in _list(execution_results.get("analyzed_sources")):
-        evidence_ref = str(analyzed.get("evidence_ref") or analyzed.get("source_ref") or analyzed.get("id") or "").strip()
-        if not evidence_ref or evidence_ref in items:
-            continue
-        reason = _source_lifecycle_reason(str(analyzed.get("reason") or analyzed.get("outcome") or "unknown"))
-        items[evidence_ref] = RadarRunDossierSourceLifecycleItemResponse(
-            evidence_ref=evidence_ref,
-            title=str(analyzed.get("title", "")),
-            url=str(analyzed.get("url", "")),
-            query_id=str(analyzed.get("query_id")) if analyzed.get("query_id") is not None else None,
-            source_type=str(analyzed.get("source_type", "web")),
-            state="discarded",
-            reason=reason,
-            origin="analyzed_sources",
-            verification_state=_optional_text(analyzed.get("verification_state")),
-            verification_mode=_optional_text(analyzed.get("verification_mode")),
-            verification_reason=_optional_text(analyzed.get("verification_reason")),
-            verification_status_code=_optional_int(analyzed.get("verification_status_code")),
-            usages=[],
-        )
-
-    for retrieved in _list(execution_results.get("retrieved_sources")):
-        evidence_ref = str(retrieved.get("source_ref") or retrieved.get("evidence_ref") or retrieved.get("id") or "").strip()
-        if not evidence_ref or evidence_ref in items:
-            continue
-        items[evidence_ref] = RadarRunDossierSourceLifecycleItemResponse(
-            evidence_ref=evidence_ref, title=str(retrieved.get("title", "")), url=str(retrieved.get("url", "")),
-            query_id=str(retrieved.get("query_id")) if retrieved.get("query_id") is not None else None,
-            source_type="web", state="retrieved", reason="retrieved_not_extracted", origin="retrieved_sources", usages=[],
-        )
-
-    for outcome in [*_list(execution_results.get("source_outcomes")), *_list(execution_results.get("source_provider_outcomes"))]:
-        evidence_ref = str(outcome.get("evidence_ref") or outcome.get("source_ref") or outcome.get("source_id") or outcome.get("id") or "").strip()
-        if not evidence_ref or evidence_ref in items:
-            continue
-        reason = _source_lifecycle_reason(str(outcome.get("outcome") or outcome.get("reason") or "unknown"))
-        items[evidence_ref] = RadarRunDossierSourceLifecycleItemResponse(
-            evidence_ref=evidence_ref,
-            title=str(outcome.get("title", "")),
-            url=str(outcome.get("url", "")),
-            query_id=str(outcome.get("query_id")) if outcome.get("query_id") is not None else None,
-            source_type=str(outcome.get("source_type", "web")),
-            state="discarded",
-            reason=reason,
-            origin="source_outcomes",
-            verification_state=_optional_text(outcome.get("verification_state")),
-            verification_mode=_optional_text(outcome.get("verification_mode")),
-            verification_reason=_optional_text(outcome.get("verification_reason")),
-            verification_status_code=_optional_int(outcome.get("verification_status_code")),
-            usages=[],
-        )
-
-    for verification in _list(execution_results.get("source_verification_results")):
-        evidence_ref = str(verification.get("evidence_ref") or verification.get("source_ref") or "").strip()
-        if not evidence_ref or evidence_ref in items:
-            continue
-        state = str(verification.get("verification_state") or "unverified_url")
-        items[evidence_ref] = RadarRunDossierSourceLifecycleItemResponse(
-            evidence_ref=evidence_ref,
-            title=str(verification.get("title", "")),
-            url=str(verification.get("url", "")),
-            query_id=str(verification.get("query_id")) if verification.get("query_id") is not None else None,
-            source_type=str(verification.get("source_type", "web")),
-            state="discarded",
-            reason=_source_lifecycle_reason(state),
-            origin="source_verification",
-            verification_state=state,
-            verification_mode=_optional_text(verification.get("verification_mode")),
-            verification_reason=_optional_text(verification.get("verification_reason")),
-            verification_status_code=_optional_int(verification.get("verification_status_code")),
-            usages=[],
-        )
-
-    return sorted(items.values(), key=lambda item: (item.state != "used_in_product", item.evidence_ref))
-
-
-def _source_lifecycle_summary(
-    items: list[RadarRunDossierSourceLifecycleItemResponse],
-) -> RadarRunDossierSourceLifecycleSummaryResponse:
-    by_state: dict[str, int] = {}
-    by_reason: dict[str, int] = {}
-    for item in items:
-        by_state[item.state] = by_state.get(item.state, 0) + 1
-        by_reason[item.reason] = by_reason.get(item.reason, 0) + 1
-    return RadarRunDossierSourceLifecycleSummaryResponse(
-        total_count=len(items),
-        by_state=by_state,
-        by_reason=by_reason,
-    )
-
-
-def _source_lifecycle_reason(value: str) -> str:
-    normalized = value.strip() or "unknown"
-    allowed = {
-        "used_by_candidate",
-        "not_used_by_candidate",
-        "unreachable",
-        "blocked",
-        "timeout",
-        "unverified_url",
-        "not_checked",
-        "verification_limited",
-        "provider_empty",
-        "provider_empty_or_verification_limited",
-        "budget_limited",
-        "evidence_linking_limited",
-        "invalid_url",
-        "missing_evidence_ref",
-        "policy_skipped",
-        "duplicate",
-        "irrelevant",
-        "insufficient_evidence",
-        "provider_metadata_only",
-        "provider_recorded_empty",
-        "provider_unavailable",
-        "retrieved_not_extracted",
-        "unknown",
-    }
-    return normalized if normalized in allowed else "unknown"
-
-
-def _optional_text(value: object) -> str | None:
-    if value is None:
-        return None
-    text = str(value).strip()
-    return text or None
-
-
-def _optional_int(value: object) -> int | None:
-    try:
-        return int(value) if value is not None else None
-    except (TypeError, ValueError):
-        return None
 
 
 def _source_usage_index(candidates: list[dict[str, Any]]) -> dict[str, list[RadarRunDossierSourceUsageResponse]]:

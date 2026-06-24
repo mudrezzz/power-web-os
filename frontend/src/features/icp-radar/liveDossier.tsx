@@ -293,9 +293,9 @@ export function LiveRunDossierPanel({
         <h3>{t('icpRadar.live.dossier.sourceLifecycle')}</h3>
         <div className="run-dossier-grid">
           <DossierMetric label={t('icpRadar.live.dossier.lifecycleTotal')} value={dossier.source_lifecycle_summary.total_count} />
-          <DossierMetric label={t('icpRadar.live.dossier.lifecycleUsed')} value={dossier.source_lifecycle_summary.by_state.used_in_product ?? 0} />
-          <DossierMetric label={t('icpRadar.live.dossier.lifecycleDiscarded')} value={dossier.source_lifecycle_summary.by_state.discarded ?? 0} />
-          <DossierMetric label={t('icpRadar.live.dossier.lifecycleUnlinked')} value={dossier.source_lifecycle_summary.by_reason.not_used_by_candidate ?? 0} />
+          <DossierMetric label={t('icpRadar.live.dossier.lifecycleUsed')} value={lifecycleUsedCount(dossier.source_lifecycle_summary.by_state)} />
+          <DossierMetric label={t('icpRadar.live.dossier.lifecycleDiscarded')} value={lifecycleIssueCount(dossier.source_lifecycle_summary.by_state)} />
+          <DossierMetric label={t('icpRadar.live.dossier.lifecycleUnlinked')} value={lifecycleUnlinkedCount(dossier.source_lifecycle_summary.by_state, dossier.source_lifecycle_summary.by_reason)} />
         </div>
         {dossier.source_lifecycle.length > 0 ? (
           <div className="run-dossier-source-list">
@@ -521,13 +521,36 @@ function candidateUniverseTone(status: string): 'ally' | 'blocker' | 'unsurfaced
 }
 
 function sourceLifecycleTone(state: string): 'ally' | 'blocker' | 'unsurfaced' | 'neutral' {
-  if (state === 'used_in_product') {
+  if (state === 'used' || state === 'used_in_product' || state === 'linked' || state === 'verified') {
     return 'ally';
   }
-  if (state === 'discarded') {
+  if (state === 'schema_rejected' || state === 'verification_failed') {
+    return 'blocker';
+  }
+  if (state === 'discarded' || state === 'analyzed_only' || state === 'skipped' || state === 'linking_failed' || state === 'budget_limited') {
     return 'unsurfaced';
   }
   return 'neutral';
+}
+
+function lifecycleUsedCount(byState: Record<string, number>): number {
+  return (byState.used ?? 0) + (byState.used_in_product ?? 0);
+}
+
+function lifecycleIssueCount(byState: Record<string, number>): number {
+  return (
+    (byState.discarded ?? 0)
+    + (byState.analyzed_only ?? 0)
+    + (byState.skipped ?? 0)
+    + (byState.linking_failed ?? 0)
+    + (byState.schema_rejected ?? 0)
+    + (byState.verification_failed ?? 0)
+    + (byState.budget_limited ?? 0)
+  );
+}
+
+function lifecycleUnlinkedCount(byState: Record<string, number>, byReason: Record<string, number>): number {
+  return (byState.linking_failed ?? 0) + (byReason.not_used_by_candidate ?? 0);
 }
 
 function sourceVerificationTone(state: string): 'ally' | 'blocker' | 'unsurfaced' | 'neutral' {

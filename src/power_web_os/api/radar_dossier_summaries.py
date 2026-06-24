@@ -15,22 +15,25 @@ def coverage_summary(discovery_plan: dict[str, Any], execution_results: dict[str
     unresolved_candidate_gaps = _list(execution_results.get("unresolved_candidate_gaps"))
     entity_resolution_results = _list(execution_results.get("entity_resolution_results"))
     linked_entity_facts = _list(execution_results.get("linked_entity_facts"))
+    analyzed_source_reasons = [
+        str(item.get("reason"))
+        for item in analyzed_sources
+        if str(item.get("reason", "")).strip()
+    ]
     return {
         "hypotheses": hypotheses,
         "warnings": [*warnings, *coverage_warnings],
         "analyzed_source_count": _int(execution_results.get("analyzed_source_count"), default=len(analyzed_sources)),
         "used_source_count": _int(execution_results.get("used_source_count"), default=0),
+        "retrieved_source_count": len(_list(execution_results.get("retrieved_sources"))),
         "rejected_candidate_count": len(rejected_candidates),
         "coverage_check_count": len(coverage_checks),
         "unresolved_candidate_gap_count": len(unresolved_candidate_gaps),
         "entity_resolution_count": len(entity_resolution_results),
         "linked_entity_fact_count": len(linked_entity_facts),
         "discovery_iteration_count": _int(execution_results.get("discovery_iteration_count"), default=0),
-        "analyzed_source_reasons": sorted({
-            str(item.get("reason"))
-            for item in analyzed_sources
-            if str(item.get("reason", "")).strip()
-        }),
+        "analyzed_source_reasons": sorted(set(analyzed_source_reasons)),
+        "analyzed_source_reason_buckets": _reason_buckets(analyzed_source_reasons),
     }
 
 
@@ -65,3 +68,10 @@ def _dict(value: object) -> dict[str, Any]:
 
 def _int(value: object, *, default: int) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) else default
+
+
+def _reason_buckets(reasons: list[str]) -> dict[str, int]:
+    buckets: dict[str, int] = {}
+    for reason in reasons:
+        buckets[reason] = buckets.get(reason, 0) + 1
+    return buckets
