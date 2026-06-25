@@ -271,5 +271,6 @@ Use these skills when available:
 - `$deploy-remote-dev` for uploading or rebuilding the configured remote Docker dev stack without exposing `.env` secrets.
 - `$radar-run-diagnostics` when the user provides a Radar run id and asks what happened, why results look wrong, whether the behavior matches the roadmap, or what corrective slice should come next.
 - `$radar-run-self-test` when the user asks Codex to start a Radar run itself, poll it to completion or timeout, and then diagnose the result without making the user act as the tester.
+- `$radar-run-autofix` when the user asks Codex to run Radar, diagnose the result, compare it with `ROADMAP.md`, and automatically patch non-architectural defects in a bounded correction loop before rerunning.
 
 Do not duplicate full skill workflows here. The `SKILL.md` files are the source of truth for task-specific procedures.
