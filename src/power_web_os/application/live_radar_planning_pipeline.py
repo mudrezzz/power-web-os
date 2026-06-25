@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from power_web_os.application.connector_profiles import ConnectorProfileRegistry
 from power_web_os.application.live_radar_contracts import (
     LiveICPRadarRunState,
     LiveRadarPipelineEvent,
@@ -25,6 +26,7 @@ def build_planned_state(
     *,
     state: LiveICPRadarRunState,
     planner: RadarDiscoveryPlanner,
+    connector_profile_registry: ConnectorProfileRegistry | None = None,
 ) -> LiveICPRadarRunState:
     trace_pipeline_step(
         state, "planning", "build_search_plan", "pipeline_input", "Build search plan input",
@@ -36,6 +38,7 @@ def build_planned_state(
         task_context=state.task_context,
         live=state.live,
         provider_metadata=state.provider_metadata,
+        connector_profile_registry=connector_profile_registry,
     )
     trace_pipeline_step(
         state, "planning", "discovery_planner", "pipeline_input", "Discovery planner input",

@@ -26,6 +26,7 @@ from power_web_os.application.live_radar_source_cards import (
     source_use_for_step,
     validate_source_capability_uses,
 )
+from power_web_os.application.live_radar_candidate_refs import candidate_source_refs as _candidate_source_refs
 from power_web_os.application.radar_source_obligations import (
     source_obligations_for_policy,
     source_usage_obligation,
@@ -162,6 +163,17 @@ class RadarDiscoveryPlanValidator:
         corrections: list[dict[str, Any]] = []
         rule_ids = {_rule_id(rule, fallback=f"Q{index + 1}") for index, rule in enumerate(planning_input.qualification_rules)}
         global_source_ids = global_source_ids_for_policy(planning_input.global_search_policy)
+        source_card_ids = {card.source_id for card in planning_input.source_cards}
+
+        if global_source_ids and not planning_input.source_cards:
+            warnings.append("Configured global sources did not resolve to connector capability cards.")
+        missing_source_cards = sorted(source_id for source_id in global_source_ids if source_id not in source_card_ids)
+        if missing_source_cards:
+            warnings.append(
+                "Configured global sources missing connector capability cards: "
+                + ", ".join(missing_source_cards)
+                + "."
+            )
 
         if not plan.steps:
             errors.append("Discovery plan must contain at least one step.")
@@ -471,20 +483,6 @@ def rule_id(rule: dict[str, Any], *, fallback: str) -> str:
 
 def global_source_ids(global_policy: dict[str, Any]) -> list[str]:
     return global_source_ids_for_policy(global_policy)
-
-
-def _candidate_source_refs(candidates: list[dict[str, Any]]) -> set[str]:
-    refs: set[str] = set()
-    for candidate in candidates:
-        refs.update(str(ref) for ref in candidate.get("evidence_refs", []) if isinstance(ref, str))
-        for section_name in ("qualification", "signals"):
-            for item in candidate.get(section_name, []):
-                if not isinstance(item, dict):
-                    continue
-                refs.update(str(ref) for ref in item.get("evidence_refs", []) if isinstance(ref, str))
-                refs.update(str(usage.get("source_ref", "")) for usage in item.get("source_usages", []) if isinstance(usage, dict))
-                refs.update(str(finding.get("source_ref", "")) for finding in item.get("evidence_findings", []) if isinstance(finding, dict))
-    return {ref for ref in refs if ref}
 
 
 def _rule_id(rule: dict[str, Any], *, fallback: str) -> str:

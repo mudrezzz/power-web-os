@@ -271,6 +271,15 @@ that use. In the dossier, inspect `source_cards`,
 `source_capability_decisions`, and `source_capability_validation` to see why a
 source choice was accepted or rejected before any provider call.
 
+After `0.7.6.1.11.9.3.1`, those source cards must also be present in the live
+planner path. A smoke RCA should no longer show `source_cards=[]`. If the
+planner or a fallback plan references a lookup-only registry source with a
+placeholder scope such as `Кандидаты из шага 1`, DaData is not called; the
+dossier/trace records `registry_lookup_insufficient` or
+`not_executed_input_not_available`. DaData budget should be spent only after
+concrete company terms exist, while the OpenRouter budget should count planner
+and web-task HTTP calls in the same run total.
+
 Live Radar also resolves entity type before scoring. The shortlist is an account
 shortlist, so normal candidates are legal entities. Production sites, projects,
 installations, and assets found during discovery are linked to a resolved legal

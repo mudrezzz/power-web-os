@@ -543,6 +543,36 @@ def test_source_registry_wrapper_injects_structured_dadata_observations_before_w
     assert "full Radar definition" not in json.dumps(prompt, ensure_ascii=False)
 
 
+def test_source_registry_skips_dadata_for_placeholder_candidate_scope() -> None:
+    radar = active_definition_to_live_radar_payload(_toir_quick_live_definition_record())
+    task = RadarExecutionTask(
+        task_id="identity-placeholder",
+        stage="qualification_gate",
+        subject_type="qualification",
+        subject_id="q1-sibur-group",
+        rule_snapshot="Confirm holding membership.",
+        query="Проверить принадлежность компании к группе СИБУР. Candidate scope: Кандидаты из шага 1",
+        purpose="Confirm placeholder candidate scope.",
+        source_ids=["dadata_registry"],
+        candidate_scope=["Кандидаты из шага 1"],
+    )
+    dadata = RecordedDaDataCompanyRegistryProvider(fixtures=[{
+        "source_ref": "dadata_should_not_be_used",
+        "legal_name": "АО «Сибуртюменьгаз»",
+    }])
+    wrapped = SourceRegistryWebSearchProvider(
+        RecordedWebSearchProvider(WebSearchProviderResult()),
+        RadarSourceRegistry(company_registry_providers={"dadata": dadata}),
+    )
+
+    result = wrapped.run_search_plan(radar=radar, search_plan=execution_task_to_search_plan(task, radar_id="toir"))
+
+    assert dadata.requests == []
+    outcomes = result.provider_metadata["source_provider_outcomes"]
+    assert outcomes[0]["source_id"] == "dadata_registry"
+    assert outcomes[0]["outcome"] == "registry_lookup_insufficient"
+
+
 def test_source_registry_wrapper_does_not_use_dadata_for_signal_search() -> None:
     radar = {
         "radar_id": "generic-radar",
@@ -1014,6 +1044,90 @@ def test_live_radar_service_persists_planner_and_web_openrouter_budget_counters(
     assert counters["openrouter:run"] == counters["openrouter_planner:run"] + counters["openrouter_web_task:run"]
     assert counters["openrouter_planner:run"] >= 1
     assert execution_results["external_call_budget_counters"]["openrouter_web_task:run"] == 1
+
+
+def test_live_radar_service_wires_connector_source_cards_into_planner() -> None:
+    class CapturingPlanner:
+        runtime_name = "capturing-planner"
+
+        def __init__(self) -> None:
+            self.inputs = []
+
+        def propose_plan(self, *, planning_input, previous_validation=None):
+            _ = previous_validation
+            self.inputs.append(planning_input)
+            return RadarDiscoveryPlan(
+                plan_summary="Capability-aware plan.",
+                criterion_role_decisions=[],
+                steps=[
+                    RadarDiscoveryPlanStep(
+                        step_id="coverage-openrouter",
+                        stage="coverage_check",
+                        subject_rule_ids=["q1-sibur-group"],
+                        source_scope="global",
+                        source_ids=["openrouter_web"],
+                        query="СИБУР ТОиР",
+                        purpose="Check coverage.",
+                        expected_evidence=["coverage"],
+                    ),
+                    RadarDiscoveryPlanStep(
+                        step_id="identity-dadata",
+                        stage="qualification_gate",
+                        subject_rule_ids=["q1-sibur-group"],
+                        source_scope="global",
+                        source_ids=["dadata_registry", "sibur_site"],
+                        query="АО «Сибуртюменьгаз»",
+                        purpose="Confirm identity.",
+                        expected_evidence=["identity"],
+                        depends_on=["coverage-openrouter"],
+                        candidate_scope=["АО «Сибуртюменьгаз»"],
+                    ),
+                ],
+                source_policy_decisions=[
+                    RadarDiscoverySourcePolicyDecision(
+                        source_id="dadata_registry",
+                        source_label="DaData company registry",
+                        decision="selected",
+                        reason="Required identity source.",
+                        rule_ids=["q1-sibur-group"],
+                        usage_obligation="required_for_identity",
+                    ),
+                    RadarDiscoverySourcePolicyDecision(
+                        source_id="openrouter_web",
+                        source_label="OpenRouter web search",
+                        decision="selected",
+                        reason="Required coverage source.",
+                        rule_ids=["q1-sibur-group"],
+                        usage_obligation="required_for_coverage",
+                    ),
+                    RadarDiscoverySourcePolicyDecision(
+                        source_id="sibur_site",
+                        source_label="Сайт СИБУР",
+                        decision="selected",
+                        reason="Preferred official source.",
+                        rule_ids=["q1-sibur-group"],
+                        usage_obligation="preferred",
+                    ),
+                ],
+            )
+
+    planner = CapturingPlanner()
+    radar = active_definition_to_live_radar_payload(_toir_quick_live_definition_record())
+    service = LiveRadarRunService(
+        RecordedWebSearchProvider(WebSearchProviderResult()),
+        discovery_planner=planner,
+        source_registry=RadarSourceRegistry(company_registry_providers={}),
+    )
+
+    planned = service.build_search_plan(LiveICPRadarRunState(radar=radar, live=False))
+
+    source_cards = {card.source_id: card for card in planner.inputs[0].source_cards}
+    assert {"dadata_registry", "openrouter_web", "sibur_site"} <= set(source_cards)
+    assert source_cards["dadata_registry"].requires_concrete_input
+    assert not source_cards["dadata_registry"].supports_broad_discovery
+    metadata = planned.discovery_plan["acceptance_metadata"]
+    assert {item["source_id"] for item in metadata["source_cards"]} >= {"dadata_registry", "openrouter_web", "sibur_site"}
+    assert metadata["source_capability_validation"]["decision_count"] > 0
 
 
 def test_discovery_planning_input_and_validator_apply_source_policy() -> None:

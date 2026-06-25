@@ -57,6 +57,7 @@ class LiveRadarRunService:
         discovery_planner: RadarDiscoveryPlanner | None = None,
         source_registry: RadarSourceRegistry | None = None,
     ) -> None:
+        self._source_registry = source_registry
         self._provider = SourceRegistryWebSearchProvider(provider, source_registry) if source_registry is not None else provider
         self._discovery_planner = discovery_planner or DeterministicRadarDiscoveryPlanner()
 
@@ -87,7 +88,13 @@ class LiveRadarRunService:
         )
 
     def build_search_plan(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
-        return build_planned_state(state=state, planner=self._discovery_planner)
+        return build_planned_state(
+            state=state,
+            planner=self._discovery_planner,
+            connector_profile_registry=(
+                self._source_registry.connector_profile_registry if self._source_registry is not None else None
+            ),
+        )
 
     def run_web_search(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
         radar = state.radar or build_live_mini_radar_definition()

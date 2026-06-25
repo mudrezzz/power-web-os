@@ -4185,7 +4185,7 @@ Principles:
 
 ### Slice 0.7.6.1.11.9.3: Planner source cards and capability-based source validation
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Make the LLM planner and backend validator use compiled connector
   capability cards so source selection stays flexible but policy-safe.
 - User value: The planner can choose sources intelligently, and backend can
@@ -4235,6 +4235,54 @@ Principles:
     decisions, and capability validation summaries without credentials or raw
     provider payloads.
 
+### Slice 0.7.6.1.11.9.3.1: Wire connector capability cards into live planner and execution guards
+
+- Status: `Done`
+- Goal: Repair the live-path wiring gap found by smoke RCA: source cards were
+  implemented, but queued live runs still gave the planner `source_cards=[]`,
+  and lookup-only registry calls could spend DaData budget on placeholder input
+  such as `Кандидаты из шага 1`.
+- User value: A smoke run can now prove whether connector capability cards are
+  actually active in the live planner path, and DaData budget is reserved for
+  concrete company lookup rather than broad discovery placeholders.
+- Scope:
+  - Done: pass the `ConnectorProfileRegistry` from `RadarSourceRegistry` into
+    live discovery planning through `LiveRadarRunService`.
+  - Done: keep source cards and capability validation metadata in accepted plan,
+    dossier, and trace projections for live runs.
+  - Done: treat synthetic candidate scopes such as `Кандидаты из шага 1` and
+    `candidates from step` as non-concrete input for lookup-only registry
+    sources.
+  - Done: keep concrete legal names, INN, and OGRN eligible for DaData/company
+    registry lookup.
+  - Done: add fast regression tests for live service source-card wiring and
+    placeholder DaData skip behavior.
+- Out of scope:
+  - New connector/provider adapters.
+  - UI source editor changes.
+  - Scoring changes or benchmark quality claims.
+  - Running the long multi-radar benchmark.
+- Tests:
+  - Live service test proving TOIR active definition compiles non-empty source
+    cards for `dadata_registry`, `openrouter_web`, and `sibur_site`.
+  - Source registry test proving placeholder candidate scope records
+    `registry_lookup_insufficient` without calling DaData.
+  - Existing OpenRouter external-budget test proving planner and web-task calls
+    share the total `openrouter:run` counter.
+- Docs:
+  - Developer Guide and demo docs explain the expected smoke evidence: non-empty
+    source cards, DaData only for concrete input, and planner/web counters in
+    the external budget summary.
+  - Connector-profile ADR records that source cards are mandatory live planner
+    input, not test-only metadata.
+- Acceptance criteria:
+  - A live smoke trace must no longer show `source_cards=[]` in planner input.
+  - DaData must not be called with `Кандидаты из шага 1` or equivalent
+    placeholder candidate-scope text.
+  - DaData may still be called for concrete company names when budget allows.
+  - Benchmark remains deferred until a bounded smoke self-test confirms this
+    corrective wiring in the Docker/API/worker path.
+
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 
 - Status: `Backlog`
@@ -4268,7 +4316,7 @@ Principles:
   - Run this only after `Slice 0.7.6.1.7.2`, `Slice 0.7.6.1.7.3`,
     `Slice 0.7.6.1.7.4`, `Slice 0.7.6.1.8`, `Slice 0.7.6.1.9`,
     `Slice 0.7.6.1.10`, `Slice 0.7.6.1.11`, and the TDD/preflight repair
-    slices `0.7.6.1.11.1` through `0.7.6.1.11.9.3`, so the benchmark tests a
+    slices `0.7.6.1.11.1` through `0.7.6.1.11.9.3.1`, so the benchmark tests a
     source-verification-aware, observable, compact-prompt,
     structured-source-capable retrieval/extraction pipeline with explicit
     connector capabilities rather than an opaque web-search prompt path.
@@ -4903,4 +4951,7 @@ None.
 
 ## Next Recommended Task
 
-Plan or implement `Slice 0.7.6.1.11.9.2: Connector profile registry and capability compiler`.
+Run a bounded smoke self-test for `TOIR Quick Live Radar` with live DaData and
+`openrouter_perplexity`; if source-card wiring, DaData concrete-input guards,
+and external-call counters are clean, plan `Slice 0.7.6.2: Multi-radar discovery
+benchmark`.

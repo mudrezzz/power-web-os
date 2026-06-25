@@ -54,6 +54,12 @@ kinds, and rationale. The validator checks those records against the compiled
 source card. This keeps provider-specific behavior out of the planner and out
 of hardcoded executor branches.
 
+Source cards are mandatory live planner input. An empty `source_cards` array
+for a Radar definition that has configured sources is a wiring defect, not an
+acceptable degraded mode. Live planning, dossier metadata, and technical trace
+must preserve the source cards and capability validation decisions so smoke
+diagnostics can prove that connector capabilities are actually active.
+
 ## Consequences
 
 - DaData-specific behavior must not be hardcoded in planner or executor logic.
@@ -66,6 +72,9 @@ of hardcoded executor branches.
   live runs.
 - Planner source-card validation prevents invalid source use before provider
   calls spend live budget.
+- Smoke diagnostics must show non-empty source cards for configured sources and
+  must show lookup-only sources skipped when only placeholder or broad input is
+  available.
 - Future connector/plugin authors can provide source descriptions without
   learning the Power Web OS execution pipeline.
 

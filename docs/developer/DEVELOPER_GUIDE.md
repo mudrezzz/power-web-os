@@ -386,6 +386,14 @@ candidate names exist; it is rejected for broad universe enumeration. A
 registry/enrichment-only source is rejected as intent-signal evidence unless
 its connector profile explicitly supports signal evidence.
 
+Source cards are mandatory for live Radar planning, not just recorded tests.
+If a configured source cannot be resolved into a source card, preflight and
+planning should surface that as a warning or error instead of silently sending
+`source_cards=[]` to the planner. A valid smoke run should show non-empty
+`source_cards`, capability validation decisions, DaData skipped for placeholder
+candidate scopes such as `Кандидаты из шага 1`, and OpenRouter planner/web-task
+calls counted together in the external-call budget.
+
 Default queue settings:
 
 ```text

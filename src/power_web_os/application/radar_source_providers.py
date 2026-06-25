@@ -26,6 +26,12 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProviderResult,
 )
 from power_web_os.application.live_radar_universe import merge_provider_metadata
+from power_web_os.application.radar_lookup_terms import (
+    concrete_candidate_scope_terms as _concrete_candidate_scope_terms,
+    is_concrete_lookup_term as _safe_is_concrete_lookup_term,
+    looks_like_broad_discovery as _safe_looks_like_broad_discovery,
+    lookup_terms_from_text as _safe_lookup_terms_from_text,
+)
 
 RadarProviderType = Literal["company_registry"]
 
@@ -106,6 +112,11 @@ class RadarSourceRegistry:
     ) -> None:
         self._company_registry_providers = company_registry_providers or {}
         self._connector_profile_registry = connector_profile_registry or default_connector_profile_registry()
+
+    @property
+    def connector_profile_registry(self) -> ConnectorProfileRegistry:
+        """Expose compiled connector capabilities to planner wiring."""
+        return self._connector_profile_registry
 
     def lookup_for_task(self, *, radar: dict[str, Any], task: RadarExecutionTask) -> WebSearchProviderResult:
         if task.stage == "signal_search":
@@ -245,7 +256,8 @@ def _provider_id(source: dict[str, Any]) -> str:
 
 
 def _lookup_request(*, radar: dict[str, Any], task: RadarExecutionTask, source: dict[str, Any]) -> CompanyLookupRequest:
-    terms = [*task.candidate_scope, *_safe_lookup_terms_from_text(task.query)]
+    concrete_scope = _concrete_candidate_scope_terms(task.candidate_scope)
+    terms = [*concrete_scope, *_safe_lookup_terms_from_text(task.query)]
     terms.extend(str(item) for item in source.get("keywords", []) if isinstance(item, str))
     return CompanyLookupRequest(
         radar_id=str(radar.get("radar_id") or ""),
@@ -257,12 +269,14 @@ def _lookup_request(*, radar: dict[str, Any], task: RadarExecutionTask, source: 
         source_label=str(source.get("label") or source.get("source_id") or "Company registry"),
         source_reference=str(source.get("reference") or ""),
         lookup_terms=[item for item in _dedupe_text(terms) if item],
-        candidate_scope=list(task.candidate_scope),
+        candidate_scope=concrete_scope,
     )
 
 
 def _safe_lookup_is_too_broad(task: RadarExecutionTask, *, request: CompanyLookupRequest | None = None) -> bool:
-    if task.candidate_scope:
+    if request is not None and request.candidate_scope:
+        return False
+    if _concrete_candidate_scope_terms(task.candidate_scope):
         return False
     terms = list(request.lookup_terms) if request is not None else _safe_lookup_terms_from_text(task.query)
     if any(_safe_is_concrete_lookup_term(term) for term in terms):
@@ -290,52 +304,6 @@ def _safe_capability_payload(capability: ConnectorCapabilityCard) -> dict[str, A
     payload.pop("credential_env_vars", None)
     payload["credential_count"] = len(capability.credential_env_vars)
     return payload
-
-
-def _safe_lookup_terms_from_text(text: str) -> list[str]:
-    normalized = " ".join(str(text).split())
-    if not normalized:
-        return []
-    identifiers = re.findall(r"\b\d{10}\b|\b\d{13}\b|\b\d{15}\b", normalized)
-    quoted = re.findall(r"[\"«]([^\"»]{3,120})[\"»]", normalized)
-    legal_patterns = re.findall(
-        r"\b(?:АО|ПАО|ОАО|ЗАО|ООО|НАО|JSC|PJSC|LLC)\s+[\"«]?[A-Za-zА-Яа-яЁё0-9 .,\-]{3,90}",
-        normalized,
-        flags=re.IGNORECASE,
-    )
-    terms = [*identifiers, *quoted, *legal_patterns]
-    if _safe_is_concrete_lookup_term(normalized):
-        terms.append(normalized)
-    return _dedupe_text(terms)
-
-
-def _safe_is_concrete_lookup_term(term: str) -> bool:
-    value = " ".join(str(term).split())
-    if re.fullmatch(r"\d{10}|\d{13}|\d{15}", value):
-        return True
-    if re.search(r"\b(АО|ПАО|ОАО|ЗАО|ООО|НАО|JSC|PJSC|LLC)\b", value, flags=re.IGNORECASE):
-        return True
-    return 3 <= len(value) <= 90 and not _safe_looks_like_broad_discovery(value)
-
-
-def _safe_looks_like_broad_discovery(text: str) -> bool:
-    lowered = str(text).lower()
-    return any(marker in lowered for marker in (
-        "find ",
-        "all ",
-        "candidate universe",
-        "holding",
-        "contour",
-        "universe",
-        "найд",
-        "все ",
-        "контур",
-        "периметр",
-        "холдинг",
-        "групп",
-        "юр лиц",
-        "юридическ",
-    ))
 
 
 def _source_evidence_from_observations(
