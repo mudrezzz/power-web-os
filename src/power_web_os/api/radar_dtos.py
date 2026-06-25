@@ -354,6 +354,12 @@ class RadarRunDossierSummaryResponse(BaseModel):
     diagnostic_source_count: int = 0
     skipped_source_count: int = 0
     candidate_count: int = 0
+    smoke_candidate_cap: int | None = None
+    promoted_candidate_count: int = 0
+    diagnostic_candidate_count: int = 0
+    source_cards_count: int = 0
+    source_capability_decision_count: int = 0
+    connector_profile_loaded_count: int = 0
     validation_issue_count: int = 0
     review_flag_count: int = 0
     coverage_warning_count: int = 0

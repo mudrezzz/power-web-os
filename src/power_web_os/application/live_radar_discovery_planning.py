@@ -15,7 +15,6 @@ from power_web_os.application.live_radar_contracts import (
     RadarDiscoverySourcePolicyDecision,
     RadarExecutionPlan,
     RadarExecutionTask,
-    RadarSourceEvidence,
 )
 from power_web_os.application.connector_profiles import ConnectorProfileRegistry
 from power_web_os.application.live_radar_source_cards import (
@@ -26,7 +25,6 @@ from power_web_os.application.live_radar_source_cards import (
     source_use_for_step,
     validate_source_capability_uses,
 )
-from power_web_os.application.live_radar_candidate_refs import candidate_source_refs as _candidate_source_refs
 from power_web_os.application.radar_source_obligations import (
     source_obligations_for_policy,
     source_usage_obligation,
@@ -166,14 +164,16 @@ class RadarDiscoveryPlanValidator:
         source_card_ids = {card.source_id for card in planning_input.source_cards}
 
         if global_source_ids and not planning_input.source_cards:
-            warnings.append("Configured global sources did not resolve to connector capability cards.")
+            message = "Configured global sources did not resolve to connector capability cards."
+            (errors if _source_cards_required(planning_input) else warnings).append(message)
         missing_source_cards = sorted(source_id for source_id in global_source_ids if source_id not in source_card_ids)
         if missing_source_cards:
-            warnings.append(
+            message = (
                 "Configured global sources missing connector capability cards: "
                 + ", ".join(missing_source_cards)
                 + "."
             )
+            (errors if _source_cards_required(planning_input) else warnings).append(message)
 
         if not plan.steps:
             errors.append("Discovery plan must contain at least one step.")
@@ -276,6 +276,24 @@ def build_discovery_planning_input(
     )
 
 
+def _source_cards_required(planning_input: RadarDiscoveryPlanningInput) -> bool:
+    """Require connector cards when runtime configured profile-aware sources.
+
+    Legacy unit fixtures can still exercise old source-policy behavior without
+    profiles, but live/smoke runs with explicit connector_profile_id must not
+    silently degrade to source_id-only planning.
+    """
+
+    run_profile = str(planning_input.task_context.get("run_profile") or "").strip().lower()
+    if run_profile in {"smoke", "live"}:
+        return True
+    return any(
+        bool(str(source.get("connector_profile_id") or "").strip())
+        for source in planning_input.global_search_policy.get("sources", [])
+        if isinstance(source, dict)
+    )
+
+
 def discovery_plan_to_execution_plan(*, radar: dict[str, Any], plan: RadarDiscoveryPlan) -> RadarExecutionPlan:
     radar_id = str(radar.get("radar_id") or "radar")
     tasks: list[RadarExecutionTask] = []
@@ -330,31 +348,6 @@ def discovery_plan_to_execution_plan(*, radar: dict[str, Any], plan: RadarDiscov
             depends_on=[previous_qualification_task_id] if previous_qualification_task_id else [],
         ))
     return RadarExecutionPlan(radar_id=radar_id, tasks=tasks)
-
-
-def product_sources_for_candidates(
-    *,
-    sources: list[RadarSourceEvidence],
-    candidates: list[dict[str, Any]],
-) -> tuple[list[RadarSourceEvidence], list[dict[str, Any]]]:
-    used_refs = _candidate_source_refs(candidates)
-    used = [source for source in sources if source.evidence_ref in used_refs]
-    analyzed = [
-        {
-            "evidence_ref": source.evidence_ref,
-            "title": source.title,
-            "url": source.url,
-            "query_id": source.query_id,
-            "reason": "not_used_by_candidate",
-            "verification_state": source.verification_state,
-            "verification_mode": source.verification_mode,
-            "verification_reason": source.verification_reason,
-            "verification_status_code": source.verification_status_code,
-        }
-        for source in sources
-        if source.evidence_ref not in used_refs
-    ]
-    return used, analyzed
 
 
 def _qualification_rules(radar: dict[str, Any]) -> list[dict[str, Any]]:

@@ -4283,6 +4283,178 @@ Principles:
   - Benchmark remains deferred until a bounded smoke self-test confirms this
     corrective wiring in the Docker/API/worker path.
 
+### Slice 0.7.6.1.11.9.3.2: Containerized connector profile parity and smoke output hardening
+
+- Status: `Done`
+- Goal: Make Docker/API/worker smoke behavior match local preflight/tests by
+  packaging connector profiles into the backend image and hardening smoke output
+  so it cannot look like a clean successful benchmark when policy/checkpoint
+  diagnostics are blocking.
+- User value: A TOIR smoke run is now a trustworthy acceptance gate before the
+  benchmark: connector source cards are available in the container, planner
+  input cannot silently degrade to `source_cards=[]`, and smoke output remains
+  bounded and explainable.
+- Scope:
+  - Done: backend Docker image copies repo `config/` so
+    `/app/config/connectors/*.json` is available to API and worker processes.
+  - Done: dev-stack contract test asserts connector profile config is packaged
+    by `Dockerfile.backend`.
+  - Done: default connector registry is covered against a Docker-like
+    `config/connectors` working directory.
+  - Done: live/smoke planning treats missing source cards for explicitly
+    profiled configured sources as validation errors, not silent warnings.
+  - Done: smoke candidate cap now limits promoted/final account candidates, not
+    only signal candidate scope. Overflow entities remain diagnostic gaps.
+  - Done: retrieved-source candidate extraction rejects CSV/metric row suffixes,
+    empty legal markers, and sentence-like names before account promotion.
+  - Done: ambiguous DaData/company-registry multi-result lookups remain
+    diagnostic unless an exact/high-confidence identifier match is present.
+  - Done: dossier summary exposes smoke cap, promoted/diagnostic candidate
+    counts, source-card count, capability decision count, and loaded connector
+    profile count.
+- Out of scope:
+  - New source providers or plugin packaging.
+  - UI source editor changes.
+  - Scoring quality claims or full benchmark execution.
+- Tests:
+  - Dockerfile contract for copying connector config.
+  - Connector registry test for Docker-like cwd profile loading.
+  - Live planning validation test for explicitly profiled sources without
+    compiled source cards.
+  - Smoke execution test proving final promoted candidates obey
+    `smoke_max_candidates`.
+  - Retrieved-source cleanup test for metric/sentence-like candidate names.
+  - DaData/source-registry ambiguity test proving medium multi-match
+    suggestions are not blindly promoted.
+- Docs:
+  - Developer Guide, demo README, and connector-profile ADR describe
+    containerized connector profile parity and smoke output hardening.
+- Acceptance criteria:
+  - Docker smoke planner input has non-empty source cards for
+    `dadata_registry`, `openrouter_web`, and `sibur_site`.
+  - A missing packaged connector config fails planning/preflight loudly in
+    smoke/live instead of falling back to source-id-only planning.
+  - Smoke product candidates do not exceed the configured promoted candidate
+    cap; overflow remains diagnostic.
+  - Blocked/review-needed smoke runs are interpreted as diagnostic outcomes,
+    not quality successes.
+
+### Slice 0.7.6.1.11.9.3.3: Candidate scope materialization for registry enrichment and planner budget parity
+
+- Status: `Backlog`
+- Goal: Fix the remaining smoke-run gap before benchmark: discovered
+  candidates must be materialized into concrete registry lookup input, and all
+  OpenRouter calls, including planner calls, must be counted in the same
+  external-call budget surface.
+- User value: A smoke run should prove that the Radar can move from broad web
+  discovery to concrete identity enrichment. If it cannot, the dossier should
+  explain that failure directly instead of showing a generic source obligation
+  block.
+- Problem statement:
+  - The Docker smoke run after `0.7.6.1.11.9.3.2` correctly loaded connector
+    profiles and gave the planner source cards, but the gate/enrichment task
+    still carried placeholder scope such as `Кандидаты из шага 1` instead of the
+    actual discovered candidate names.
+  - DaData/live registry lookup was therefore skipped as
+    `registry_lookup_insufficient`, even though a concrete candidate
+    (`ПАО «СИБУР Холдинг»`) had already been promoted from retrieved evidence.
+  - The guard did the right thing by not sending placeholder or broad text to
+    DaData; the missing piece is candidate-scope materialization between
+    discovery and registry enrichment.
+  - External-call counters still need parity checks that planner OpenRouter
+    HTTP calls are persisted together with web task calls in the total
+    `openrouter:run` budget and shown in smoke diagnostics.
+  - The compiled DaData capability card remains too permissive/noisy for
+    planner-facing semantics: it should not imply generic coverage discovery or
+    unrestricted free-text lookup when the connector is effectively
+    concrete-input identity/enrichment.
+- Scope:
+  - Materialize accepted `candidate_universe` legal names into downstream
+    qualification/enrichment task `candidate_scope` before registry source
+    execution.
+  - Replace placeholder scopes such as `Кандидаты из шага 1`,
+    `Кандидаты, прошедшие шаг 2`, and `candidates from step` with the concrete
+    candidates available at that execution point, or mark the task
+    `not_executed_input_not_available` when no concrete candidates exist.
+  - Call DaData/company-registry providers only for concrete legal names, INN,
+    OGRN, or high-confidence legal-name fragments after materialization.
+  - Keep `registry_lookup_insufficient` for truly broad or placeholder input,
+    but treat it as a pipeline/materialization failure when concrete candidates
+    are already available and were not passed through.
+  - Persist planner OpenRouter call budget decisions into
+    `external_call_budget_counters`, `external_call_budget_counters_by_role`,
+    and dossier/runtime diagnostics alongside web task counters.
+  - Tighten the planner source card compiled from the DaData profile so it is
+    planner-facing as concrete-input identity/enrichment, not broad coverage or
+    generic free-text discovery.
+  - Add trace/journal records for candidate-scope materialization: source task,
+    input placeholder, resolved candidate count, skipped reason, and registry
+    lookup terms.
+- Out of scope:
+  - New source providers or direct MCP connector plugin packaging.
+  - UI source editor changes.
+  - Scoring quality changes or benchmark quality claims.
+  - Making DaData enumerate a holding contour from broad natural-language
+    prompts.
+- Implementation notes:
+  - Treat materialization as an application-layer execution concern, not as a
+    provider adapter workaround.
+  - Do not hardcode DaData-specific algorithm branches. Use connector
+    capability cards and source obligations to decide whether a source requires
+    concrete input.
+  - Preserve the existing safety rule: lookup-only registry connectors are
+    skipped before network calls when concrete terms are absent.
+  - If a downstream task receives zero concrete candidates after discovery,
+    checkpoint should stop/review with a materialization or weak-discovery
+    reason before signal search.
+- Tests:
+  - Fake smoke pipeline where discovery promotes `ПАО «СИБУР Холдинг»`; the
+    following registry enrichment task receives that concrete name and calls
+    the company-registry provider once.
+  - Fake smoke pipeline with only placeholder scope and no promoted candidates;
+    registry lookup is not called and records
+    `not_executed_input_not_available` or `registry_lookup_insufficient`.
+  - Regression proving `Кандидаты из шага 1` and equivalent placeholders never
+    reach DaData/live registry provider as lookup queries.
+  - Budget test proving a planner OpenRouter call increments total
+    `openrouter:run` and role-specific `openrouter_planner` counters in
+    persisted execution metadata and dossier projection.
+  - Capability-card test proving DaData-like profiles do not compile to broad
+    discovery/signal/coverage source cards unless a future profile explicitly
+    declares those capabilities.
+  - Smoke diagnostics test proving dossier shows materialized lookup terms,
+    DaData lookup count, planner/web OpenRouter counters, and the primary
+    outcome reason.
+- Docs:
+  - Update Developer Guide and demo docs with the expected smoke evidence:
+    concrete candidate scope is passed into registry enrichment, placeholder
+    scopes are blocked, and planner calls are included in external-call
+    budgets.
+  - Update the connector-profile ADR note to clarify that human connector
+    profiles compile into planner source cards, while execution materializes
+    concrete input from runtime candidate state.
+- Demo impact:
+  - No new UI screen. Existing `Проверка`, dossier, and technical trace should
+    be enough to verify the smoke path.
+- Acceptance criteria:
+  - A Docker TOIR smoke run shows non-empty source cards and then either a real
+    DaData lookup for concrete discovered company names or an explicit
+    `no_concrete_candidates_available` diagnostic.
+  - `Кандидаты из шага 1` or similar placeholder text never appears as a live
+    registry provider query.
+  - If `ПАО «СИБУР Холдинг»` or another concrete candidate is promoted before
+    identity enrichment, registry lookup receives that candidate as input when
+    budget allows.
+  - Dossier external-call counters show planner and web-task OpenRouter calls
+    separately and in total.
+  - Benchmark `0.7.6.2` remains blocked until this smoke RCA passes.
+- Risks:
+  - Materialized candidates from retrieved web snippets may still be too broad
+    or review-needed; this slice only proves the handoff to registry enrichment,
+    not final benchmark quality.
+  - Over-tightening DaData source cards may require updating tests that used
+    legacy free-text compatibility.
+
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 
 - Status: `Backlog`
@@ -4316,10 +4488,11 @@ Principles:
   - Run this only after `Slice 0.7.6.1.7.2`, `Slice 0.7.6.1.7.3`,
     `Slice 0.7.6.1.7.4`, `Slice 0.7.6.1.8`, `Slice 0.7.6.1.9`,
     `Slice 0.7.6.1.10`, `Slice 0.7.6.1.11`, and the TDD/preflight repair
-    slices `0.7.6.1.11.1` through `0.7.6.1.11.9.3.1`, so the benchmark tests a
+    slices `0.7.6.1.11.1` through `0.7.6.1.11.9.3.3`, so the benchmark tests a
     source-verification-aware, observable, compact-prompt,
     structured-source-capable retrieval/extraction pipeline with explicit
-    connector capabilities rather than an opaque web-search prompt path.
+    connector capabilities, containerized connector-profile parity, and concrete
+    registry-enrichment handoff rather than an opaque web-search prompt path.
   - The benchmark should use the qualification-first execution plan from
     `Slice 0.7.6.1.3`, LLM-planned discovery from `Slice 0.7.6.1.4`, and
     coverage-enforced candidate universe expansion from `Slice 0.7.6.1.5`;
@@ -4951,7 +5124,11 @@ None.
 
 ## Next Recommended Task
 
-Run a bounded smoke self-test for `TOIR Quick Live Radar` with live DaData and
-`openrouter_perplexity`; if source-card wiring, DaData concrete-input guards,
-and external-call counters are clean, plan `Slice 0.7.6.2: Multi-radar discovery
-benchmark`.
+Implement `Slice 0.7.6.1.11.9.3.3: Candidate scope materialization for registry
+enrichment and planner budget parity`. The latest bounded Docker smoke showed
+that connector profiles and source cards now reach the live planner, but
+downstream registry enrichment still receives placeholder candidate scopes
+instead of concrete discovered company names, and planner OpenRouter calls need
+to be visible in the persisted external-call budget counters. Keep
+`Slice 0.7.6.2: Multi-radar discovery benchmark` blocked until this smoke RCA is
+green.

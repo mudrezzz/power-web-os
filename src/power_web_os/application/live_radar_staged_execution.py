@@ -471,6 +471,31 @@ def run_staged_radar_execution(
         events.append(extraction_validation_event(extraction_issues, repair_results))
 
     normalized_candidates = _normalized_candidates(radar=radar, sources=sources, observations=observations)
+    (
+        normalized_candidates,
+        observations,
+        smoke_overflow_gaps,
+        smoke_cap_metadata,
+    ) = _apply_smoke_candidate_promotion_cap(
+        candidates=normalized_candidates,
+        observations=observations,
+        smoke_candidate_limit=external_budget.settings.smoke_max_candidates,
+    )
+    if smoke_overflow_gaps:
+        unresolved_candidate_gaps.extend(smoke_overflow_gaps)
+        events.append(LiveRadarPipelineEvent(
+            event_type="smoke_candidate_cap_applied",
+            phase="validation",
+            actor="application",
+            node_name="smoke_candidate_cap",
+            visibility="operator",
+            summary=(
+                f"Smoke profile promoted {smoke_cap_metadata['promoted_candidate_count']} candidates "
+                f"and kept {smoke_cap_metadata['diagnostic_candidate_count']} as diagnostic gaps."
+            ),
+            payload=smoke_cap_metadata,
+            candidate_refs=[item["legal_name"] for item in smoke_overflow_gaps if item.get("legal_name")],
+        ))
     candidate_universe = candidate_universe_entries(
         candidates=normalized_candidates, completed_qualification_ids=completed_qualification_ids,
         origin_task_id=first_task_id(execution_plan.tasks), gap_names={candidate_name(item) for item in unresolved_candidate_gaps if candidate_name(item)},
@@ -559,6 +584,7 @@ def run_staged_radar_execution(
             "extraction_repair_results": repair_results,
             "extraction_contract_state": extraction_contract_state(provider_metadata),
             "candidate_universe": candidate_universe_payload,
+            **smoke_cap_metadata,
             "coverage_checks": coverage_checks,
             "coverage_warnings": sorted(set(coverage_warnings)),
             "unresolved_candidate_gaps": dedupe_gap_payloads(unresolved_candidate_gaps, known_candidate_names=candidate_name_set(observations)),
@@ -583,6 +609,46 @@ def _limit_smoke_signal_tasks(tasks: list[RadarExecutionTask], limit: int | None
     if limit is None or limit <= 0:
         return tasks
     return tasks[:limit]
+
+
+def _apply_smoke_candidate_promotion_cap(
+    *,
+    candidates: list[Any],
+    observations: list[dict[str, Any]],
+    smoke_candidate_limit: int | None,
+) -> tuple[list[Any], list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    if smoke_candidate_limit is None or smoke_candidate_limit <= 0 or len(candidates) <= smoke_candidate_limit:
+        return candidates, observations, [], {
+            "smoke_candidate_cap": smoke_candidate_limit,
+            "promoted_candidate_count": len(candidates),
+            "diagnostic_candidate_count": 0,
+        }
+
+    promoted = candidates[:smoke_candidate_limit]
+    overflow = candidates[smoke_candidate_limit:]
+    promoted_names = {candidate.legal_name.lower() for candidate in promoted if getattr(candidate, "legal_name", "")}
+    filtered_observations = [
+        observation
+        for observation in observations
+        if not candidate_name(observation) or candidate_name(observation).lower() in promoted_names
+    ]
+    overflow_gaps = [
+        {
+            "legal_name": candidate.legal_name,
+            "origin_task_id": "smoke_candidate_cap",
+            "status": "gap",
+            "reason": "smoke_candidate_cap_exceeded",
+            "review_flags": ["smoke_candidate_cap_exceeded"],
+            "entity_type": "legal_entity",
+        }
+        for candidate in overflow
+        if getattr(candidate, "legal_name", "")
+    ]
+    return promoted, filtered_observations, overflow_gaps, {
+        "smoke_candidate_cap": smoke_candidate_limit,
+        "promoted_candidate_count": len(promoted),
+        "diagnostic_candidate_count": len(overflow_gaps),
+    }
 
 
 def _extract_retrieved_candidates(

@@ -162,10 +162,18 @@ class RadarSourceRegistry:
                 continue
             result = provider.lookup_companies(request)
             evidence.extend(_source_evidence_from_observations(result.observations, request=request, provider_id=provider_id))
-            observations.extend(_candidate_observations_from_registry(result.observations, task=task))
+            promotable_observations = _promotable_registry_observations(result)
+            observations.extend(_candidate_observations_from_registry(promotable_observations, task=task))
             structured_observations.extend(_structured_observations_from_registry(result.observations, request=request, provider_id=provider_id))
             outcomes.extend([item.model_dump() for item in result.outcomes])
             metadata = merge_provider_metadata(metadata, result.provider_metadata)
+            if len(promotable_observations) < len(result.observations):
+                metadata.setdefault("registry_ambiguous_observations", [])
+                metadata["registry_ambiguous_observations"].extend([
+                    item.model_dump()
+                    for item in result.observations
+                    if item not in promotable_observations
+                ])
             metadata.setdefault("compiled_source_capabilities", [])
             if capability:
                 metadata["compiled_source_capabilities"].append(_safe_capability_payload(capability))
@@ -361,6 +369,19 @@ def _candidate_observations_from_registry(
             }],
         })
     return result
+
+
+def _promotable_registry_observations(result: CompanyLookupResult) -> list[CompanyRegistryObservation]:
+    """Avoid promoting every medium suggestion from an ambiguous registry lookup."""
+
+    ambiguous = any(outcome.outcome == "ambiguous_match" for outcome in result.outcomes)
+    if not ambiguous:
+        return list(result.observations)
+    return [
+        observation
+        for observation in result.observations
+        if observation.match_quality == "high" or observation.matched_by in {"inn", "ogrn"}
+    ]
 
 
 def _structured_observations_from_registry(

@@ -6,6 +6,7 @@ from power_web_os.application.connector_profiles import (
     ConnectorProfile,
     ConnectorProfileRegistry,
     compile_connector_capability,
+    default_connector_profile_registry,
     load_connector_profile,
     validate_connector_profile,
 )
@@ -38,6 +39,20 @@ def test_default_connector_profiles_load_and_compile() -> None:
     assert sibur.source_type == "url"
     assert sibur.supports_coverage
     assert not sibur.supports_lookup
+
+
+def test_default_connector_registry_loads_from_docker_like_cwd(tmp_path: Path, monkeypatch) -> None:
+    config_dir = tmp_path / "config" / "connectors"
+    config_dir.mkdir(parents=True)
+    for profile_path in Path("config/connectors").glob("*.json"):
+        (config_dir / profile_path.name).write_text(profile_path.read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    registry = default_connector_profile_registry()
+
+    assert registry.capability("dadata_registry") is not None
+    assert registry.capability("openrouter_web") is not None
+    assert registry.capability("sibur_site") is not None
 
 
 def test_connector_profile_with_internal_stage_name_is_rejected() -> None:

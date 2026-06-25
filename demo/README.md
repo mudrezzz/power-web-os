@@ -280,6 +280,14 @@ dossier/trace records `registry_lookup_insufficient` or
 concrete company terms exist, while the OpenRouter budget should count planner
 and web-task HTTP calls in the same run total.
 
+After `0.7.6.1.11.9.3.2`, this must hold inside Docker too. Rebuild the API and
+worker images before judging a smoke run, because connector profiles live under
+repo `config/connectors` and must be packaged to `/app/config/connectors`.
+Smoke output is bounded: `POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES` caps promoted
+product candidates, while extra observations remain diagnostic gaps. If the run
+is blocked by policy or stopped for review, read that as the primary smoke
+outcome, not as a successful quality benchmark.
+
 Live Radar also resolves entity type before scoring. The shortlist is an account
 shortlist, so normal candidates are legal entities. Production sites, projects,
 installations, and assets found during discovery are linked to a resolved legal

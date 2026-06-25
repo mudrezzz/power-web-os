@@ -333,6 +333,12 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["summary"]["diagnostic_source_count"] == 2
     assert dossier["summary"]["analyzed_only_source_count"] == 1
     assert dossier["summary"]["linked_source_count"] == 1
+    assert dossier["summary"]["smoke_candidate_cap"] == 2
+    assert dossier["summary"]["promoted_candidate_count"] == 1
+    assert dossier["summary"]["diagnostic_candidate_count"] == 3
+    assert dossier["summary"]["source_cards_count"] == 1
+    assert dossier["summary"]["source_capability_decision_count"] == 1
+    assert dossier["summary"]["connector_profile_loaded_count"] == 1
     assert dossier["discovery_plan"]["plan_summary"] == "Test discovery plan."
     assert dossier["discovery_plan"]["steps"][0]["stage"] == "candidate_universe_discovery"
     assert dossier["source_cards"][0]["connector_profile_id"] == "generic_registry"
@@ -1058,6 +1064,9 @@ def _artifact() -> dict[str, Any]:
                 "discovery_iteration_count": 1,
                 "analyzed_source_count": 1,
                 "used_source_count": 1,
+                "smoke_candidate_cap": 2,
+                "promoted_candidate_count": 1,
+                "diagnostic_candidate_count": 3,
                 "analyzed_sources": [
                     {
                         "evidence_ref": "unused_src",

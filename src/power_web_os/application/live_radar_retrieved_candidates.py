@@ -7,7 +7,9 @@ from typing import Any
 
 from power_web_os.application.live_radar_contracts import RadarSourceEvidence, WebSearchProviderResult
 
+_METRIC_ROW_SUFFIX = re.compile(r"(?:,\s*\d+(?:\.\d+)?){2,}\s*$")
 _LEGAL_FORM = r"(?:АО|ПАО|ОАО|ЗАО|ООО|НАО|JSC|PJSC|LLC)"
+_EMPTY_LEGAL_MARKER = re.compile(rf"^\s*{_LEGAL_FORM}\s*[,.\-–—]*\s*(?:\d|$)", flags=re.IGNORECASE)
 _LEGAL_NAME_PATTERN = re.compile(
     rf"\b{_LEGAL_FORM}\s+[«\"]?[^»\"\n\r;:()|]{{3,140}}[»\"]?",
     flags=re.IGNORECASE,
@@ -93,11 +95,18 @@ def _legal_names_from_source(source: dict[str, Any]) -> list[str]:
 
 
 def _clean_legal_name(value: str) -> str:
+    if _METRIC_ROW_SUFFIX.search(value) or _EMPTY_LEGAL_MARKER.match(value):
+        return ""
     cleaned = " ".join(value.strip(" .,-–—").split())
     cleaned = re.split(r"\s[-–—]\s", cleaned, maxsplit=1)[0].strip()
     cleaned = re.sub(r"\s+[|/].*$", "", cleaned).strip()
     cleaned = cleaned.strip(" .,-–—")
-    if len(cleaned) < 5 or _looks_like_source_title(cleaned):
+    if (
+        len(cleaned) < 5
+        or _looks_like_source_title(cleaned)
+        or _looks_like_metric_row(cleaned)
+        or _looks_sentence_like(cleaned)
+    ):
         return ""
     return cleaned
 
@@ -105,6 +114,33 @@ def _clean_legal_name(value: str) -> str:
 def _looks_like_source_title(value: str) -> bool:
     lowered = value.lower()
     return any(marker in lowered for marker in ("википедия", "wiki", "новости", "официальный сайт"))
+
+
+def _looks_like_metric_row(value: str) -> bool:
+    if _METRIC_ROW_SUFFIX.search(value):
+        return True
+    parts = [part.strip() for part in value.split(",")]
+    numeric_parts = [part for part in parts[1:] if re.fullmatch(r"\d+(?:\.\d+)?", part)]
+    return len(parts) >= 3 and len(numeric_parts) >= 2
+
+
+def _looks_sentence_like(value: str) -> bool:
+    words = value.split()
+    if len(words) > 12:
+        return True
+    lowered = value.lower()
+    sentence_markers = (
+        " is ",
+        " are ",
+        " has ",
+        " have ",
+        " reports ",
+        " announces ",
+        " есть ",
+        " сообщает ",
+        " описывает ",
+    )
+    return any(marker in lowered for marker in sentence_markers)
 
 
 def _source_evidence(source: dict[str, Any], *, source_ref: str) -> RadarSourceEvidence:

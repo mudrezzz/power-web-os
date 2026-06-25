@@ -394,6 +394,14 @@ planning should surface that as a warning or error instead of silently sending
 candidate scopes such as `Кандидаты из шага 1`, and OpenRouter planner/web-task
 calls counted together in the external-call budget.
 
+Docker/API/worker parity is part of that contract. The backend image must copy
+repo `config/` so connector profiles are available at `/app/config/connectors`.
+If a Docker smoke run shows `source_cards=[]`, treat it as a packaging/runtime
+bug rather than a model-quality result. In smoke profile,
+`POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES` limits promoted product candidates,
+not only signal-search scope; overflow entities should remain diagnostic gaps
+with `smoke_candidate_cap_exceeded`.
+
 Default queue settings:
 
 ```text

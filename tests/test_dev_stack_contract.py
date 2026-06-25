@@ -63,6 +63,7 @@ def test_backend_and_frontend_dockerfiles_install_expected_runtime_dependencies(
     assert "python:3.12-slim" in backend
     assert "git" in backend
     assert 'python -m pip install -e ".[api,agent,dev]"' in backend
+    assert "COPY config ./config" in backend
     assert "uvicorn" in backend
     assert "node:22-slim" in frontend
     assert "npm install" in frontend

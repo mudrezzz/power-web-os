@@ -90,6 +90,8 @@ def dossier_response(
     analyzed_source_count = _int(execution_results.get("analyzed_source_count"), default=0)
     skipped_source_count = sum(1 for item in source_policy_decisions if str(item.get("decision")) == "skipped")
     review_flag_count = sum(len([flag for flag in item.get("review_flags", []) if isinstance(flag, str)]) for item in candidates)
+    source_cards = _list(acceptance_metadata.get("source_cards"))
+    source_capability_decisions = _list(acceptance_metadata.get("source_capability_decisions"))
 
     return RadarRunDossierResponse(
         run_context=_dossier_context(run),
@@ -99,8 +101,8 @@ def dossier_response(
         definition_snapshot=_definition_snapshot(active_definition),
         discovery_plan=discovery_plan,
         retrieval_plan=retrieval_plan,
-        source_cards=_list(acceptance_metadata.get("source_cards")),
-        source_capability_decisions=_list(acceptance_metadata.get("source_capability_decisions")),
+        source_cards=source_cards,
+        source_capability_decisions=source_capability_decisions,
         source_capability_validation=_dict(acceptance_metadata.get("source_capability_validation")),
         source_policy_decisions=source_policy_decisions,
         source_obligations=source_obligations,
@@ -145,6 +147,12 @@ def dossier_response(
             diagnostic_source_count=source_lifecycle_summary.total_count,
             skipped_source_count=skipped_source_count,
             candidate_count=len(candidates),
+            smoke_candidate_cap=_optional_int(execution_results.get("smoke_candidate_cap")),
+            promoted_candidate_count=_int(execution_results.get("promoted_candidate_count"), default=len(candidates)),
+            diagnostic_candidate_count=_int(execution_results.get("diagnostic_candidate_count"), default=0),
+            source_cards_count=len(source_cards),
+            source_capability_decision_count=len(source_capability_decisions),
+            connector_profile_loaded_count=len({str(item.get("connector_profile_id") or "") for item in source_cards if str(item.get("connector_profile_id") or "").strip()}),
             validation_issue_count=len(validation),
             review_flag_count=review_flag_count + len(reviews),
             coverage_warning_count=len(coverage_warnings) + len(unresolved_candidate_gaps),
@@ -383,3 +391,7 @@ def _dict(value: object) -> dict[str, Any]:
 
 def _int(value: object, *, default: int) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) else default
+
+
+def _optional_int(value: object) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None

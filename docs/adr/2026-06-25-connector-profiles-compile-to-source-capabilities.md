@@ -75,6 +75,12 @@ diagnostics can prove that connector capabilities are actually active.
 - Smoke diagnostics must show non-empty source cards for configured sources and
   must show lookup-only sources skipped when only placeholder or broad input is
   available.
+- Backend Docker images must package `config/connectors` so API/worker smoke
+  runs use the same connector profiles as local preflight/tests. Missing
+  containerized profiles are a runtime parity failure, not model behavior.
+- Smoke profile caps promoted product candidates; extra provider observations
+  remain diagnostic/review-needed material until a longer benchmark run is
+  explicitly selected.
 - Future connector/plugin authors can provide source descriptions without
   learning the Power Web OS execution pipeline.
 

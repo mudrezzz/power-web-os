@@ -28,7 +28,6 @@ from power_web_os.application.live_radar_discovery_planning import (
     RadarDiscoveryPlanValidator,
     build_discovery_planning_input,
     discovery_plan_to_execution_plan,
-    product_sources_for_candidates,
 )
 from power_web_os.application.live_radar_plan_acceptance import RadarDiscoveryPlanAcceptanceService
 from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_task_to_search_plan
@@ -41,6 +40,8 @@ from power_web_os.application.live_radar_external_budget import reserve_openrout
 from power_web_os.application.live_radar_entity_resolution import RadarEntityResolutionService
 from power_web_os.application.live_radar_normalization import normalize_live_candidate
 from power_web_os.application.live_radar_extraction_contract import validate_and_repair_extraction_payload
+from power_web_os.application.live_radar_retrieved_candidates import candidates_from_retrieved_sources
+from power_web_os.application.live_radar_product_sources import product_sources_for_candidates
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan, retrieval_plan_to_search_plan
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
 from power_web_os.application.live_radar_web_retrieval import (
@@ -51,6 +52,7 @@ from power_web_os.application.live_radar_web_retrieval import (
 )
 from power_web_os.application.radar_source_providers import RadarSourceRegistry, SourceRegistryWebSearchProvider
 from power_web_os.application.radar_records import RadarDefinitionRecord
+from power_web_os.application.connector_profiles import ConnectorProfileRegistry
 from power_web_os.demo import build_icp_radar_catalog_from_workbook, generate_live_mini_icp_radar_plan
 from power_web_os.integrations.dadata_provider import RecordedDaDataCompanyRegistryProvider
 from power_web_os.integrations import live_radar_openrouter
@@ -1128,6 +1130,177 @@ def test_live_radar_service_wires_connector_source_cards_into_planner() -> None:
     metadata = planned.discovery_plan["acceptance_metadata"]
     assert {item["source_id"] for item in metadata["source_cards"]} >= {"dadata_registry", "openrouter_web", "sibur_site"}
     assert metadata["source_capability_validation"]["decision_count"] > 0
+
+
+def test_live_planning_fails_when_profile_configured_sources_have_no_cards() -> None:
+    radar = active_definition_to_live_radar_payload(_toir_quick_live_definition_record())
+    planning_input = build_discovery_planning_input(
+        radar=radar,
+        task_context={"run_profile": "smoke"},
+        live=True,
+        provider_metadata={},
+        connector_profile_registry=ConnectorProfileRegistry.from_profiles([]),
+    )
+    plan = RadarDiscoveryPlan(
+        plan_summary="Plan without compiled source cards.",
+        steps=[
+            RadarDiscoveryPlanStep(
+                step_id="coverage-openrouter",
+                stage="coverage_check",
+                subject_rule_ids=["q1-sibur-group"],
+                source_scope="global",
+                source_ids=["openrouter_web"],
+                query="Find SIBUR assets.",
+                purpose="Check coverage.",
+                expected_evidence=["coverage"],
+            )
+        ],
+        source_policy_decisions=[
+            RadarDiscoverySourcePolicyDecision(
+                source_id="dadata_registry",
+                source_label="DaData",
+                decision="selected",
+                reason="Required identity source.",
+            ),
+            RadarDiscoverySourcePolicyDecision(
+                source_id="openrouter_web",
+                source_label="OpenRouter web",
+                decision="selected",
+                reason="Required coverage source.",
+            ),
+            RadarDiscoverySourcePolicyDecision(
+                source_id="sibur_site",
+                source_label="SIBUR site",
+                decision="selected",
+                reason="Preferred official source.",
+            ),
+        ],
+        coverage_hypotheses=[{"summary": "Coverage will be checked.", "completeness_risk": "low"}],
+    )
+
+    validation = RadarDiscoveryPlanValidator().validate(planning_input=planning_input, plan=plan)
+
+    assert validation.accepted is False
+    assert any("connector capability cards" in error for error in validation.errors)
+
+
+def test_retrieved_candidate_extraction_rejects_metric_rows_and_sentence_names() -> None:
+    result = candidates_from_retrieved_sources(
+        radar={"radar_id": "retrieved-cleanup", "qualification_criteria": []},
+        provider_metadata={
+            "retrieved_sources": [
+                {
+                    "source_ref": "row-like",
+                    "title": "JSC SiburTyumenGas,1,1.0,1.0",
+                    "snippet": "LLC ,1,1.0,1.0",
+                },
+                {
+                    "source_ref": "sentence-like",
+                    "title": "LLC SiburTyumenGas has modernization plans for diagnostics and predictive analytics",
+                    "snippet": "Sentence-like extraction should not become an account candidate.",
+                },
+            ]
+        },
+        known_candidate_names=set(),
+        known_source_refs=set(),
+    )
+
+    assert result.candidate_observations == []
+    assert result.sources == []
+
+
+def test_source_registry_keeps_ambiguous_dadata_matches_diagnostic_not_promoted() -> None:
+    provider = RecordedDaDataCompanyRegistryProvider(fixtures=[
+        {"legal_name": "AO Test Plant North", "status": "ACTIVE"},
+        {"legal_name": "AO Test Plant South", "status": "ACTIVE"},
+    ])
+    radar = {
+        "radar_id": "ambiguous-registry",
+        "global_search_policy": {
+            "sources": [{
+                "source_id": "dadata_registry",
+                "connector_profile_id": "dadata_registry",
+                "source_type": "company_registry",
+                "provider_id": "dadata",
+                "reference": "company_registry:dadata",
+            }]
+        },
+    }
+    task = RadarExecutionTask(
+        task_id="identity",
+        stage="qualification_gate",
+        subject_type="qualification",
+        subject_id="Q1",
+        query="Test Plant",
+        purpose="Confirm identity.",
+        source_ids=["dadata_registry"],
+        candidate_scope=["Test Plant"],
+    )
+
+    result = RadarSourceRegistry(company_registry_providers={"dadata": provider}).lookup_for_task(radar=radar, task=task)
+
+    assert result.candidate_observations == []
+    assert len(result.sources) == 2
+    assert result.provider_metadata["source_provider_outcomes"][0]["outcome"] == "ambiguous_match"
+    assert len(result.provider_metadata["registry_ambiguous_observations"]) == 2
+
+
+def test_smoke_profile_caps_promoted_candidates_not_only_signal_scope() -> None:
+    class ManyObservationProvider:
+        runtime_name = "many-observations"
+
+        def run_search_plan(self, *, radar, search_plan):  # noqa: ANN001
+            _ = radar
+            query = search_plan.queries[0]
+            sources = []
+            observations = []
+            for index in range(4):
+                source_ref = f"src_{index}"
+                legal_name = f"АО Test Plant {index}"
+                sources.append(RadarSourceEvidence(
+                    evidence_ref=source_ref,
+                    title=legal_name,
+                    url=f"https://example.test/{index}",
+                    snippet=f"{legal_name} is in scope.",
+                    query_id=query.query_id,
+                ))
+                observations.append({
+                    "legal_name": legal_name,
+                    "entity_type": "legal_entity",
+                    "qualification": [{"criterion_code": "Q1", "status": "confirmed", "evidence_refs": [source_ref]}],
+                })
+            return WebSearchProviderResult(sources=sources, candidate_observations=observations, provider_metadata={"provider": "many-observations"})
+
+    result, events, execution_results = run_staged_radar_execution(
+        radar={
+            "radar_id": "smoke-cap",
+            "qualification_criteria": [{"code": "Q1", "label": "Find companies", "requirement_level": "required"}],
+            "intent_signals": [],
+        },
+        execution_plan=RadarExecutionPlan(
+            radar_id="smoke-cap",
+            tasks=[
+                RadarExecutionTask(
+                    task_id="discover-q1",
+                    stage="qualification_discovery",
+                    subject_type="qualification",
+                    subject_id="Q1",
+                    query="Find candidates.",
+                    purpose="Discover.",
+                )
+            ],
+        ),
+        provider=ManyObservationProvider(),
+        run_profile="smoke",
+        smoke_max_candidates=2,
+    )
+
+    assert len(result.candidate_observations) == 2
+    assert execution_results["smoke_candidate_cap"] == 2
+    assert execution_results["promoted_candidate_count"] == 2
+    assert execution_results["diagnostic_candidate_count"] == 2
+    assert len([item for item in execution_results["unresolved_candidate_gaps"] if item["reason"] == "smoke_candidate_cap_exceeded"]) == 2
+    assert "smoke_candidate_cap_applied" in [event.event_type for event in events]
 
 
 def test_discovery_planning_input_and_validator_apply_source_policy() -> None:

@@ -24,7 +24,7 @@ from power_web_os.application.live_radar_contracts import (
 )
 from power_web_os.application.live_radar_extraction_contract import qualification_contract_issues_from_extraction_results
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition, build_live_mini_radar_search_plan
-from power_web_os.application.live_radar_discovery_planning import DeterministicRadarDiscoveryPlanner, product_sources_for_candidates
+from power_web_os.application.live_radar_discovery_planning import DeterministicRadarDiscoveryPlanner
 from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_plan_to_search_plan
 from power_web_os.application.live_radar_external_budget import (
     RadarExternalCallBudget,
@@ -43,6 +43,7 @@ from power_web_os.application.live_radar_pipeline_support import (
     trace_pipeline_step as _trace,
 )
 from power_web_os.application.live_radar_planning_pipeline import build_planned_state
+from power_web_os.application.live_radar_product_sources import product_sources_for_candidates
 from power_web_os.application.radar_source_providers import RadarSourceRegistry, SourceRegistryWebSearchProvider
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
 
