@@ -86,6 +86,11 @@ diagnostics can prove that connector capabilities are actually active.
   such as `candidates from step 1` are internal planning references, not valid
   connector input. If no concrete candidate exists, the provider call is skipped
   with `not_executed_input_not_available`.
+- Ambiguous lookup-only registry observations are not automatic rejection in
+  upstream discovery. If they include source-backed company, branch, site, or
+  asset facts, execution may retain them as review-needed universe entities or
+  linked facts and request bounded cross-checks through allowed official/web
+  connector capabilities.
 - Future connector/plugin authors can provide source descriptions without
   learning the Power Web OS execution pipeline.
 

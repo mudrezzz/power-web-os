@@ -32,6 +32,17 @@ from power_web_os.application.radar_lookup_terms import (
     looks_like_broad_discovery as _safe_looks_like_broad_discovery,
     lookup_terms_from_text as _safe_lookup_terms_from_text,
 )
+from power_web_os.application.radar_registry_observation_helpers import (
+    dedupe_text as _dedupe_text,
+    radar_with_structured_observations as _radar_with_structured_observations,
+    registry_snippet as _registry_snippet,
+)
+from power_web_os.application.radar_upstream_disambiguation import (
+    candidate_gap_from_review_entity as _candidate_gap_from_review_entity,
+    cross_source_disambiguation_tasks as _cross_source_disambiguation_tasks,
+    review_needed_ambiguous_registry_observations as _review_needed_ambiguous_registry_observations,
+    stable_source_ref as _stable_source_ref,
+)
 
 RadarProviderType = Literal["company_registry"]
 
@@ -163,9 +174,23 @@ class RadarSourceRegistry:
             result = provider.lookup_companies(request)
             evidence.extend(_source_evidence_from_observations(result.observations, request=request, provider_id=provider_id))
             promotable_observations = _promotable_registry_observations(result)
+            review_needed_observations = _review_needed_ambiguous_registry_observations(
+                result,
+                request=request,
+                provider_id=provider_id,
+            )
             observations.extend(_candidate_observations_from_registry(promotable_observations, task=task))
             structured_observations.extend(_structured_observations_from_registry(result.observations, request=request, provider_id=provider_id))
-            outcomes.extend([item.model_dump() for item in result.outcomes])
+            outcome_payloads = [item.model_dump() for item in result.outcomes]
+            if review_needed_observations:
+                for outcome_payload in outcome_payloads:
+                    if outcome_payload.get("outcome") == "ambiguous_match":
+                        outcome_payload["review_needed_entity_count"] = len(review_needed_observations)
+                        outcome_payload["reason"] = (
+                            f"{outcome_payload.get('reason') or 'Registry returned ambiguous observations.'} "
+                            "Ambiguous source-backed entities were retained for upstream review."
+                        ).strip()
+            outcomes.extend(outcome_payloads)
             metadata = merge_provider_metadata(metadata, result.provider_metadata)
             if len(promotable_observations) < len(result.observations):
                 metadata.setdefault("registry_ambiguous_observations", [])
@@ -174,6 +199,22 @@ class RadarSourceRegistry:
                     for item in result.observations
                     if item not in promotable_observations
                 ])
+            if review_needed_observations:
+                metadata.setdefault("upstream_disambiguation_results", [])
+                metadata["upstream_disambiguation_results"].extend(review_needed_observations)
+                metadata.setdefault("candidate_universe_gaps", [])
+                metadata["candidate_universe_gaps"].extend([
+                    _candidate_gap_from_review_entity(item, task=task)
+                    for item in review_needed_observations
+                ])
+                metadata.setdefault("cross_source_disambiguation_tasks", [])
+                metadata["cross_source_disambiguation_tasks"].extend(
+                    _cross_source_disambiguation_tasks(
+                        radar=radar,
+                        task=task,
+                        review_entities=review_needed_observations,
+                    )
+                )
             metadata.setdefault("compiled_source_capabilities", [])
             if capability:
                 metadata["compiled_source_capabilities"].append(_safe_capability_payload(capability))
@@ -414,63 +455,7 @@ def _structured_observations_from_registry(
     return result
 
 
-def _radar_with_structured_observations(radar: dict[str, Any], result: WebSearchProviderResult) -> dict[str, Any]:
-    observations = [
-        dict(item)
-        for item in result.provider_metadata.get("structured_company_observations", [])
-        if isinstance(item, dict)
-    ]
-    if not observations:
-        return radar
-    existing = [
-        dict(item)
-        for item in radar.get("structured_company_observations", [])
-        if isinstance(item, dict)
-    ]
-    return {**radar, "structured_company_observations": _dedupe_observations([*existing, *observations])}
-
-
-def _registry_snippet(observation: CompanyRegistryObservation) -> str:
-    parts = [
-        observation.status,
-        f"INN {observation.inn}" if observation.inn else "",
-        f"OGRN {observation.ogrn}" if observation.ogrn else "",
-        observation.address,
-        f"OKVED {observation.okved}" if observation.okved else "",
-    ]
-    return "; ".join(part for part in parts if part) or "Structured company registry observation."
-
-
-def _dedupe_observations(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    seen: set[str] = set()
-    result: list[dict[str, Any]] = []
-    for item in values:
-        key = str(item.get("inn") or item.get("ogrn") or item.get("normalized_legal_name") or item.get("legal_name") or "").lower()
-        if not key or key in seen:
-            continue
-        seen.add(key)
-        result.append(item)
-    return result
-
-
 def _normalize_company_name(value: str) -> str:
     normalized = re.sub(r"[«»\"'.,]", " ", value.lower())
     normalized = re.sub(r"\b(ао|пао|оао|зао|ооо|нао|jsc|pjsc|llc)\b", " ", normalized, flags=re.IGNORECASE)
     return " ".join(normalized.split())
-
-
-def _dedupe_text(values: list[str]) -> list[str]:
-    seen: set[str] = set()
-    result: list[str] = []
-    for value in values:
-        text = " ".join(str(value).split())
-        key = text.lower()
-        if text and key not in seen:
-            result.append(text)
-            seen.add(key)
-    return result
-
-
-def _stable_source_ref(provider_id: str, value: str) -> str:
-    normalized = re.sub(r"[^a-zA-Z0-9]+", "_", value.lower()).strip("_")
-    return f"{provider_id}_{normalized or 'company'}"[:80]

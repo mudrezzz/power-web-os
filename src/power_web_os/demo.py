@@ -20,6 +20,7 @@ from power_web_os.live_icp_radar import (
 from power_web_os.demo_preflight import build_radar_preflight_report, print_preflight_report
 from power_web_os.planner import DeterministicAccessPlanner
 from power_web_os.radar import AccountRadar
+from power_web_os.application.radar_runtime_config import build_effective_runtime_config_report
 from power_web_os.serialization import (
     access_plan_from_payload,
     account_from_payload,
@@ -229,6 +230,7 @@ def generate_persisted_live_mini_icp_radar_artifact(
         SqlAlchemyRadarDefinitionRepository,
         SqlAlchemyRadarRunOutputRepository,
         SqlAlchemyRadarRunRepository,
+        SqlAlchemyRadarRunTechnicalTraceRepository,
         create_database_engine,
         create_session_factory,
         session_scope,
@@ -248,9 +250,17 @@ def generate_persisted_live_mini_icp_radar_artifact(
                 provider=OpenRouterWebSearchProvider(),
                 discovery_planner=OpenRouterDiscoveryPlanner(),
                 source_registry=dadata_source_registry_from_env(),
+                technical_trace_repository=SqlAlchemyRadarRunTechnicalTraceRepository(session),
             ),
+            runtime_config_provider=lambda: _demo_runtime_config_payload(component="worker"),
+            technical_tracer=None,
         )
-        result = service.run(PersistedLiveRadarRunCommand(live=True))
+        api_runtime_config = _demo_runtime_config_payload(component="cli")
+        result = service.run(PersistedLiveRadarRunCommand(
+            live=True,
+            task_context=_task_context_from_runtime_config(api_runtime_config),
+            api_runtime_config=api_runtime_config,
+        ))
 
     if result.artifact is None:
         raise RuntimeError(f"Persisted live Radar run failed: {result.run.error_message}")
@@ -261,6 +271,22 @@ def generate_persisted_live_mini_icp_radar_artifact(
     return artifact
 
 
+def _demo_runtime_config_payload(*, component: str) -> dict[str, Any]:
+    return build_effective_runtime_config_report(
+        component=component,
+        dotenv_path=Path.cwd() / ".env",
+    ).to_payload()
+
+
+def _task_context_from_runtime_config(runtime_config: dict[str, Any]) -> dict[str, Any]:
+    config = runtime_config.get("config") if isinstance(runtime_config.get("config"), dict) else {}
+    radar = config.get("radar") if isinstance(config.get("radar"), dict) else {}
+    return {
+        **{key: value for key, value in radar.items() if value is not None},
+        "source": "demo_persisted_cli",
+    }
+
+
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -268,7 +294,8 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def _assert_no_secrets(payload: dict[str, Any]) -> None:
     serialized = json.dumps(payload, ensure_ascii=False)
-    forbidden = ("OPENROUTER_API_KEY", "Authorization", "Bearer", "sk-or-")
+    # Env var names are safe in remediation text; secret-looking values are not.
+    forbidden = ("Authorization", "Bearer ", "sk-or-")
     if any(token in serialized for token in forbidden):
         raise RuntimeError("Refusing to write live radar artifact containing secret-like content")
 

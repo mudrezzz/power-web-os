@@ -28,7 +28,7 @@ RadarCriterionRole = Literal["upstream_discovery", "downstream_gate", "attribute
 RadarSourceBase = Literal["global_configured", "rule_local", "additional", "system"]
 RadarSourceApplicationScope = Literal["whole_universe", "rule_scope", "candidate_scope"]
 RadarSourceUsageObligation = Literal["required", "preferred", "optional", "fallback", "disabled", "required_for_identity", "required_for_coverage", "required_for_signal"]
-RadarEntityType = Literal["legal_entity", "production_site", "project", "asset", "unknown_entity"]
+RadarEntityType = Literal["legal_entity", "branch", "production_site", "project", "asset", "unknown_entity"]
 RadarEntityResolutionStatus = Literal["resolved", "linked_to_legal_entity", "unresolved_gap", "rejected_as_account", "review_needed"]
 
 

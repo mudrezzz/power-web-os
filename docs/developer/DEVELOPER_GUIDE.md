@@ -412,6 +412,18 @@ calls and web-task calls should both appear in the same external-call budget
 summary, with role counters for `openrouter_planner` and
 `openrouter_web_task`.
 
+After `0.7.6.1.11.9.4`, upstream discovery is recall-first. A source-backed
+branch, production site, plant, asset, or project should not disappear only
+because it is not yet a standalone legal entity. Ambiguous registry
+observations are retained as review-needed universe entities or linked facts
+with flags such as `registry_match_ambiguous`,
+`not_standalone_legal_entity`, and `requires_human_review`. The run may create
+bounded cross-source disambiguation tasks against allowed official/web sources.
+Downstream account projection remains strict: product candidates still require
+legal-entity resolution, while dossier diagnostics expose
+`upstream_disambiguation_results`, `cross_source_disambiguation_tasks`,
+`review_needed_universe_count`, and `linked_branch_or_site_count`.
+
 Default queue settings:
 
 ```text

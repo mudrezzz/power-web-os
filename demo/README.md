@@ -296,6 +296,17 @@ If discovery produced no concrete candidates, the registry task should be
 The external-call budget summary should include OpenRouter planner calls and
 web-task calls in the same run total.
 
+After `0.7.6.1.11.9.4`, read upstream discovery as recall-first. If DaData or
+web retrieval finds a branch, plant, production site, project, or asset, the
+Radar should keep the source-backed entity in the candidate universe as
+review-needed instead of dropping it immediately. These entries remain separate
+from strict product account candidates and carry review flags such as
+`registry_match_ambiguous`, `not_standalone_legal_entity`, and
+`requires_human_review`. In diagnostics, inspect
+`upstream_disambiguation_results`, `cross_source_disambiguation_tasks`,
+`review_needed_universe_count`, and `linked_branch_or_site_count` to see what
+was retained for human review or official/web cross-check.
+
 Live Radar also resolves entity type before scoring. The shortlist is an account
 shortlist, so normal candidates are legal entities. Production sites, projects,
 installations, and assets found during discovery are linked to a resolved legal

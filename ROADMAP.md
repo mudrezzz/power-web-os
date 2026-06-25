@@ -4472,7 +4472,7 @@ Principles:
 
 ### Slice 0.7.6.1.11.9.4: Recall-first upstream discovery and cross-source disambiguation
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Change upstream candidate discovery from an over-conservative
   legal-entity filter into a recall-first source-backed discovery loop that can
   keep branches, production sites, plants, and assets as review-needed
@@ -4573,11 +4573,136 @@ Principles:
     qualified legal accounts.
   - Long benchmark `0.7.6.2` remains blocked until this recall-first behavior
     is covered by fast recorded tests and smoke diagnostics.
+- Completion notes:
+  - Done: ambiguous company-registry observations with source-backed names are
+    retained as review-needed upstream universe entities or linked facts instead
+    of immediately blocking the run.
+  - Done: branch/site/asset/project entities carry explicit review metadata:
+    `registry_match_ambiguous`, `not_standalone_legal_entity`, and
+    `requires_human_review`.
+  - Done: registry ambiguity can create bounded cross-source disambiguation
+    requests against allowed official/web sources without promoting the entity
+    to a high-confidence legal account.
+  - Done: dossier/API projections expose `upstream_disambiguation_results`,
+    `cross_source_disambiguation_tasks`, `review_needed_universe_count`, and
+    `linked_branch_or_site_count`.
+  - Done: source-obligation runtime semantics no longer treat useful
+    review-needed ambiguous observations as an automatic policy blocker.
+  - Done: fast tests cover registry ambiguity retention, universe projection,
+    source-obligation outcome, and dossier projection.
 - Risks:
   - Recall-first discovery can increase noise; mitigate with source refs,
     review flags, smoke candidate caps, and downstream qualification gates.
   - Cross-check tasks can spend extra external-call budget; mitigate with
     existing smoke/live external-call budgets and checkpoint caps.
+
+### Slice 0.7.6.1.11.9.5: Extraction schema recovery and executable cross-source disambiguation
+
+- Status: `Ready`
+- Goal: Turn the latest Docker TOIR smoke result from a diagnostic stop into a
+  controlled recovery path: extraction schema failures should be repaired or
+  retried directly, and cross-source disambiguation tasks should be executable
+  runtime work, not only planned dossier metadata.
+- User value: A user can run smoke and see whether Radar can recover from noisy
+  LLM extraction and actually cross-check ambiguous registry/site observations
+  before a benchmark. The result should say what was executed, skipped by
+  budget, repaired, or stopped for review.
+- Problem statement:
+  - Docker/API/worker parity is now green: source cards are present, connector
+    profiles load in the container, OpenRouter/DaData runtime config matches,
+    and smoke external-call budgets are enforced.
+  - The latest smoke still stops before signal search because checkpoints see
+    repeated `extraction_schema_failed` and spend budget on `revise_plan`.
+  - This is the wrong recovery level: malformed extraction output should first
+    go through bounded extraction repair/retry, not necessarily full planning
+    revision.
+  - `cross_source_disambiguation_tasks` are visible in the dossier, but current
+    smoke evidence shows them as planned work rather than executed/skipped
+    runtime actions with outcomes.
+  - Therefore `0.7.6.2` benchmark would mostly measure schema-loop and
+    planned-only cross-check defects, not discovery quality.
+- Scope:
+  - Add a bounded extraction recovery path for provider responses that fail the
+    strict extraction schema gate.
+  - Distinguish recovery actions:
+    - `repair_extraction` / `retry_extraction` for malformed extraction output;
+    - `revise_plan` only when the accepted plan itself is invalid or unsuitable;
+    - `stop_review_needed` when repair/retry budget is exhausted.
+  - Keep provider retry limits and external-call budgets authoritative; recovery
+    must not create unbounded OpenRouter calls.
+  - Make cross-source disambiguation tasks executable in staged execution:
+    - select allowed official/web source from connector capabilities and source
+      obligations;
+    - execute a bounded cross-check task when budget allows;
+    - record `executed`, `skipped_budget_limited`,
+      `skipped_policy_limited`, `schema_failed`, or `no_supporting_evidence`.
+  - Merge cross-check evidence into upstream disambiguation results and
+    candidate-universe metadata without promoting review-needed entities to
+    high-confidence accounts automatically.
+  - Persist additive diagnostics:
+    - extraction repair attempts and outcomes;
+    - cross-check execution attempts and outcomes;
+    - remaining budget at each recovery decision;
+    - reason signal search did or did not start.
+- Out of scope:
+  - Benchmark quality claims.
+  - New source providers or UI source editor changes.
+  - Relaxing product candidate scoring.
+  - Removing strict extraction schema validation.
+  - Adding wall-clock timeout as the main control mechanism.
+- Implementation notes:
+  - Treat extraction repair as an application-level checkpoint action, not as a
+    provider-specific hidden retry.
+  - Use compact product-safe repair prompts or deterministic schema coercion
+    where safe; never pass raw hidden reasoning or raw provider dumps to product
+    dossier.
+  - Cross-source disambiguation must use existing retrieval/provider ports and
+    budget guards, not a one-off web-search shortcut.
+  - A cross-check task can succeed by confirming a relation, fail by finding no
+    support, or stop as review-needed if budget/policy prevents a useful check.
+- Tests:
+  - Fake provider fixture: malformed extraction response -> bounded extraction
+    repair -> valid observations -> checkpoint continues.
+  - Fake provider fixture: repeated malformed extraction -> repair/retry cap
+    reached -> `stop_review_needed`, no blind signal search.
+  - Regression fixture: extraction schema failure does not consume all recovery
+    attempts as `revise_plan` when the plan is otherwise valid.
+  - Cross-check fixture: ambiguous registry observation creates an executable
+    official/web cross-check task and records an `executed` outcome.
+  - Budget fixture: cross-check budget exhausted records
+    `skipped_budget_limited` and `stopped_for_review`, not clean completed
+    empty output.
+  - Dossier/API fixture: `cross_source_disambiguation_tasks` include runtime
+    outcomes, not only planned tasks.
+  - Smoke acceptance fixture: signal search starts only after final checkpoint
+    has no blocking schema/cross-check recovery state.
+- Docs:
+  - Update Developer Guide and demo docs with smoke interpretation:
+    schema repair vs plan revision, executable cross-check outcomes, and why a
+    review-needed stop is still a valid bounded smoke result.
+  - Update the connector-profile ADR note to say source cards can drive
+    executable cross-check tasks, not only planner validation.
+- Demo impact:
+  - Existing run diagnostics/dossier should show extraction recovery and
+    cross-check execution outcomes through additive fields; no new screen is
+    required.
+- Acceptance criteria:
+  - A Docker TOIR smoke run no longer loops through repeated
+    `extraction_schema_failed -> revise_plan` until budget exhaustion when the
+    failure is repairable extraction shape noise.
+  - Cross-source disambiguation tasks have concrete runtime outcomes:
+    executed, skipped by budget/policy, failed schema, or no supporting
+    evidence.
+  - If signal search is skipped, the dossier explains whether the blocker was
+    extraction repair exhaustion, cross-check budget/policy, or another
+    checkpoint reason.
+  - `0.7.6.2` remains blocked until this slice is validated with fast tests and
+    one bounded Docker TOIR smoke RCA.
+- Risks:
+  - Repairing malformed extraction too aggressively could mask provider quality
+    problems; mitigate by recording repair attempts and keeping review flags.
+  - Executing cross-checks can increase OpenRouter cost; mitigate with smoke
+    caps and explicit per-action budget records.
 
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 
@@ -4618,6 +4743,9 @@ Principles:
     connector capabilities, containerized connector-profile parity, and concrete
     registry-enrichment handoff plus recall-first upstream disambiguation
     rather than an opaque web-search prompt path.
+  - Run this only after the corrective smoke gate
+    `0.7.6.1.11.9.5` proves extraction schema recovery and executable
+    cross-source disambiguation in the Docker/API/worker path.
   - The benchmark should use the qualification-first execution plan from
     `Slice 0.7.6.1.3`, LLM-planned discovery from `Slice 0.7.6.1.4`, and
     coverage-enforced candidate universe expansion from `Slice 0.7.6.1.5`;
@@ -5249,14 +5377,13 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11.9.4: Recall-first upstream discovery and
-cross-source disambiguation` before starting the multi-radar benchmark. The
-latest TOIR smoke proved that connector cards, registry concrete-input guards,
-and external-call budget parity work, but it also showed that upstream discovery
-is still too conservative: ambiguous registry observations for branches,
-plants, or production sites can block the run before official/web sources get a
-chance to cross-check them. Expected next evidence: fast recorded tests where a
-source-backed branch/site/asset remains in the candidate universe as
-review-needed or linked fact, targeted official/web cross-check runs when
-allowed by source policy, and downstream qualified-account projection remains
-strict.
+Implement `Slice 0.7.6.1.11.9.5: Extraction schema recovery and executable
+cross-source disambiguation` before `Slice 0.7.6.2`. The latest bounded Docker
+TOIR smoke with live DaData and `openrouter_perplexity` proved container/runtime
+parity, non-empty source cards, enforced OpenRouter budgets, and recall-first
+review-needed upstream entities, but it still stopped for review before signal
+search because repeated `extraction_schema_failed` checkpoints consumed
+recovery budget and cross-source disambiguation remained planned rather than
+executed runtime work. The next slice must make schema repair/retry distinct
+from plan revision and give cross-check tasks concrete executed/skipped/failure
+outcomes in dossier and trace.

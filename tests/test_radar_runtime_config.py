@@ -6,6 +6,7 @@ from power_web_os.application.radar_runtime_config import (
     build_effective_runtime_config_report,
     compare_runtime_config_reports,
 )
+from power_web_os.demo import _assert_no_secrets, _task_context_from_runtime_config
 
 
 def test_runtime_config_report_redacts_secrets_and_builds_fingerprint() -> None:
@@ -89,3 +90,36 @@ def test_runtime_config_compare_reports_critical_mismatch() -> None:
 
     assert any(item["code"] == "runtime_config_mismatch" for item in warnings)
     assert any(item.get("path") == "retrieval.provider" for item in warnings)
+
+
+def test_demo_persisted_cli_task_context_uses_effective_radar_runtime_config() -> None:
+    runtime_config = build_effective_runtime_config_report(
+        component="cli",
+        env={
+            "POWER_WEB_OS_RADAR_RUN_PROFILE": "smoke",
+            "POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN": "8",
+            "POWER_WEB_OS_RADAR_MAX_DADATA_LOOKUPS_PER_RUN": "3",
+            "POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES": "2",
+            "POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS": "1",
+        },
+    ).to_payload()
+
+    task_context = _task_context_from_runtime_config(runtime_config)
+
+    assert task_context["run_profile"] == "smoke"
+    assert task_context["max_openrouter_calls_per_run"] == 8
+    assert task_context["max_dadata_lookups_per_run"] == 3
+    assert task_context["smoke_max_candidates"] == 2
+    assert task_context["smoke_max_signals"] == 1
+    assert task_context["source"] == "demo_persisted_cli"
+
+
+def test_demo_secret_guard_allows_env_var_names_but_rejects_secret_values() -> None:
+    _assert_no_secrets({"remediation": "Check OPENROUTER_API_KEY and DADATA_API_KEY."})
+
+    try:
+        _assert_no_secrets({"value": "sk-or-test-secret"})
+    except RuntimeError:
+        pass
+    else:  # pragma: no cover - explicit assertion keeps the failure readable.
+        raise AssertionError("secret-like OpenRouter value was not rejected")

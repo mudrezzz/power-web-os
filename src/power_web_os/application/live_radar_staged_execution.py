@@ -81,6 +81,7 @@ from power_web_os.application.live_radar_universe import (
     gap_items,
     gap_observations,
     gap_payloads,
+    stable_id,
 )
 
 MAX_DISCOVERY_ITERATIONS = 2
@@ -505,6 +506,14 @@ def run_staged_radar_execution(
         _candidate_universe_with_signal_statuses(candidate_universe, signal_search_statuses),
         observations,
     )
+    candidate_universe_payload = _append_review_needed_universe_entities(
+        candidate_universe_payload,
+        provider_metadata=provider_metadata,
+    )
+    upstream_disambiguation_results = dict_list(provider_metadata.get("upstream_disambiguation_results"))
+    cross_source_disambiguation_tasks = dict_list(provider_metadata.get("cross_source_disambiguation_tasks"))
+    if upstream_disambiguation_results:
+        events.extend(_upstream_disambiguation_events(upstream_disambiguation_results, cross_source_disambiguation_tasks))
     source_obligation_decisions = obligation_decisions_from_plan(
         global_policy=dict(radar.get("global_search_policy") or {}),
         steps=execution_plan.tasks,
@@ -584,6 +593,10 @@ def run_staged_radar_execution(
             "extraction_repair_results": repair_results,
             "extraction_contract_state": extraction_contract_state(provider_metadata),
             "candidate_universe": candidate_universe_payload,
+            "upstream_disambiguation_results": upstream_disambiguation_results,
+            "cross_source_disambiguation_tasks": cross_source_disambiguation_tasks,
+            "review_needed_universe_count": _review_needed_universe_count(candidate_universe_payload),
+            "linked_branch_or_site_count": _linked_branch_or_site_count(provider_metadata.get("linked_entity_facts", [])),
             **smoke_cap_metadata,
             "coverage_checks": coverage_checks,
             "coverage_warnings": sorted(set(coverage_warnings)),
@@ -708,3 +721,85 @@ def _external_budget_events(exhaustion_events: list[dict[str, object]]) -> list[
         )
         for item in exhaustion_events
     ]
+
+
+def _append_review_needed_universe_entities(
+    candidate_universe: list[dict[str, Any]],
+    *,
+    provider_metadata: dict[str, Any],
+) -> list[dict[str, Any]]:
+    known = {str(item.get("legal_name") or "").casefold() for item in candidate_universe}
+    result = list(candidate_universe)
+    for item in dict_list(provider_metadata.get("upstream_disambiguation_results")):
+        name = str(item.get("legal_name") or item.get("entity_name") or "").strip()
+        if not name or name.casefold() in known:
+            continue
+        known.add(name.casefold())
+        entity_type = str(item.get("entity_type") or "unknown_entity")
+        result.append({
+            "candidate_id": stable_id(name),
+            "legal_name": name,
+            "status": "unknown_review_needed",
+            "origin_task_id": str(item.get("origin_task_id") or item.get("lookup_query") or "upstream_disambiguation"),
+            "source_refs": list(item.get("source_refs", [])) if isinstance(item.get("source_refs"), list) else [],
+            "gate_results": [],
+            "rejection_reasons": [],
+            "coverage_flags": [flag for flag in _string_list(item.get("review_flags")) if "candidate_universe" in flag or "coverage" in flag],
+            "entity_type": entity_type,
+            "resolution_status": str(item.get("resolution_status") or "review_needed"),
+            "not_candidate_reason": str(item.get("not_candidate_reason") or ("not_standalone_legal_entity" if entity_type != "legal_entity" else "")),
+            "review_flags": _string_list(item.get("review_flags")),
+            "linked_fact_count": 0,
+            "signal_searches": [],
+        })
+    return result
+
+
+def _review_needed_universe_count(candidate_universe: list[dict[str, Any]]) -> int:
+    return sum(1 for item in candidate_universe if str(item.get("status") or "") == "unknown_review_needed")
+
+
+def _linked_branch_or_site_count(linked_facts: object) -> int:
+    return sum(
+        1
+        for item in dict_list(linked_facts)
+        if str(item.get("entity_type") or "") in {"branch", "production_site", "asset", "project"}
+    )
+
+
+def _upstream_disambiguation_events(
+    results: list[dict[str, Any]],
+    tasks: list[dict[str, Any]],
+) -> list[LiveRadarPipelineEvent]:
+    events: list[LiveRadarPipelineEvent] = []
+    tasks_by_entity = {str(item.get("entity_name") or ""): item for item in tasks}
+    for item in results:
+        name = str(item.get("legal_name") or item.get("entity_name") or "")
+        task = tasks_by_entity.get(name)
+        events.append(LiveRadarPipelineEvent(
+            event_type="upstream_entity_retained_for_review",
+            phase="collection",
+            actor="application",
+            node_name="upstream_disambiguation",
+            visibility="operator",
+            summary=f"Retained upstream entity {name} for human review.",
+            payload=dict(item),
+            source_refs=list(item.get("source_refs", [])) if isinstance(item.get("source_refs"), list) else [],
+            candidate_refs=[name] if name else [],
+        ))
+        if task:
+            events.append(LiveRadarPipelineEvent(
+                event_type="cross_source_disambiguation_requested",
+                phase="planning",
+                actor="application",
+                node_name="upstream_disambiguation",
+                visibility="operator",
+                summary=f"Planned cross-source disambiguation for {name}.",
+                payload=dict(task),
+                candidate_refs=[name] if name else [],
+            ))
+    return events
+
+
+def _string_list(value: object) -> list[str]:
+    return [str(item) for item in value if str(item).strip()] if isinstance(value, list) else []

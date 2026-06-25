@@ -65,6 +65,8 @@ def dossier_response(
     linked_entity_facts = _list(execution_results.get("linked_entity_facts"))
     entity_resolution_warnings = _list(execution_results.get("entity_resolution_warnings"))
     candidate_universe = _list(execution_results.get("candidate_universe"))
+    upstream_disambiguation_results = _list(execution_results.get("upstream_disambiguation_results"))
+    cross_source_disambiguation_tasks = _list(execution_results.get("cross_source_disambiguation_tasks"))
     coverage_checks = _list(execution_results.get("coverage_checks"))
     coverage_warnings = [str(value) for value in execution_results.get("coverage_warnings", []) if isinstance(value, str)]
     unresolved_candidate_gaps = _list(execution_results.get("unresolved_candidate_gaps"))
@@ -121,6 +123,8 @@ def dossier_response(
         linked_entity_facts=linked_entity_facts,
         entity_resolution_warnings=entity_resolution_warnings,
         candidate_universe=candidate_universe,
+        upstream_disambiguation_results=upstream_disambiguation_results,
+        cross_source_disambiguation_tasks=cross_source_disambiguation_tasks,
         coverage_checks=coverage_checks,
         coverage_warnings=coverage_warnings,
         unresolved_candidate_gaps=unresolved_candidate_gaps,
@@ -150,6 +154,8 @@ def dossier_response(
             smoke_candidate_cap=_optional_int(execution_results.get("smoke_candidate_cap")),
             promoted_candidate_count=_int(execution_results.get("promoted_candidate_count"), default=len(candidates)),
             diagnostic_candidate_count=_int(execution_results.get("diagnostic_candidate_count"), default=0),
+            review_needed_universe_count=_int(execution_results.get("review_needed_universe_count"), default=0),
+            linked_branch_or_site_count=_int(execution_results.get("linked_branch_or_site_count"), default=0),
             source_cards_count=len(source_cards),
             source_capability_decision_count=len(source_capability_decisions),
             connector_profile_loaded_count=len({str(item.get("connector_profile_id") or "") for item in source_cards if str(item.get("connector_profile_id") or "").strip()}),

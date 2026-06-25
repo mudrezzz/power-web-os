@@ -357,6 +357,8 @@ class RadarRunDossierSummaryResponse(BaseModel):
     smoke_candidate_cap: int | None = None
     promoted_candidate_count: int = 0
     diagnostic_candidate_count: int = 0
+    review_needed_universe_count: int = 0
+    linked_branch_or_site_count: int = 0
     source_cards_count: int = 0
     source_capability_decision_count: int = 0
     connector_profile_loaded_count: int = 0
@@ -393,6 +395,8 @@ class RadarRunDossierResponse(BaseModel):
     linked_entity_facts: list[dict[str, Any]] = Field(default_factory=list)
     entity_resolution_warnings: list[dict[str, Any]] = Field(default_factory=list)
     candidate_universe: list[dict[str, Any]] = Field(default_factory=list)
+    upstream_disambiguation_results: list[dict[str, Any]] = Field(default_factory=list)
+    cross_source_disambiguation_tasks: list[dict[str, Any]] = Field(default_factory=list)
     coverage_checks: list[dict[str, Any]] = Field(default_factory=list)
     coverage_warnings: list[str] = Field(default_factory=list)
     unresolved_candidate_gaps: list[dict[str, Any]] = Field(default_factory=list)

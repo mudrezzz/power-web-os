@@ -275,12 +275,16 @@ class PersistedLiveRadarRunService:
         executor: LiveRadarArtifactExecutor,
         definition_repository: RadarDefinitionRepository | None = None,
         journal: RadarRunJournal | None = None,
+        runtime_config_provider: Callable[[], dict[str, Any]] | None = None,
+        technical_tracer: RadarRunTechnicalTracer | None = None,
     ) -> None:
         self._run_repository = run_repository
         self._output_repository = output_repository
         self._executor = executor
         self._definition_repository = definition_repository
         self._journal = journal
+        self._runtime_config_provider = runtime_config_provider
+        self._technical_tracer = technical_tracer
 
     def run(self, command: PersistedLiveRadarRunCommand) -> PersistedLiveRadarRunResult:
         queued = QueuedLiveRadarRunService(run_repository=self._run_repository, journal=self._journal).create(command)
@@ -291,6 +295,8 @@ class PersistedLiveRadarRunService:
                 executor=self._executor,
                 definition_repository=self._definition_repository,
                 journal=self._journal,
+                runtime_config_provider=self._runtime_config_provider,
+                technical_tracer=self._technical_tracer,
             )
             run = executor.execute(queued.run.run_id)
         else:

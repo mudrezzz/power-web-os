@@ -339,6 +339,8 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["summary"]["source_cards_count"] == 1
     assert dossier["summary"]["source_capability_decision_count"] == 1
     assert dossier["summary"]["connector_profile_loaded_count"] == 1
+    assert dossier["summary"]["review_needed_universe_count"] == 1
+    assert dossier["summary"]["linked_branch_or_site_count"] == 0
     assert dossier["discovery_plan"]["plan_summary"] == "Test discovery plan."
     assert dossier["discovery_plan"]["steps"][0]["stage"] == "candidate_universe_discovery"
     assert dossier["source_cards"][0]["connector_profile_id"] == "generic_registry"
@@ -354,11 +356,17 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["candidate_universe"][0]["entity_type"] == "legal_entity"
     assert dossier["candidate_universe"][0]["resolution_status"] == "resolved"
     assert dossier["candidate_universe"][0]["linked_fact_count"] == 1
+    assert dossier["candidate_universe"][1]["entity_type"] == "branch"
+    assert dossier["candidate_universe"][1]["resolution_status"] == "review_needed"
+    assert dossier["candidate_universe"][1]["not_candidate_reason"] == "not_standalone_legal_entity"
+    assert "registry_match_ambiguous" in dossier["candidate_universe"][1]["review_flags"]
     assert dossier["entity_resolution_results"][1]["entity_type"] == "project"
     assert dossier["entity_resolution_results"][1]["resolution_status"] == "linked_to_legal_entity"
     assert dossier["linked_entity_facts"][0]["entity_name"] == "EP-600"
     assert dossier["coverage_summary"]["entity_resolution_count"] == 2
     assert dossier["coverage_summary"]["linked_entity_fact_count"] == 1
+    assert dossier["upstream_disambiguation_results"][0]["entity_type"] == "branch"
+    assert dossier["cross_source_disambiguation_tasks"][0]["source_ids"] == ["sibur_site"]
     assert dossier["coverage_checks"][0]["task_id"] == "coverage-q1"
     assert dossier["coverage_warnings"] == []
     assert dossier["unresolved_candidate_gaps"] == []
@@ -989,6 +997,25 @@ def _artifact() -> dict[str, Any]:
                         "entity_type": "legal_entity",
                         "resolution_status": "resolved",
                         "linked_fact_count": 1,
+                    },
+                    {
+                        "candidate_id": "review-gubkin-plant",
+                        "legal_name": "Gubkin gas processing plant",
+                        "status": "unknown_review_needed",
+                        "origin_task_id": "discover-q1",
+                        "source_refs": ["registry_branch_src"],
+                        "gate_results": [],
+                        "rejection_reasons": [],
+                        "coverage_flags": ["registry_match_ambiguous"],
+                        "entity_type": "branch",
+                        "resolution_status": "review_needed",
+                        "linked_fact_count": 0,
+                        "not_candidate_reason": "not_standalone_legal_entity",
+                        "review_flags": [
+                            "registry_match_ambiguous",
+                            "not_standalone_legal_entity",
+                            "requires_human_review",
+                        ],
                     }
                 ],
                 "entity_resolution_results": [
@@ -1018,6 +1045,33 @@ def _artifact() -> dict[str, Any]:
                     }
                 ],
                 "entity_resolution_warnings": [],
+                "upstream_disambiguation_results": [
+                    {
+                        "entity_name": "Gubkin gas processing plant",
+                        "entity_type": "branch",
+                        "resolution_status": "review_needed",
+                        "not_candidate_reason": "not_standalone_legal_entity",
+                        "source_refs": ["registry_branch_src"],
+                        "review_flags": [
+                            "registry_match_ambiguous",
+                            "not_standalone_legal_entity",
+                            "requires_human_review",
+                        ],
+                        "reason": "Ambiguous registry observation retained for upstream review.",
+                    }
+                ],
+                "cross_source_disambiguation_tasks": [
+                    {
+                        "task_id": "cross-check-registry-branch-src",
+                        "entity_name": "Gubkin gas processing plant",
+                        "entity_type": "branch",
+                        "source_ids": ["sibur_site"],
+                        "source_scope": "global",
+                        "purpose": "Cross-check ambiguous registry observation using allowed official/web sources.",
+                    }
+                ],
+                "review_needed_universe_count": 1,
+                "linked_branch_or_site_count": 0,
                 "source_obligations": [
                     {
                         "source_id": "registry",

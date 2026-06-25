@@ -1341,21 +1341,30 @@ def test_retrieved_candidate_extraction_rejects_metric_rows_and_sentence_names()
     assert result.sources == []
 
 
-def test_source_registry_keeps_ambiguous_dadata_matches_diagnostic_not_promoted() -> None:
+def test_source_registry_retains_ambiguous_registry_matches_for_upstream_review() -> None:
     provider = RecordedDaDataCompanyRegistryProvider(fixtures=[
-        {"legal_name": "AO Test Plant North", "status": "ACTIVE"},
-        {"legal_name": "AO Test Plant South", "status": "ACTIVE"},
+        {"legal_name": "AO Test Plant", "status": "ACTIVE", "entity_type": "legal_entity"},
+        {"legal_name": "Gubkin Gas Processing Plant branch of AO Test Plant", "status": "ACTIVE", "entity_type": "branch"},
     ])
     radar = {
         "radar_id": "ambiguous-registry",
         "global_search_policy": {
-            "sources": [{
-                "source_id": "dadata_registry",
-                "connector_profile_id": "dadata_registry",
-                "source_type": "company_registry",
-                "provider_id": "dadata",
-                "reference": "company_registry:dadata",
-            }]
+            "sources": [
+                {
+                    "source_id": "dadata_registry",
+                    "connector_profile_id": "dadata_registry",
+                    "source_type": "company_registry",
+                    "provider_id": "dadata",
+                    "reference": "company_registry:dadata",
+                    "usage_obligation": "required_for_identity",
+                },
+                {
+                    "source_id": "sibur_site",
+                    "connector_profile_id": "sibur_site",
+                    "source_type": "official_website",
+                    "usage_obligation": "preferred",
+                },
+            ]
         },
     }
     task = RadarExecutionTask(
@@ -1373,8 +1382,91 @@ def test_source_registry_keeps_ambiguous_dadata_matches_diagnostic_not_promoted(
 
     assert result.candidate_observations == []
     assert len(result.sources) == 2
-    assert result.provider_metadata["source_provider_outcomes"][0]["outcome"] == "ambiguous_match"
+    outcome = result.provider_metadata["source_provider_outcomes"][0]
+    assert outcome["outcome"] == "ambiguous_match"
+    assert outcome["review_needed_entity_count"] == 2
     assert len(result.provider_metadata["registry_ambiguous_observations"]) == 2
+    upstream = result.provider_metadata["upstream_disambiguation_results"]
+    assert {item["entity_type"] for item in upstream} == {"legal_entity", "branch"}
+    assert all("registry_match_ambiguous" in item["review_flags"] for item in upstream)
+    gaps = result.provider_metadata["candidate_universe_gaps"]
+    assert any(item["entity_type"] == "branch" for item in gaps)
+    cross_checks = result.provider_metadata["cross_source_disambiguation_tasks"]
+    assert cross_checks
+    assert cross_checks[0]["source_ids"] == ["sibur_site"]
+
+
+def test_staged_execution_projects_ambiguous_registry_entities_into_review_needed_universe() -> None:
+    dadata = RecordedDaDataCompanyRegistryProvider(fixtures=[
+        {"legal_name": "AO Test Plant", "status": "ACTIVE", "entity_type": "legal_entity"},
+        {"legal_name": "Gubkin Gas Processing Plant branch of AO Test Plant", "status": "ACTIVE", "entity_type": "branch"},
+    ])
+    provider = SourceRegistryWebSearchProvider(
+        RecordedWebSearchProvider(WebSearchProviderResult()),
+        RadarSourceRegistry(company_registry_providers={"dadata": dadata}),
+    )
+    radar = {
+        "radar_id": "recall-first",
+        "qualification_criteria": [{"code": "Q1", "label": "Belongs to group", "requirement_level": "required"}],
+        "intent_signals": [],
+        "global_search_policy": {
+            "sources": [
+                {
+                    "source_id": "dadata_registry",
+                    "connector_profile_id": "dadata_registry",
+                    "source_type": "company_registry",
+                    "provider_id": "dadata",
+                    "reference": "company_registry:dadata",
+                    "usage_obligation": "required_for_identity",
+                },
+                {
+                    "source_id": "sibur_site",
+                    "connector_profile_id": "sibur_site",
+                    "source_type": "official_website",
+                    "usage_obligation": "preferred",
+                },
+            ]
+        },
+    }
+    plan = RadarExecutionPlan(
+        radar_id="recall-first",
+        tasks=[
+            RadarExecutionTask(
+                task_id="identity-q1",
+                stage="qualification_gate",
+                subject_type="qualification",
+                subject_id="Q1",
+                query="Confirm Test Plant identity.",
+                purpose="Confirm identity.",
+                source_ids=["dadata_registry"],
+                candidate_scope=["Test Plant"],
+            )
+        ],
+    )
+
+    _, events, execution_results = run_staged_radar_execution(
+        radar=radar,
+        execution_plan=plan,
+        provider=provider,
+    )
+
+    universe = execution_results["candidate_universe"]
+    assert {item["legal_name"] for item in universe} == {
+        "AO Test Plant",
+        "Gubkin Gas Processing Plant branch of AO Test Plant",
+    }
+    branch = next(item for item in universe if item["entity_type"] == "branch")
+    assert branch["status"] == "unknown_review_needed"
+    assert branch["resolution_status"] == "review_needed"
+    assert "registry_match_ambiguous" in branch["review_flags"]
+    assert "not_standalone_legal_entity" in branch["review_flags"]
+    assert execution_results["review_needed_universe_count"] == 2
+    assert execution_results["cross_source_disambiguation_tasks"][0]["source_ids"] == ["sibur_site"]
+    obligations = {item["source_id"]: item for item in execution_results["source_obligation_decisions"]}
+    assert obligations["dadata_registry"]["status"] == "attempted_review_needed"
+    assert execution_results["source_obligation_summary"]["blocking_count"] == 0
+    assert "upstream_entity_retained_for_review" in [event.event_type for event in events]
+    assert "cross_source_disambiguation_requested" in [event.event_type for event in events]
 
 
 def test_smoke_profile_caps_promoted_candidates_not_only_signal_scope() -> None:

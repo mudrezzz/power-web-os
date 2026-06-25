@@ -208,6 +208,8 @@ def _runtime_obligation_outcome(
             return {"status": "blocked", "outcome": outcome, "useful": False}
         if outcome in {"empty", "provider_empty", "no_match"} or observation_count == 0 and outcome in {"used", "no_match"}:
             return {"status": "attempted_empty", "outcome": outcome, "useful": False}
+        if outcome == "ambiguous_match" and _int_value(provider_outcome.get("review_needed_entity_count")) > 0:
+            return {"status": "attempted_review_needed", "outcome": outcome, "useful": True}
         if outcome in {"registry_lookup_insufficient", "schema_invalid", "ambiguous_match"}:
             return {"status": "attempted_insufficient", "outcome": outcome, "useful": False}
         if observation_count > 0 or outcome == "used":
@@ -240,6 +242,8 @@ def _provider_outcome_rank(outcome_payload: dict[str, Any]) -> int:
         return 50
     if observation_count > 0:
         return 40
+    if outcome == "ambiguous_match" and _int_value(outcome_payload.get("review_needed_entity_count")) > 0:
+        return 35
     if outcome in {"registry_lookup_insufficient", "schema_invalid", "ambiguous_match"}:
         return 20
     if outcome in {"empty", "provider_empty", "no_match"}:

@@ -123,8 +123,8 @@ class RadarEntityResolutionService:
             entity_type = _infer_entity_type(item)
             item["entity_type"] = entity_type
             item["entity_resolution_status"] = _default_status(entity_type)
-            if entity_type in {"production_site", "project", "asset"}:
-                item["not_candidate_reason"] = "entity_type_not_account"
+            if entity_type in {"branch", "production_site", "project", "asset"}:
+                item["not_candidate_reason"] = str(item.get("not_candidate_reason") or "not_standalone_legal_entity")
                 non_account_observations.append(item)
             else:
                 if entity_type == "unknown_entity":
@@ -187,13 +187,15 @@ class RadarEntityResolutionService:
 
 def _infer_entity_type(item: dict[str, Any]) -> RadarEntityType:
     explicit = str(item.get("entity_type") or "").strip()
-    if explicit in {"legal_entity", "production_site", "project", "asset", "unknown_entity"}:
+    if explicit in {"legal_entity", "branch", "production_site", "project", "asset", "unknown_entity"}:
         return explicit  # type: ignore[return-value]
     name = _entity_name(item)
     facts = item.get("registry_facts") if isinstance(item.get("registry_facts"), dict) else {}
     if item.get("inn") or item.get("ogrn") or facts.get("inn") or facts.get("ogrn") or _has_legal_form(name):
         return "legal_entity"
     lowered = name.lower()
+    if "филиал" in lowered:
+        return "branch"
     if re.search(r"\b(e[pr]|э[пр])[-\s]?\d{2,}\b", lowered, flags=re.IGNORECASE) or "проект" in lowered:
         return "project"
     if any(marker in lowered for marker in ("установка", "линия", "цех", "актив")):
@@ -210,7 +212,7 @@ def _default_status(entity_type: RadarEntityType) -> RadarEntityResolutionStatus
         return "resolved"
     if entity_type == "unknown_entity":
         return "review_needed"
-    return "rejected_as_account"
+    return "review_needed"
 
 
 def _entity_name(item: dict[str, Any]) -> str:
@@ -232,7 +234,7 @@ def _resolution_reason(item: dict[str, Any], entity_type: RadarEntityType) -> st
         return "Legal entity identity was supported by registry facts or legal-form naming."
     if entity_type == "unknown_entity":
         return "Entity type is not confirmed; keep for human review."
-    return "Entity appears to be a non-account site, project, or asset."
+    return "Entity appears to be a non-account branch, site, project, or asset; keep for upstream review."
 
 
 def _explicit_legal_link(item: dict[str, Any], legal_names: list[str]) -> str:
