@@ -288,6 +288,14 @@ product candidates, while extra observations remain diagnostic gaps. If the run
 is blocked by policy or stopped for review, read that as the primary smoke
 outcome, not as a successful quality benchmark.
 
+After `0.7.6.1.11.9.3.3`, also check registry enrichment handoff. A valid smoke
+trace should show `candidate_scope_materialized`: discovered legal-entity names
+replace placeholder scopes such as `candidates from step 1` before DaData runs.
+If discovery produced no concrete candidates, the registry task should be
+`not_executed_input_not_available` and DaData lookup count should stay at zero.
+The external-call budget summary should include OpenRouter planner calls and
+web-task calls in the same run total.
+
 Live Radar also resolves entity type before scoring. The shortlist is an account
 shortlist, so normal candidates are legal entities. Production sites, projects,
 installations, and assets found during discovery are linked to a resolved legal

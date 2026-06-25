@@ -44,6 +44,7 @@ from power_web_os.application.live_radar_retrieved_candidates import candidates_
 from power_web_os.application.live_radar_product_sources import product_sources_for_candidates
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan, retrieval_plan_to_search_plan
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
+from power_web_os.application.live_radar_staged_helpers import run_gate_pass
 from power_web_os.application.live_radar_web_retrieval import (
     RadarWebRetrievalResult,
     RadarRetrievedSource,
@@ -609,6 +610,125 @@ def test_source_registry_wrapper_does_not_use_dadata_for_signal_search() -> None
     assert len(web_provider.calls) == 1
 
 
+def test_gate_pass_materializes_placeholder_scope_before_registry_lookup() -> None:
+    radar = active_definition_to_live_radar_payload(_toir_quick_live_definition_record())
+    task = RadarExecutionTask(
+        task_id="identity-placeholder",
+        stage="qualification_gate",
+        subject_type="qualification",
+        subject_id="q1-sibur-group",
+        rule_snapshot="Confirm holding membership.",
+        query="Confirm candidates from step 1 through registry identity.",
+        purpose="Confirm discovered candidate identity.",
+        source_ids=["dadata_registry"],
+        candidate_scope=["candidates from step 1"],
+    )
+    source = RadarSourceEvidence(
+        evidence_ref="retrieved_sibur",
+        title="PJSC SIBUR Holding",
+        url="https://www.sibur.ru/",
+        snippet="PJSC SIBUR Holding is an in-scope legal entity.",
+    )
+    observations = [{
+        "legal_name": "PJSC SIBUR Holding",
+        "entity_type": "legal_entity",
+        "qualification": [{
+            "criterion_code": "q1-sibur-group",
+            "status": "weak",
+            "evidence_refs": ["retrieved_sibur"],
+        }],
+        "evidence_refs": ["retrieved_sibur"],
+        "review_flags": ["retrieval_only_identity_requires_registry_confirmation"],
+    }]
+    dadata = RecordedDaDataCompanyRegistryProvider(fixtures=[{
+        "source_ref": "dadata_sibur",
+        "legal_name": "PJSC SIBUR Holding",
+        "inn": "7700000000",
+    }])
+    provider = SourceRegistryWebSearchProvider(
+        RecordedWebSearchProvider(WebSearchProviderResult()),
+        RadarSourceRegistry(company_registry_providers={"dadata": dadata}),
+    )
+    events = []
+    executed_task_ids: list[str] = []
+
+    _, merged_observations, metadata, candidate_scope = run_gate_pass(
+        radar=radar,
+        execution_plan=RadarExecutionPlan(radar_id="toir-quick-live", tasks=[task]),
+        provider=provider,
+        tasks=[task],
+        sources=[source],
+        observations=observations,
+        provider_metadata={},
+        candidate_scope=[],
+        completed_qualification_ids=["q1-sibur-group"],
+        gate_results=[],
+        events=events,
+        executed_task_ids=executed_task_ids,
+        budget=RadarExecutionBudget(RadarExecutionBudgetSettings()),
+    )
+
+    assert len(dadata.requests) == 1
+    assert dadata.requests[0].candidate_scope == ["PJSC SIBUR Holding"]
+    assert dadata.requests[0].lookup_terms == ["PJSC SIBUR Holding"]
+    assert "identity-placeholder:PJSC SIBUR Holding" in executed_task_ids
+    assert any(event.event_type == "candidate_scope_materialized" for event in events)
+    assert any(item.get("legal_name") == "PJSC SIBUR Holding" for item in merged_observations)
+    assert candidate_scope == ["PJSC SIBUR Holding"]
+    assert metadata["source_provider_outcomes"][0]["outcome"] in {"used", "ambiguous_match"}
+
+
+def test_gate_pass_skips_registry_lookup_when_placeholder_scope_has_no_candidates() -> None:
+    radar = active_definition_to_live_radar_payload(_toir_quick_live_definition_record())
+    task = RadarExecutionTask(
+        task_id="identity-placeholder-empty",
+        stage="qualification_gate",
+        subject_type="qualification",
+        subject_id="q1-sibur-group",
+        rule_snapshot="Confirm holding membership.",
+        query="Confirm candidates from step 1 through registry identity.",
+        purpose="Confirm discovered candidate identity.",
+        source_ids=["dadata_registry"],
+        candidate_scope=["candidates from step 1"],
+    )
+    dadata = RecordedDaDataCompanyRegistryProvider(fixtures=[{
+        "source_ref": "dadata_should_not_be_used",
+        "legal_name": "PJSC SIBUR Holding",
+    }])
+    provider = SourceRegistryWebSearchProvider(
+        RecordedWebSearchProvider(WebSearchProviderResult()),
+        RadarSourceRegistry(company_registry_providers={"dadata": dadata}),
+    )
+    events = []
+    executed_task_ids: list[str] = []
+
+    _, observations, metadata, candidate_scope = run_gate_pass(
+        radar=radar,
+        execution_plan=RadarExecutionPlan(radar_id="toir-quick-live", tasks=[task]),
+        provider=provider,
+        tasks=[task],
+        sources=[],
+        observations=[],
+        provider_metadata={},
+        candidate_scope=[],
+        completed_qualification_ids=[],
+        gate_results=[],
+        events=events,
+        executed_task_ids=executed_task_ids,
+        budget=RadarExecutionBudget(RadarExecutionBudgetSettings()),
+    )
+
+    assert dadata.requests == []
+    assert observations == []
+    assert candidate_scope == []
+    assert executed_task_ids == ["identity-placeholder-empty:not_executed_input_not_available"]
+    outcomes = metadata["source_provider_outcomes"]
+    assert outcomes[0]["source_id"] == "dadata_registry"
+    assert outcomes[0]["outcome"] == "not_executed_input_not_available"
+    assert any(event.event_type == "candidate_scope_materialized" for event in events)
+    assert any(event.event_type == "qualification_gate_skipped" for event in events)
+
+
 class _CapturingWebSearchProvider(RecordedWebSearchProvider):
     def __init__(self) -> None:
         super().__init__(WebSearchProviderResult())
@@ -1046,6 +1166,18 @@ def test_live_radar_service_persists_planner_and_web_openrouter_budget_counters(
     assert counters["openrouter:run"] == counters["openrouter_planner:run"] + counters["openrouter_web_task:run"]
     assert counters["openrouter_planner:run"] >= 1
     assert execution_results["external_call_budget_counters"]["openrouter_web_task:run"] == 1
+
+    node_state = LiveICPRadarRunState(
+        radar=radar,
+        task_context={"max_openrouter_calls_per_run": 3},
+        live=False,
+    )
+    node_planned = service.build_search_plan(node_state)
+    node_collected = service.run_web_search(node_planned)
+    node_counters = node_collected.execution_results["external_call_budget_counters"]
+    assert node_counters["openrouter:run"] == node_counters["openrouter_planner:run"] + node_counters["openrouter_web_task:run"]
+    assert node_counters["openrouter_planner:run"] >= 1
+    assert node_counters["openrouter_web_task:run"] >= 1
 
 
 def test_live_radar_service_wires_connector_source_cards_into_planner() -> None:

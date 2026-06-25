@@ -219,6 +219,27 @@ def test_required_dadata_no_match_is_attempted_empty_not_satisfied() -> None:
     assert source_obligation_summary(decisions)["blocking_count"] == 1
 
 
+def test_required_dadata_useful_outcome_is_not_overwritten_by_later_budget_limit() -> None:
+    decisions = obligation_decisions_from_plan(
+        global_policy={"sources": [_source("dadata_registry", "company_registry", "required_for_identity")]},
+        steps=[_task_with_source("step-1", "qualification_discovery", ["dadata_registry"])],
+        source_policy_decisions=[{"source_id": "dadata_registry", "decision": "selected", "reason": "Required identity."}],
+        source_provider_outcomes=[
+            {"source_id": "dadata_registry", "outcome": "used", "observation_count": 1, "query": "ПАО «СИБУР Холдинг»"},
+            {
+                "source_id": "dadata_registry",
+                "outcome": "not_executed_budget_limited",
+                "observation_count": 0,
+                "query": "Проверить Candidate scope: ПАО «СИБУР Холдинг»",
+            },
+        ],
+    )
+
+    assert decisions[0]["status"] == "satisfied"
+    assert decisions[0]["runtime_outcome"]["outcome"] == "used"
+    assert source_obligation_summary(decisions)["blocking_count"] == 0
+
+
 def test_required_dadata_registry_lookup_insufficient_is_attempted_insufficient() -> None:
     decisions = obligation_decisions_from_plan(
         global_policy={"sources": [_source("dadata_registry", "company_registry", "required_for_identity")]},
@@ -230,6 +251,21 @@ def test_required_dadata_registry_lookup_insufficient_is_attempted_insufficient(
     )
 
     assert decisions[0]["status"] == "attempted_insufficient"
+    assert source_obligation_summary(decisions)["blocking_source_ids"] == ["dadata_registry"]
+
+
+def test_required_dadata_registry_without_concrete_input_is_blocked() -> None:
+    decisions = obligation_decisions_from_plan(
+        global_policy={"sources": [_source("dadata_registry", "company_registry", "required_for_identity")]},
+        steps=[_task_with_source("step-1", "qualification_gate", ["dadata_registry"])],
+        source_policy_decisions=[{"source_id": "dadata_registry", "decision": "selected", "reason": "Required identity."}],
+        source_provider_outcomes=[
+            {"source_id": "dadata_registry", "outcome": "not_executed_input_not_available", "observation_count": 0}
+        ],
+    )
+
+    assert decisions[0]["status"] == "blocked"
+    assert decisions[0]["runtime_outcome"]["outcome"] == "not_executed_input_not_available"
     assert source_obligation_summary(decisions)["blocking_source_ids"] == ["dadata_registry"]
 
 

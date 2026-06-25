@@ -4341,7 +4341,7 @@ Principles:
 
 ### Slice 0.7.6.1.11.9.3.3: Candidate scope materialization for registry enrichment and planner budget parity
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Fix the remaining smoke-run gap before benchmark: discovered
   candidates must be materialized into concrete registry lookup input, and all
   OpenRouter calls, including planner calls, must be counted in the same
@@ -4454,6 +4454,130 @@ Principles:
     not final benchmark quality.
   - Over-tightening DaData source cards may require updating tests that used
     legacy free-text compatibility.
+- Completion notes:
+  - Done: qualification/enrichment gate execution materializes placeholder
+    scopes from the current candidate universe before registry calls.
+  - Done: if no concrete candidates exist, registry enrichment is skipped with
+    `not_executed_input_not_available` and no DaData/provider call is made.
+  - Done: candidate scope names are deduped before downstream gates to avoid
+    duplicate registry lookups after web and registry observations merge.
+  - Done: lookup-only company-registry connector cards no longer compile as
+    generic coverage, signal, or free-text sources unless a future profile
+    explicitly declares those capabilities.
+  - Done: required source obligations treat
+    `not_executed_input_not_available` as a blocking runtime outcome.
+  - Done: fast tests cover placeholder-to-concrete materialization, empty-scope
+    registry skip, DaData-like capability narrowing, and planner/web
+    OpenRouter budget parity.
+
+### Slice 0.7.6.1.11.9.4: Recall-first upstream discovery and cross-source disambiguation
+
+- Status: `Backlog`
+- Goal: Change upstream candidate discovery from an over-conservative
+  legal-entity filter into a recall-first source-backed discovery loop that can
+  keep branches, production sites, plants, and assets as review-needed
+  candidates or linked facts when sources show they matter.
+- User value: A smoke or benchmark run should not lose real industrial assets
+  just because they are branches, plants, or ambiguous registry matches. The
+  user should see them with lower confidence and HITL flags instead of getting
+  an empty or policy-blocked result.
+- Problem statement:
+  - The current upstream path treats ambiguous company-registry results as a
+    reason to block or stop, even when the returned entity is clearly useful for
+    discovery.
+  - For cases like a gas processing plant that appears in DaData as a branch of
+    a legal entity, the pipeline currently behaves too much like a downstream
+    account-resolution filter.
+  - In upstream discovery, this is the wrong bias: it is better to keep a
+    source-backed plant/branch/asset as `review_needed` than to discard it
+    before web/official-source cross-checks can confirm its relationship to the
+    group.
+  - The backend is not yet using required/preferred web or official sources as
+    targeted cross-checks for ambiguous registry observations.
+- Scope:
+  - Add an upstream candidate materialization mode that is explicitly
+    recall-first and review-aware.
+  - Treat ambiguous registry observations as follow-up work, not immediate
+    rejection, when they include source-backed legal identifiers, branch/site
+    names, or strong company/asset names.
+  - Create review-needed candidate-universe entries for branches, production
+    sites, plants, projects, or assets when they have source refs and can be
+    useful for account discovery.
+  - Keep strict account resolution downstream: unresolved branches/sites must
+    not become high-confidence scored legal accounts without resolution, but
+    they may remain in the universe and may be checked for signals with review
+    flags.
+  - Add targeted web/official-source cross-check tasks for ambiguous registry
+    observations when policy allows or requires coverage/official evidence.
+  - Link site/branch/asset observations to a resolved legal entity when DaData,
+    web evidence, or official source evidence supports that relation.
+  - Change checkpoint behavior so ambiguous-but-source-backed upstream
+    discoveries trigger cross-check/review-needed continuation before
+    `blocked_by_policy`, within existing external-call and execution budgets.
+- Out of scope:
+  - Making all branches/sites final accepted accounts automatically.
+  - Broad benchmark quality claims.
+  - New source providers, direct MCP connector packaging, or UI source editor
+    changes.
+  - Removing HITL. Review-needed is the intended outcome for uncertain
+    upstream discoveries.
+- Implementation notes:
+  - Keep the distinction between `candidate_universe` and `qualified_accounts`.
+    The universe may contain review-needed production sites, branches, assets,
+    and linked facts; qualified account output remains stricter.
+  - Use connector capability cards and source obligations to decide which
+    sources can cross-check an ambiguous entity. Do not hardcode SIBUR or
+    DaData-specific branches.
+  - For a lookup-only registry source, an ambiguous result can create
+    candidate-universe material and cross-check tasks, but the registry source
+    alone should not produce high-confidence signal evidence.
+  - For official/web sources, a source-backed relation to the group should
+    upgrade the entity from unresolved gap to review-needed candidate or linked
+    fact, not necessarily to confirmed legal account.
+  - Keep product scoring conservative: review-needed candidates should carry
+    explicit flags such as `not_standalone_legal_entity`,
+    `registry_match_ambiguous`, `official_source_cross_checked`, or
+    `requires_human_review`.
+- Tests:
+  - Recorded fixture where a registry lookup returns one main legal entity and
+    a branch/plant observation; the branch/plant is not discarded and becomes a
+    review-needed candidate or linked fact.
+  - Recorded web/official-source fixture confirms that the branch/plant is
+    associated with the group; checkpoint continues or stops for review with a
+    precise reason, but does not report a clean empty result.
+  - Negative fixture where ambiguous registry observations have no supporting
+    web/official evidence; they remain unresolved gaps and do not become
+    scored accounts.
+  - Signal-search fixture proving review-needed upstream entities can be
+    searched only with explicit review flags and budget guards.
+  - Regression fixture proving downstream qualified account projection still
+    excludes unresolved sites/projects/assets from high-confidence account
+    output.
+- Docs:
+  - Update Developer Guide and demo docs to explain upstream recall-first
+    discovery versus downstream account qualification.
+  - Update the connector-profile ADR note to clarify that ambiguous registry
+    observations can drive cross-source disambiguation instead of immediate
+    rejection.
+- Demo impact:
+  - Existing run diagnostics/dossier should show review-needed upstream
+    entities and linked facts without a new UI screen.
+- Acceptance criteria:
+  - A registry-observed branch/plant with source-backed evidence is not thrown
+    away solely because it is not a standalone legal entity.
+  - Ambiguous registry results create bounded cross-check work when an
+    official/web source is available and allowed by source policy.
+  - The run does not become `blocked_by_policy` only because a useful upstream
+    entity is a branch/site/asset rather than a final legal account.
+  - Product output clearly separates review-needed universe entities from
+    qualified legal accounts.
+  - Long benchmark `0.7.6.2` remains blocked until this recall-first behavior
+    is covered by fast recorded tests and smoke diagnostics.
+- Risks:
+  - Recall-first discovery can increase noise; mitigate with source refs,
+    review flags, smoke candidate caps, and downstream qualification gates.
+  - Cross-check tasks can spend extra external-call budget; mitigate with
+    existing smoke/live external-call budgets and checkpoint caps.
 
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 
@@ -4488,11 +4612,12 @@ Principles:
   - Run this only after `Slice 0.7.6.1.7.2`, `Slice 0.7.6.1.7.3`,
     `Slice 0.7.6.1.7.4`, `Slice 0.7.6.1.8`, `Slice 0.7.6.1.9`,
     `Slice 0.7.6.1.10`, `Slice 0.7.6.1.11`, and the TDD/preflight repair
-    slices `0.7.6.1.11.1` through `0.7.6.1.11.9.3.3`, so the benchmark tests a
+    slices `0.7.6.1.11.1` through `0.7.6.1.11.9.4`, so the benchmark tests a
     source-verification-aware, observable, compact-prompt,
     structured-source-capable retrieval/extraction pipeline with explicit
     connector capabilities, containerized connector-profile parity, and concrete
-    registry-enrichment handoff rather than an opaque web-search prompt path.
+    registry-enrichment handoff plus recall-first upstream disambiguation
+    rather than an opaque web-search prompt path.
   - The benchmark should use the qualification-first execution plan from
     `Slice 0.7.6.1.3`, LLM-planned discovery from `Slice 0.7.6.1.4`, and
     coverage-enforced candidate universe expansion from `Slice 0.7.6.1.5`;
@@ -5124,11 +5249,14 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11.9.3.3: Candidate scope materialization for registry
-enrichment and planner budget parity`. The latest bounded Docker smoke showed
-that connector profiles and source cards now reach the live planner, but
-downstream registry enrichment still receives placeholder candidate scopes
-instead of concrete discovered company names, and planner OpenRouter calls need
-to be visible in the persisted external-call budget counters. Keep
-`Slice 0.7.6.2: Multi-radar discovery benchmark` blocked until this smoke RCA is
-green.
+Implement `Slice 0.7.6.1.11.9.4: Recall-first upstream discovery and
+cross-source disambiguation` before starting the multi-radar benchmark. The
+latest TOIR smoke proved that connector cards, registry concrete-input guards,
+and external-call budget parity work, but it also showed that upstream discovery
+is still too conservative: ambiguous registry observations for branches,
+plants, or production sites can block the run before official/web sources get a
+chance to cross-check them. Expected next evidence: fast recorded tests where a
+source-backed branch/site/asset remains in the candidate universe as
+review-needed or linked fact, targeted official/web cross-check runs when
+allowed by source policy, and downstream qualified-account projection remains
+strict.

@@ -138,11 +138,14 @@ def obligation_decisions_from_plan(
     observations: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     planner_decisions = _decision_index(source_policy_decisions)
-    provider_by_source = {
-        str(item.get("source_id") or ""): item
-        for item in (source_provider_outcomes or [])
-        if isinstance(item, dict)
-    }
+    provider_by_source: dict[str, dict[str, Any]] = {}
+    for item in source_provider_outcomes or []:
+        if not isinstance(item, dict):
+            continue
+        source_id = str(item.get("source_id") or "")
+        if not source_id:
+            continue
+        provider_by_source[source_id] = _preferred_provider_outcome(provider_by_source.get(source_id), item)
     result: list[dict[str, Any]] = []
     for obligation in source_obligations_for_policy(global_policy):
         source_id = str(obligation["source_id"])
@@ -201,7 +204,7 @@ def _runtime_obligation_outcome(
         observation_count = _int_value(provider_outcome.get("observation_count"))
         if outcome in {"provider_unavailable", "rate_limited", "invalid_credentials"}:
             return {"status": "unavailable", "outcome": outcome, "useful": False}
-        if outcome in {"policy_skipped", "not_executed_budget_limited"}:
+        if outcome in {"policy_skipped", "not_executed_budget_limited", "not_executed_input_not_available"}:
             return {"status": "blocked", "outcome": outcome, "useful": False}
         if outcome in {"empty", "provider_empty", "no_match"} or observation_count == 0 and outcome in {"used", "no_match"}:
             return {"status": "attempted_empty", "outcome": outcome, "useful": False}
@@ -218,6 +221,34 @@ def _runtime_obligation_outcome(
     if source_refs & linked_source_refs:
         return {"status": "satisfied", "outcome": "linked_evidence", "useful": True}
     return {}
+
+
+def _preferred_provider_outcome(current: dict[str, Any] | None, candidate: dict[str, Any]) -> dict[str, Any]:
+    """Keep the most useful runtime outcome for a source obligation."""
+
+    if current is None:
+        return candidate
+    current_rank = _provider_outcome_rank(current)
+    candidate_rank = _provider_outcome_rank(candidate)
+    return candidate if candidate_rank > current_rank else current
+
+
+def _provider_outcome_rank(outcome_payload: dict[str, Any]) -> int:
+    outcome = str(outcome_payload.get("outcome") or "")
+    observation_count = _int_value(outcome_payload.get("observation_count"))
+    if outcome == "used" and observation_count > 0:
+        return 50
+    if observation_count > 0:
+        return 40
+    if outcome in {"registry_lookup_insufficient", "schema_invalid", "ambiguous_match"}:
+        return 20
+    if outcome in {"empty", "provider_empty", "no_match"}:
+        return 10
+    if outcome in {"not_executed_budget_limited", "not_executed_input_not_available", "policy_skipped"}:
+        return 0
+    if outcome:
+        return 5
+    return 0
 
 
 def _linked_source_refs(observations: list[dict[str, Any]]) -> set[str]:

@@ -81,6 +81,11 @@ diagnostics can prove that connector capabilities are actually active.
 - Smoke profile caps promoted product candidates; extra provider observations
   remain diagnostic/review-needed material until a longer benchmark run is
   explicitly selected.
+- Runtime execution must materialize concrete candidate names from the current
+  candidate universe before lookup-only registry enrichment. Placeholder scopes
+  such as `candidates from step 1` are internal planning references, not valid
+  connector input. If no concrete candidate exists, the provider call is skipped
+  with `not_executed_input_not_available`.
 - Future connector/plugin authors can provide source descriptions without
   learning the Power Web OS execution pipeline.
 

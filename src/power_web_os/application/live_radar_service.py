@@ -28,6 +28,7 @@ from power_web_os.application.live_radar_discovery_planning import Deterministic
 from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_plan_to_search_plan
 from power_web_os.application.live_radar_external_budget import (
     RadarExternalCallBudget,
+    current_external_call_budget,
     external_budget_settings_from_context,
     external_call_budget_context,
 )
@@ -89,13 +90,34 @@ class LiveRadarRunService:
         )
 
     def build_search_plan(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
-        return build_planned_state(
-            state=state,
-            planner=self._discovery_planner,
-            connector_profile_registry=(
-                self._source_registry.connector_profile_registry if self._source_registry is not None else None
+        if current_external_call_budget() is not None:
+            return build_planned_state(
+                state=state,
+                planner=self._discovery_planner,
+                connector_profile_registry=(
+                    self._source_registry.connector_profile_registry if self._source_registry is not None else None
+                ),
+            )
+
+        # LangGraph executes workflow nodes independently, so the service-level
+        # budget context is not available when `build_search_plan` runs as a
+        # node. Preserve planner-call accounting in state and merge it with the
+        # staged execution budget in `run_web_search`.
+        external_budget = RadarExternalCallBudget(external_budget_settings_from_context(state.task_context))
+        with external_call_budget_context(external_budget):
+            planned_state = build_planned_state(
+                state=state,
+                planner=self._discovery_planner,
+                connector_profile_registry=(
+                    self._source_registry.connector_profile_registry if self._source_registry is not None else None
+                ),
+            )
+        return planned_state.model_copy(update={
+            "execution_results": _merge_external_budget_metadata(
+                planned_state.execution_results,
+                external_budget.to_metadata(),
             ),
-        )
+        })
 
     def run_web_search(self, state: LiveICPRadarRunState) -> LiveICPRadarRunState:
         radar = state.radar or build_live_mini_radar_definition()
@@ -133,6 +155,7 @@ class LiveRadarRunService:
             smoke_max_signals=_int_context_value(state.task_context, "smoke_max_signals"),
             source_policy_decisions=[dict(item) for item in (state.discovery_plan or {}).get("source_policy_decisions", []) if isinstance(item, dict)],
         )
+        execution_results = _merge_external_budget_metadata(state.execution_results, execution_results)
         result = LiveRadarCollectionResult(
             sources=provider_result.sources,
             candidate_observations=provider_result.candidate_observations,
@@ -504,6 +527,50 @@ def _now_iso() -> str:
 
 def _append_events(state: LiveICPRadarRunState, events: list[LiveRadarPipelineEvent]) -> list[dict[str, Any]]:
     return [*state.pipeline_events, *[event.model_dump() for event in events]]
+
+
+def _merge_external_budget_metadata(base: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
+    """Merge planner-node and staged-execution external-call budget snapshots."""
+
+    if not base:
+        return dict(current)
+    merged = dict(current)
+    for key in ("external_call_budget_counters", "external_call_budget_counters_by_role"):
+        merged[key] = _merge_counter_dicts(base.get(key), current.get(key))
+    for key in ("external_call_budget_exhaustion_events", "provider_retry_records", "post_call_budget_overruns"):
+        merged[key] = [*_list_payload(base.get(key)), *_list_payload(current.get(key))]
+    server_usage = dict(current.get("openrouter_server_tool_usage") or {})
+    if not server_usage:
+        server_usage = dict(base.get("openrouter_server_tool_usage") or {})
+    if server_usage:
+        server_usage["web_search_requests"] = merged.get("external_call_budget_counters", {}).get(
+            "openrouter_server_tool_web_search:run",
+            server_usage.get("web_search_requests", 0),
+        )
+        merged["openrouter_server_tool_usage"] = server_usage
+    if "external_call_budget_settings" not in merged and base.get("external_call_budget_settings"):
+        merged["external_call_budget_settings"] = base["external_call_budget_settings"]
+    if "run_profile" not in merged and base.get("run_profile"):
+        merged["run_profile"] = base["run_profile"]
+    return merged
+
+
+def _merge_counter_dicts(left: Any, right: Any) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for payload in (left, right):
+        if not isinstance(payload, dict):
+            continue
+        for key, value in payload.items():
+            try:
+                parsed = int(value)
+            except (TypeError, ValueError):
+                continue
+            result[str(key)] = result.get(str(key), 0) + parsed
+    return result
+
+
+def _list_payload(value: Any) -> list[Any]:
+    return list(value) if isinstance(value, list) else []
 
 
 def _int_context_value(context: dict[str, Any], key: str) -> int | None:

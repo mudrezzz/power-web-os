@@ -273,11 +273,14 @@ def compile_connector_capability(profile: ConnectorProfile) -> ConnectorCapabili
     supports_broad = _has_any(positive_text, ["broad", "open web", "web search", "enumerat", "candidate universe", "find companies", "coverage"])
     supports_identity = _has_any(text, ["identity", "legal entity", "inn", "ogrn", "registry", "company"])
     supports_enrichment = _has_any(text, ["enrichment", "address", "okved", "status", "registry facts"])
-    supports_coverage = _has_any(text, ["coverage", "source", "citation", "snippet", "web page", "official site"])
+    supports_coverage = _has_any(positive_text, ["coverage", "citation", "snippet", "web page", "official site", "web evidence"])
     supports_signal = _has_any(positive_text, ["signal", "intent", "event", "news", "current evidence", "web evidence"])
     requires_concrete = _has_any(text, ["concrete", "not broad", "bad input: broad", "broad natural-language"]) or (
         source_type == "company_registry" and not supports_broad
     )
+    if source_type == "company_registry" and requires_concrete and not supports_broad:
+        supports_coverage = False
+        supports_signal = False
     return ConnectorCapabilityCard(
         profile_id=profile.id,
         display_name=profile.display_name,
@@ -290,7 +293,7 @@ def compile_connector_capability(profile: ConnectorProfile) -> ConnectorCapabili
         supports_coverage=supports_coverage,
         supports_signal_evidence=supports_signal,
         requires_concrete_input=requires_concrete,
-        required_input_kinds=tuple(_required_input_kinds(text)),
+        required_input_kinds=tuple(_required_input_kinds(positive_text)),
         returned_fact_kinds=tuple(_returned_fact_kinds(profile)),
         credential_env_vars=profile.credential_env_vars,
         useful_result_criteria=tuple(_useful_result_criteria(profile, supports_identity=supports_identity, supports_coverage=supports_coverage)),

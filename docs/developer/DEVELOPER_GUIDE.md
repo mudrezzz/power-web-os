@@ -402,6 +402,16 @@ bug rather than a model-quality result. In smoke profile,
 not only signal-search scope; overflow entities should remain diagnostic gaps
 with `smoke_candidate_cap_exceeded`.
 
+After `0.7.6.1.11.9.3.3`, registry enrichment must receive materialized
+candidate names, not placeholders. In a smoke dossier or trace, look for
+`candidate_scope_materialized`: a placeholder such as `candidates from step 1`
+should become concrete legal names before DaData/company-registry lookup. If no
+concrete candidate exists, the registry task must be skipped with
+`not_executed_input_not_available` and no provider call. OpenRouter planner
+calls and web-task calls should both appear in the same external-call budget
+summary, with role counters for `openrouter_planner` and
+`openrouter_web_task`.
+
 Default queue settings:
 
 ```text

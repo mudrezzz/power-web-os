@@ -29,6 +29,9 @@ def test_default_connector_profiles_load_and_compile() -> None:
     assert dadata.supports_enrichment
     assert dadata.requires_concrete_input
     assert not dadata.supports_broad_discovery
+    assert not dadata.supports_coverage
+    assert not dadata.supports_signal_evidence
+    assert "free_text_query" not in dadata.required_input_kinds
     assert "DADATA_API_KEY" in dadata.credential_env_vars
     assert openrouter is not None
     assert openrouter.source_type == "search_engine"
@@ -102,6 +105,9 @@ def test_human_profile_compiles_to_lookup_only_capability() -> None:
     assert capability.supports_identity
     assert capability.requires_concrete_input
     assert not capability.supports_broad_discovery
+    assert not capability.supports_coverage
+    assert not capability.supports_signal_evidence
+    assert "free_text_query" not in capability.required_input_kinds
     assert "legal_identity" in capability.returned_fact_kinds
 
 
@@ -128,6 +134,9 @@ def test_planner_source_cards_are_compiled_without_credentials() -> None:
 
     assert cards["dadata_registry"].requires_concrete_input
     assert not cards["dadata_registry"].supports_broad_discovery
+    assert not cards["dadata_registry"].supports_coverage
+    assert not cards["dadata_registry"].supports_signal_evidence
+    assert "free_text_query" not in cards["dadata_registry"].required_input_kinds
     assert cards["openrouter_web"].supports_broad_discovery
     assert cards["openrouter_web"].supports_signal_evidence
     assert cards["sibur_site"].source_type == "url"
