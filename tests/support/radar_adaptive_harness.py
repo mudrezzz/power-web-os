@@ -194,6 +194,50 @@ def strong_discovery_result(*, query_id: str = "discover-q1") -> WebSearchProvid
     )
 
 
+def strong_discovery_with_cross_check_plan(*, query_id: str = "discover-q1") -> WebSearchProviderResult:
+    result = strong_discovery_result(query_id=query_id)
+    return result.model_copy(update={
+        "provider_metadata": {
+            **result.provider_metadata,
+            "upstream_disambiguation_results": [
+                {
+                    "entity_name": "Candidate A Plant",
+                    "legal_name": "Candidate A Plant",
+                    "entity_type": "production_site",
+                    "resolution_status": "review_needed",
+                    "review_flags": ["registry_match_ambiguous", "requires_human_review"],
+                }
+            ],
+            "cross_source_disambiguation_tasks": [
+                {
+                    "task_id": "cross-check-candidate-a-plant",
+                    "origin_task_id": query_id,
+                    "entity_name": "Candidate A Plant",
+                    "entity_type": "production_site",
+                    "source_ids": ["sibur_site"],
+                    "status": "planned",
+                }
+            ],
+        },
+    })
+
+
+def cross_check_supporting_result(*, query_id: str = "cross-check-candidate-a-plant") -> WebSearchProviderResult:
+    return WebSearchProviderResult(
+        sources=[source("src_cross_check_a", query_id=query_id)],
+        candidate_observations=[
+            {
+                "legal_name": "Candidate A Plant",
+                "entity_type": "production_site",
+                "entity_resolution_status": "review_needed",
+                "review_flags": ["official_source_cross_checked", "requires_human_review"],
+                "evidence_refs": ["src_cross_check_a"],
+            }
+        ],
+        provider_metadata={"provider": "adaptive-harness"},
+    )
+
+
 def signal_result(*, query_id: str = "signal-s1") -> WebSearchProviderResult:
     return WebSearchProviderResult(
         sources=[source("src_signal_a", query_id=query_id)],

@@ -4598,7 +4598,7 @@ Principles:
 
 ### Slice 0.7.6.1.11.9.5: Extraction schema recovery and executable cross-source disambiguation
 
-- Status: `Ready`
+- Status: `Done`
 - Goal: Turn the latest Docker TOIR smoke result from a diagnostic stop into a
   controlled recovery path: extraction schema failures should be repaired or
   retried directly, and cross-source disambiguation tasks should be executable
@@ -4687,17 +4687,28 @@ Principles:
     cross-check execution outcomes through additive fields; no new screen is
     required.
 - Acceptance criteria:
-  - A Docker TOIR smoke run no longer loops through repeated
+  - Done: `radar-run-ace0b723-c0d5-4b9b-985f-45e77efef2c4` Docker TOIR smoke
+    with live DaData and `openrouter_perplexity` completed in smoke profile
+    with `execution_outcome=stopped_for_review`, source cards present
+    (`source_cards_count=3`), extraction recovery records present, and
+    `cross_source_disambiguation_execution` populated for all planned
+    cross-check tasks.
+  - Done: cross-source tasks no longer remain `status=planned`; in the Docker
+    smoke they were skipped with explicit `skipped_budget_limited` runtime
+    outcomes because the smoke total web-task budget was exhausted.
+  - Done: extraction schema failures now use `repair_extraction` recovery
+    records instead of silently consuming all plan-revision attempts.
+  - Done: A Docker TOIR smoke run no longer loops through repeated
     `extraction_schema_failed -> revise_plan` until budget exhaustion when the
     failure is repairable extraction shape noise.
-  - Cross-source disambiguation tasks have concrete runtime outcomes:
+  - Done: Cross-source disambiguation tasks have concrete runtime outcomes:
     executed, skipped by budget/policy, failed schema, or no supporting
     evidence.
-  - If signal search is skipped, the dossier explains whether the blocker was
+  - Done: If signal search is skipped, the dossier explains whether the blocker was
     extraction repair exhaustion, cross-check budget/policy, or another
     checkpoint reason.
-  - `0.7.6.2` remains blocked until this slice is validated with fast tests and
-    one bounded Docker TOIR smoke RCA.
+  - Done: Fast tests and bounded Docker TOIR smoke RCA were completed. `0.7.6.2`
+    can now start as the next benchmark-readiness step.
 - Risks:
   - Repairing malformed extraction too aggressively could mask provider quality
     problems; mitigate by recording repair attempts and keeping review flags.
@@ -5377,13 +5388,13 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.1.11.9.5: Extraction schema recovery and executable
-cross-source disambiguation` before `Slice 0.7.6.2`. The latest bounded Docker
-TOIR smoke with live DaData and `openrouter_perplexity` proved container/runtime
-parity, non-empty source cards, enforced OpenRouter budgets, and recall-first
-review-needed upstream entities, but it still stopped for review before signal
-search because repeated `extraction_schema_failed` checkpoints consumed
-recovery budget and cross-source disambiguation remained planned rather than
-executed runtime work. The next slice must make schema repair/retry distinct
-from plan revision and give cross-check tasks concrete executed/skipped/failure
-outcomes in dossier and trace.
+Plan `Slice 0.7.6.2: Multi-radar discovery benchmark`. The latest bounded
+Docker TOIR smoke with live DaData and `openrouter_perplexity`
+(`radar-run-ace0b723-c0d5-4b9b-985f-45e77efef2c4`) proved container/runtime
+parity, non-empty source cards, enforced OpenRouter budgets, extraction recovery
+records, and executable cross-source disambiguation outcomes. The smoke still
+ended `stopped_for_review`, but now for explicit bounded reasons rather than
+missing wiring: extraction repair exhaustion plus cross-check tasks skipped by
+the configured smoke web-task budget. The next step is a controlled benchmark
+slice, not another wiring repair slice unless benchmark RCA exposes a new
+specific blocker.

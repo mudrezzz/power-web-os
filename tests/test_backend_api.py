@@ -367,6 +367,9 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["coverage_summary"]["linked_entity_fact_count"] == 1
     assert dossier["upstream_disambiguation_results"][0]["entity_type"] == "branch"
     assert dossier["cross_source_disambiguation_tasks"][0]["source_ids"] == ["sibur_site"]
+    assert dossier["cross_source_disambiguation_tasks"][0]["outcome"] == "confirmed_relation"
+    assert dossier["cross_source_disambiguation_execution"][0]["status"] == "executed"
+    assert dossier["extraction_recovery_records"][0]["action"] == "repair_extraction"
     assert dossier["coverage_checks"][0]["task_id"] == "coverage-q1"
     assert dossier["coverage_warnings"] == []
     assert dossier["unresolved_candidate_gaps"] == []
@@ -1068,6 +1071,29 @@ def _artifact() -> dict[str, Any]:
                         "source_ids": ["sibur_site"],
                         "source_scope": "global",
                         "purpose": "Cross-check ambiguous registry observation using allowed official/web sources.",
+                        "status": "executed",
+                        "outcome": "confirmed_relation",
+                    }
+                ],
+                "cross_source_disambiguation_execution": [
+                    {
+                        "task_id": "cross-check-registry-branch-src",
+                        "entity_name": "Gubkin gas processing plant",
+                        "entity_type": "branch",
+                        "source_ids": ["sibur_site"],
+                        "status": "executed",
+                        "outcome": "confirmed_relation",
+                        "reason": "Cross-source evidence was returned for the review-needed entity.",
+                    }
+                ],
+                "extraction_recovery_records": [
+                    {
+                        "checkpoint_id": "after-discovery",
+                        "phase": "after_discovery",
+                        "action": "repair_extraction",
+                        "attempt": 1,
+                        "task_id": "discover-q1:repair_extraction-1",
+                        "outcome": "recovered",
                     }
                 ],
                 "review_needed_universe_count": 1,

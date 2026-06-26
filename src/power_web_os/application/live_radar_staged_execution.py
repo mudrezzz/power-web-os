@@ -20,6 +20,7 @@ from power_web_os.application.live_radar_checkpoint_actions import (
 )
 from power_web_os.application.live_radar_checkpoint_execution import record_execution_checkpoint
 from power_web_os.application.live_radar_checkpoints import RadarExecutionCheckpointPolicy, RadarExecutionCheckpointService, checkpoint_summary
+from power_web_os.application.live_radar_cross_disambiguation import execute_cross_source_disambiguation
 from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget, budget_settings_from_context
 from power_web_os.application.live_radar_execution_plan import scoped_execution_task
 from power_web_os.application.live_radar_external_budget import (
@@ -209,6 +210,24 @@ def run_staged_radar_execution(
             events=events,
             smoke_candidate_limit=external_budget.settings.smoke_max_candidates,
         )
+        sources, observations, provider_metadata = execute_cross_source_disambiguation(
+            radar=radar,
+            execution_plan=execution_plan,
+            provider=provider,
+            sources=sources,
+            observations=observations,
+            provider_metadata=provider_metadata,
+            budget=task_budget,
+            external_budget=external_budget,
+            events=events,
+            executed_task_ids=executed_task_ids,
+        )
+        candidate_scope = _eligible_candidate_names(
+            radar=radar,
+            sources=sources,
+            observations=observations,
+            completed_qualification_ids=completed_qualification_ids,
+        )
         candidate_scope = _limit_smoke_candidates(candidate_scope, external_budget.settings.smoke_max_candidates)
 
         recovery_state, _ = checkpoint_executor.recover(
@@ -385,6 +404,25 @@ def run_staged_radar_execution(
             events=events,
             smoke_candidate_limit=external_budget.settings.smoke_max_candidates,
         )
+        sources, observations, provider_metadata = execute_cross_source_disambiguation(
+            radar=radar,
+            execution_plan=execution_plan,
+            provider=provider,
+            sources=sources,
+            observations=observations,
+            provider_metadata=provider_metadata,
+            budget=task_budget,
+            external_budget=external_budget,
+            events=events,
+            executed_task_ids=executed_task_ids,
+        )
+        candidate_scope = _eligible_candidate_names(
+            radar=radar,
+            sources=sources,
+            observations=observations,
+            completed_qualification_ids=completed_qualification_ids,
+        )
+        candidate_scope = _limit_smoke_candidates(candidate_scope, external_budget.settings.smoke_max_candidates)
 
         pre_signal_source_obligations = obligation_decisions_from_plan(
             global_policy=dict(radar.get("global_search_policy") or {}),
@@ -591,10 +629,15 @@ def run_staged_radar_execution(
             "extraction_validation_results": provider_metadata.get("extraction_validation_results", []),
             "extraction_validation_issues": extraction_issues,
             "extraction_repair_results": repair_results,
+            "extraction_recovery_records": provider_metadata.get("extraction_recovery_records", []),
+            "extraction_repair_attempt_count": provider_metadata.get("extraction_repair_attempt_count", 0),
+            "extraction_retry_attempt_count": provider_metadata.get("extraction_retry_attempt_count", 0),
+            "extraction_recovery_outcome": provider_metadata.get("extraction_recovery_outcome", ""),
             "extraction_contract_state": extraction_contract_state(provider_metadata),
             "candidate_universe": candidate_universe_payload,
             "upstream_disambiguation_results": upstream_disambiguation_results,
             "cross_source_disambiguation_tasks": cross_source_disambiguation_tasks,
+            "cross_source_disambiguation_execution": provider_metadata.get("cross_source_disambiguation_execution", []),
             "review_needed_universe_count": _review_needed_universe_count(candidate_universe_payload),
             "linked_branch_or_site_count": _linked_branch_or_site_count(provider_metadata.get("linked_entity_facts", [])),
             **smoke_cap_metadata,

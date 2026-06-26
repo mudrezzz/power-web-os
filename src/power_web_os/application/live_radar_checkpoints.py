@@ -17,6 +17,8 @@ RadarCheckpointAction = Literal[
     "continue",
     "retry_same_source",
     "expand_sources",
+    "repair_extraction",
+    "retry_extraction",
     "revise_plan",
     "stop_review_needed",
     "fail_hard",
@@ -26,6 +28,7 @@ RadarCheckpointReasonCode = Literal[
     "weak_candidate_coverage",
     "source_obligation_unmet",
     "extraction_schema_failed",
+    "extraction_repair_exhausted",
     "evidence_linking_failed",
     "budget_exhausted",
     "coverage_risk_high",
@@ -103,10 +106,10 @@ class RadarExecutionCheckpointService:
         if "extraction_schema_invalid" in checkpoint.extraction_issue_codes:
             return _decision(
                 checkpoint,
-                action="revise_plan",
+                action="repair_extraction",
                 reason_code="extraction_schema_failed",
                 severity="error",
-                message="Provider extraction schema failed; execution should not continue blindly.",
+                message="Provider extraction schema failed; extraction repair or retry is required before continuing.",
                 should_continue=False,
                 details={"extraction_issue_codes": sorted(set(checkpoint.extraction_issue_codes))},
             )

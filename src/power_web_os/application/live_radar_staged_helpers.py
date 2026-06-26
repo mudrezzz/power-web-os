@@ -329,6 +329,9 @@ def _provider_schema_invalid(result: WebSearchProviderResult) -> bool:
     metadata = result.provider_metadata
     if metadata.get("provider_error"):
         return True
+    for item in metadata.get("extraction_validation_results", []):
+        if isinstance(item, dict) and item.get("state") == "extraction_schema_invalid":
+            return True
     for issue in metadata.get("extraction_validation_issues", []):
         if isinstance(issue, dict) and issue.get("severity") == "error":
             return True

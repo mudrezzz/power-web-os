@@ -397,6 +397,8 @@ class RadarRunDossierResponse(BaseModel):
     candidate_universe: list[dict[str, Any]] = Field(default_factory=list)
     upstream_disambiguation_results: list[dict[str, Any]] = Field(default_factory=list)
     cross_source_disambiguation_tasks: list[dict[str, Any]] = Field(default_factory=list)
+    cross_source_disambiguation_execution: list[dict[str, Any]] = Field(default_factory=list)
+    extraction_recovery_records: list[dict[str, Any]] = Field(default_factory=list)
     coverage_checks: list[dict[str, Any]] = Field(default_factory=list)
     coverage_warnings: list[str] = Field(default_factory=list)
     unresolved_candidate_gaps: list[dict[str, Any]] = Field(default_factory=list)

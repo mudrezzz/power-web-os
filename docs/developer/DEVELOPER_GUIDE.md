@@ -328,6 +328,13 @@ does not start signal search until the latest pre-signal checkpoint returns
 `continue`. Treat `stopped_for_review_reason`, `checkpoint_warnings`, and
 `adaptive_actions` as the first place to inspect why a run did or did not
 recover from weak discovery. The dossier is safe for the normal product UI.
+Schema recovery is separate from plan revision: `extraction_schema_invalid`
+first records `repair_extraction` / `retry_extraction` attempts, while
+`revise_plan` is reserved for invalid or unsuitable strategy. Cross-source
+disambiguation tasks are executable runtime work; inspect
+`cross_source_disambiguation_execution` and task `outcome` values such as
+`confirmed_relation`, `no_supporting_evidence`, `schema_failed`, or
+`skipped_budget_limited` before judging a smoke run.
 API-backed live runs also expose a
 separate `Trace` tab backed by
 `GET /api/radar-runs/{run_id}/technical-trace`; it is developer/admin oriented
@@ -1029,6 +1036,11 @@ as one candidate object instead of a one-item list are recorded as
 cannot link them to candidate evidence, the run dossier must show extraction
 issues and retrieved/analyzed source counts instead of looking like a clean
 "nothing found" result.
+At runtime, strict extraction failures should recover through
+`extraction_recovery_records` before they are allowed to consume plan-revision
+budget. Repeated malformed extraction must end as `stop_review_needed` with an
+explicit repair-exhausted reason, not as normal `not_observed` evidence and not
+as an endless planning loop.
 
 Product and diagnostic source projections are intentionally different. Product
 candidate/source lists stay strict and include only evidence-bearing `used`

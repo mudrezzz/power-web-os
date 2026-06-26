@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import socket
 
+from power_web_os.application.live_radar_contracts import RadarExecutionPlan, RadarExecutionTask
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
 from support.radar_adaptive_harness import (
     ScriptedProvider,
@@ -18,12 +19,14 @@ from support.radar_adaptive_harness import (
     assert_signal_search_ran,
     assert_stopped_for_review,
     base_plan,
+    cross_check_supporting_result,
     evidence_linking_failed_result,
     high_coverage_risk_result,
     radar_definition,
     required_source_unavailable_result,
     schema_invalid_result,
     signal_result,
+    strong_discovery_with_cross_check_plan,
     source_policy_selected,
     strong_discovery_result,
     weak_result,
@@ -94,33 +97,42 @@ def test_required_source_unavailable_stops_before_signal_search() -> None:
     assert_no_normal_negative_signal_projection(execution_results)
 
 
-def test_schema_failure_applies_revision_style_recovery_then_continues() -> None:
+def test_schema_failure_applies_extraction_repair_then_continues() -> None:
     provider = ScriptedProvider([schema_invalid_result(), strong_discovery_result(), signal_result()])
 
     _, _, execution_results = run_staged_radar_execution(
         radar=radar_definition(),
         execution_plan=base_plan(),
         provider=provider,
-        max_checkpoint_revisions_per_run=1,
+        max_checkpoint_retries_per_stage=1,
     )
 
     assert provider.stages == ["qualification_discovery", "qualification_discovery", "signal_search"]
     assert_signal_search_ran(execution_results)
-    assert_action_executed(execution_results, "revise_plan")
+    assert_action_executed(execution_results, "repair_extraction")
+    assert not any(
+        item.get("action") == "revise_plan" and item.get("outcome") == "executed"
+        for item in execution_results["adaptive_actions"]
+    )
+    assert execution_results["extraction_recovery_records"][-1]["outcome"] == "recovered"
 
 
-def test_schema_failure_revision_cap_stops_without_blind_fallback() -> None:
-    provider = ScriptedProvider([schema_invalid_result(), schema_invalid_result(), schema_invalid_result()])
+def test_schema_failure_repair_cap_stops_without_blind_fallback() -> None:
+    provider = ScriptedProvider([schema_invalid_result(), schema_invalid_result()])
 
     _, _, execution_results = run_staged_radar_execution(
         radar=radar_definition(),
         execution_plan=base_plan(),
         provider=provider,
-        max_checkpoint_revisions_per_run=2,
+        max_checkpoint_retries_per_stage=1,
     )
 
-    assert provider.stages == ["qualification_discovery", "qualification_discovery", "qualification_discovery"]
-    assert_stopped_for_review(execution_results, reason="revision")
+    assert provider.stages == ["qualification_discovery", "qualification_discovery"]
+    assert_stopped_for_review(execution_results, reason="extraction repair")
+    assert any(
+        item.get("reason_code") == "extraction_repair_exhausted"
+        for item in execution_results["checkpoint_decisions"]
+    )
     assert_no_normal_negative_signal_projection(execution_results)
 
 
@@ -188,3 +200,110 @@ def test_adaptive_suite_uses_fake_providers_without_network(monkeypatch) -> None
     )
 
     assert_signal_search_ran(execution_results)
+
+
+def test_cross_source_disambiguation_executes_official_web_check() -> None:
+    provider = ScriptedProvider([
+        strong_discovery_with_cross_check_plan(),
+        cross_check_supporting_result(),
+        signal_result(),
+    ])
+
+    _, _, execution_results = run_staged_radar_execution(
+        radar=radar_definition(),
+        execution_plan=base_plan(),
+        provider=provider,
+    )
+
+    assert provider.stages == ["qualification_discovery", "coverage_check", "signal_search"]
+    execution = execution_results["cross_source_disambiguation_execution"]
+    assert execution[0]["outcome"] == "confirmed_relation"
+    assert execution_results["cross_source_disambiguation_tasks"][0]["status"] == "executed"
+    assert execution_results["linked_entity_facts"]
+    assert_signal_search_ran(execution_results)
+
+
+def test_cross_source_disambiguation_records_no_supporting_evidence() -> None:
+    provider = ScriptedProvider([
+        strong_discovery_with_cross_check_plan(),
+        # The cross-check ran but returned nothing useful.
+        weak_result(),
+        signal_result(),
+    ])
+
+    _, _, execution_results = run_staged_radar_execution(
+        radar=radar_definition(),
+        execution_plan=base_plan(),
+        provider=provider,
+    )
+
+    execution = execution_results["cross_source_disambiguation_execution"]
+    assert execution[0]["outcome"] == "no_supporting_evidence"
+    assert execution_results["cross_source_disambiguation_tasks"][0]["status"] == "executed"
+
+
+def test_cross_source_disambiguation_budget_skip_stops_for_review() -> None:
+    provider = ScriptedProvider([strong_discovery_with_cross_check_plan()])
+
+    _, _, execution_results = run_staged_radar_execution(
+        radar=radar_definition(),
+        execution_plan=base_plan(),
+        provider=provider,
+        max_total_web_tasks_per_run=1,
+    )
+
+    execution = execution_results["cross_source_disambiguation_execution"]
+    assert execution[0]["outcome"] == "skipped_budget_limited"
+    assert execution_results["cross_source_disambiguation_tasks"][0]["status"] == "skipped"
+    assert_stopped_for_review(execution_results, reason="budget")
+
+
+def test_cross_source_disambiguation_executes_when_task_is_created_after_gate() -> None:
+    plan = RadarExecutionPlan(
+        radar_id="adaptive-harness",
+        tasks=[
+            RadarExecutionTask(
+                task_id="discover-q1",
+                stage="qualification_discovery",
+                subject_type="qualification",
+                subject_id="Q1",
+                query="Find candidate universe.",
+                purpose="Discover candidates.",
+            ),
+            RadarExecutionTask(
+                task_id="identity-gate-q1",
+                stage="qualification_gate",
+                subject_type="qualification",
+                subject_id="Q1",
+                query="Confirm candidate identity.",
+                purpose="Confirm candidate identity.",
+                candidate_scope=["Candidate A"],
+            ),
+            RadarExecutionTask(
+                task_id="signal-s1",
+                stage="signal_search",
+                subject_type="signal",
+                subject_id="S1",
+                query="Find signal.",
+                purpose="Search signal.",
+                candidate_scope=["Candidate A"],
+            ),
+        ],
+    )
+    provider = ScriptedProvider([
+        strong_discovery_result(),
+        strong_discovery_with_cross_check_plan(query_id="identity-gate-q1"),
+        cross_check_supporting_result(),
+        signal_result(),
+    ])
+
+    _, _, execution_results = run_staged_radar_execution(
+        radar=radar_definition(),
+        execution_plan=plan,
+        provider=provider,
+    )
+
+    assert provider.stages == ["qualification_discovery", "qualification_gate", "coverage_check", "signal_search"]
+    execution = execution_results["cross_source_disambiguation_execution"]
+    assert execution[0]["outcome"] == "confirmed_relation"
+    assert execution_results["cross_source_disambiguation_tasks"][0]["status"] == "executed"

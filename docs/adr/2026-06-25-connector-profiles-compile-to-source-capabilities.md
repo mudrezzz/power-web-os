@@ -91,6 +91,13 @@ diagnostics can prove that connector capabilities are actually active.
   asset facts, execution may retain them as review-needed universe entities or
   linked facts and request bounded cross-checks through allowed official/web
   connector capabilities.
+- Source cards can drive executable cross-source disambiguation tasks, not only
+  planner validation. A smoke run should record whether each cross-check was
+  executed, skipped by budget or policy, failed schema validation, found no
+  support, or confirmed a relation.
+- Extraction schema recovery is distinct from plan revision. Malformed
+  extraction output should first use bounded repair/retry records; `revise_plan`
+  is reserved for invalid strategy, source capability, or policy problems.
 - Future connector/plugin authors can provide source descriptions without
   learning the Power Web OS execution pipeline.
 

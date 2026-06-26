@@ -307,6 +307,14 @@ from strict product account candidates and carry review flags such as
 `review_needed_universe_count`, and `linked_branch_or_site_count` to see what
 was retained for human review or official/web cross-check.
 
+After `0.7.6.1.11.9.5`, smoke should also prove recovery behavior. Schema
+noise should appear in `extraction_recovery_records` as
+`repair_extraction` / `retry_extraction`, not only as repeated
+`revise_plan`. Cross-source disambiguation rows should have runtime outcomes
+such as `confirmed_relation`, `no_supporting_evidence`, `schema_failed`, or
+`skipped_budget_limited`; planned-only cross-checks mean the smoke is still
+diagnostic and should not unblock a benchmark.
+
 Live Radar also resolves entity type before scoring. The shortlist is an account
 shortlist, so normal candidates are legal entities. Production sites, projects,
 installations, and assets found during discovery are linked to a resolved legal

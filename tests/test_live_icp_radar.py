@@ -939,7 +939,7 @@ def test_checkpoint_service_stops_before_signal_search_without_candidate_scope()
     assert not decision.should_run_signal_search
 
 
-def test_checkpoint_service_recommends_revision_for_extraction_schema_failure() -> None:
+def test_checkpoint_service_recommends_extraction_repair_for_extraction_schema_failure() -> None:
     decision = RadarExecutionCheckpointService().review(
         RadarExecutionCheckpointInput(
             checkpoint_id="after-coverage",
@@ -952,7 +952,7 @@ def test_checkpoint_service_recommends_revision_for_extraction_schema_failure() 
         )
     )
 
-    assert decision.action == "revise_plan"
+    assert decision.action == "repair_extraction"
     assert decision.reason_code == "extraction_schema_failed"
     assert not decision.should_continue
 

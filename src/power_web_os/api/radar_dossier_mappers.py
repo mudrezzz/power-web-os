@@ -67,6 +67,8 @@ def dossier_response(
     candidate_universe = _list(execution_results.get("candidate_universe"))
     upstream_disambiguation_results = _list(execution_results.get("upstream_disambiguation_results"))
     cross_source_disambiguation_tasks = _list(execution_results.get("cross_source_disambiguation_tasks"))
+    cross_source_disambiguation_execution = _list(execution_results.get("cross_source_disambiguation_execution"))
+    extraction_recovery_records = _list(execution_results.get("extraction_recovery_records"))
     coverage_checks = _list(execution_results.get("coverage_checks"))
     coverage_warnings = [str(value) for value in execution_results.get("coverage_warnings", []) if isinstance(value, str)]
     unresolved_candidate_gaps = _list(execution_results.get("unresolved_candidate_gaps"))
@@ -125,6 +127,8 @@ def dossier_response(
         candidate_universe=candidate_universe,
         upstream_disambiguation_results=upstream_disambiguation_results,
         cross_source_disambiguation_tasks=cross_source_disambiguation_tasks,
+        cross_source_disambiguation_execution=cross_source_disambiguation_execution,
+        extraction_recovery_records=extraction_recovery_records,
         coverage_checks=coverage_checks,
         coverage_warnings=coverage_warnings,
         unresolved_candidate_gaps=unresolved_candidate_gaps,
