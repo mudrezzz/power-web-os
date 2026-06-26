@@ -410,8 +410,17 @@ def test_generate_icp_radar_catalog_writes_portfolio_artifact(tmp_path: Path) ->
     assert artifact["artifact_version"] == "0.6.5.2"
     assert len(artifact["radars"]) >= 4
     expected_signal_codes = [f"C{index}" for index in range(1, 21)]
+    benchmark_radar_ids = {
+        "benchmark-sibur-holding-contour",
+        "benchmark-mining-toir",
+        "benchmark-retail-energy-efficiency",
+    }
     for radar in artifact["radars"]:
         if radar["radar_id"] == "toir-quick-live":
+            assert [
+                item["code"] for item in radar["definition"]["intent_signals"]
+            ] == ["S1", "S2", "S3"]
+        elif radar["radar_id"] in benchmark_radar_ids:
             assert [
                 item["code"] for item in radar["definition"]["intent_signals"]
             ] == ["S1", "S2", "S3"]
@@ -432,5 +441,6 @@ def test_generate_icp_radar_catalog_writes_portfolio_artifact(tmp_path: Path) ->
     assert live_radars[0]["summary"]["run_mode"] == "live_cli"
 
     configured_only = [item for item in artifact["radars"] if item["artifact_path"] is None]
-    assert len(configured_only) == 2
+    assert len(configured_only) == 5
+    assert benchmark_radar_ids.issubset({item["radar_id"] for item in configured_only})
     assert all(item["definition"]["validation_report"] for item in configured_only)

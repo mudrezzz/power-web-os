@@ -4717,28 +4717,45 @@ Principles:
 
 ### Slice 0.7.6.2: Multi-radar discovery benchmark
 
-- Status: `Backlog`
-- Goal: Run real-model live Radar experiments across several discovery shapes
-  and inspect whether the planner/executor/evaluator loop can discover relevant
-  companies with source-backed evidence.
-- User value: A user can see whether a strong model can move beyond the mini
-  live Radar and solve materially different discovery tasks, not only a
-  SIBUR-shaped group-membership example.
+- Status: `Done`
+- Goal: Provide a reproducible multi-radar benchmark contour over the repaired
+  live Radar API/worker pipeline, with bounded profiles and one report format
+  for dossier/trace/runtime diagnostics.
+- User value: A user can run the same bounded benchmark across several radar
+  shapes and get comparable RCA-ready output instead of judging one long
+  `toir-quick-live` run by hand.
 - Scope:
-  - Add at least three benchmark Radar definitions separate from the current
-    quick mini Radar:
-    - group/holding contour discovery, with SIBUR as the checked example;
-    - industry + region + revenue qualification discovery;
-    - source-constrained registry-first discovery, for example a case where
-      SBIS or another configured source base is expected to be useful.
-  - Configure the run path to use a selected high-capability OpenRouter model
-    through the existing provider boundary.
-  - Run through backend API/worker persistence, not a one-off script-only path.
-  - Persist run state, output snapshot, source evidence, candidates, validation
-    warnings, and structured journal events.
-  - Add a demo/diagnostic command or documented manual flow for benchmark runs.
-  - Compare product used-source lists with technical trace analyzed-source
-    trails for each benchmark.
+  - Done: Added three benchmark Radar definitions without replacing
+    `toir-quick-live`: `benchmark-sibur-holding-contour`,
+    `benchmark-mining-toir`, and `benchmark-retail-energy-efficiency`.
+  - Done: Benchmark definitions are seeded as active persisted definitions and
+    pass static preflight, connector-profile/source-card compilation, and API
+    run creation checks.
+  - Done: Added explicit `benchmark_smoke` and `benchmark_live` task-context
+    profiles so benchmark budgets are part of the request payload and do not
+    depend on local `.env` defaults.
+  - Done: Added `python -m power_web_os.demo run-radar-benchmark --api-url
+    http://127.0.0.1:8001 --profile benchmark_smoke --radar-id all`.
+  - Done: The benchmark command queues runs through the public API, polls run
+    state, reads dossiers, and writes `demo/output/radar_benchmark_report.json`
+    without calling providers directly.
+  - Done: The report captures run id, radar id, profile, terminal status,
+    elapsed time, execution outcome/reason, source/candidate counts, source
+    cards, capability decisions, checkpoint summary, budget counters,
+    extraction recovery count, cross-source outcomes, top candidates, and a
+    compact verdict.
+  - Done: Docker/API/worker benchmark smoke was executed after rebuild and
+    seed. Runs reached terminal state:
+    `radar-run-70a39c37-2e1f-4af8-9426-f65e296a18b3`
+    (`benchmark-sibur-holding-contour`),
+    `radar-run-31a37909-c196-4ea2-918a-e729132bd307`
+    (`benchmark-mining-toir`), and
+    `radar-run-3ae9fb78-1b67-4599-a0a5-2c5ba0f752ed`
+    (`benchmark-retail-energy-efficiency`). The local report at
+    `demo/output/radar_benchmark_report.json` classified all three as
+    `budget_limited`, proving the benchmark harness works while also showing
+    that quality evaluation should tune/review budgets before claiming recall
+    or precision.
 - Out of scope:
   - Storing raw hidden chain-of-thought.
   - Guaranteeing complete coverage without baseline lists.
@@ -4768,27 +4785,29 @@ Principles:
   - Keep benchmark Radar definitions versioned so prompts/search policy can
     evolve without overwriting the quick live Radar.
 - Tests:
-  - Contract test that benchmark definitions are persisted/seeded and do not
-    replace the quick live Radar.
-  - Recorded-provider tests for benchmark artifact shape, dossier mapping, and
-    journal/trace mapping across all benchmark definitions.
-  - Smoke test that benchmark run creation uses backend queued execution.
+  - Done: Contract tests cover benchmark seed/persistence and prove the three
+    benchmark definitions do not replace the quick live Radar.
+  - Done: Static preflight tests cover all benchmark radars.
+  - Done: Benchmark runner tests cover profile payloads, `--radar-id all`
+    expansion, queued API run creation, report mapping, budget-limited
+    verdicts, and secret-safe report shape.
 - Docs:
-  - Document model/env prerequisites, expected cost/latency risk, and manual
-    benchmark commands.
-  - Update architecture docs to mark the benchmark as evaluation, not product
-    truth.
+  - Done: Developer Guide and demo docs document the benchmark command flow,
+    report path, profiles, verdicts, and the fact that benchmark output is
+    evaluation infrastructure rather than product truth.
+  - Done: Architecture overview records the benchmark runner as an evaluation
+    boundary over API/worker execution, not a separate execution engine.
 - Demo impact:
   - The UI can show a persisted benchmark run through the existing Radar API and
     Journal tab.
 - Acceptance criteria:
-  - Each benchmark run can be started and inspected with persisted candidates,
-    used sources, validation warnings, dossier, journal events, and technical
-    trace.
+  - Benchmark smoke runs can be started through API/worker and inspected through
+    the generated report and existing dossier/trace endpoints.
   - The SIBUR output can be compared manually against a known SIBUR baseline in
     the next slice, while the other benchmark definitions demonstrate that the
     pipeline is generic.
-  - No raw hidden CoT is stored or shown.
+  - No raw hidden CoT, secrets, request headers, or raw prompt dumps are stored
+    or shown in the benchmark report.
 - Risks:
   - Live web/model output may be incomplete, slow, expensive, or noisy.
   - Source ambiguity around subsidiaries, joint ventures, historical assets, and
@@ -5388,13 +5407,9 @@ None.
 
 ## Next Recommended Task
 
-Plan `Slice 0.7.6.2: Multi-radar discovery benchmark`. The latest bounded
-Docker TOIR smoke with live DaData and `openrouter_perplexity`
-(`radar-run-ace0b723-c0d5-4b9b-985f-45e77efef2c4`) proved container/runtime
-parity, non-empty source cards, enforced OpenRouter budgets, extraction recovery
-records, and executable cross-source disambiguation outcomes. The smoke still
-ended `stopped_for_review`, but now for explicit bounded reasons rather than
-missing wiring: extraction repair exhaustion plus cross-check tasks skipped by
-the configured smoke web-task budget. The next step is a controlled benchmark
-slice, not another wiring repair slice unless benchmark RCA exposes a new
-specific blocker.
+Plan `Slice 0.7.6.3: Radar recall/precision evaluation loop`. `0.7.6.2`
+added the bounded multi-radar benchmark contour, catalog definitions, explicit
+benchmark profiles, API/worker benchmark command, and report artifact. The next
+step is not more benchmark plumbing; it is an evaluation loop that compares the
+SIBUR benchmark output against an explicit baseline and turns benchmark RCA into
+measurable recall, precision, evidence-quality, and follow-up corrective slices.

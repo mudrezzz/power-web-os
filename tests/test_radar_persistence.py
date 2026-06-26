@@ -287,9 +287,24 @@ def test_seed_radar_catalog_upserts_current_demo_radars(tmp_path: Path) -> None:
 
     assert result.radar_count == len(catalog["radars"])
     assert result_again == result
-    assert {radar.radar_id for radar in radars} >= {"toir-sibur", "toir-quick-live"}
+    radar_ids = {radar.radar_id for radar in radars}
+    assert radar_ids >= {
+        "toir-sibur",
+        "toir-quick-live",
+        "benchmark-sibur-holding-contour",
+        "benchmark-mining-toir",
+        "benchmark-retail-energy-efficiency",
+    }
     assert active_definition is not None
     assert active_definition.definition_payload["definition_id"] == "radar-def-toir-sibur"
+    with session_scope(session_factory) as session:
+        definition_repository = SqlAlchemyRadarDefinitionRepository(session)
+        for radar_id in (
+            "benchmark-sibur-holding-contour",
+            "benchmark-mining-toir",
+            "benchmark-retail-energy-efficiency",
+        ):
+            assert definition_repository.get_active(radar_id) is not None
 
 
 def test_alembic_initial_migration_creates_radar_tables(tmp_path: Path) -> None:

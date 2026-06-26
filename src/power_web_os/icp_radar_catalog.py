@@ -93,6 +93,123 @@ def build_icp_radar_catalog(active_radar_payload: dict[str, Any]) -> dict[str, A
             artifact_path="/demo/live_mini_icp_radar_run.json",
         ),
         ICPRadarCatalogItem(
+            radar_id="benchmark-sibur-holding-contour",
+            name="Benchmark / SIBUR holding contour",
+            status="configured",
+            owner="ABM Research",
+            profile={
+                "icp_profile": "Benchmark: holding contour discovery",
+                "product": "TOIR automation",
+                "segment": "SIBUR industrial and petrochemical assets",
+                "scope": "Evaluate whether Radar can discover source-backed entities connected to SIBUR.",
+            },
+            summary={
+                "cadence": "manual",
+                "last_run": "not_run",
+                "candidate_count": 0,
+                "needs_review_count": 0,
+                "accepted_count": 0,
+                "run_mode": "benchmark",
+            },
+            definition=_benchmark_definition(
+                definition_id="radar-def-benchmark-sibur-holding-contour",
+                name="Benchmark / SIBUR holding contour",
+                description="Find legal entities, branches, and industrial assets connected to SIBUR with source-backed evidence.",
+                owner="ABM Research",
+                keywords=("SIBUR subsidiaries", "SIBUR plants", "SIBUR industrial assets"),
+                source_ids=("dadata_registry", "openrouter_web", "sibur_site"),
+                sources=_benchmark_sources(include_sibur_site=True),
+                qualification_rules=(
+                    ("q1-sibur-relation", "Entity is connected to SIBUR group, subsidiary contour, branch, plant, or official asset."),
+                    ("q2-industrial-asset", "Entity has industrial, petrochemical, production-site, or asset evidence."),
+                ),
+                intent_signals=(
+                    ("S1", "TOIR / reliability activity", "Find mentions of maintenance, reliability, repairs, EAM, or turnaround activity."),
+                    ("S2", "Modernization / capacity investment", "Find mentions of modernization, investment, new equipment, or capacity growth."),
+                    ("S3", "Production digitalization", "Find mentions of diagnostics, sensors, predictive analytics, or production automation."),
+                ),
+            ),
+            artifact_path=None,
+        ),
+        ICPRadarCatalogItem(
+            radar_id="benchmark-mining-toir",
+            name="Benchmark / Mining TOIR discovery",
+            status="configured",
+            owner="Industrial ABM",
+            profile={
+                "icp_profile": "Benchmark: mining TOIR discovery",
+                "product": "Maintenance and reliability automation",
+                "segment": "Mining and heavy industrial assets",
+                "scope": "Evaluate discovery of mining companies with source-backed production and maintenance signals.",
+            },
+            summary={
+                "cadence": "manual",
+                "last_run": "not_run",
+                "candidate_count": 0,
+                "needs_review_count": 0,
+                "accepted_count": 0,
+                "run_mode": "benchmark",
+            },
+            definition=_benchmark_definition(
+                definition_id="radar-def-benchmark-mining-toir",
+                name="Benchmark / Mining TOIR discovery",
+                description="Find mining or heavy industrial legal entities with production assets and maintenance/reliability signals.",
+                owner="Industrial ABM",
+                keywords=("mining maintenance Russia", "quarry equipment reliability", "EAM mining plant"),
+                source_ids=("dadata_registry", "openrouter_web"),
+                sources=_benchmark_sources(include_sibur_site=False),
+                qualification_rules=(
+                    ("q1-mining-industrial", "Entity operates mining, quarry, processing, or heavy industrial production assets."),
+                    ("q2-maintenance-fit", "Entity has public evidence of maintenance, reliability, heavy equipment, or production operations."),
+                ),
+                intent_signals=(
+                    ("S1", "Maintenance / reliability", "Find maintenance, reliability, EAM, equipment repair, or downtime reduction evidence."),
+                    ("S2", "Heavy equipment / production assets", "Find evidence of quarry, mining, processing, conveyor, crusher, or heavy equipment assets."),
+                    ("S3", "Procurement or investment trigger", "Find procurement, modernization, digitalization, or investment evidence."),
+                ),
+            ),
+            artifact_path=None,
+        ),
+        ICPRadarCatalogItem(
+            radar_id="benchmark-retail-energy-efficiency",
+            name="Benchmark / Retail energy efficiency",
+            status="configured",
+            owner="Growth Team",
+            profile={
+                "icp_profile": "Benchmark: retail energy efficiency",
+                "product": "Energy monitoring and site optimization",
+                "segment": "Retail chains and distributed facilities",
+                "scope": "Evaluate non-TOIR discovery for chains with many sites and energy-efficiency signals.",
+            },
+            summary={
+                "cadence": "manual",
+                "last_run": "not_run",
+                "candidate_count": 0,
+                "needs_review_count": 0,
+                "accepted_count": 0,
+                "run_mode": "benchmark",
+            },
+            definition=_benchmark_definition(
+                definition_id="radar-def-benchmark-retail-energy-efficiency",
+                name="Benchmark / Retail energy efficiency",
+                description="Find retail or logistics chains with many distributed facilities and public energy-efficiency signals.",
+                owner="Growth Team",
+                keywords=("retail chain energy efficiency Russia", "warehouse energy monitoring", "distributed facilities ESG"),
+                source_ids=("dadata_registry", "openrouter_web"),
+                sources=_benchmark_sources(include_sibur_site=False),
+                qualification_rules=(
+                    ("q1-distributed-sites", "Entity operates many retail, warehouse, logistics, or cold-chain sites."),
+                    ("q2-energy-relevance", "Entity has public evidence of energy cost, energy efficiency, ESG, or facility monitoring relevance."),
+                ),
+                intent_signals=(
+                    ("S1", "Energy efficiency / ESG", "Find energy efficiency, ESG, emissions reduction, or sustainability program evidence."),
+                    ("S2", "Facilities / distributed network", "Find evidence of many stores, warehouses, logistics sites, or cold-chain facilities."),
+                    ("S3", "Monitoring / IoT trigger", "Find evidence of facility monitoring, IoT, dispatching, or engineering infrastructure optimization."),
+                ),
+            ),
+            artifact_path=None,
+        ),
+        ICPRadarCatalogItem(
             radar_id="mining-toir",
             name="ТОиР / Горнодобыча",
             status="configured",
@@ -310,6 +427,109 @@ def _intent_signal_from_payload(payload: dict[str, Any]) -> IntentSignalDefiniti
                 for item in payload["scoring_rubric"]["rules"]
             ),
         ),
+    )
+
+
+def _benchmark_sources(*, include_sibur_site: bool) -> tuple[SourceDefinition, ...]:
+    sources = [
+        SourceDefinition("dadata_registry", "company_registry", "DaData company registry", "company_registry:dadata", "high", "required_for_identity"),
+        SourceDefinition("openrouter_web", "search_engine", "OpenRouter web search", "openrouter:web_search", "medium", "required_for_coverage"),
+    ]
+    if include_sibur_site:
+        sources.append(SourceDefinition("sibur_site", "url", "SIBUR official site", "https://www.sibur.ru", "high", "preferred"))
+    return tuple(sources)
+
+
+def _benchmark_definition(
+    *,
+    definition_id: str,
+    name: str,
+    description: str,
+    owner: str,
+    keywords: tuple[str, ...],
+    source_ids: tuple[str, ...],
+    sources: tuple[SourceDefinition, ...],
+    qualification_rules: tuple[tuple[str, str], ...],
+    intent_signals: tuple[tuple[str, str, str], ...],
+) -> RadarDefinition:
+    source_policy = SourcePolicy(source_ids, "OR", True, "low")
+    definition = RadarDefinition(
+        definition_id=definition_id,
+        metadata=RadarMetadata(name=name, description=description, owner=owner, status="configured"),
+        global_search_policy=GlobalSearchPolicy(
+            sources=sources,
+            keywords=keywords,
+            exclusions=("irrelevant small services without source-backed enterprise evidence",),
+            allow_system_sources=True,
+        ),
+        account_qualification=AccountQualificationModel(
+            rule_group=RuleGroup(
+                group_id=f"{definition_id}-qualification",
+                operator="AND",
+                rules=tuple(
+                    AtomicRule(
+                        rule_id=rule_id,
+                        name=rule_id,
+                        description=rule_description,
+                        target_field=rule_id,
+                        comparison_operator="contains",
+                        value="source-backed",
+                        requirement_level="required",
+                        source_policy=source_policy,
+                    )
+                    for rule_id, rule_description in qualification_rules
+                ),
+            )
+        ),
+        intent_signals=tuple(
+            _planned_signal(
+                definition_id=definition_id,
+                code=code,
+                name=signal_name,
+                description=signal_description,
+                source_ids=source_ids,
+            )
+            for code, signal_name, signal_description in intent_signals
+        ),
+        monitoring_policy=MonitoringPolicy(
+            cadence="manual",
+            lookback_window="90 days",
+            run_mode="benchmark",
+            deduplication="dedupe_by_source_url_and_signal_code",
+            stale_after="90 days",
+        ),
+        scoring_model=RadarScoringModel(
+            fit_model={
+                "formula_preset": "arithmetic_mean",
+                "description": "Benchmark fit is based on required source-backed qualification rules.",
+                "custom_formula": "",
+                "uses": [rule_id for rule_id, _ in qualification_rules],
+            },
+            intent_model={
+                "formula_preset": "capped_sum",
+                "description": "Benchmark intent is based on observed source-backed signals.",
+                "custom_formula": "",
+                "uses": [code for code, _, _ in intent_signals],
+            },
+            tier_model={
+                "basis": "fit + intent",
+                "description": "Benchmark tier is diagnostic only and must not be treated as product truth.",
+            },
+            tier_thresholds={"Tier 1": "fit=2 and intent>=3", "Tier 2": "fit>=1 and intent>=1", "Monitor": "otherwise"},
+            confidence_penalties={"low": "-20%", "medium": "-10%", "high": "0%", "none": "exclude"},
+        ),
+        validation_report=RadarValidationReport(errors=(), warnings=(), info=()),
+    )
+    report = RadarDefinitionValidator().validate(definition)
+    return RadarDefinition(
+        definition_id=definition.definition_id,
+        metadata=definition.metadata,
+        global_search_policy=definition.global_search_policy,
+        account_qualification=definition.account_qualification,
+        intent_signals=definition.intent_signals,
+        monitoring_policy=definition.monitoring_policy,
+        scoring_model=definition.scoring_model,
+        validation_report=report,
     )
 
 

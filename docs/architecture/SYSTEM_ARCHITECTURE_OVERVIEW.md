@@ -644,6 +644,13 @@ The referenced platform should be used as follows:
   config drift, source obligations, adaptive checkpoints, DaData structured
   provider injection, and analyzed-versus-used source projection are covered by
   fast tests or explicit diagnostic states.
+- The multi-radar benchmark runner is an evaluation boundary over the existing
+  API/worker execution path, not a separate execution engine. It seeds benchmark
+  Radar definitions, starts bounded persisted runs through the public API, polls
+  dossiers, and writes a report with verdicts such as
+  `ready_for_quality_review`, `stopped_diagnostic`, `budget_limited`, and
+  `failed_runtime`. It must not bypass source policy, connector capability
+  validation, worker persistence, or technical-trace redaction.
 
 ## Demo Implications
 

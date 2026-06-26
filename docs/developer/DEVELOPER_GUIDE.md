@@ -431,6 +431,25 @@ legal-entity resolution, while dossier diagnostics expose
 `upstream_disambiguation_results`, `cross_source_disambiguation_tasks`,
 `review_needed_universe_count`, and `linked_branch_or_site_count`.
 
+`0.7.6.2` adds a bounded multi-radar benchmark runner. Treat it as evaluation
+infrastructure, not product truth. The catalog seed includes three benchmark
+radars: `benchmark-sibur-holding-contour`, `benchmark-mining-toir`, and
+`benchmark-retail-energy-efficiency`. Run them through the API/worker path:
+
+```powershell
+python -m power_web_os.demo seed-radar-db
+python -m power_web_os.demo run-radar-benchmark --api-url http://127.0.0.1:8001 --profile benchmark_smoke --radar-id all
+```
+
+The command writes `demo/output/radar_benchmark_report.json`. Each row includes
+run id, terminal status, `execution_outcome`, source/candidate counts,
+checkpoint summary, extraction recovery count, cross-source outcomes, budget
+counters, top candidates, and a compact verdict:
+`ready_for_quality_review`, `stopped_diagnostic`, `budget_limited`, or
+`failed_runtime`. Use `benchmark_smoke` for all benchmark radars by default.
+Use `benchmark_live` only for one radar at a time after the smoke report is
+diagnosable.
+
 Default queue settings:
 
 ```text

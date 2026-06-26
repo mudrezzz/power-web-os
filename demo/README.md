@@ -315,6 +315,26 @@ such as `confirmed_relation`, `no_supporting_evidence`, `schema_failed`, or
 `skipped_budget_limited`; planned-only cross-checks mean the smoke is still
 diagnostic and should not unblock a benchmark.
 
+After `0.7.6.2`, use the bounded multi-radar benchmark runner to compare the
+same live Radar pipeline across several radar definitions. The benchmark is an
+evaluation harness, not product truth or a quality claim. It creates runs
+through the API/worker path, polls them to a terminal state, and writes a
+diagnostic report:
+
+```powershell
+python -m power_web_os.demo seed-radar-db
+python -m power_web_os.demo run-radar-benchmark --api-url http://127.0.0.1:8001 --profile benchmark_smoke --radar-id all
+```
+
+The report is written to `demo/output/radar_benchmark_report.json`. Read the
+per-run verdict first: `ready_for_quality_review` means the run produced enough
+diagnostic output to inspect quality, `stopped_diagnostic` means the pipeline
+stopped for an explicit review reason, `budget_limited` means configured
+benchmark limits shaped the result, and `failed_runtime` means infrastructure or
+worker execution failed. Use `benchmark_smoke` for all benchmark radars; use
+`benchmark_live` only for one radar at a time after the smoke report is
+actionable.
+
 Live Radar also resolves entity type before scoring. The shortlist is an account
 shortlist, so normal candidates are legal entities. Production sites, projects,
 installations, and assets found during discovery are linked to a resolved legal

@@ -340,6 +340,25 @@ def test_preflight_cli_returns_json_and_does_not_create_runs(tmp_path: Path) -> 
         assert SqlAlchemyRadarRunOutputRepository(session).get("any-run") is None
 
 
+def test_benchmark_radars_pass_static_preflight() -> None:
+    for radar_id in (
+        "benchmark-sibur-holding-contour",
+        "benchmark-mining-toir",
+        "benchmark-retail-energy-efficiency",
+    ):
+        definition = _catalog_definition(radar_id)
+        service = RadarExecutionPreflightService(
+            definition_repository=_Repo(definition),
+            runtime_definition_provider=lambda definition=definition: active_definition_to_live_radar_payload(definition),
+            company_registry_provider_ids={"dadata"},
+        )
+
+        report = service.run(radar_id=radar_id, profile="static")
+
+        assert report.ready_for_live_run
+        assert report.summary["failed_codes"] == []
+
+
 class _Repo:
     def __init__(self, record: RadarDefinitionRecord | None) -> None:
         self._record = record
@@ -351,16 +370,20 @@ class _Repo:
 
 
 def _toir_quick_live_definition() -> RadarDefinitionRecord:
+    return _catalog_definition("toir-quick-live")
+
+
+def _catalog_definition(radar_id: str) -> RadarDefinitionRecord:
     catalog = build_icp_radar_catalog_from_workbook(Path("demo/fixtures/icp_radar/sibur_icp_pass1.xlsx"))
     for item in catalog["radars"]:
-        if item["radar_id"] == "toir-quick-live":
+        if item["radar_id"] == radar_id:
             return RadarDefinitionRecord(
                 definition_id=item["definition"]["definition_id"],
                 radar_id=item["radar_id"],
                 definition_payload=item["definition"],
                 definition_version=catalog["artifact_version"],
             )
-    raise AssertionError("toir-quick-live fixture is missing")
+    raise AssertionError(f"{radar_id} fixture is missing")
 
 
 def _checks_by_code(checks: tuple[RadarPreflightCheckResult, ...]) -> dict[str, list[RadarPreflightCheckResult]]:

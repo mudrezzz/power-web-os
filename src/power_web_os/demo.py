@@ -21,6 +21,7 @@ from power_web_os.demo_preflight import build_radar_preflight_report, print_pref
 from power_web_os.planner import DeterministicAccessPlanner
 from power_web_os.radar import AccountRadar
 from power_web_os.application.radar_runtime_config import build_effective_runtime_config_report
+from power_web_os.radar_benchmark import generate_radar_benchmark_report
 from power_web_os.serialization import (
     access_plan_from_payload,
     account_from_payload,
@@ -320,6 +321,7 @@ def main() -> None:
             "run-live-mini-icp-radar",
             "run-live-mini-icp-radar-persisted",
             "preflight-radar",
+            "run-radar-benchmark",
         ),
     )
     parser.add_argument("--input", type=Path, default=root / "demo" / "sample_account.json")
@@ -388,7 +390,16 @@ def main() -> None:
     )
     parser.add_argument("--database-url", default=None)
     parser.add_argument("--radar-id", default="toir-quick-live")
-    parser.add_argument("--profile", choices=("static", "recorded"), default="recorded")
+    parser.add_argument("--api-url", default="http://127.0.0.1:8001")
+    parser.add_argument(
+        "--benchmark-output",
+        type=Path,
+        default=root / "demo" / "output" / "radar_benchmark_report.json",
+    )
+    parser.add_argument("--benchmark-poll-interval-seconds", type=float, default=5.0)
+    parser.add_argument("--benchmark-timeout-seconds", type=float, default=900.0)
+    parser.add_argument("--benchmark-profile", choices=("benchmark_smoke", "benchmark_live"), default="benchmark_smoke")
+    parser.add_argument("--profile", choices=("static", "recorded", "benchmark_smoke", "benchmark_live"), default="recorded")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--show-runtime-config", action="store_true")
     parser.add_argument("--live-probes", action="store_true")
@@ -454,6 +465,8 @@ def main() -> None:
             database_url=args.database_url,
         )
     elif args.command == "preflight-radar":
+        if args.profile not in {"static", "recorded"}:
+            parser.error("preflight-radar --profile must be static or recorded")
         artifact = build_radar_preflight_report(
             radar_id=args.radar_id,
             database_url=args.database_url,
@@ -467,6 +480,16 @@ def main() -> None:
         if not artifact.get("ready_for_live_run"):
             raise SystemExit(1)
         return
+    elif args.command == "run-radar-benchmark":
+        benchmark_profile = args.profile if args.profile in {"benchmark_smoke", "benchmark_live"} else args.benchmark_profile
+        artifact = generate_radar_benchmark_report(
+            api_url=args.api_url,
+            profile=benchmark_profile,
+            radar_id=args.radar_id,
+            output_path=args.benchmark_output,
+            poll_interval_seconds=args.benchmark_poll_interval_seconds,
+            timeout_seconds=args.benchmark_timeout_seconds,
+        )
     else:
         artifact = build_demo_plan(args.input)
     print(json.dumps(artifact, ensure_ascii=False, indent=2))
