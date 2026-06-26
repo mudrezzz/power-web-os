@@ -307,6 +307,10 @@ default for simple bounded tasks such as signal checks.
 planning and discovery/qualification/coverage extraction respectively. The
 fallback order is explicit constructor argument, specific environment variable,
 advanced model for planner/extractor, then default model.
+`OPENROUTER_EXTRACTION_BACKUP_MODEL` is a bounded extraction-recovery fallback:
+it is tried only after primary extraction retry still returns non-JSON or
+schema-invalid output. `OPENROUTER_BACKUP_MODEL` is a generic alias for local
+compatibility, but planner and signal-search calls do not use this backup path.
 
 Source visibility is split by audience. Product APIs and dossier source lists
 use only evidence-bearing `used_sources`: sources used for candidate identity,
@@ -657,6 +661,12 @@ The referenced platform should be used as follows:
   precision, ambiguous matches, false positives, false negatives, and evidence
   quality. It must not import provider SDKs, enqueue runs, or influence live
   candidate extraction/scoring.
+- Retrieved/analyzed source metadata can feed a recall-first upstream universe
+  projection when the evidence explicitly names a legal entity, production
+  site, branch, asset, or project. This projection is diagnostic and
+  review-needed by default. It can support evaluation review recall, but it
+  must not bypass downstream legal-entity/account qualification or product
+  precision rules.
 
 ## Demo Implications
 

@@ -55,6 +55,78 @@ def test_evaluation_matches_exact_alias_identifier_and_review_needed_site() -> N
     _assert_safe(report)
 
 
+def test_evaluation_counts_review_needed_sites_from_upstream_universe() -> None:
+    baseline = RadarEvaluationBaseline(
+        baseline_id="sibur_sites_test",
+        version="v1",
+        radar_id=SIBUR_CONTOUR_RADAR_ID,
+        description="Review recall fixture.",
+        entities=(
+            RadarEvaluationEntity(
+                baseline_id="gubkinsky-gpp",
+                canonical_name="Губкинский газоперерабатывающий завод",
+                aliases=("Губкинский ГПЗ",),
+                entity_type="production_site",
+            ),
+            RadarEvaluationEntity(
+                baseline_id="vyngapurovsky-gpp",
+                canonical_name="Вынгапуровский газоперерабатывающий завод",
+                aliases=("Вынгапуровский ГПЗ",),
+                entity_type="production_site",
+            ),
+            RadarEvaluationEntity(
+                baseline_id="tobolsk-site",
+                canonical_name="Тобольская промышленная площадка",
+                aliases=("Тобольская площадка",),
+                entity_type="production_site",
+            ),
+        ),
+    )
+    dossier = {
+        "summary": {"execution_outcome": "stopped_for_review", "execution_outcome_reason": "review needed"},
+        "source_lifecycle": [{"evidence_ref": "src_sibur", "url": "https://www.sibur.ru/geo", "state": "retrieved"}],
+        "candidates": [],
+        "candidate_universe": [
+            {
+                "legal_name": "Губкинский ГПЗ",
+                "entity_type": "production_site",
+                "resolution_status": "review_needed",
+                "source_refs": ["src_sibur"],
+                "review_flags": ["requires_human_review", "not_standalone_legal_entity"],
+            },
+            {
+                "legal_name": "Вынгапуровский ГПЗ",
+                "entity_type": "production_site",
+                "resolution_status": "review_needed",
+                "source_refs": ["src_sibur"],
+                "review_flags": ["requires_human_review", "not_standalone_legal_entity"],
+            },
+            {
+                "legal_name": "Тобольская площадка",
+                "entity_type": "production_site",
+                "resolution_status": "review_needed",
+                "source_refs": ["src_sibur"],
+                "review_flags": ["requires_human_review", "not_standalone_legal_entity"],
+            },
+        ],
+    }
+
+    report = evaluate_radar_dossier(
+        run={"run_id": "radar-run-sites", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},
+        dossier=dossier,
+        baseline=baseline,
+    )
+
+    assert report["metrics"]["review_recall"] == 1.0
+    assert report["metrics"]["precision"] is None
+    assert {item["baseline_id"] for item in report["review_matches"]} == {
+        "gubkinsky-gpp",
+        "vyngapurovsky-gpp",
+        "tobolsk-site",
+    }
+    assert report["false_positives"] == []
+
+
 def test_budget_limited_run_still_produces_diagnostic_followups() -> None:
     dossier = _sample_dossier()
     dossier["summary"]["execution_outcome"] = "stopped_for_review"
@@ -68,6 +140,52 @@ def test_budget_limited_run_still_produces_diagnostic_followups() -> None:
 
     assert "tune_benchmark_budgets" in report["recommended_followup_buckets"]
     assert "improve_recall" in report["recommended_followup_buckets"]
+
+
+def test_evaluation_classifies_false_negative_present_in_source_diagnostics() -> None:
+    baseline = RadarEvaluationBaseline(
+        baseline_id="diagnostic-test",
+        version="test",
+        radar_id=SIBUR_CONTOUR_RADAR_ID,
+        description="False negative diagnostics.",
+        entities=(
+            RadarEvaluationEntity(
+                baseline_id="gubkinsky-gpp",
+                canonical_name="Губкинский газоперерабатывающий завод",
+                aliases=("Губкинский ГПЗ",),
+                entity_type="production_site",
+            ),
+            RadarEvaluationEntity(
+                baseline_id="tobolsk-site",
+                canonical_name="Тобольская промышленная площадка",
+                aliases=("Тобольская площадка",),
+                entity_type="production_site",
+            ),
+        ),
+    )
+    dossier = {
+        "summary": {"execution_outcome": "stopped_for_review"},
+        "candidates": [],
+        "candidate_universe": [],
+        "source_lifecycle": [
+            {
+                "evidence_ref": "src_gubkin",
+                "title": "СИБУР: Губкинский ГПЗ",
+                "snippet": "Губкинский газоперерабатывающий завод связан с производственным контуром.",
+            }
+        ],
+    }
+
+    report = evaluate_radar_dossier(
+        run={"run_id": "radar-run-fn", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},
+        dossier=dossier,
+        baseline=baseline,
+    )
+
+    diagnostics = {item["baseline_id"]: item["bucket"] for item in report["false_negative_diagnostics"]}
+    assert diagnostics["gubkinsky-gpp"] == "present_not_projected"
+    assert diagnostics["tobolsk-site"] == "not_retrieved_in_run"
+    assert report["candidate_projection_note"]
 
 
 def test_non_sibur_run_is_rejected_for_sibur_baseline() -> None:

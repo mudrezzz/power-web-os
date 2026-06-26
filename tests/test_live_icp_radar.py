@@ -981,6 +981,37 @@ def test_extraction_contract_repairs_single_candidate_object_and_reconciles_refs
     assert {issue.code for issue in repair.issues} == {"extraction_repair_needed"}
 
 
+def test_extraction_contract_repairs_keyed_collection_shapes() -> None:
+    repair = validate_and_repair_extraction_payload({
+        "sources": {
+            "src_1": {
+                "title": "SIBUR source",
+                "url": "https://www.sibur.ru/example",
+                "snippet": "ООО «ЗапСибНефтехим» is mentioned.",
+            }
+        },
+        "candidates": {
+            "ООО «ЗапСибНефтехим»": {
+                "evidence_refs": ["src_1"],
+                "qualification": [{"criterion_code": "Q1", "status": "weak", "evidence_refs": ["src_1"]}],
+            }
+        },
+        "candidate_universe_gaps": ["Губкинский ГПЗ"],
+    })
+
+    assert repair.valid
+    assert repair.state == "extraction_repair_needed"
+    assert repair.payload["sources"] == [{
+        "title": "SIBUR source",
+        "url": "https://www.sibur.ru/example",
+        "snippet": "ООО «ЗапСибНефтехим» is mentioned.",
+        "evidence_ref": "src_1",
+    }]
+    assert repair.payload["candidates"][0]["legal_name"] == "ООО «ЗапСибНефтехим»"
+    assert repair.payload["candidate_universe_gaps"][0]["legal_name"] == "Губкинский ГПЗ"
+    assert {issue.code for issue in repair.issues} == {"extraction_repair_needed"}
+
+
 def test_extraction_contract_reports_unresolved_evidence_refs() -> None:
     repair = validate_and_repair_extraction_payload({
         "sources": [{"evidence_ref": "src_1", "title": "A", "url": "https://example.test/a", "snippet": "A"}],
@@ -1339,6 +1370,64 @@ def test_retrieved_candidate_extraction_rejects_metric_rows_and_sentence_names()
 
     assert result.candidate_observations == []
     assert result.sources == []
+
+
+def test_retrieved_source_extraction_retains_production_sites_for_review_universe() -> None:
+    result = candidates_from_retrieved_sources(
+        radar={"radar_id": "retrieved-sites", "qualification_criteria": []},
+        provider_metadata={
+            "retrieved_sources": [
+                {
+                    "source_ref": "src_gubkin",
+                    "title": "СИБУР рассказал про Губкинский газоперерабатывающий завод",
+                    "snippet": "Губкинский ГПЗ связан с производственным контуром СИБУР.",
+                    "url": "https://www.sibur.ru/example/gubkinsky-gpp",
+                },
+                {
+                    "source_ref": "src_tobolsk",
+                    "title": "Тобольская промышленная площадка СИБУР",
+                    "snippet": "Тобольская площадка указана как производственный актив.",
+                    "url": "https://www.sibur.ru/example/tobolsk-site",
+                },
+            ]
+        },
+        known_candidate_names=set(),
+        known_source_refs=set(),
+    )
+
+    assert result.candidate_observations == []
+    upstream = result.provider_metadata["upstream_disambiguation_results"]
+    assert {item["legal_name"] for item in upstream} >= {
+        "Губкинский ГПЗ",
+        "Тобольская промышленная площадка",
+    }
+    assert {item["entity_type"] for item in upstream} == {"production_site"}
+    assert all(item["not_candidate_reason"] == "not_standalone_legal_entity" for item in upstream)
+    assert all("requires_human_review" in item["review_flags"] for item in upstream)
+    assert len(result.sources) == 2
+
+
+def test_retrieved_source_extraction_promotes_source_backed_ownership_list_leads() -> None:
+    result = candidates_from_retrieved_sources(
+        radar={"radar_id": "retrieved-ownership-list", "qualification_criteria": []},
+        provider_metadata={
+            "retrieved_sources": [
+                {
+                    "source_ref": "src_corporate",
+                    "title": "Corporate structure - SIBUR",
+                    "snippet": "- ZapSibNeftekhim (100%)\n- Poliom (50%, JV with Gazprom Neft Group)\n- BIAXPLEN (100%)",
+                    "url": "https://www.sibur.ru/en/about/corporate/",
+                }
+            ]
+        },
+        known_candidate_names=set(),
+        known_source_refs=set(),
+    )
+
+    names = {item["legal_name"] for item in result.candidate_observations}
+    assert names == {"ZapSibNeftekhim", "Poliom", "BIAXPLEN"}
+    assert all(item["entity_type"] == "legal_entity" for item in result.candidate_observations)
+    assert all("retrieved_source_candidate_requires_review" in item["review_flags"] for item in result.candidate_observations)
 
 
 def test_source_registry_retains_ambiguous_registry_matches_for_upstream_review() -> None:
@@ -2830,6 +2919,7 @@ def test_openrouter_model_routing_uses_advanced_models_for_planner_and_extractor
             "OPENROUTER_ADVANCED_MODEL=advanced/model",
             "OPENROUTER_PLANNER_MODEL=planner/model",
             "OPENROUTER_EXTRACTOR_MODEL=extractor/model",
+            "OPENROUTER_EXTRACTION_BACKUP_MODEL=backup/model",
         ]),
         encoding="utf-8",
     )
@@ -2841,6 +2931,7 @@ def test_openrouter_model_routing_uses_advanced_models_for_planner_and_extractor
 
     assert provider.model == "fast/model"
     assert provider.extractor_model == "extractor/model"
+    assert provider.extraction_backup_model == "backup/model"
     assert planner.model == "planner/model"
     assert provider._model_for_search_plan(execution_task_to_search_plan(discovery_task, radar_id=plan.radar_id)) == "extractor/model"
     assert provider._model_for_search_plan(execution_task_to_search_plan(signal_task, radar_id=plan.radar_id)) == "fast/model"
@@ -3482,6 +3573,88 @@ def test_openrouter_provider_treats_non_json_http_200_as_empty_task_result(
     assert result.sources == []
     assert result.candidate_observations == []
     assert result.provider_metadata["provider_error"]["error_type"] == "JSONDecodeError"
+
+
+def test_openrouter_extraction_backup_model_recovers_after_primary_non_json(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    calls: list[str] = []
+
+    class FakeResponse:
+        status_code = 200
+
+        def __init__(self, *, text: str = "", payload: dict[str, object] | None = None) -> None:
+            self.text = text
+            self._payload = payload
+
+        def json(self):
+            if self._payload is None:
+                raise json.JSONDecodeError("Expecting value", self.text, 0)
+            return self._payload
+
+    valid_payload = {
+        "id": "backup-response",
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps({
+                        "sources": [
+                            {
+                                "evidence_ref": "src_backup",
+                                "title": "Backup source",
+                                "url": "https://example.test/backup",
+                                "snippet": "Candidate A belongs to the target universe.",
+                            }
+                        ],
+                        "candidates": [{"legal_name": "Candidate A", "evidence_refs": ["src_backup"]}],
+                        "source_outcomes": [{"source_ref": "src_backup", "outcome": "used", "reason": "matched"}],
+                    }),
+                    "annotations": [],
+                }
+            }
+        ],
+        "usage": {},
+    }
+    responses = [
+        FakeResponse(text="not json from primary"),
+        FakeResponse(text="not json from primary retry"),
+        FakeResponse(payload=valid_payload),
+    ]
+
+    class FakeHttpx:
+        @staticmethod
+        def post(*args, **kwargs):
+            calls.append(kwargs["json"]["model"])
+            return responses.pop(0)
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join([
+            "OPENROUTER_API_KEY=test-key",
+            "OPENROUTER_MODEL=fast/model",
+            "OPENROUTER_EXTRACTOR_MODEL=extractor/model",
+            "OPENROUTER_EXTRACTION_BACKUP_MODEL=backup/model",
+            "OPENROUTER_WEB_MODE=server_tools",
+            "POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE=off",
+        ]),
+        encoding="utf-8",
+    )
+    monkeypatch.setitem(sys.modules, "httpx", FakeHttpx)
+
+    result = OpenRouterWebSearchProvider(env_path=env_file).run_search_plan(
+        radar=build_live_mini_radar_definition(),
+        search_plan=build_live_mini_radar_search_plan(),
+    )
+
+    assert calls == ["extractor/model", "extractor/model", "backup/model"]
+    assert result.candidate_observations[0]["legal_name"] == "Candidate A"
+    assert result.provider_metadata["extraction_recovery_outcome"] == "recovered"
+    assert [item["role"] for item in result.provider_metadata["extraction_model_attempts"]] == [
+        "primary",
+        "primary_retry",
+        "backup",
+    ]
 
 
 def test_unverified_live_sources_do_not_support_candidates(monkeypatch: pytest.MonkeyPatch) -> None:

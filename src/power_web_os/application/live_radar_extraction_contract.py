@@ -128,7 +128,10 @@ def validate_and_repair_extraction_payload(payload: Any) -> ExtractionRepairResu
             continue
         value = repaired[field_name]
         if isinstance(value, list):
-            repaired[field_name] = [dict(item) for item in value if isinstance(item, dict)]
+            repaired_list, list_issues, list_actions = _repair_list_items(field_name, value)
+            repaired[field_name] = repaired_list
+            issues.extend(list_issues)
+            repair_actions.extend(list_actions)
             continue
         if isinstance(value, dict) and _dict_looks_like_single_item(field_name, value):
             repaired[field_name] = [dict(value)]
@@ -142,6 +145,24 @@ def validate_and_repair_extraction_payload(payload: Any) -> ExtractionRepairResu
             ))
             repair_actions.append({"type": "object_wrapped_as_list", "path": f"$.{field_name}"})
             continue
+        if isinstance(value, dict):
+            collection_items = _repair_dict_collection_items(field_name, value)
+            if collection_items:
+                repaired[field_name] = collection_items
+                issues.append(_issue(
+                    "extraction_repair_needed",
+                    "warning",
+                    f"$.{field_name}",
+                    f"Provider returned {field_name} as an object keyed by ids/names; values were converted to a list.",
+                    details={"field": field_name, "item_count": len(collection_items)},
+                    remediation="Keep extraction response collection fields as arrays.",
+                ))
+                repair_actions.append({
+                    "type": "object_values_wrapped_as_list",
+                    "path": f"$.{field_name}",
+                    "item_count": len(collection_items),
+                })
+                continue
         issues.append(_issue(
             "extraction_schema_invalid",
             "error",
@@ -246,6 +267,55 @@ def _dict_looks_like_single_item(field_name: str, value: dict[str, Any]) -> bool
         "coverage_findings": {"summary", "completeness_risk", "warnings"},
     }
     return bool(set(value) & expected_keys.get(field_name, set()))
+
+
+def _repair_dict_collection_items(field_name: str, value: dict[str, Any]) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for key, item in value.items():
+        if not isinstance(item, dict) or not _dict_looks_like_single_item(field_name, item):
+            continue
+        repaired = dict(item)
+        key_text = str(key).strip()
+        if field_name == "sources" and key_text:
+            repaired.setdefault("evidence_ref", key_text)
+        elif field_name in {"candidates", "candidate_observations"} and key_text and not _looks_like_synthetic_key(key_text):
+            repaired.setdefault("legal_name", key_text)
+        elif field_name == "source_outcomes" and key_text:
+            repaired.setdefault("source_ref", key_text)
+        items.append(repaired)
+    return items
+
+
+def _repair_list_items(
+    field_name: str,
+    value: list[Any],
+) -> tuple[list[dict[str, Any]], list[ExtractionValidationIssue], list[dict[str, Any]]]:
+    repaired_items: list[dict[str, Any]] = []
+    issues: list[ExtractionValidationIssue] = []
+    actions: list[dict[str, Any]] = []
+    for index, item in enumerate(value):
+        if isinstance(item, dict):
+            repaired_items.append(dict(item))
+            continue
+        if field_name == "candidate_universe_gaps" and isinstance(item, str) and item.strip():
+            repaired_items.append({
+                "legal_name": item.strip(),
+                "reason": "Provider returned candidate universe gap as a string; retained as review-needed diagnostic input.",
+            })
+            issues.append(_issue(
+                "extraction_repair_needed",
+                "warning",
+                f"$.{field_name}[{index}]",
+                "Provider returned a candidate universe gap as a string; it was converted to an object.",
+                details={"field": field_name},
+                remediation="Return candidate universe gaps as objects with legal_name/source_refs/reason.",
+            ))
+            actions.append({"type": "string_gap_wrapped_as_object", "path": f"$.{field_name}[{index}]"})
+    return repaired_items, issues, actions
+
+
+def _looks_like_synthetic_key(value: str) -> bool:
+    return bool(re.fullmatch(r"(?:candidate|item|row|gap|source)?[_-]?\d+", value.strip(), flags=re.IGNORECASE))
 
 
 def _source_indexes(sources: list[dict[str, Any]]) -> dict[str, dict[str, str]]:

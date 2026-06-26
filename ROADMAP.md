@@ -4873,7 +4873,7 @@ Principles:
 
 ### Slice 0.7.6.3.1: SIBUR benchmark extraction quality and recall gap repair
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Use the first evaluation report to fix the highest-impact SIBUR
   benchmark quality blockers before expanding benchmark claims.
 - User value: A user can see whether the Radar improves on measured misses
@@ -4892,19 +4892,134 @@ Principles:
   - UI evaluation dashboards.
   - Provider/model leaderboard automation.
 - Tests:
-  - Recorded SIBUR fixture reproduces current false negatives and extraction
+  - Done: Recorded SIBUR fixture reproduces current false negatives and extraction
     repair exhaustion before fixes.
-  - After fixes, report metrics improve or diagnostic blockers become more
+  - Done: After fixes, report metrics improve or diagnostic blockers become more
     specific.
-  - Product precision remains strict; review-needed site recall is measured
+  - Done: Product precision remains strict; review-needed site recall is measured
     separately.
+- Implementation notes:
+  - Deterministic extraction repair now accepts keyed collection objects for
+    `sources`, `candidates`, and related list fields, and string
+    `candidate_universe_gaps` become review-needed diagnostic objects instead
+    of hard schema failures.
+  - Retrieved/analyzed source metadata now retains source-backed production
+    sites/branches/projects as review-needed upstream universe entities without
+    promoting them to strict product account candidates.
+  - Retrieved ownership-list snippets such as `- ZapSibNeftekhim (100%)` can
+    create review-needed legal-entity universe leads even when no `LLC/JSC`
+    legal-form marker is present.
+- Validation:
+  - Done: `python -m pytest tests/test_live_icp_radar.py tests/test_radar_adaptive_execution.py tests/test_radar_evaluation.py -q`
+  - Done: `python -m pytest tests/test_backend_api.py tests/test_radar_benchmark.py -q`
+  - Done: `python -m pytest tests/test_backend_architecture_contract.py -q`
+  - Done: `python -m pytest` (`284 passed, 1 skipped`).
+  - Done: Docker `benchmark_smoke` run
+    `radar-run-a616caca-eda5-4460-80a0-d01ede55b071` completed in terminal
+    `stopped_for_review` with reason `Extraction repair limit reached before
+    extraction recovered.`
+  - Done: Latest SIBUR evaluation report measured `strict_recall=0.7778`
+    versus previous `0.6667`; `review_recall` remains `0.0`; `precision=null`;
+    false negatives are now `zapsibneftekhim`, `poliom`, `gubkinsky-gpp`,
+    `vyngapurovsky-gpp`, and `tobolsk-site`.
 - Acceptance criteria:
-  - Latest SIBUR benchmark evaluation no longer has `review_recall=0.0` if
+  - Done: Latest SIBUR benchmark evaluation no longer has `review_recall=0.0` if
     source-backed production sites are present in dossier diagnostics.
-  - Extraction recovery no longer blocks product candidate projection for
+    The latest smoke did not retrieve source-backed mentions for the three
+    baseline production sites, so `review_recall=0.0` is a retrieval/coverage
+    gap rather than a projection loss.
+  - Done: Extraction recovery no longer blocks product candidate projection for
     repairable provider shape issues.
-  - Evaluation report clearly shows whether recall improved, stayed flat, or was
+  - Done: Evaluation report clearly shows whether recall improved, stayed flat, or was
     blocked by a new explicit diagnostic reason.
+
+### Slice 0.7.6.3.2: SIBUR benchmark extraction contract and site coverage repair
+
+- Status: `Done`
+- Goal: Address the next measured blockers from the `0.7.6.3.1` evaluation
+  instead of broadening benchmark claims prematurely.
+- User value: A user can see why the SIBUR benchmark still stops for review and
+  which missing entities are retrieval coverage gaps versus extraction/schema
+  gaps.
+- Scope:
+  - Make the OpenRouter extraction retry contract stricter and easier for the
+    model to satisfy for SIBUR benchmark discovery tasks.
+  - Preserve strict bounded budgets, but ensure `extraction_repair_exhausted`
+    includes the exact unrepaired field/path reason in dossier and evaluation
+    follow-up buckets.
+  - Add targeted official/web coverage tasks for SIBUR production-site aliases
+    only when benchmark smoke already has budget and source policy allowance.
+  - Improve source-backed matching for remaining legal-entity false negatives:
+    `zapsibneftekhim` and `poliom`.
+  - Keep product precision strict: unresolved sites still remain review-needed
+    universe entities, not product account candidates.
+- Out of scope:
+  - Expanding the curated baseline.
+  - Full benchmark quality claim.
+  - UI dashboard changes.
+- Tests:
+  - Done: Recorded fixture for the latest `stopped_for_review` shape proves
+    extraction retry either succeeds or reports a precise unrepaired path.
+  - Done: SIBUR official/web fixture with Gubkinsky/Vyngapurovsky/Tobolsk source
+    mentions produces positive `review_recall`.
+  - Done: Legal-entity ownership-list mentions for ZapSibNeftekhim and Poliom are
+    retained as review-needed/resolved universe entities when source-backed.
+- Implementation notes:
+  - Added `OPENROUTER_EXTRACTION_BACKUP_MODEL` and compatibility alias
+    `OPENROUTER_BACKUP_MODEL`. Backup model attempts are used only for
+    discovery/qualification/coverage extraction recovery after primary
+    extractor failures.
+  - OpenRouter extraction metadata now records `extraction_model_attempts` and
+    exact recovery outcomes such as `primary_non_json_http_200`,
+    `backup_schema_invalid`, `backup_not_configured`, and
+    `budget_exhausted_before_backup`.
+  - Terminal `stop_review_needed` checkpoints now stop later gate/coverage/
+    signal provider calls by default; remaining signal tasks are projected as
+    `not_searched_*`, not normal negatives.
+  - Evaluation reports now include `false_negative_diagnostics` and
+    `candidate_projection_note`; missed baseline entities are classified as
+    `present_not_projected`, `present_not_matched`, or
+    `not_retrieved_in_run`.
+  - Added optional `probe-radar-coverage` CLI command that performs bounded
+    post-run coverage probes for evaluation false negatives and writes
+    `demo/output/radar_coverage_probe_report.json`. Probe output is RCA-only
+    and does not change the original benchmark metrics.
+- Validation:
+  - Done: `python -m pytest tests/test_radar_runtime_config.py -q`.
+  - Done: `python -m pytest tests/test_radar_benchmark.py tests/test_radar_evaluation.py -q`.
+  - Done: `python -m pytest tests/test_live_icp_radar.py -q -k "backup_model or non_json_http_200 or model_routing"`.
+  - Done: `python -m pytest tests/test_radar_adaptive_execution.py -q`.
+  - Done: `python -m pytest` (`289 passed, 1 skipped`).
+- Acceptance criteria:
+  - Done in recorded/contract tests: a bounded SIBUR benchmark smoke should no
+    longer end with a generic
+    `extraction_repair_exhausted` reason; if it stops, the reason names the
+    field/path and next remediation.
+  - Done in evaluation/probe contracts: evaluation report either improves
+    `review_recall` above `0.0` or proves the
+    baseline production-site aliases were not retrieved in source diagnostics.
+  - Pending manual smoke: `strict_recall` should not regress from `0.7778` on the same benchmark profile
+    unless the report explains provider-output drift.
+
+### Slice 0.7.6.3.3: SIBUR benchmark manual smoke RCA and next corrective bucket
+
+- Status: `Backlog`
+- Goal: Run the bounded Docker SIBUR benchmark smoke after `0.7.6.3.2`,
+  evaluate it, optionally run coverage probes, and decide the next measured
+  corrective slice from the report rather than guessing.
+- Scope:
+  - Rebuild Docker API/worker and run `benchmark-sibur-holding-contour` with
+    `benchmark_smoke`.
+  - Run `evaluate-radar-benchmark --latest`.
+  - Run `probe-radar-coverage --latest --probe-limit 5` only if false negatives
+    remain.
+  - Record strict/review recall, false-negative diagnostics, extraction model
+    attempts, and coverage probe statuses in ROADMAP before choosing the next
+    repair.
+- Acceptance criteria:
+  - The report reaches a terminal RCA verdict: extraction-model issue,
+    retrieval coverage issue, projection/evaluation issue, or ready for
+    broader benchmark live testing.
 
 ### Slice 0.7: Human review queue loop
 
@@ -5453,9 +5568,11 @@ None.
 
 ## Next Recommended Task
 
-Plan `Slice 0.7.6.3.1: SIBUR benchmark extraction quality and recall gap
-repair`. `0.7.6.3` added the offline evaluation report and measured the latest
-SIBUR benchmark smoke against a curated mixed baseline. The first report showed
-`strict_recall=0.6667`, `review_recall=0.0`, no product candidates, and
-follow-up buckets `repair_extraction_quality` and `improve_recall`. The next
-step should improve those measured blockers, not add more benchmark plumbing.
+Execute `Slice 0.7.6.3.3: SIBUR benchmark manual smoke RCA and next corrective
+bucket`. The runtime smoke contour is now wired for Docker API/worker execution,
+connector source cards, live DaData, OpenRouter Perplexity retrieval, bounded
+budgets, and extraction backup-model diagnostics. The next step is to run the
+bounded `benchmark-sibur-holding-contour` Docker smoke, evaluate it against the
+curated baseline, optionally run targeted coverage probes for remaining false
+negatives, and decide whether the broader benchmark run is ready or another
+measured corrective slice is needed.

@@ -10,6 +10,8 @@ from power_web_os.radar_benchmark import (
     benchmark_task_context,
     run_radar_benchmark,
 )
+from power_web_os.radar_coverage_probe import CoverageProbeTarget, run_coverage_probe
+from power_web_os.application.live_radar_contracts import RadarSourceEvidence, WebSearchProviderResult
 
 
 def test_benchmark_task_context_uses_explicit_smoke_budgets() -> None:
@@ -20,6 +22,7 @@ def test_benchmark_task_context_uses_explicit_smoke_budgets() -> None:
     assert context["benchmark_radar_id"] == "benchmark-mining-toir"
     assert context["max_total_web_tasks_per_run"] == 18
     assert context["max_openrouter_calls_per_run"] == 10
+    assert context["max_provider_retries_per_task"] == 2
     assert context["source"] == "radar_benchmark_cli"
 
 
@@ -89,6 +92,30 @@ def test_benchmark_runner_queues_runs_and_writes_report_shape() -> None:
     _assert_safe(report)
 
 
+def test_coverage_probe_classifies_official_source_with_fake_provider() -> None:
+    provider = _FakeCoverageProvider()
+
+    report = run_coverage_probe(
+        run={"run_id": "radar-run-1"},
+        radar_id="benchmark-sibur-holding-contour",
+        targets=[
+            CoverageProbeTarget(
+                baseline_id="gubkinsky-gpp",
+                canonical_name="Губкинский газоперерабатывающий завод",
+                aliases=("Губкинский ГПЗ",),
+                entity_type="production_site",
+            )
+        ],
+        provider=provider,
+        probe_limit=1,
+    )
+
+    assert provider.queries == ["Губкинский газоперерабатывающий завод Губкинский ГПЗ СИБУР site:sibur.ru"]
+    assert report["summary"] == {"probe_found_official_source": 1}
+    assert report["results"][0]["urls"] == ["https://www.sibur.ru/example/gubkinsky-gpp"]
+    _assert_safe(report)
+
+
 class _FakeBenchmarkClient:
     def __init__(self) -> None:
         self.posts: list[tuple[str, dict[str, Any]]] = []
@@ -121,6 +148,25 @@ class _FakeBenchmarkClient:
             "started_at": "2026-06-25T22:00:00Z",
             "completed_at": "2026-06-25T22:00:03Z",
         }
+
+
+class _FakeCoverageProvider:
+    def __init__(self) -> None:
+        self.queries: list[str] = []
+
+    def run_search_plan(self, *, radar: dict[str, object], search_plan):
+        _ = radar
+        self.queries.append(search_plan.queries[0].query)
+        return WebSearchProviderResult(
+            sources=[
+                RadarSourceEvidence(
+                    evidence_ref="src_probe",
+                    title="СИБУР Губкинский ГПЗ",
+                    url="https://www.sibur.ru/example/gubkinsky-gpp",
+                    snippet="Губкинский ГПЗ связан с СИБУР.",
+                )
+            ]
+        )
 
 
 def _assert_safe(payload: dict[str, Any]) -> None:

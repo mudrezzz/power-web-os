@@ -249,7 +249,8 @@ def run_staged_radar_execution(
         candidate_scope = _limit_smoke_candidates(candidate_scope, external_budget.settings.smoke_max_candidates)
         stopped_for_review_reason = recovery_state.stopped_for_review_reason
 
-        gate_tasks = _tasks_for_stage(execution_plan, "qualification_gate")
+        terminal_stop_after_discovery = bool(stopped_for_review_reason)
+        gate_tasks = [] if terminal_stop_after_discovery else _tasks_for_stage(execution_plan, "qualification_gate")
         sources, observations, provider_metadata, candidate_scope = _run_gate_pass(
             radar=radar,
             execution_plan=execution_plan,
@@ -289,7 +290,7 @@ def run_staged_radar_execution(
             events=events,
         )
 
-        coverage_tasks = _tasks_for_stage(execution_plan, "coverage_check")
+        coverage_tasks = [] if terminal_stop_after_discovery else _tasks_for_stage(execution_plan, "coverage_check")
         for iteration in range(1, MAX_DISCOVERY_ITERATIONS + 1):
             if not coverage_tasks:
                 break
@@ -373,26 +374,27 @@ def run_staged_radar_execution(
             )
             candidate_scope = _limit_smoke_candidates(candidate_scope, external_budget.settings.smoke_max_candidates)
 
-        recovery_state, _ = checkpoint_executor.recover(
-            checkpoint_id="after-coverage",
-            phase="after_coverage",
-            tasks=coverage_tasks,
-            state=RadarCheckpointRecoveryState(sources, observations, provider_metadata, candidate_scope),
-            context=RadarCheckpointRecoveryContext(
-                radar=radar, execution_plan=execution_plan, provider=provider, service=checkpoint_service,
-                budget=task_budget, completed_qualification_ids=completed_qualification_ids,
-                checkpoint_decisions=checkpoint_decisions, adaptive_actions=adaptive_actions,
-                checkpoint_warnings=checkpoint_warnings, events=events, executed_task_ids=executed_task_ids,
-                coverage_checks=coverage_checks, coverage_warnings=coverage_warnings,
-                unresolved_candidate_gaps=unresolved_candidate_gaps,
-                useful_result_retry_records=useful_result_retry_records,
-                external_budget=external_budget,
-            ),
-        )
-        sources, observations = recovery_state.sources, recovery_state.observations
-        provider_metadata, candidate_scope = recovery_state.provider_metadata, recovery_state.candidate_scope
-        candidate_scope = _limit_smoke_candidates(candidate_scope, external_budget.settings.smoke_max_candidates)
-        stopped_for_review_reason = stopped_for_review_reason or recovery_state.stopped_for_review_reason
+        if not stopped_for_review_reason:
+            recovery_state, _ = checkpoint_executor.recover(
+                checkpoint_id="after-coverage",
+                phase="after_coverage",
+                tasks=coverage_tasks,
+                state=RadarCheckpointRecoveryState(sources, observations, provider_metadata, candidate_scope),
+                context=RadarCheckpointRecoveryContext(
+                    radar=radar, execution_plan=execution_plan, provider=provider, service=checkpoint_service,
+                    budget=task_budget, completed_qualification_ids=completed_qualification_ids,
+                    checkpoint_decisions=checkpoint_decisions, adaptive_actions=adaptive_actions,
+                    checkpoint_warnings=checkpoint_warnings, events=events, executed_task_ids=executed_task_ids,
+                    coverage_checks=coverage_checks, coverage_warnings=coverage_warnings,
+                    unresolved_candidate_gaps=unresolved_candidate_gaps,
+                    useful_result_retry_records=useful_result_retry_records,
+                    external_budget=external_budget,
+                ),
+            )
+            sources, observations = recovery_state.sources, recovery_state.observations
+            provider_metadata, candidate_scope = recovery_state.provider_metadata, recovery_state.candidate_scope
+            candidate_scope = _limit_smoke_candidates(candidate_scope, external_budget.settings.smoke_max_candidates)
+            stopped_for_review_reason = stopped_for_review_reason or recovery_state.stopped_for_review_reason
 
         sources, observations, provider_metadata, candidate_scope = _extract_retrieved_candidates(
             radar=radar,
@@ -404,18 +406,19 @@ def run_staged_radar_execution(
             events=events,
             smoke_candidate_limit=external_budget.settings.smoke_max_candidates,
         )
-        sources, observations, provider_metadata = execute_cross_source_disambiguation(
-            radar=radar,
-            execution_plan=execution_plan,
-            provider=provider,
-            sources=sources,
-            observations=observations,
-            provider_metadata=provider_metadata,
-            budget=task_budget,
-            external_budget=external_budget,
-            events=events,
-            executed_task_ids=executed_task_ids,
-        )
+        if not stopped_for_review_reason:
+            sources, observations, provider_metadata = execute_cross_source_disambiguation(
+                radar=radar,
+                execution_plan=execution_plan,
+                provider=provider,
+                sources=sources,
+                observations=observations,
+                provider_metadata=provider_metadata,
+                budget=task_budget,
+                external_budget=external_budget,
+                events=events,
+                executed_task_ids=executed_task_ids,
+            )
         candidate_scope = _eligible_candidate_names(
             radar=radar,
             sources=sources,
@@ -452,7 +455,12 @@ def run_staged_radar_execution(
             checkpoint_warnings=checkpoint_warnings,
             events=events,
         )
-        can_run_signal_search = pre_signal_decision.action == "continue" and pre_signal_decision.should_continue and pre_signal_decision.should_run_signal_search
+        can_run_signal_search = (
+            not stopped_for_review_reason
+            and pre_signal_decision.action == "continue"
+            and pre_signal_decision.should_continue
+            and pre_signal_decision.should_run_signal_search
+        )
         if not can_run_signal_search:
             stopped_for_review_reason = stopped_for_review_reason or pre_signal_decision.message
 
@@ -489,8 +497,8 @@ def run_staged_radar_execution(
                 for scoped_candidate_name in signal_candidate_scope:
                     decision = {
                         "state": "not_searched_policy_limited",
-                        "reason": pre_signal_decision.reason_code,
-                        "message": pre_signal_decision.message,
+                        "reason": pre_signal_decision.reason_code if not stopped_for_review_reason else "stopped_for_review",
+                        "message": pre_signal_decision.message if not stopped_for_review_reason else stopped_for_review_reason,
                         "key": f"checkpoint:{pre_signal_decision.checkpoint_id}",
                     }
                     observations.append(_not_searched_signal_observation(scoped_candidate_name, task, decision))

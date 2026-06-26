@@ -18,6 +18,7 @@ def test_runtime_config_report_redacts_secrets_and_builds_fingerprint() -> None:
             "OPENROUTER_ADVANCED_MODEL": "advanced/model",
             "OPENROUTER_PLANNER_MODEL": "planner/model",
             "OPENROUTER_EXTRACTOR_MODEL": "extractor/model",
+            "OPENROUTER_EXTRACTION_BACKUP_MODEL": "backup/model",
             "OPENROUTER_WEB_MODE": "server_tools",
             "POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER": "openrouter_perplexity",
             "POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE": "perplexity",
@@ -46,6 +47,7 @@ def test_runtime_config_report_redacts_secrets_and_builds_fingerprint() -> None:
     assert report["component"] == "test"
     assert len(report["fingerprint"]) == 16
     assert report["config"]["openrouter"]["api_key_present"] is True
+    assert report["config"]["openrouter"]["extraction_backup_model"] == "backup/model"
     assert report["config"]["dadata"]["credentials_present"] is True
     assert report["config"]["retrieval"]["provider"] == "openrouter_perplexity"
     assert report["config"]["retrieval"]["openrouter_web_search_engine"] == "perplexity"
@@ -74,6 +76,15 @@ def test_runtime_config_fingerprint_is_stable_and_changes_for_critical_values() 
 
     assert first["fingerprint"] == same["fingerprint"]
     assert first["fingerprint"] != changed["fingerprint"]
+
+
+def test_runtime_config_uses_generic_backup_model_alias_for_extraction_backup() -> None:
+    report = build_effective_runtime_config_report(
+        component="test",
+        env={"OPENROUTER_MODEL": "primary/model", "OPENROUTER_BACKUP_MODEL": "generic/backup"},
+    ).to_payload()
+
+    assert report["config"]["openrouter"]["extraction_backup_model"] == "generic/backup"
 
 
 def test_runtime_config_compare_reports_critical_mismatch() -> None:

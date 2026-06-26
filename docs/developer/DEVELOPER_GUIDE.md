@@ -466,6 +466,34 @@ production sites. `strict_recall` measures legal-entity hits,
 `ambiguous_matches` stay separate from false positives/false negatives until a
 human or a later corrective slice adjudicates them.
 
+`0.7.6.3.1` keeps evaluation recall-first without relaxing product precision.
+Repairable extraction shape noise, such as keyed `sources`/`candidates` objects
+or string candidate-universe gaps, is repaired deterministically and recorded as
+`extraction_repair_needed` warnings. Source-backed production sites, branches,
+or projects found only in retrieved/analyzed source metadata are retained as
+review-needed upstream universe entities with `not_standalone_legal_entity`.
+They can improve `review_recall`, but they do not become strict product account
+candidates unless later entity resolution proves a legal-entity account.
+
+`0.7.6.3.2` adds two diagnostics for SIBUR benchmark follow-up work. First,
+OpenRouter extraction recovery records `extraction_model_attempts` and exact
+failure reasons such as `primary_non_json_http_200`, `backup_schema_invalid`,
+or `budget_exhausted_before_backup`, instead of only reporting generic
+`extraction_repair_exhausted`. Second, evaluation reports include
+`false_negative_diagnostics` so a missed baseline entity is classified as
+`present_not_projected`, `present_not_matched`, or `not_retrieved_in_run`.
+
+If a missed entity should be checked with a bounded live search, run the
+separate diagnostic probe. It does not change the original run metrics:
+
+```powershell
+python -m power_web_os.demo probe-radar-coverage --api-url http://127.0.0.1:8001 --radar-id benchmark-sibur-holding-contour --latest --probe-limit 5
+```
+
+The probe writes `demo/output/radar_coverage_probe_report.json` with statuses
+such as `probe_found_official_source`, `probe_found_open_web_source`,
+`probe_no_source`, `probe_provider_failed`, and `probe_budget_limited`.
+
 Default queue settings:
 
 ```text
@@ -813,6 +841,8 @@ OPENROUTER_MODEL=openai/gpt-4.1-mini
 OPENROUTER_ADVANCED_MODEL=deepseek/deepseek-v3.2
 OPENROUTER_PLANNER_MODEL=deepseek/deepseek-v3.2
 OPENROUTER_EXTRACTOR_MODEL=deepseek/deepseek-v3.2
+OPENROUTER_EXTRACTION_BACKUP_MODEL=
+OPENROUTER_BACKUP_MODEL=
 OPENROUTER_WEB_MODE=server_tools
 POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=1
 POWER_WEB_OS_RADAR_MAX_DISCOVERY_TASKS_PER_RULE=
@@ -828,6 +858,12 @@ simple bounded tasks such as signal checks. Planner calls use
 `OPENROUTER_PLANNER_MODEL`; discovery, qualification, and coverage extraction
 use `OPENROUTER_EXTRACTOR_MODEL`. If a specific model is absent, planner and
 extractor fall back to `OPENROUTER_ADVANCED_MODEL`, then to `OPENROUTER_MODEL`.
+`OPENROUTER_EXTRACTION_BACKUP_MODEL` can be set for bounded extraction recovery
+when the primary extractor repeatedly returns non-JSON or schema-invalid
+payloads. `OPENROUTER_BACKUP_MODEL` is accepted as a generic compatibility
+alias, but role-specific `OPENROUTER_EXTRACTION_BACKUP_MODEL` is preferred.
+The backup model is used only for discovery/qualification/coverage extraction
+retry attempts; planner and signal-search calls keep their own routing.
 
 `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` is a compatibility safety limit
 for backend-controlled live Radar web/provider tasks. The checked-in

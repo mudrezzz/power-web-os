@@ -54,6 +54,10 @@ OpenRouter model routing is role-specific. The live search provider keeps
 `OPENROUTER_MODEL` as the fast/default signal model and uses
 `OPENROUTER_EXTRACTOR_MODEL` for discovery, qualification, and coverage tasks,
 falling back through `OPENROUTER_ADVANCED_MODEL` to `OPENROUTER_MODEL`.
+For extraction recovery only, `OPENROUTER_EXTRACTION_BACKUP_MODEL` can be tried
+after the primary extractor and strict primary retry still return non-JSON or
+schema-invalid payloads. The generic `OPENROUTER_BACKUP_MODEL` is accepted as a
+compatibility alias, but it is not used for planner or signal-search calls.
 OpenRouter planner requests are a separate boundary: they receive Radar
 settings, qualification rules, source policy, and task context, then return a
 JSON discovery plan for backend validation. Planner output is advisory until the

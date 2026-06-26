@@ -38,7 +38,7 @@ BENCHMARK_PROFILES: dict[str, dict[str, Any]] = {
         "max_openrouter_server_tool_web_searches_per_run": 30,
         "max_dadata_lookups_per_run": 4,
         "max_source_verification_requests_per_run": 30,
-        "max_provider_retries_per_task": 1,
+        "max_provider_retries_per_task": 2,
         "openrouter_web_max_results_per_call": 3,
         "openrouter_web_max_total_results_per_call": 6,
         "smoke_max_candidates": 3,

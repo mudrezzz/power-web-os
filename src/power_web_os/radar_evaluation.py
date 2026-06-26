@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from power_web_os.radar_evaluation_diagnostics import false_negative_diagnostics
+
 
 SIBUR_CONTOUR_RADAR_ID = "benchmark-sibur-holding-contour"
 EVALUATION_ARTIFACT_VERSION = "0.7.6.3"
@@ -119,6 +121,7 @@ def evaluate_radar_dossier(
         for item in baseline.entities
         if item.evaluation_weight > 0 and item.baseline_id not in matched_baseline_ids and item.baseline_id not in ambiguous_baseline_ids
     ]
+    false_negative_diagnostic_items = false_negative_diagnostics(false_negatives=false_negatives, dossier=dossier)
     legal_baseline = [item for item in baseline.entities if item.entity_type == "legal_entity" and item.evaluation_weight > 0]
     review_baseline = [item for item in baseline.entities if item.entity_type != "legal_entity" and item.evaluation_weight > 0]
     strict_hits = {match.baseline.baseline_id for match in matches if match.baseline.entity_type == "legal_entity"}
@@ -154,7 +157,12 @@ def evaluate_radar_dossier(
         "review_matches": [_match_payload(match) for match in matches if match.baseline.entity_type != "legal_entity"],
         "false_positives": false_positives,
         "false_negatives": false_negatives,
+        "false_negative_diagnostics": false_negative_diagnostic_items,
         "ambiguous_matches": [_match_payload(match) for match in ambiguous],
+        "coverage_probe_summary": {},
+        "candidate_projection_note": (
+            "Precision counts strict product candidates only; review-needed universe entities are evaluated through review_recall."
+        ),
         "recommended_followup_buckets": _followup_buckets(
             summary=summary,
             false_positives=false_positives,

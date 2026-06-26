@@ -165,16 +165,6 @@ class RadarExecutionCheckpointService:
                 details={"budget_exhaustion_events": checkpoint.budget_exhaustion_events},
             )
 
-        if checkpoint.useful_result_retry_count:
-            return _decision(
-                checkpoint,
-                action="retry_same_source",
-                reason_code="weak_candidate_coverage",
-                severity="warning",
-                message="A bounded retry was used because an earlier result was weak.",
-                details={"useful_result_retry_count": checkpoint.useful_result_retry_count},
-            )
-
         return _continue(checkpoint)
 
     def _before_signal_search(self, checkpoint: RadarExecutionCheckpointInput) -> RadarExecutionCheckpointDecision:

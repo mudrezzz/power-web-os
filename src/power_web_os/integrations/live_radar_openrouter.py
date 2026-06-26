@@ -19,6 +19,7 @@ from power_web_os.application.live_radar_extraction_contract import extraction_v
 from power_web_os.application.live_radar_external_budget import (
     current_external_call_budget,
     record_openrouter_server_tool_usage,
+    reserve_external_call,
     reserve_openrouter_http_call,
 )
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
@@ -76,6 +77,13 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
             or self._advanced_model
             or self._model
         )
+        self._extraction_backup_model = (
+            self._env.get("OPENROUTER_EXTRACTION_BACKUP_MODEL")
+            or os.getenv("OPENROUTER_EXTRACTION_BACKUP_MODEL")
+            or self._env.get("OPENROUTER_BACKUP_MODEL")
+            or os.getenv("OPENROUTER_BACKUP_MODEL")
+            or ""
+        )
         self._web_mode = web_mode or self._env.get("OPENROUTER_WEB_MODE") or os.getenv("OPENROUTER_WEB_MODE") or "auto"
         self._retrieval_provider = (
             self._env.get("POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER")
@@ -100,6 +108,10 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
     @property
     def extractor_model(self) -> str:
         return self._extractor_model or self.model
+
+    @property
+    def extraction_backup_model(self) -> str:
+        return self._extraction_backup_model
 
     @property
     def web_mode(self) -> str:
@@ -135,13 +147,17 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
         radar: dict[str, Any],
         search_plan: RadarSearchPlan,
         mode: str,
+        selected_model: str | None = None,
+        attempt_role: str = "primary",
+        attempt_index: int = 1,
+        allow_extraction_recovery: bool = True,
     ) -> WebSearchProviderResult:
         try:
             import httpx
         except ImportError as error:  # pragma: no cover - exercised by install shape, not unit tests.
             raise RuntimeError("Install the agent extra to run live OpenRouter searches: pip install -e .[agent]") from error
 
-        selected_model = self._model_for_search_plan(search_plan)
+        selected_model = selected_model or self._model_for_search_plan(search_plan)
         payload = build_openrouter_request(
             radar=radar,
             search_plan=search_plan,
@@ -166,6 +182,8 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                 "url": "https://openrouter.ai/api/v1/chat/completions",
                 "model": selected_model,
                 "web_mode": mode,
+                "attempt_role": attempt_role,
+                "attempt_index": attempt_index,
                 "retrieval_request": retrieval_request.model_dump(),
                 "task_card": compiled_prompt.get("task_card", {}),
                 "compiled_prompt": compiled_prompt,
@@ -185,6 +203,8 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                     "retrieval_provider": self.retrieval_provider,
                     "retrieval_engine": self.web_search_engine,
                     "budget_decision": budget_decision.to_payload(),
+                    "attempt_role": attempt_role,
+                    "attempt_index": attempt_index,
                 },
             )
             return _budget_limited_result(
@@ -238,6 +258,9 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                 "body_excerpt": response.text[:2000],
                 "model": selected_model,
                 "web_mode": mode,
+                "attempt_role": attempt_role,
+                "attempt_index": attempt_index,
+                "extraction_failure_reason": f"{attempt_role}_non_json_http_200",
             }
             _trace_provider(
                 trace_type="provider_error",
@@ -246,7 +269,7 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                 duration_ms=_duration_ms(started_at),
                 payload=error_payload,
             )
-            return WebSearchProviderResult(
+            result = WebSearchProviderResult(
                 sources=[],
                 candidate_observations=[],
                 provider_metadata={
@@ -258,8 +281,25 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                     "retrieval_provider": self.retrieval_provider,
                     "retrieval_engine": self.web_search_engine,
                     "provider_error": error_payload,
+                    "extraction_model_attempts": [_model_attempt(
+                        model=selected_model,
+                        role=attempt_role,
+                        attempt=attempt_index,
+                        outcome="non_json_http_200",
+                        reason=f"{attempt_role}_non_json_http_200",
+                    )],
+                    "extraction_recovery_outcome": f"{attempt_role}_non_json_http_200",
                 },
             )
+            if allow_extraction_recovery:
+                return self._recover_extraction_with_retry_models(
+                    radar=radar,
+                    search_plan=search_plan,
+                    mode=mode,
+                    failed_result=result,
+                    failure_reason=f"{attempt_role}_non_json_http_200",
+                )
+            return result
         retrieval_result = retrieval_result_from_openrouter_response(
             response_payload,
             provider_id=self.retrieval_provider,
@@ -316,7 +356,97 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                 },
             },
         )
-        return _apply_source_verification(result, mode=self._source_verification_mode)
+        result = _apply_source_verification(result, mode=self._source_verification_mode)
+        schema_invalid = _result_schema_invalid(result)
+        result = _with_model_attempts(result, [_model_attempt(
+            model=selected_model,
+            role=attempt_role,
+            attempt=attempt_index,
+            outcome="schema_invalid" if schema_invalid else "valid",
+            reason=f"{attempt_role}_schema_invalid" if schema_invalid else "",
+        )])
+        if allow_extraction_recovery and schema_invalid:
+            return self._recover_extraction_with_retry_models(
+                radar=radar,
+                search_plan=search_plan,
+                mode=mode,
+                failed_result=result,
+                failure_reason=f"{attempt_role}_schema_invalid",
+            )
+        return result
+
+    def _recover_extraction_with_retry_models(
+        self,
+        *,
+        radar: dict[str, Any],
+        search_plan: RadarSearchPlan,
+        mode: str,
+        failed_result: WebSearchProviderResult,
+        failure_reason: str,
+    ) -> WebSearchProviderResult:
+        if not _is_extraction_search_plan(search_plan):
+            return failed_result
+        attempts = _model_attempts(failed_result)
+        primary_model = self._model_for_search_plan(search_plan)
+        retry_plan = _strict_extraction_retry_plan(search_plan, reason=failure_reason)
+        retry_specs: list[tuple[str, str]] = [(primary_model, "primary_retry")]
+        backup_model = self.extraction_backup_model.strip()
+        if backup_model and backup_model != primary_model:
+            retry_specs.append((backup_model, "backup"))
+        elif not backup_model:
+            attempts.append(_model_attempt(
+                model="",
+                role="backup",
+                attempt=len(attempts) + 1,
+                outcome="not_configured",
+                reason="backup_not_configured",
+            ))
+        budget_key = _search_plan_budget_key(search_plan)
+        for model, role in retry_specs:
+            retry_decision = reserve_external_call("provider_retry", key=budget_key, task_id=budget_key)
+            if not retry_decision.accepted:
+                reason = "budget_exhausted_before_backup" if role == "backup" else "budget_exhausted_before_primary_retry"
+                attempts.append(_model_attempt(
+                    model=model,
+                    role=role,
+                    attempt=len(attempts) + 1,
+                    outcome="budget_exhausted",
+                    reason=reason,
+                    budget_decision=retry_decision.to_payload(),
+                ))
+                return _with_model_attempts(
+                    failed_result,
+                    attempts,
+                    recovery_outcome=reason,
+                    retry_exhausted=True,
+                    budget_decision=retry_decision.to_payload(),
+                )
+            budget = current_external_call_budget()
+            if budget is not None:
+                budget.record_retry(
+                    task_id=budget_key,
+                    reason=f"extraction_{failure_reason}",
+                    attempt=len(attempts) + 1,
+                    decision=retry_decision,
+                )
+            retried = self._request_with_mode(
+                radar=radar,
+                search_plan=retry_plan,
+                mode=mode,
+                selected_model=model,
+                attempt_role=role,
+                attempt_index=len(attempts) + 1,
+                allow_extraction_recovery=False,
+            )
+            attempts.extend(_model_attempts(retried))
+            if not _result_schema_invalid(retried):
+                return _with_model_attempts(retried, attempts, recovery_outcome="recovered")
+            failed_result = retried
+        return _with_model_attempts(
+            failed_result,
+            attempts,
+            recovery_outcome=_last_failed_attempt_reason(attempts) or "extraction_repair_exhausted",
+        )
 
     def _model_for_search_plan(self, search_plan: RadarSearchPlan) -> str:
         stages = {query.stage for query in search_plan.queries}
@@ -367,6 +497,107 @@ def normalize_openrouter_response(payload: dict[str, Any], *, fallback_metadata:
             "source_outcomes": [item for item in parsed.get("source_outcomes", []) if isinstance(item, dict)],
         },
     )
+
+
+def _is_extraction_search_plan(search_plan: RadarSearchPlan) -> bool:
+    return any(query.stage in {"qualification_discovery", "qualification_gate", "coverage_check"} for query in search_plan.queries)
+
+
+def _strict_extraction_retry_plan(search_plan: RadarSearchPlan, *, reason: str) -> RadarSearchPlan:
+    retry_suffix = (
+        " Retry context: previous extraction failed strict JSON/schema validation "
+        f"with reason {reason}. Return only a JSON object matching the task response contract. "
+        "All collection fields must be arrays; do not include prose."
+    )
+    return search_plan.model_copy(update={
+        "queries": [
+            query.model_copy(update={"query": f"{query.query}{retry_suffix}"})
+            for query in search_plan.queries
+        ]
+    })
+
+
+def _result_schema_invalid(result: WebSearchProviderResult) -> bool:
+    metadata = result.provider_metadata
+    if metadata.get("provider_error"):
+        return True
+    for item in metadata.get("extraction_validation_results", []):
+        if isinstance(item, dict) and str(item.get("state")) in {"extraction_schema_invalid", "evidence_linking_failed"}:
+            return True
+    for issue in metadata.get("extraction_validation_issues", []):
+        if isinstance(issue, dict) and str(issue.get("severity")) == "error":
+            return True
+    return False
+
+
+def _model_attempt(
+    *,
+    model: str,
+    role: str,
+    attempt: int,
+    outcome: str,
+    reason: str = "",
+    budget_decision: dict[str, object] | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "model": model,
+        "role": role,
+        "attempt": attempt,
+        "outcome": outcome,
+    }
+    if reason:
+        payload["reason"] = reason
+    if budget_decision is not None:
+        payload["budget_decision"] = budget_decision
+    return payload
+
+
+def _model_attempts(result: WebSearchProviderResult) -> list[dict[str, Any]]:
+    return [
+        dict(item)
+        for item in result.provider_metadata.get("extraction_model_attempts", [])
+        if isinstance(item, dict)
+    ]
+
+
+def _with_model_attempts(
+    result: WebSearchProviderResult,
+    attempts: list[dict[str, Any]],
+    *,
+    recovery_outcome: str | None = None,
+    retry_exhausted: bool = False,
+    budget_decision: dict[str, object] | None = None,
+) -> WebSearchProviderResult:
+    metadata = dict(result.provider_metadata)
+    metadata["extraction_model_attempts"] = attempts
+    if recovery_outcome is not None:
+        metadata["extraction_recovery_outcome"] = recovery_outcome
+    if retry_exhausted:
+        metadata["provider_retry_exhausted"] = True
+    if budget_decision is not None:
+        metadata["budget_decision"] = {
+            "accepted": False,
+            "key": budget_decision.get("key", "provider_retry"),
+            "limit": budget_decision.get("limit"),
+            "current": budget_decision.get("current"),
+            "state": "not_executed_budget_limited",
+            "reason": budget_decision.get("reason", "external_call_budget_exhausted"),
+            "message": budget_decision.get("message", "Provider retry budget exhausted."),
+        }
+        metadata.setdefault("coverage_findings", []).append({
+            "summary": metadata["budget_decision"]["message"],
+            "completeness_risk": "medium",
+            "warnings": [metadata["budget_decision"]["message"]],
+        })
+    return result.model_copy(update={"provider_metadata": metadata})
+
+
+def _last_failed_attempt_reason(attempts: list[dict[str, Any]]) -> str:
+    for item in reversed(attempts):
+        reason = str(item.get("reason") or "")
+        if reason:
+            return reason
+    return ""
 
 
 def _apply_source_verification(result: WebSearchProviderResult, *, mode: str) -> WebSearchProviderResult:

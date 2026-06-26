@@ -347,6 +347,25 @@ entities, `review_recall` covers review-needed production sites or assets,
 `precision` covers product account candidates, and `ambiguous_matches` are
 kept separate so unclear matches are not hidden as success or failure.
 
+After `0.7.6.3.1`, retrieved/analyzed source metadata can also contribute
+source-backed review-needed upstream entities. For example, a SIBUR source that
+mentions a GPP or production site should appear in the dossier candidate
+universe as `not_standalone_legal_entity` instead of disappearing from the
+evaluation. This affects `review_recall` only; strict product candidates remain
+legal entities with evidence-backed account qualification.
+
+After `0.7.6.3.2`, the evaluation report also classifies false negatives with
+`false_negative_diagnostics`. Use that first to see whether a missed entity was
+already present in saved source diagnostics, present but not matched, or absent
+from the run. For a bounded live check of only the missed baseline aliases, run:
+
+```powershell
+python -m power_web_os.demo probe-radar-coverage --api-url http://127.0.0.1:8001 --radar-id benchmark-sibur-holding-contour --latest --probe-limit 5
+```
+
+This writes `demo/output/radar_coverage_probe_report.json`. It is an RCA tool:
+probe hits do not change the original benchmark recall/precision metrics.
+
 Live Radar also resolves entity type before scoring. The shortlist is an account
 shortlist, so normal candidates are legal entities. Production sites, projects,
 installations, and assets found during discovery are linked to a resolved legal

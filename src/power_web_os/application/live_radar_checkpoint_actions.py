@@ -112,8 +112,20 @@ class RadarCheckpointActionExecutor:
                 attempt = retry_attempts
             elif action in {"repair_extraction", "retry_extraction"}:
                 if repair_attempts >= context.service.policy.max_retries_per_stage:
-                    state.stopped_for_review_reason = "Extraction repair limit reached before extraction recovered."
-                    _record_terminal_stop(checkpoint_id, phase, state.stopped_for_review_reason, context, reason_code="extraction_repair_exhausted")
+                    detail = _extraction_recovery_stop_reason(state.provider_metadata)
+                    state.stopped_for_review_reason = (
+                        "Extraction repair limit reached before extraction recovered."
+                        if not detail
+                        else f"Extraction repair limit reached before extraction recovered: {detail}."
+                    )
+                    _record_terminal_stop(
+                        checkpoint_id,
+                        phase,
+                        state.stopped_for_review_reason,
+                        context,
+                        reason_code="extraction_repair_exhausted",
+                        details={"extraction_failure_detail": detail} if detail else {},
+                    )
                     break
                 repair_attempts += 1
                 attempt = repair_attempts
@@ -331,6 +343,7 @@ def _record_terminal_stop(
     context: RadarCheckpointRecoveryContext,
     *,
     reason_code: str,
+    details: dict[str, Any] | None = None,
 ) -> None:
     payload = {
         "checkpoint_id": checkpoint_id,
@@ -341,7 +354,7 @@ def _record_terminal_stop(
         "message": message,
         "should_continue": False,
         "should_run_signal_search": False,
-        "details": {},
+        "details": details or {},
     }
     context.checkpoint_decisions.append(payload)
     context.checkpoint_warnings.append(message)
@@ -352,4 +365,23 @@ def _record_terminal_stop(
         "reason_code": reason_code,
         "outcome": "limit_exhausted",
         "message": message,
+        "details": details or {},
     })
+
+
+def _extraction_recovery_stop_reason(metadata: dict[str, Any]) -> str:
+    outcome = str(metadata.get("extraction_recovery_outcome") or "")
+    if outcome:
+        return outcome
+    for attempt in reversed([item for item in metadata.get("extraction_model_attempts", []) if isinstance(item, dict)]):
+        reason = str(attempt.get("reason") or attempt.get("outcome") or "")
+        if reason:
+            return reason
+    for issue in metadata.get("extraction_validation_issues", []):
+        if not isinstance(issue, dict):
+            continue
+        path = str(issue.get("path") or "")
+        message = str(issue.get("message") or issue.get("code") or "")
+        if path or message:
+            return " ".join(part for part in [path, message] if part)
+    return ""
