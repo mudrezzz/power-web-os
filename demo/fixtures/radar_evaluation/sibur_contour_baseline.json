@@ -1,0 +1,116 @@
+{
+  "baseline_id": "sibur_contour_curated_v1",
+  "version": "2026-06-26",
+  "radar_id": "benchmark-sibur-holding-contour",
+  "description": "Compact curated SIBUR contour baseline for Radar evaluation smoke. This is not an exhaustive master-data source.",
+  "entities": [
+    {
+      "baseline_id": "sibur-holding",
+      "canonical_name": "ПАО «СИБУР Холдинг»",
+      "entity_type": "legal_entity",
+      "aliases": ["СИБУР Холдинг", "SIBUR Holding", "СИБУР"],
+      "expected_relation": "Core SIBUR holding company",
+      "expected_source_hints": ["sibur.ru"],
+      "evaluation_weight": 1.0
+    },
+    {
+      "baseline_id": "zapsibneftekhim",
+      "canonical_name": "ООО «ЗапСибНефтехим»",
+      "entity_type": "legal_entity",
+      "aliases": ["ЗапСибНефтехим", "ZapSibNeftekhim"],
+      "expected_relation": "SIBUR petrochemical asset",
+      "expected_source_hints": ["sibur.ru"],
+      "evaluation_weight": 1.0
+    },
+    {
+      "baseline_id": "tomskneftekhim",
+      "canonical_name": "ООО «Томскнефтехим»",
+      "entity_type": "legal_entity",
+      "aliases": ["Томскнефтехим", "ТНХК", "Tomskneftekhim"],
+      "expected_relation": "SIBUR petrochemical asset",
+      "expected_source_hints": ["sibur.ru"],
+      "evaluation_weight": 1.0
+    },
+    {
+      "baseline_id": "voronezhsintezkauchuk",
+      "canonical_name": "АО «Воронежсинтезкаучук»",
+      "entity_type": "legal_entity",
+      "aliases": ["Воронежсинтезкаучук", "Voronezhsintezkauchuk"],
+      "expected_relation": "SIBUR synthetic rubber asset",
+      "expected_source_hints": ["sibur.ru"],
+      "evaluation_weight": 1.0
+    },
+    {
+      "baseline_id": "rusvinyl",
+      "canonical_name": "ООО «РусВинил»",
+      "entity_type": "legal_entity",
+      "aliases": ["РусВинил", "RusVinyl"],
+      "expected_relation": "SIBUR PVC production joint venture / asset",
+      "expected_source_hints": ["sibur.ru"],
+      "evaluation_weight": 1.0
+    },
+    {
+      "baseline_id": "poliom",
+      "canonical_name": "ООО «Полиом»",
+      "entity_type": "legal_entity",
+      "aliases": ["Полиом", "Poliom"],
+      "expected_relation": "SIBUR polypropylene production asset",
+      "expected_source_hints": ["sibur.ru"],
+      "evaluation_weight": 1.0
+    },
+    {
+      "baseline_id": "nizhnekamskneftekhim",
+      "canonical_name": "ПАО «Нижнекамскнефтехим»",
+      "entity_type": "legal_entity",
+      "aliases": ["Нижнекамскнефтехим", "НКНХ", "Nizhnekamskneftekhim"],
+      "expected_relation": "SIBUR group petrochemical company",
+      "expected_source_hints": ["sibur.ru"],
+      "evaluation_weight": 1.0
+    },
+    {
+      "baseline_id": "kazanorgsintez",
+      "canonical_name": "ПАО «Казаньоргсинтез»",
+      "entity_type": "legal_entity",
+      "aliases": ["Казаньоргсинтез", "КОС", "Kazanorgsintez"],
+      "expected_relation": "SIBUR group petrochemical company",
+      "expected_source_hints": ["sibur.ru"],
+      "evaluation_weight": 1.0
+    },
+    {
+      "baseline_id": "sibur-tyumen-gas",
+      "canonical_name": "АО «СибурТюменьГаз»",
+      "entity_type": "legal_entity",
+      "aliases": ["СибурТюменьГаз", "Сибур Тюмень Газ", "SiburTyumenGaz"],
+      "expected_relation": "SIBUR gas processing company",
+      "expected_source_hints": ["sibur.ru"],
+      "evaluation_weight": 1.0
+    },
+    {
+      "baseline_id": "gubkinsky-gpp",
+      "canonical_name": "Губкинский газоперерабатывающий завод",
+      "entity_type": "production_site",
+      "aliases": ["Губкинский ГПЗ"],
+      "expected_relation": "SIBUR/SiburTyumenGaz production site",
+      "expected_source_hints": ["sibur.ru"],
+      "evaluation_weight": 1.0
+    },
+    {
+      "baseline_id": "vyngapurovsky-gpp",
+      "canonical_name": "Вынгапуровский газоперерабатывающий завод",
+      "entity_type": "production_site",
+      "aliases": ["Вынгапуровский ГПЗ"],
+      "expected_relation": "SIBUR/SiburTyumenGaz production site",
+      "expected_source_hints": ["sibur.ru"],
+      "evaluation_weight": 1.0
+    },
+    {
+      "baseline_id": "tobolsk-site",
+      "canonical_name": "Тобольская промышленная площадка СИБУР",
+      "entity_type": "production_site",
+      "aliases": ["Тобольск СИБУР", "Тобольская площадка"],
+      "expected_relation": "SIBUR Tobolsk production site",
+      "expected_source_hints": ["sibur.ru"],
+      "evaluation_weight": 1.0
+    }
+  ]
+}

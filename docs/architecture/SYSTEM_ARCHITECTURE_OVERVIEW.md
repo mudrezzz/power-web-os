@@ -651,6 +651,12 @@ The referenced platform should be used as follows:
   `ready_for_quality_review`, `stopped_diagnostic`, `budget_limited`, and
   `failed_runtime`. It must not bypass source policy, connector capability
   validation, worker persistence, or technical-trace redaction.
+- Radar recall/precision evaluation is a second offline boundary over persisted
+  dossiers. It compares benchmark output with a curated baseline fixture and
+  reports strict legal-entity recall, review-needed site/asset recall,
+  precision, ambiguous matches, false positives, false negatives, and evidence
+  quality. It must not import provider SDKs, enqueue runs, or influence live
+  candidate extraction/scoring.
 
 ## Demo Implications
 

@@ -4815,50 +4815,96 @@ Principles:
 
 ### Slice 0.7.6.3: Radar recall/precision evaluation loop
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Evaluate SIBUR contour discovery quality against an explicit baseline
   list so model output can be judged by recall, precision, and evidence quality
   instead of subjective inspection.
 - User value: A user can understand whether the live Radar is actually good
   enough for ABM discovery and where the model/search strategy fails.
 - Scope:
-  - Add a baseline fixture for known SIBUR legal entities/sites/sources used for
-    evaluation.
-  - Add candidate matching rules for exact names, normalized names, aliases, and
-    source-backed partial matches.
-  - Produce recall/precision, false-positive, false-negative, and evidence
-    quality summaries for one persisted run.
-  - Store or export an evaluation report linked to `radar_runs`.
-  - Render evaluation summary in docs/demo output or a minimal backend endpoint
-    if needed.
+  - Done: Added curated mixed baseline
+    `demo/fixtures/radar_evaluation/sibur_contour_baseline.json` with SIBUR
+    legal entities and production sites.
+  - Done: Added offline evaluation module with exact/alias/INN/OGRN/normalized
+    name matching and source-backed partial matches.
+  - Done: Added `ambiguous_matches` bucket so unclear source-backed matches are
+    not forced into success or failure.
+  - Done: Added CLI/report flow:
+    `python -m power_web_os.demo evaluate-radar-benchmark --api-url
+    http://127.0.0.1:8001 --radar-id benchmark-sibur-holding-contour --latest`.
+  - Done: Report output is written to
+    `demo/output/radar_evaluation_report.json` and includes recall, precision,
+    false positives, false negatives, ambiguous matches, evidence quality, and
+    recommended follow-up buckets.
 - Out of scope:
   - Treating the baseline as exhaustive production master data.
   - Automated model leaderboard infrastructure.
   - Human adjudication workflow for disputed matches.
 - Implementation notes:
-  - Keep evaluation logic separate from the live Radar executor so benchmark
-    scoring does not leak into candidate extraction.
-  - Evaluation should read persisted outputs and journal events after the run.
-  - Record unknown/ambiguous cases explicitly instead of forcing them into true
-    or false.
+  - Done: Evaluation logic is separate from live Radar execution and reads
+    persisted run/dossier data through the API runner.
+  - Done: Evaluation does not enqueue runs, call OpenRouter/DaData, or influence
+    live extraction/scoring.
+  - Done: Manual acceptance against
+    `radar-run-70a39c37-2e1f-4af8-9426-f65e296a18b3` produced:
+    `strict_recall=0.6667`, `review_recall=0.0`, `precision=null` because
+    product candidate count was zero, 6 false negatives, and follow-up buckets
+    `repair_extraction_quality` and `improve_recall`.
 - Tests:
-  - Unit tests for name/alias matching and ambiguity handling.
-  - Recorded artifact test that produces deterministic recall/precision output.
-  - Architecture test that evaluation code does not import provider SDKs or
-    execute live web calls.
+  - Done: Unit tests cover exact, alias, INN, normalized legal-form, partial
+    ambiguous, review-needed site, false-positive, false-negative, and latest-run
+    API resolution behavior.
+  - Done: Tests assert secret/hidden-reasoning markers do not appear in reports.
+  - Done: Architecture checks keep evaluation modules below backend size limits
+    and keep provider execution out of evaluation logic.
 - Docs:
-  - Document baseline source, matching assumptions, and metric definitions.
-  - Update roadmap/demo docs with how to interpret benchmark quality.
+  - Done: Developer Guide, demo docs, and architecture overview document the
+    baseline, metric meanings, command flow, and offline evaluation boundary.
 - Demo impact:
   - A benchmark report can show what the model found, missed, and overmatched.
 - Acceptance criteria:
-  - A persisted SIBUR benchmark run can be evaluated against the baseline.
-  - The report lists true positives, false positives, false negatives, and
+  - Done: A persisted SIBUR benchmark run can be evaluated against the baseline.
+  - Done: The report lists true positives, false positives, false negatives, and
     ambiguous matches with evidence refs.
-  - Metrics are reproducible for recorded artifacts.
+  - Done: Metrics are reproducible in fast tests and manual API evaluation.
 - Risks:
   - Baseline quality can dominate the result; unclear entities must be flagged
     rather than hidden.
+
+### Slice 0.7.6.3.1: SIBUR benchmark extraction quality and recall gap repair
+
+- Status: `Backlog`
+- Goal: Use the first evaluation report to fix the highest-impact SIBUR
+  benchmark quality blockers before expanding benchmark claims.
+- User value: A user can see whether the Radar improves on measured misses
+  instead of relying on subjective RCA.
+- Scope:
+  - Repair extraction behavior that still ends the SIBUR benchmark with
+    `extraction_repair_exhausted` before product candidates are projected.
+  - Improve recall for missed baseline entities from the first report:
+    SIBUR holding, ZapSibNeftekhim, Poliom, Gubkinsky GPP, Vyngapurovsky GPP,
+    and the Tobolsk production site.
+  - Preserve recall-first behavior: production sites can be review-needed
+    universe entities without becoming strict product account candidates.
+  - Re-run benchmark smoke and evaluation report after fixes.
+- Out of scope:
+  - Expanding the baseline into exhaustive SIBUR master data.
+  - UI evaluation dashboards.
+  - Provider/model leaderboard automation.
+- Tests:
+  - Recorded SIBUR fixture reproduces current false negatives and extraction
+    repair exhaustion before fixes.
+  - After fixes, report metrics improve or diagnostic blockers become more
+    specific.
+  - Product precision remains strict; review-needed site recall is measured
+    separately.
+- Acceptance criteria:
+  - Latest SIBUR benchmark evaluation no longer has `review_recall=0.0` if
+    source-backed production sites are present in dossier diagnostics.
+  - Extraction recovery no longer blocks product candidate projection for
+    repairable provider shape issues.
+  - Evaluation report clearly shows whether recall improved, stayed flat, or was
+    blocked by a new explicit diagnostic reason.
 
 ### Slice 0.7: Human review queue loop
 
@@ -5407,9 +5453,9 @@ None.
 
 ## Next Recommended Task
 
-Plan `Slice 0.7.6.3: Radar recall/precision evaluation loop`. `0.7.6.2`
-added the bounded multi-radar benchmark contour, catalog definitions, explicit
-benchmark profiles, API/worker benchmark command, and report artifact. The next
-step is not more benchmark plumbing; it is an evaluation loop that compares the
-SIBUR benchmark output against an explicit baseline and turns benchmark RCA into
-measurable recall, precision, evidence-quality, and follow-up corrective slices.
+Plan `Slice 0.7.6.3.1: SIBUR benchmark extraction quality and recall gap
+repair`. `0.7.6.3` added the offline evaluation report and measured the latest
+SIBUR benchmark smoke against a curated mixed baseline. The first report showed
+`strict_recall=0.6667`, `review_recall=0.0`, no product candidates, and
+follow-up buckets `repair_extraction_quality` and `improve_recall`. The next
+step should improve those measured blockers, not add more benchmark plumbing.

@@ -1,0 +1,459 @@
+"""Offline Radar benchmark evaluation over persisted run dossiers."""
+
+from __future__ import annotations
+
+import json
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+
+SIBUR_CONTOUR_RADAR_ID = "benchmark-sibur-holding-contour"
+EVALUATION_ARTIFACT_VERSION = "0.7.6.3"
+
+
+@dataclass(slots=True)
+class RadarEvaluationEntity:
+    baseline_id: str
+    canonical_name: str
+    entity_type: str
+    aliases: tuple[str, ...] = ()
+    inn: str | None = None
+    ogrn: str | None = None
+    expected_relation: str = ""
+    expected_source_hints: tuple[str, ...] = ()
+    evaluation_weight: float = 1.0
+
+    @property
+    def normalized_names(self) -> set[str]:
+        return {_normalize_name(name) for name in (self.canonical_name, *self.aliases) if name}
+
+
+@dataclass(slots=True)
+class RadarEvaluationBaseline:
+    baseline_id: str
+    version: str
+    radar_id: str
+    description: str
+    entities: tuple[RadarEvaluationEntity, ...]
+
+
+@dataclass(slots=True)
+class RadarObservedEntity:
+    name: str
+    entity_type: str
+    source: str
+    source_refs: tuple[str, ...] = ()
+    review_flags: tuple[str, ...] = ()
+    inn: str | None = None
+    ogrn: str | None = None
+    payload: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def normalized_name(self) -> str:
+        return _normalize_name(self.name)
+
+
+@dataclass(slots=True)
+class RadarEvaluationMatch:
+    baseline: RadarEvaluationEntity
+    observed: RadarObservedEntity
+    match_type: str
+    confidence: str
+    evidence_quality: str
+
+
+def load_evaluation_baseline(path: Path) -> RadarEvaluationBaseline:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    entities = tuple(
+        RadarEvaluationEntity(
+            baseline_id=str(item["baseline_id"]),
+            canonical_name=str(item["canonical_name"]),
+            entity_type=str(item["entity_type"]),
+            aliases=tuple(str(value) for value in item.get("aliases", [])),
+            inn=_optional_digits(item.get("inn")),
+            ogrn=_optional_digits(item.get("ogrn")),
+            expected_relation=str(item.get("expected_relation") or ""),
+            expected_source_hints=tuple(str(value) for value in item.get("expected_source_hints", [])),
+            evaluation_weight=float(item.get("evaluation_weight", 1.0)),
+        )
+        for item in payload.get("entities", [])
+        if isinstance(item, dict)
+    )
+    if not entities:
+        raise ValueError(f"Evaluation baseline has no entities: {path}")
+    return RadarEvaluationBaseline(
+        baseline_id=str(payload.get("baseline_id") or path.stem),
+        version=str(payload.get("version") or "v1"),
+        radar_id=str(payload.get("radar_id") or SIBUR_CONTOUR_RADAR_ID),
+        description=str(payload.get("description") or ""),
+        entities=entities,
+    )
+
+
+def evaluate_radar_dossier(
+    *,
+    run: dict[str, Any],
+    dossier: dict[str, Any],
+    baseline: RadarEvaluationBaseline,
+) -> dict[str, Any]:
+    run_radar_id = str(run.get("radar_id") or dossier.get("radar_id") or "")
+    if run_radar_id != baseline.radar_id:
+        raise ValueError(f"Baseline {baseline.baseline_id} targets {baseline.radar_id}, got run for {run_radar_id}.")
+    observed = _observed_entities(dossier)
+    source_index = _source_index(dossier)
+    matches, ambiguous = _match_entities(baseline=baseline, observed=observed, source_index=source_index)
+    matched_baseline_ids = {match.baseline.baseline_id for match in matches}
+    ambiguous_baseline_ids = {match.baseline.baseline_id for match in ambiguous}
+    product_observations = [item for item in observed if item.source == "product_candidate"]
+    matched_product_ids = {id(match.observed) for match in matches if match.observed.source == "product_candidate" and match.baseline.entity_type == "legal_entity"}
+    ambiguous_product_ids = {id(match.observed) for match in ambiguous if match.observed.source == "product_candidate"}
+    false_positives = [
+        _observed_payload(item)
+        for item in product_observations
+        if id(item) not in matched_product_ids and id(item) not in ambiguous_product_ids
+    ]
+    false_negatives = [
+        _baseline_payload(item)
+        for item in baseline.entities
+        if item.evaluation_weight > 0 and item.baseline_id not in matched_baseline_ids and item.baseline_id not in ambiguous_baseline_ids
+    ]
+    legal_baseline = [item for item in baseline.entities if item.entity_type == "legal_entity" and item.evaluation_weight > 0]
+    review_baseline = [item for item in baseline.entities if item.entity_type != "legal_entity" and item.evaluation_weight > 0]
+    strict_hits = {match.baseline.baseline_id for match in matches if match.baseline.entity_type == "legal_entity"}
+    review_hits = {match.baseline.baseline_id for match in matches if match.baseline.entity_type != "legal_entity"}
+    summary = _dict(dossier.get("summary"))
+    evidence_quality_values = [match.evidence_quality for match in matches + ambiguous] + ["missing"] * len(false_negatives)
+    report = {
+        "artifact_type": "radar_evaluation_report",
+        "artifact_version": EVALUATION_ARTIFACT_VERSION,
+        "run_id": run.get("run_id"),
+        "radar_id": run_radar_id,
+        "status": run.get("status"),
+        "execution_outcome": summary.get("execution_outcome"),
+        "execution_outcome_reason": summary.get("execution_outcome_reason"),
+        "baseline": {
+            "baseline_id": baseline.baseline_id,
+            "version": baseline.version,
+            "entity_count": len(baseline.entities),
+            "description": baseline.description,
+        },
+        "metrics": {
+            "strict_recall": _ratio(len(strict_hits), len(legal_baseline)),
+            "review_recall": _ratio(len(review_hits), len(review_baseline)),
+            "precision": _ratio(len(matched_product_ids), len(product_observations)),
+            "true_positive_count": len(strict_hits),
+            "review_match_count": len(review_hits),
+            "false_positive_count": len(false_positives),
+            "false_negative_count": len(false_negatives),
+            "ambiguous_match_count": len(ambiguous),
+        },
+        "evidence_quality_summary": _count_by(evidence_quality_values),
+        "true_positives": [_match_payload(match) for match in matches if match.baseline.entity_type == "legal_entity"],
+        "review_matches": [_match_payload(match) for match in matches if match.baseline.entity_type != "legal_entity"],
+        "false_positives": false_positives,
+        "false_negatives": false_negatives,
+        "ambiguous_matches": [_match_payload(match) for match in ambiguous],
+        "recommended_followup_buckets": _followup_buckets(
+            summary=summary,
+            false_positives=false_positives,
+            false_negatives=false_negatives,
+            ambiguous=ambiguous,
+            matches=matches,
+        ),
+        "diagnostics": {
+            "observed_entity_count": len(observed),
+            "product_candidate_count": len(product_observations),
+            "source_lifecycle_count": len(source_index),
+            "stopped_for_review_reason": dossier.get("stopped_for_review_reason"),
+        },
+    }
+    _assert_no_secrets(report)
+    return report
+
+
+def write_evaluation_report(path: Path, report: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _match_entities(
+    *,
+    baseline: RadarEvaluationBaseline,
+    observed: list[RadarObservedEntity],
+    source_index: dict[str, dict[str, Any]],
+) -> tuple[list[RadarEvaluationMatch], list[RadarEvaluationMatch]]:
+    matches: list[RadarEvaluationMatch] = []
+    ambiguous: list[RadarEvaluationMatch] = []
+    used_observed: set[int] = set()
+    for entity in baseline.entities:
+        candidates = [_candidate_match(entity, item, source_index) for item in observed if id(item) not in used_observed]
+        candidates = [item for item in candidates if item is not None]
+        if not candidates:
+            continue
+        candidates.sort(key=lambda item: _match_rank(item.match_type, item.confidence), reverse=True)
+        selected = candidates[0]
+        used_observed.add(id(selected.observed))
+        if selected.confidence == "ambiguous":
+            ambiguous.append(selected)
+        else:
+            matches.append(selected)
+    return matches, ambiguous
+
+
+def _candidate_match(
+    baseline: RadarEvaluationEntity,
+    observed: RadarObservedEntity,
+    source_index: dict[str, dict[str, Any]],
+) -> RadarEvaluationMatch | None:
+    if baseline.inn and observed.inn and baseline.inn == observed.inn:
+        return _match(baseline, observed, "inn", "high", source_index)
+    if baseline.ogrn and observed.ogrn and baseline.ogrn == observed.ogrn:
+        return _match(baseline, observed, "ogrn", "high", source_index)
+    if observed.normalized_name in baseline.normalized_names:
+        return _match(baseline, observed, "normalized_name", "high", source_index)
+    if any(_contains_strong_name(observed.normalized_name, name) for name in baseline.normalized_names):
+        confidence = "medium" if observed.source != "product_candidate" else "ambiguous"
+        return _match(baseline, observed, "source_backed_partial", confidence, source_index)
+    return None
+
+
+def _match(
+    baseline: RadarEvaluationEntity,
+    observed: RadarObservedEntity,
+    match_type: str,
+    confidence: str,
+    source_index: dict[str, dict[str, Any]],
+) -> RadarEvaluationMatch:
+    return RadarEvaluationMatch(
+        baseline=baseline,
+        observed=observed,
+        match_type=match_type,
+        confidence=confidence,
+        evidence_quality=_evidence_quality(observed, source_index),
+    )
+
+
+def _observed_entities(dossier: dict[str, Any]) -> list[RadarObservedEntity]:
+    observed: list[RadarObservedEntity] = []
+    for item in _list(dossier.get("candidates")):
+        _append_observed(observed, item, source="product_candidate", default_type="legal_entity")
+    for field_name, source, default_type in (
+        ("candidate_universe", "candidate_universe", "unknown_entity"),
+        ("entity_resolution_results", "entity_resolution", "unknown_entity"),
+        ("upstream_disambiguation_results", "upstream_disambiguation", "unknown_entity"),
+        ("linked_entity_facts", "linked_entity_fact", "unknown_entity"),
+        ("unresolved_candidate_gaps", "unresolved_gap", "unknown_entity"),
+    ):
+        for item in _list(dossier.get(field_name)):
+            _append_observed(observed, item, source=source, default_type=default_type)
+    return _dedupe_observed(observed)
+
+
+def _append_observed(observed: list[RadarObservedEntity], item: Any, *, source: str, default_type: str) -> None:
+    if not isinstance(item, dict):
+        return
+    name = _first_string(item, "legal_name", "name", "entity_name", "linked_legal_name", "canonical_name")
+    if not name:
+        return
+    observed.append(
+        RadarObservedEntity(
+            name=name,
+            entity_type=str(item.get("entity_type") or default_type),
+            source=source,
+            source_refs=tuple(sorted(_source_refs(item))),
+            review_flags=tuple(str(value) for value in item.get("review_flags", []) if isinstance(value, str)),
+            inn=_optional_digits(item.get("inn")),
+            ogrn=_optional_digits(item.get("ogrn")),
+            payload=item,
+        )
+    )
+
+
+def _dedupe_observed(items: list[RadarObservedEntity]) -> list[RadarObservedEntity]:
+    result: list[RadarObservedEntity] = []
+    seen: set[tuple[str, str, str]] = set()
+    for item in items:
+        key = (item.normalized_name, item.source, item.entity_type)
+        if key not in seen:
+            seen.add(key)
+            result.append(item)
+    return result
+
+
+def _source_index(dossier: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for item in _list(dossier.get("sources")) + _list(dossier.get("source_lifecycle")):
+        if not isinstance(item, dict):
+            continue
+        ref = _first_string(item, "evidence_ref", "source_ref", "id")
+        if ref:
+            result[ref] = item
+    return result
+
+
+def _evidence_quality(observed: RadarObservedEntity, source_index: dict[str, dict[str, Any]]) -> str:
+    if not observed.source_refs:
+        return "weak"
+    sources = [source_index.get(ref, {}) for ref in observed.source_refs]
+    if any("sibur" in str(source.get("url") or source.get("title") or "").lower() for source in sources):
+        return "strong"
+    if any(source.get("state") == "used" or source.get("verification_state") == "reachable" for source in sources):
+        return "strong"
+    if any(source for source in sources):
+        return "medium"
+    return "weak"
+
+
+def _followup_buckets(
+    *,
+    summary: dict[str, Any],
+    false_positives: list[dict[str, Any]],
+    false_negatives: list[dict[str, Any]],
+    ambiguous: list[RadarEvaluationMatch],
+    matches: list[RadarEvaluationMatch],
+) -> list[str]:
+    buckets: list[str] = []
+    outcome = str(summary.get("execution_outcome") or "")
+    reason = str(summary.get("execution_outcome_reason") or "")
+    if "budget" in outcome or "budget" in reason:
+        buckets.append("tune_benchmark_budgets")
+    if "extraction" in reason:
+        buckets.append("repair_extraction_quality")
+    if false_negatives:
+        buckets.append("improve_recall")
+    if false_positives:
+        buckets.append("improve_precision")
+    if ambiguous:
+        buckets.append("improve_entity_disambiguation")
+    if any(match.evidence_quality in {"weak", "missing"} for match in matches):
+        buckets.append("improve_evidence_quality")
+    return buckets or ["ready_for_manual_quality_review"]
+
+
+def _match_payload(match: RadarEvaluationMatch) -> dict[str, Any]:
+    return {
+        "baseline_id": match.baseline.baseline_id,
+        "baseline_name": match.baseline.canonical_name,
+        "baseline_entity_type": match.baseline.entity_type,
+        "observed_name": match.observed.name,
+        "observed_entity_type": match.observed.entity_type,
+        "observed_source": match.observed.source,
+        "match_type": match.match_type,
+        "confidence": match.confidence,
+        "evidence_quality": match.evidence_quality,
+        "source_refs": list(match.observed.source_refs),
+        "review_flags": list(match.observed.review_flags),
+    }
+
+
+def _baseline_payload(entity: RadarEvaluationEntity) -> dict[str, Any]:
+    return {
+        "baseline_id": entity.baseline_id,
+        "canonical_name": entity.canonical_name,
+        "entity_type": entity.entity_type,
+        "aliases": list(entity.aliases),
+        "expected_relation": entity.expected_relation,
+        "expected_source_hints": list(entity.expected_source_hints),
+        "evaluation_weight": entity.evaluation_weight,
+    }
+
+
+def _observed_payload(item: RadarObservedEntity) -> dict[str, Any]:
+    return {
+        "observed_name": item.name,
+        "entity_type": item.entity_type,
+        "source": item.source,
+        "source_refs": list(item.source_refs),
+        "review_flags": list(item.review_flags),
+    }
+
+
+def _source_refs(payload: Any) -> set[str]:
+    refs: set[str] = set()
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            if key in {"source_ref", "source_refs", "evidence_ref", "evidence_refs"}:
+                if isinstance(value, str):
+                    refs.add(value)
+                elif isinstance(value, list):
+                    refs.update(str(item) for item in value if item)
+            elif isinstance(value, (dict, list)):
+                refs.update(_source_refs(value))
+    elif isinstance(payload, list):
+        for item in payload:
+            refs.update(_source_refs(item))
+    return refs
+
+
+def _first_string(payload: dict[str, Any], *keys: str) -> str:
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _contains_strong_name(observed_name: str, baseline_name: str) -> bool:
+    if len(observed_name) < 6 or len(baseline_name) < 6:
+        return False
+    return observed_name in baseline_name or baseline_name in observed_name
+
+
+def _match_rank(match_type: str, confidence: str) -> int:
+    type_rank = {"inn": 40, "ogrn": 40, "normalized_name": 30, "source_backed_partial": 20}
+    confidence_rank = {"high": 3, "medium": 2, "ambiguous": 1}
+    return type_rank.get(match_type, 0) + confidence_rank.get(confidence, 0)
+
+
+def _normalize_name(value: str) -> str:
+    value = value.lower().replace("ё", "е")
+    value = re.sub(r"[\"'«»“”()]", " ", value)
+    value = re.sub(r"\b(ооо|ао|пао|зао|оао|нко|llc|jsc|pjsc|ltd|public joint stock company|joint stock company)\b", " ", value)
+    value = re.sub(r"[^a-zа-я0-9]+", " ", value)
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _optional_digits(value: Any) -> str | None:
+    if value is None:
+        return None
+    digits = re.sub(r"\D+", "", str(value))
+    return digits or None
+
+
+def _ratio(numerator: int, denominator: int) -> float | None:
+    if denominator == 0:
+        return None
+    return round(numerator / denominator, 4)
+
+
+def _count_by(values: list[str]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for value in values:
+        counts[value] = counts.get(value, 0) + 1
+    return counts
+
+
+def _dict(value: Any) -> dict[str, Any]:
+    return dict(value) if isinstance(value, dict) else {}
+
+
+def _list(value: Any) -> list[Any]:
+    return list(value) if isinstance(value, list) else []
+
+
+def _assert_no_secrets(payload: dict[str, Any]) -> None:
+    serialized = json.dumps(payload, ensure_ascii=False)
+    forbidden = (
+        "OPENROUTER_API_KEY",
+        "DADATA_API_KEY",
+        "DADATA_SECRET_KEY",
+        "Authorization",
+        "Bearer",
+        "chain_of_thought",
+        "hidden_reasoning",
+        "internal_thoughts",
+    )
+    if any(token in serialized for token in forbidden):
+        raise ValueError("Radar evaluation report contains forbidden secret or hidden reasoning marker.")

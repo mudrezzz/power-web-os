@@ -450,6 +450,22 @@ counters, top candidates, and a compact verdict:
 Use `benchmark_live` only for one radar at a time after the smoke report is
 diagnosable.
 
+`0.7.6.3` adds an offline evaluation report for the SIBUR contour benchmark.
+It reads a persisted run and dossier through the API, compares the output with
+`demo/fixtures/radar_evaluation/sibur_contour_baseline.json`, and writes
+`demo/output/radar_evaluation_report.json`:
+
+```powershell
+python -m power_web_os.demo evaluate-radar-benchmark --api-url http://127.0.0.1:8001 --radar-id benchmark-sibur-holding-contour --latest
+```
+
+The curated baseline is intentionally small and mixed: legal entities plus
+production sites. `strict_recall` measures legal-entity hits,
+`review_recall` measures review-needed branch/site/asset retention,
+`precision` measures product account candidates only, and
+`ambiguous_matches` stay separate from false positives/false negatives until a
+human or a later corrective slice adjudicates them.
+
 Default queue settings:
 
 ```text

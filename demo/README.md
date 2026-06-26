@@ -335,6 +335,18 @@ worker execution failed. Use `benchmark_smoke` for all benchmark radars; use
 `benchmark_live` only for one radar at a time after the smoke report is
 actionable.
 
+After `0.7.6.3`, evaluate the SIBUR benchmark against a small curated baseline:
+
+```powershell
+python -m power_web_os.demo evaluate-radar-benchmark --api-url http://127.0.0.1:8001 --radar-id benchmark-sibur-holding-contour --latest
+```
+
+This writes `demo/output/radar_evaluation_report.json`. Treat it as an
+inspection report, not ground truth. `strict_recall` covers baseline legal
+entities, `review_recall` covers review-needed production sites or assets,
+`precision` covers product account candidates, and `ambiguous_matches` are
+kept separate so unclear matches are not hidden as success or failure.
+
 Live Radar also resolves entity type before scoring. The shortlist is an account
 shortlist, so normal candidates are legal entities. Production sites, projects,
 installations, and assets found during discovery are linked to a resolved legal
