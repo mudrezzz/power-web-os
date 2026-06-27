@@ -66,7 +66,10 @@ def test_radar_pipeline_as_is_pdf_exists_and_uses_rendered_diagrams() -> None:
     text = "\n".join(page.extract_text() or "" for page in reader.pages)
 
     assert "Radar Search Pipeline AS IS" in text
-    assert "Rendered diagram:" in text
+    assert "Figure 1. End-to-end Radar execution flow" in text
+    assert "Figure 6. AS IS / TO BE maintenance cycle" in text
+    assert "| Term |" not in text
+    assert "| Role |" not in text
     for marker in FORBIDDEN_PDF_MERMAID_MARKERS:
         assert marker not in text
     for marker in FORBIDDEN_PRODUCT_MARKERS:

@@ -5206,6 +5206,10 @@ Principles:
   - Updated `README.md`, `AGENTS.md`, architecture overview, developer guide,
     demo README, and ADR index with the AS IS/TO BE workflow.
   - Added `tests/test_radar_pipeline_documentation_contract.py`.
+  - Corrected the PDF renderer after visual review: Markdown tables now render
+    as real PDF tables or readable cards with wrapped cells, the PDF uses a
+    portrait A4 architecture-document layout, and controlled report diagrams
+    replace the earlier unreadable crossing-arrow sketches.
 - Out of scope:
   - Changing Radar execution behavior.
   - Changing planner prompts or provider contracts.
@@ -5237,8 +5241,12 @@ Principles:
     workflow.
 - Validation:
   - Done: `python scripts/render_radar_pipeline_doc.py`.
-  - Done: fallback PDF verification via `pypdf`: 10 pages, title present,
-    rendered diagram markers present, no raw Mermaid markers in extracted text.
+  - Done: fallback PDF verification via `pypdf`: 17 pages, title present,
+    figure captions present, no raw Mermaid or raw Markdown table markers in
+    extracted text.
+  - Done after renderer correction: visual PNG preview of selected PDF pages
+    using PyMuPDF, including glossary, backend roles, checkpoint, lifecycle, and
+    context-management pages.
   - Done: `python -m pytest tests/test_radar_pipeline_documentation_contract.py -q`.
   - Done: `python -m pytest tests/test_backend_architecture_contract.py -q`.
 - Docs:
