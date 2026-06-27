@@ -55,6 +55,11 @@ class RadarPlannerSourceCard(BaseModel):
     required_input_kinds: list[str] = Field(default_factory=list)
     returned_fact_kinds: list[str] = Field(default_factory=list)
     useful_result_criteria: list[str] = Field(default_factory=list)
+    accepted_input_shapes: list[str] = Field(default_factory=list)
+    bad_input_shapes: list[str] = Field(default_factory=list)
+    non_blocking_outcomes: list[str] = Field(default_factory=list)
+    language_hints: list[str] = Field(default_factory=list)
+    capability_class: str = ""
     supports_lookup: bool = False
     supports_broad_discovery: bool = False
     supports_identity: bool = False
@@ -69,13 +74,17 @@ class RadarPlannerSourceCard(BaseModel):
         "required_input_kinds",
         "returned_fact_kinds",
         "useful_result_criteria",
+        "accepted_input_shapes",
+        "bad_input_shapes",
+        "non_blocking_outcomes",
+        "language_hints",
         mode="before",
     )
     @classmethod
     def _empty_card_list_for_null(cls, value: Any) -> Any:
         return [] if value is None else value
 
-    @field_validator("source_label", "connector_profile_id", "source_type", "runtime_provider_id", "trust_level", mode="before")
+    @field_validator("source_label", "connector_profile_id", "source_type", "runtime_provider_id", "trust_level", "capability_class", mode="before")
     @classmethod
     def _empty_card_string_for_null(cls, value: Any) -> Any:
         return "" if value is None else value
@@ -108,6 +117,11 @@ def planner_source_cards_for_policy(
             required_input_kinds=list(capability.required_input_kinds),
             returned_fact_kinds=list(capability.returned_fact_kinds),
             useful_result_criteria=list(capability.useful_result_criteria),
+            accepted_input_shapes=list(capability.accepted_input_shapes),
+            bad_input_shapes=list(capability.bad_input_shapes),
+            non_blocking_outcomes=list(capability.non_blocking_outcomes),
+            language_hints=list(capability.language_hints),
+            capability_class=capability.capability_class,
             supports_lookup=capability.supports_lookup,
             supports_broad_discovery=capability.supports_broad_discovery,
             supports_identity=capability.supports_identity,

@@ -186,6 +186,9 @@ def benchmark_result_summary(
     cross_execution = _list(dossier.get("cross_source_disambiguation_execution"))
     extraction_records = _list(dossier.get("extraction_recovery_records"))
     candidates = _list(dossier.get("candidates"))
+    expansion_targets = _list(dossier.get("expansion_target_queue"))
+    expansion_results = _list(dossier.get("search_expansion_results"))
+    targets_not_searched = _list(dossier.get("targets_not_searched"))
     status = str(run.get("status") or "unknown")
     execution_outcome = str(summary.get("execution_outcome") or "")
     verdict = _verdict(status=status, execution_outcome=execution_outcome, budget_events=budget_events)
@@ -209,6 +212,14 @@ def benchmark_result_summary(
         "source_capability_decision_count": summary.get("source_capability_decision_count", 0),
         "checkpoint_summary": checkpoint_summary,
         "external_call_budget_counters": external_counters,
+        "budget_reserve_counters": _dict(dossier.get("budget_reserve_counters")),
+        "budget_reserve_exhaustion_count": len(_list(dossier.get("budget_reserve_exhaustion_events"))),
+        "source_capability_strategy_summary": _dict(dossier.get("source_capability_strategy_summary")),
+        "expansion_target_count": len(expansion_targets),
+        "expansion_result_count": len(expansion_results),
+        "targets_not_searched_count": len(targets_not_searched),
+        "benchmark_recall_target_summary": _dict(dossier.get("benchmark_recall_target_summary")),
+        "registry_ambiguity_fanout_summary": _dict(dossier.get("registry_ambiguity_fanout_summary")),
         "budget_exhaustion_count": len(budget_events),
         "extraction_recovery_count": len(extraction_records),
         "cross_source_outcomes": _count_by(cross_execution, "outcome"),

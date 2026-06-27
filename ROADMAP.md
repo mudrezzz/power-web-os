@@ -5279,6 +5279,393 @@ Principles:
     by documenting the exact render command and keeping temporary render assets
     out of the canonical source.
 
+### Slice 0.7.6.3.6: Source-profile-driven recall expansion, budget reserves, and expansion target prioritization
+
+- Status: `Implemented - bounded smoke/evaluation pending`
+- Goal: Fix the next measured benchmark blocker without hardcoding DaData,
+  SIBUR, or any specific connector into the Radar algorithm. The search strategy
+  should be driven by connector profiles, compiled capabilities, source
+  obligations, checkpoint facts, and budget reserves.
+- User value: A user can swap DaData for SPARK or run both through Radar source
+  settings without requiring another provider-specific algorithm rewrite. The
+  benchmark smoke should spend budget on recall-critical expansion and explain
+  why missed entities were or were not searched.
+- Problem statement:
+  - The bounded SIBUR smoke/evaluation showed that official sources exist for
+    sampled false negatives, but early registry/cross-check branches can consume
+    budget before recall expansion covers the important misses.
+  - Search expansion currently improves the generic path, but target selection
+    is still too narrow: it can focus on the first promoted candidate instead of
+    uncovered holding/subsidiary/site/alias targets.
+  - Registry ambiguity can fan out into many cross-check tasks before targeted
+    coverage checks run.
+  - `search_expansion_*` and external-call counters are not visible enough in
+    dossier/benchmark reports, which makes RCA depend on journal/trace digging.
+  - The algorithm must not encode "DaData behavior"; it must encode generic
+    connector capability behavior such as lookup-only identity enrichment,
+    broad web coverage, official-domain evidence, or signal evidence.
+- Scope:
+  - Done: Prepared TO BE design Markdown and PDF review artifacts:
+    `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_0.7.6.3.6.md`.
+    `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_0.7.6.3.6.pdf`.
+  - Done: Implemented source-profile-driven connector capability extensions:
+    accepted input shapes, bad input shapes, returned fact kinds,
+    useful-result criteria, non-blocking outcomes, language hints, and
+    capability classes.
+  - Done: Planner source cards now expose these capability fields without
+    secrets.
+  - Done: Search expansion now builds a prioritized expansion target queue and
+    compiles official/open-web query variants from source cards and source
+    policy instead of provider-specific branches.
+  - Done: Added budget reserves and reserve exhaustion diagnostics for
+    registry identity and recall/coverage expansion.
+  - Done: Capped registry ambiguity fan-out and added summary diagnostics.
+  - Done: Promoted expansion target queue, query variants by target, expansion
+    results by target, targets not searched, reserve counters, and ambiguity
+    fan-out summary into dossier/report metadata.
+  - Extend connector profile/capability cards additively so profiles can describe
+    strategy-relevant behavior in provider-neutral terms:
+    - accepted input shapes: broad query, concrete company name, INN/OGRN,
+      domain/URL, alias, candidate scope;
+    - expected fact kinds: legal identity, registry status, ownership/relation,
+      official coverage evidence, open-web coverage evidence, signal evidence;
+    - useless or dangerous inputs: vague broad discovery, placeholder candidate
+      scope, signal evidence replacement, ambiguous aliases;
+    - useful-result criteria and non-blocking outcome semantics for empty,
+      ambiguous, partial, alias-only, or relation-only results;
+    - language and alias hints where the connector profile can provide them,
+      without embedding business-specific SIBUR logic.
+  - Compile richer planner source cards from the profiles so LLM planning sees
+    not only source ids and obligations, but also how to use each source and
+    what not to use it for.
+  - Add a recall expansion target queue:
+    - holding/group target;
+    - subsidiaries;
+    - production sites and branches;
+    - source-backed names found in retrieved/analyzed material;
+    - Russian aliases and legal-form variants;
+    - benchmark baseline-like misses only when benchmark/evaluation context is
+      explicitly present.
+  - Add budget reserves that are enforced by application code:
+    - primary discovery;
+    - registry lookup/enrichment;
+    - recall expansion;
+    - official/open-web coverage probes;
+    - extraction retry/backup;
+    - signal search.
+  - Prevent registry ambiguity fan-out from starving recall expansion:
+    ambiguous registry suggestions must be summarized and queued with caps, not
+    converted into unbounded cross-check tasks ahead of higher-priority uncovered
+    targets.
+  - Promote search-expansion diagnostics and external budget counters into
+    dossier and benchmark reports:
+    - generated expansion targets;
+    - selected/skipped target reasons;
+    - expansion query variants;
+    - per-reserve budget spend/exhaustion;
+    - registry ambiguity fan-out caps;
+    - targets not searched because a reserve was exhausted.
+- Out of scope:
+  - Adding a new SPARK provider adapter.
+  - Hardcoding SIBUR aliases or DaData-specific branches in production runtime.
+  - Changing product scoring thresholds.
+  - Running broad `benchmark_live` before bounded smoke/evaluation passes.
+  - Building a model leaderboard; that is `0.7.6.3.7`.
+- Implementation notes:
+  - Implementation must follow the TO BE document first, then reconcile any
+    implementation deviations back into AS IS after validation.
+  - The application algorithm should consume capability types, not provider ids.
+    A fake SPARK-like registry connector must behave the same as a DaData-like
+    connector if its capability card says "lookup-only identity/enrichment".
+  - Source obligations remain user-facing Radar settings. Connector profiles
+    describe source behavior; obligations describe required usage.
+  - Recall expansion should be recall-first upstream and precision-first
+    downstream: source-backed uncertain entities may enter review-needed
+    universe, but strict product candidates remain evidence/resolution gated.
+  - Budget reserves are not wall-clock limits. They cap external actions and
+    protect critical recovery/coverage work from early-stage fan-out.
+  - After implementation, synchronize
+    `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` and the generated PDF.
+- Tests:
+  - Connector-profile/capability tests:
+    - DaData-like and SPARK-like fake profiles compile to the same
+      lookup-only identity/enrichment capability class;
+    - OpenRouter/web-like profiles compile to broad discovery/coverage/signal
+      capable cards;
+    - profiles can express accepted/bad inputs, useful-result criteria,
+      ambiguous/no-match semantics, and language/alias hints;
+    - production code paths do not special-case `dadata` for strategy decisions.
+  - Planner/source-card tests:
+    - planner input includes richer source cards;
+    - lookup-only sources are presented as identity/enrichment, not broad
+      discovery;
+    - official/open-web sources are presented as coverage expansion options;
+    - obligations and capabilities are both visible and not conflated.
+  - Expansion target queue tests:
+    - weak recall creates targets for holding, subsidiaries, sites, aliases, and
+      source-backed names;
+    - benchmark context can add baseline-like uncovered targets, but normal
+      production runtime cannot depend on the curated SIBUR baseline;
+    - target dedupe, priority ordering, and caps are deterministic.
+  - Budget reserve tests:
+    - registry lookup fan-out cannot consume recall expansion reserve;
+    - official/open-web coverage probes keep their reserved budget;
+    - exhausted reserve creates `not_searched_budget_limited`/diagnostic target
+      states, not clean empty success.
+  - Ambiguity fan-out tests:
+    - ambiguous registry suggestions are summarized/capped;
+    - high-priority uncovered targets run before low-confidence registry
+      suggestion cross-checks;
+    - exact INN/OGRN or strong source-backed relation can still short-circuit
+      ambiguity safely.
+  - Dossier/report tests:
+    - `search_expansion_*`, target queue, reserve counters, and skipped target
+      reasons appear in dossier and benchmark report;
+    - reports contain no secrets, raw prompts, hidden reasoning, headers, or raw
+      provider dumps.
+  - Smoke acceptance:
+    - rerun bounded Docker/API/worker `benchmark-sibur-holding-contour` smoke and
+      evaluation;
+    - require either `review_recall > 0` or remaining false negatives no longer
+      sit in the broad `not_retrieved_in_run` bucket without target/search
+      diagnostics.
+- Docs:
+  - Add TO BE before implementation and finalize AS IS after implementation.
+  - Update Developer Guide and demo README with source-profile-driven strategy,
+    budget reserves, target queue, and how to read expansion diagnostics.
+  - Update connector-profile ADR: profiles describe source behavior for the
+    capability compiler; runtime logic must not be provider-specific.
+- Demo impact:
+  - No frontend redesign. Benchmark operators get a clearer smoke report and
+    dossier explaining target prioritization and budget allocation.
+- Acceptance criteria:
+  - No production strategy branch is hardcoded to DaData-specific behavior.
+  - A SPARK-like fake connector with equivalent capability receives equivalent
+    planning/execution treatment.
+  - Recall expansion has protected budget and targets more than the first
+    promoted candidate.
+  - Registry ambiguity fan-out is capped and cannot starve official/open-web
+    recall probes.
+  - Dossier/benchmark report expose expansion targets and budget-reserve spend.
+  - Bounded SIBUR smoke/evaluation produces a more specific recall diagnosis than
+    "not retrieved" for source-backed misses.
+- Validation completed:
+  - `python -m pytest tests/test_connector_profiles.py tests/test_radar_external_call_budget.py tests/test_radar_search_expansion.py -q`
+  - `python -m pytest tests/test_backend_api.py tests/test_radar_benchmark.py -q`
+  - `python -m pytest tests/test_radar_adaptive_execution.py tests/test_radar_evaluation.py -q`
+  - `python -m pytest tests/test_backend_architecture_contract.py -q`
+  - `python -m pytest tests/test_radar_pipeline_documentation_contract.py -q`
+- Pending acceptance:
+  - Done on 2026-06-28: rebuilt Docker API/worker/backend-init and ran bounded
+    Docker/API/worker `benchmark-sibur-holding-contour` smoke with live DaData
+    and `openrouter_perplexity`.
+  - Smoke run id: `radar-run-f06e35f2-ccc1-4824-935c-9d44b9d6e3e5`.
+  - Result: terminal `completed`, but benchmark verdict `stopped_diagnostic`,
+    not ready for broader `benchmark_live`.
+  - Evaluation result:
+    - `strict_recall=0.8889`;
+    - `review_recall=0.0`;
+    - false negatives: `zapsibneftekhim`, `gubkinsky-gpp`,
+      `vyngapurovsky-gpp`, `tobolsk-site`;
+    - all four false negatives were classified as `not_retrieved_in_run`.
+  - Coverage probe result: all four misses were found by bounded targeted
+    official-source probes (`probe_found_official_source`), including SIBUR
+    official URLs for ZapSibNeftekhim, Gubkinsky GPP, Vyngapurovsky GPP, and the
+    Tobolsk site.
+  - Acceptance failure: source cards and capability validation were present, but
+    runtime recall expansion did not execute:
+    - `source_cards_count=3`;
+    - `source_capability_decision_count=6`;
+    - `expansion_target_queue_count=0`;
+    - `search_expansion_query_variants_count=0`;
+    - `budget_reserve_counters={}`.
+  - Root cause: after weak discovery, checkpoint policy selected repeated
+    `revise_plan` because of `evidence_linking_failed` /
+    `extraction_repair_needed`; this consumed the adaptive recovery path before
+    recall expansion could materialize target queues and reserved official/open
+    web coverage probes.
+  - Decision: do not move to `benchmark_live` yet. Add a corrective slice before
+    `0.7.6.3.7` so checkpoint recovery can choose recall expansion for
+    not-retrieved benchmark/source-backed targets instead of looping on plan
+    revision only.
+- Risks:
+  - More recall-first expansion can add false positives upstream. Mitigate by
+    keeping product candidates strict and marking uncertain entities
+    review-needed.
+  - Richer source cards can increase planner prompt size. Mitigate with compact
+    capability summaries and recorded prompt/contract tests.
+
+### Slice 0.7.6.3.6.1: Checkpoint-to-expansion wiring and benchmark smoke acceptance repair
+
+- Status: `Backlog`
+- Goal: Make the source-profile-driven recall expansion from `0.7.6.3.6`
+  executable in the real Docker/API/worker smoke path, not only present in unit
+  tests and DTOs.
+- User value: When SIBUR benchmark smoke misses obvious official-source targets,
+  the run should try bounded recall expansion and show which targets were
+  searched, skipped, or budget-limited before stopping for review.
+- Problem statement:
+  - `radar-run-f06e35f2-ccc1-4824-935c-9d44b9d6e3e5` proved that connector
+    profiles, source cards, and capability validation are loaded in Docker.
+  - The same run did not create expansion targets or spend budget reserves:
+    `expansion_target_queue_count=0`, `search_expansion_query_variants_count=0`,
+    and `budget_reserve_counters={}`.
+  - Checkpoint decisions repeatedly chose `revise_plan` for
+    `evidence_linking_failed` / `extraction_repair_needed`, so the adaptive loop
+    never reached the recall-expansion action even though coverage probe later
+    found all remaining false negatives on official sources.
+- Scope:
+  - Update checkpoint policy so weak discovery with not-retrieved or
+    source-backed uncovered targets can select `expand_sources` /
+    `expand_search_queries` before repeated `revise_plan`, when source
+    capabilities and budgets allow it.
+  - Feed evaluation/benchmark-like uncovered target facts into runtime expansion
+    only when benchmark context is explicit; production runtime must still avoid
+    SIBUR hardcode.
+  - Ensure expansion target queue materializes before the revision cap stops the
+    run.
+  - Ensure official/open-web expansion tasks spend the new budget reserves and
+    record `targets_not_searched` when reserves are exhausted.
+  - Dossier/benchmark report must show non-empty target queue, query variants,
+    expansion results, reserve counters, and exact reason for remaining misses.
+  - Keep product candidates strict; expansion may add review-needed upstream
+    entities, not forced high-confidence account candidates.
+- Test plan:
+  - Unit: checkpoint with weak discovery + not-retrieved uncovered targets
+    returns expansion before plan revision.
+  - Unit: evidence-linking failures caused by retrieved-but-unlinked sources
+    still can trigger revision; absence of retrieved target evidence triggers
+    expansion.
+  - Unit: expansion action reserves `official_coverage_probe` /
+    `open_web_coverage_probe` and records skipped targets when reserve is
+    exhausted.
+  - Recorded pipeline: SIBUR-like missed targets produce target queue and
+    official/open-web query variants.
+  - Recorded pipeline: coverage probe found official sources are no longer
+    hidden behind `not_retrieved_in_run` without expansion diagnostics.
+  - Dossier/report: `expansion_target_queue_count > 0`,
+    `search_expansion_query_variants_count > 0`, and budget reserve counters are
+    visible.
+- Acceptance:
+  - Rebuild Docker API/worker/backend-init.
+  - Rerun bounded `benchmark-sibur-holding-contour` smoke and evaluation.
+  - Do not require perfect recall; require that remaining false negatives are
+    explained by expansion results, target skips, budget limits, or projection
+    gaps, not by a blank `not_retrieved_in_run` outcome with no expansion
+    attempt.
+
+### Slice 0.7.6.3.7: Model-role evaluation and extraction fallback policy
+
+- Status: `Backlog`
+- Goal: Stop guessing which OpenRouter model is suitable for planner,
+  extraction, backup extraction, and signal tasks. Add a small model-role
+  evaluation loop that measures JSON/schema/evidence-ref reliability on recorded
+  Radar tasks before changing default role assignments.
+- User value: A user can choose model settings based on measured role behavior
+  instead of anecdotal impressions. If a model such as `minimax/minimax-m3`
+  frequently breaks JSON, it should not silently remain the extraction backup.
+- Problem statement:
+  - Current local settings use `deepseek/deepseek-v3.2` for default, advanced,
+    planner, and extractor roles, with `minimax/minimax-m3` as extraction backup
+    and `qwen/qwen3.7-max` as generic backup.
+  - Different roles need different qualities: planner needs strategy quality,
+    extractor/backup needs strict JSON and schema discipline, signal search
+    needs source-grounded evidence behavior.
+  - Existing extraction recovery can name failure reasons, but there is no
+    repeatable model-role comparison surface.
+- Scope:
+  - Add a model-role evaluation fixture set from recorded Radar tasks:
+    - planner plan-shape task;
+    - discovery extraction task;
+    - coverage extraction task;
+    - registry/cross-source relation extraction task;
+    - signal extraction task;
+    - malformed-output recovery task.
+  - Add a provider-neutral model probe/evaluation command that can run in two
+    modes:
+    - recorded/fake default mode with no network calls;
+    - explicit opt-in live OpenRouter mode with strict call limits.
+  - Evaluate role candidates by:
+    - valid JSON rate;
+    - schema-valid rate;
+    - evidence-ref resolution rate;
+    - no hidden/forbidden key leakage;
+    - retry recovery success;
+    - token/call cost metadata when available;
+    - latency metadata as informational only, not a hard failure.
+  - Add model role policy:
+    - `OPENROUTER_EXTRACTION_BACKUP_MODEL` has priority for extraction backup;
+    - `OPENROUTER_BACKUP_MODEL` remains compatibility alias;
+    - backup extraction must pass the extraction contract probe before it is
+      recommended for smoke/benchmark settings;
+    - planner and signal backup selection remain separate decisions.
+  - Add runtime/dossier/report visibility:
+    - model role assignments used by the run;
+    - primary/retry/backup extraction attempts;
+    - model failure reason buckets;
+    - whether backup was skipped because not configured, budget-limited, or
+      policy-disallowed.
+- Out of scope:
+  - Automatic production model switching without explicit config.
+  - Provider price optimization logic.
+  - A public leaderboard or benchmark quality claim.
+  - Changing source strategy or budget reserves; that belongs to `0.7.6.3.6`.
+- Implementation notes:
+  - Treat model settings as role-specific runtime config, not secrets.
+  - Do not rely on one live run to judge a model. Use recorded contract fixtures
+    first, then optional bounded live probes.
+  - Keep extraction backup strict: a cheaper/slower model is acceptable only if
+    it reliably returns schema-valid JSON for the role.
+  - After implementation, synchronize the AS IS Markdown/PDF because model-role
+    routing and recovery policy are part of the Radar search pipeline.
+- Tests:
+  - Recorded model-probe tests:
+    - valid extraction JSON passes;
+    - non-JSON fails with `primary_non_json_http_200`/equivalent bucket;
+    - schema-invalid JSON fails with field/path reason;
+    - evidence refs that do not resolve are counted separately from JSON/schema
+      validity;
+    - hidden reasoning/secrets markers fail sanitization.
+  - Role policy tests:
+    - extraction backup uses `OPENROUTER_EXTRACTION_BACKUP_MODEL` when set;
+    - compatibility alias `OPENROUTER_BACKUP_MODEL` is used only when
+      extraction-specific backup is blank;
+    - backup model is not used for planner or signal tasks unless explicitly
+      configured in that role.
+  - Budget tests:
+    - live probes respect OpenRouter total and role-specific call caps;
+    - backup probe is skipped with a clear budget reason when exhausted.
+  - Report tests:
+    - model-role evaluation report contains validity metrics and no raw prompts,
+      provider dumps, secrets, headers, or hidden reasoning.
+  - Manual acceptance:
+    - run the recorded model-role evaluation;
+    - optionally run a bounded live probe comparing current
+      `deepseek/deepseek-v3.2`, `qwen/qwen3.7-max`, and `minimax/minimax-m3` for
+      extraction backup suitability;
+    - update recommended `.env.example` comments only after measured evidence.
+- Docs:
+  - Update Developer Guide and demo README with model-role evaluation commands
+    and interpretation.
+  - Update runtime config docs to distinguish default, planner, extractor,
+    extraction backup, advanced, and generic backup models.
+  - Update AS IS after implementation.
+- Demo impact:
+  - No UI change. Demo/benchmark operators get a repeatable way to choose model
+    role settings before spending a long benchmark run.
+- Acceptance criteria:
+  - Extraction backup recommendation is backed by recorded and optional bounded
+    live probe evidence.
+  - A model that repeatedly fails strict extraction JSON/schema fixtures is not
+    recommended as extraction backup.
+  - Benchmark smoke reports show which models were used for each role and why
+    extraction recovery succeeded or stopped.
+- Risks:
+  - Live model behavior can drift by provider. Mitigate with recorded tests as
+    the gate and live probes as explicit diagnostics.
+  - Too many model candidates can expand test cost. Mitigate with a small
+    configured candidate list and call caps.
+
 ### Slice 0.7: Human review queue loop
 
 - Status: `Backlog`
@@ -5826,11 +6213,9 @@ None.
 
 ## Next Recommended Task
 
-Rerun the bounded Docker/API/worker `benchmark-sibur-holding-contour` smoke and
-evaluate it against `sibur_contour_curated_v1`. `0.7.6.3.5` added the AS IS/TO
-BE documentation loop, so any next substantial Radar pipeline correction should
-first produce a reviewed TO BE document and then update the AS IS Markdown/PDF
-after implementation. If the benchmark smoke still fails, plan the next
-corrective slice from the actual failure bucket (`retrieval_expansion_quality`,
-`projection_or_universe_retention`, `identity_lookup_terms`, `source_budget`, or
-`evaluation_matcher`).
+Implement `Slice 0.7.6.3.6.1: Checkpoint-to-expansion wiring and benchmark smoke
+acceptance repair`. The latest bounded Docker smoke proved source cards and
+capability validation are present, but runtime recovery still loops through
+`revise_plan` and never materializes recall expansion targets or budget
+reserves. `benchmark_live` and `0.7.6.3.7` model-role evaluation remain blocked
+until this acceptance gap is closed.

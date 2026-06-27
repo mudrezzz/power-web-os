@@ -8,6 +8,11 @@ from power_web_os.application.live_radar_contracts import (
     RadarSourceEvidence,
     WebSearchProviderResult,
 )
+from power_web_os.application.live_radar_external_budget import (
+    RadarExternalCallBudget,
+    RadarExternalCallBudgetSettings,
+    external_call_budget_context,
+)
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
 from power_web_os.application.radar_registry_lookup_terms import RegistryLookupTermGenerator
 from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
@@ -52,6 +57,73 @@ def test_search_expansion_respects_disabled_sources() -> None:
     assert plan.should_expand is True
     assert all("openrouter_web" not in item.source_ids for item in plan.variants)
     assert any(item.query.startswith("site:sibur.ru") for item in plan.variants)
+
+
+def test_search_expansion_builds_prioritized_target_queue_from_source_backed_gaps() -> None:
+    plan = RadarSearchExpansionService(max_variants=30).plan_expansion(
+        radar=_radar_with_sources(),
+        candidate_scope=[],
+        provider_metadata={
+            "candidate_universe_gaps": [
+                {
+                    "legal_name": "Губкинский газоперерабатывающий завод",
+                    "entity_type": "production_site",
+                    "source_refs": ["src_gubkin"],
+                    "reason": "Found in retrieved source but not linked.",
+                },
+                {
+                    "legal_name": 'АО "ПОЛИЭФ"',
+                    "entity_type": "legal_entity",
+                    "source_refs": ["src_polief"],
+                },
+            ],
+        },
+        coverage_checks=[{"completeness_risk": "high"}],
+        unresolved_candidate_gaps=[],
+    )
+
+    targets = plan.to_payload()["targets"]
+    assert targets[0]["target_type"] in {"known_subsidiary_or_legal_entity_target", "production_site_or_branch_target"}
+    assert {item["target_label"] for item in targets} >= {"Губкинский газоперерабатывающий завод", 'АО "ПОЛИЭФ"'}
+    assert any(item["budget_reserve_key"] == "official_coverage_probe" for item in targets)
+    variants_by_target = plan.to_payload()["variants_by_target"]
+    assert variants_by_target
+    assert any(
+        "site:sibur.ru Губкинский газоперерабатывающий завод" in item["query"]
+        for variants in variants_by_target.values()
+        for item in variants
+    )
+
+
+def test_search_expansion_uses_source_profile_capabilities_not_hardcoded_dadata() -> None:
+    radar = _radar_with_sources()
+    radar["global_search_policy"]["sources"] = [
+        {
+            "source_id": "spark_registry",
+            "source_type": "company_registry",
+            "provider_id": "spark",
+            "connector_profile_id": "dadata_registry",
+            "usage_obligation": "required_for_identity",
+        },
+        {
+            "source_id": "openrouter_web",
+            "source_type": "search_engine",
+            "reference": "openrouter:web_search",
+            "usage_obligation": "required_for_coverage",
+        },
+    ]
+
+    plan = RadarSearchExpansionService(max_variants=6).plan_expansion(
+        radar=radar,
+        candidate_scope=["АО ПОЛИЭФ"],
+        provider_metadata={},
+        coverage_checks=[{"completeness_risk": "medium"}],
+        unresolved_candidate_gaps=[],
+    )
+
+    assert plan.should_expand
+    assert all("spark_registry" not in item.source_ids for item in plan.variants)
+    assert any("openrouter_web" in item.source_ids for item in plan.variants)
 
 
 def test_registry_lookup_terms_generate_russian_variants_for_english_aliases() -> None:
@@ -256,6 +328,47 @@ def test_staged_execution_runs_search_expansion_for_coverage_gap() -> None:
     assert any(call.queries[0].query_id.startswith("coverage:search-expansion") for call in provider.calls)
     assert any(event.event_type == "search_expansion_executed" for event in events)
     assert any(item["legal_name"] == "Губкинский ГПЗ" for item in execution_results["candidate_universe"])
+
+
+def test_staged_execution_skips_expansion_when_reserve_is_exhausted() -> None:
+    provider = _ExpansionProvider()
+    radar = _radar_with_sources()
+    radar["qualification_criteria"] = [{"code": "q1", "label": "SIBUR relation", "requirement_level": "required"}]
+    plan = RadarExecutionPlan(
+        radar_id="test",
+        tasks=[
+            RadarExecutionTask(
+                task_id="coverage",
+                stage="coverage_check",
+                subject_type="qualification",
+                subject_id="q1",
+                query="Check weak coverage.",
+                purpose="Coverage.",
+                source_ids=["openrouter_web", "sibur_site"],
+            ),
+        ],
+    )
+    budget = RadarExternalCallBudget(
+        RadarExternalCallBudgetSettings(
+            budget_reserve_limits={
+                "official_coverage_probe": 0,
+                "open_web_coverage_probe": 0,
+            }
+        )
+    )
+
+    with external_call_budget_context(budget):
+        _, events, execution_results = run_staged_radar_execution(
+            radar=radar,
+            execution_plan=plan,
+            provider=provider,
+            max_total_web_tasks_per_run=10,
+        )
+
+    assert execution_results["expansion_target_queue"]
+    assert execution_results["targets_not_searched"]
+    assert execution_results["budget_reserve_exhaustion_events"]
+    assert any(event.event_type == "search_expansion_skipped_budget_reserve" for event in events)
 
 
 class _ExpansionProvider:

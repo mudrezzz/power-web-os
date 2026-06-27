@@ -4,7 +4,7 @@ Status: AS IS
 
 Product area: Radar candidate and signal search
 
-Updated after slice: 0.7.6.3.5
+Updated after slice: 0.7.6.3.6
 
 Last updated: 2026-06-27
 
@@ -65,6 +65,8 @@ merged into this AS IS document and the PDF is regenerated.
 | Checkpoint | Application-owned review point that decides whether execution continues, retries, expands, revises, stops for review, or fails hard. |
 | Execution budget | Radar task budget for discovery, gate, signal, provider, and run-total work. |
 | External-call budget | Budget for external actions such as OpenRouter calls, DaData lookups, provider retries, and source verification requests. |
+| Budget reserve | A sub-allocation inside the run budget for registry identity, recall expansion, official coverage, open-web coverage, extraction recovery, or signal search. |
+| Expansion target | A prioritized source-backed target that weak discovery should search next, such as a holding, legal entity, production site, branch, alias/language variant, or explicit benchmark target. |
 | `not_observed` | A searched signal with no evidence found. It must not mean "not searched". |
 | `not_searched_*` | Explicit unsearched state caused by budget, policy, missing scope, or pending output. |
 
@@ -105,7 +107,7 @@ candidate state.
 | Worker entrypoint | `src/power_web_os/jobs` | Load run id, call application executor, persist status. | Provider normalization or domain decisions. |
 | Workflow wrapper | `src/power_web_os/workflows` | Wrap application execution in workflow state when needed. | SQLAlchemy queries, provider logic, scoring semantics. |
 | Active definition adapter | `src/power_web_os/application/live_radar_definition_runtime.py` | Convert persisted definition payload into runtime Radar payload. | HTTP/provider details. |
-| Connector profile registry | `src/power_web_os/application/connector_profiles.py` | Load connector profiles and compile capability cards. | User source obligations or provider calls. |
+| Connector profile registry | `src/power_web_os/application/connector_profiles.py` and `connector_capability_defaults.py` | Load connector profiles and compile capability cards. | User source obligations or provider calls. |
 | Planner input builder | `src/power_web_os/application/live_radar_discovery_planning.py` | Build source-card-aware planning input and deterministic fallback plans. | Final truth or provider execution. |
 | Planner adapter | `src/power_web_os/integrations/openrouter_discovery_planner.py` | Ask OpenRouter for structured discovery plans. | Source policy enforcement. |
 | Plan acceptance | `src/power_web_os/application/live_radar_plan_acceptance.py` | Validate capabilities, source obligations, and safe repairs. | Provider calls. |
@@ -113,7 +115,7 @@ candidate state.
 | Web retrieval/extraction provider | `src/power_web_os/integrations/live_radar_openrouter.py` | Execute OpenRouter web/retrieval/extraction tasks under budget guard. | Execution budgets, final scoring, source obligations. |
 | Source registry/provider orchestration | `src/power_web_os/application/radar_source_providers.py` | Execute structured company registry providers for allowed stages. | Signal evidence replacement. |
 | Registry lookup term generator | `src/power_web_os/application/radar_registry_lookup_terms.py` | Build concrete lookup terms for registry providers. | Broad web discovery. |
-| Search expansion service | `src/power_web_os/application/radar_search_expansion.py` | Build bounded query variants when discovery/coverage is weak. | Direct provider calls. |
+| Search expansion service | `src/power_web_os/application/radar_search_expansion.py`, `radar_search_expansion_models.py`, and `radar_search_expansion_support.py` | Build prioritized expansion target queues and bounded source-profile-driven query variants when discovery/coverage is weak. | Direct provider calls. |
 | Extraction contract/repair | `src/power_web_os/application/live_radar_extraction_contract.py` | Validate and repair provider payload shape when deterministic repair is safe. | Silently converting unrecoverable output into success. |
 | Checkpoint service | `src/power_web_os/application/live_radar_checkpoints.py` | Decide continue, retry, expand, repair, revise, stop, or fail. | Direct HTTP/provider calls. |
 | Checkpoint action executor | `src/power_web_os/application/live_radar_checkpoint_actions.py` | Apply approved checkpoint actions under budgets and policy. | Unbounded loops. |
@@ -202,6 +204,11 @@ Application code compiles those profiles into capability cards:
 - required input kinds;
 - returned fact kinds;
 - useful-result criteria;
+- accepted input shapes;
+- bad input shapes;
+- non-blocking outcomes;
+- language/alias hints;
+- connector capability class;
 - credential requirements.
 
 Planner source cards are compact, product-safe versions of the capabilities.
@@ -275,19 +282,40 @@ flowchart TD
   I --> A
 ```
 
-When discovery or coverage is weak, `RadarSearchExpansionService` can create
-bounded query variants:
+When discovery or coverage is weak, `RadarSearchExpansionService` first builds
+a prioritized expansion target queue, then compiles bounded query variants for
+the highest-priority targets.
 
-- official-domain variants, for example source-specific site search;
-- open-web relation variants;
-- identity variants with INN/OGRN/legal-form hints;
-- industrial/site variants with plant, GPP, site, branch, or asset language;
-- alias/language variants from extracted or baseline-like diagnostic names.
+Target classes:
 
-Expansion respects source policy. If open web is disabled, open-web expansion is
-not generated. If an official source is disabled, official-domain variants are
-not generated. Expansion must stay bounded by execution and external-call
-budgets.
+- `holding_or_group_target`;
+- `production_site_or_branch_target`;
+- `known_subsidiary_or_legal_entity_target`;
+- `source_backed_universe_gap_target`;
+- `alias_or_language_variant_target`;
+- `benchmark_baseline_like_target` only when explicit benchmark context exists;
+- `low_confidence_registry_suggestion_target`.
+
+Each target records `target_id`, `target_label`, `target_type`, `source_refs`,
+`why_target_exists`, priority, allowed source ids, expected fact kinds,
+`budget_reserve_key`, execution status, and not-searched reason.
+
+Query variants are compiled from connector source cards and policy:
+
+- official/domain-capable sources produce `site:<domain> <target>` plus relation
+  and industrial coverage queries;
+- broad web sources produce relation, membership, identity, and industrial/site
+  queries;
+- lookup-only registry sources are not used for broad expansion tasks;
+- source-specific domains come from the selected source/profile, not a hardcoded
+  production branch;
+- relation terms come from the radar definition and target context.
+
+Expansion respects source policy and budget reserves. If open web is disabled,
+open-web variants are not generated. If an official source is disabled,
+official-domain variants are not generated. If a reserve is exhausted, the
+target/task is recorded in `targets_not_searched` with `not_searched_reason`
+instead of disappearing from diagnostics.
 
 ## 12. Candidate Universe And Entity Resolution
 
@@ -391,6 +419,21 @@ Smoke and benchmark profiles set bounded task context budgets so acceptance runs
 do not spread into uncontrolled provider calls. OpenRouter latency alone is not
 an error; the controllable unit is number of external actions.
 
+Budget reserves add an intent-level layer under the same run:
+
+- `primary_discovery`;
+- `registry_identity`;
+- `recall_expansion`;
+- `official_coverage_probe`;
+- `open_web_coverage_probe`;
+- `extraction_recovery`;
+- `signal_search`.
+
+Reserve counters are reported as `budget_reserve_counters`. Exhausted reserves
+are reported as `budget_reserve_exhaustion_events` and should produce explicit
+not-searched diagnostics for skipped expansion targets or registry identity
+attempts.
+
 ## 16. Source Lifecycle
 
 <!-- diagram: source_lifecycle -->
@@ -428,7 +471,10 @@ Radar exposes several diagnostic surfaces:
 - external-call budget counters;
 - extraction recovery records;
 - registry lookup terms and attempts;
-- search expansion tasks and results;
+- expansion target queue;
+- search expansion query variants and results grouped by target;
+- targets not searched and budget reserve counters;
+- registry ambiguity fan-out summary;
 - technical trace for sanitized developer inspection;
 - benchmark and evaluation reports.
 

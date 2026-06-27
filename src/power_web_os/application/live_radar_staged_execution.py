@@ -28,6 +28,7 @@ from power_web_os.application.live_radar_external_budget import (
     current_external_call_budget,
     external_budget_settings_from_context,
     external_call_budget_context,
+    reserve_budget_slice,
 )
 from power_web_os.application.live_radar_extraction_diagnostics import (
     extraction_contract_state,
@@ -637,9 +638,16 @@ def run_staged_radar_execution(
             "retrieved_source_count": provider_metadata.get("retrieved_source_count", 0),
             "source_outcomes": provider_metadata.get("source_outcomes", []),
             "source_provider_outcomes": provider_metadata.get("source_provider_outcomes", []),
+            "source_capability_strategy_summary": provider_metadata.get("source_capability_strategy_summary", {}),
+            "expansion_target_queue": provider_metadata.get("expansion_target_queue", []),
             "search_expansion_tasks": provider_metadata.get("search_expansion_tasks", []),
             "search_expansion_query_variants": provider_metadata.get("search_expansion_query_variants", []),
+            "search_expansion_query_variants_by_target": provider_metadata.get("search_expansion_query_variants_by_target", {}),
             "search_expansion_results": provider_metadata.get("search_expansion_results", []),
+            "search_expansion_results_by_target": _results_by_target(provider_metadata.get("search_expansion_results", [])),
+            "targets_not_searched": provider_metadata.get("targets_not_searched", []),
+            "benchmark_recall_target_summary": _benchmark_recall_target_summary(provider_metadata),
+            "registry_ambiguity_fanout_summary": provider_metadata.get("registry_ambiguity_fanout_summary", {}),
             "registry_lookup_terms": provider_metadata.get("registry_lookup_terms", []),
             "registry_lookup_attempts": provider_metadata.get("registry_lookup_attempts", []),
             "identity_obligation_review_records": provider_metadata.get("identity_obligation_review_records", []),
@@ -818,6 +826,22 @@ def _run_search_expansion(
     )
     provider_metadata = {
         **provider_metadata,
+        "expansion_target_queue": [
+            *dict_list(provider_metadata.get("expansion_target_queue")),
+            *expansion_plan.to_payload().get("targets", []),
+        ],
+        "search_expansion_query_variants_by_target": {
+            **(
+                provider_metadata.get("search_expansion_query_variants_by_target")
+                if isinstance(provider_metadata.get("search_expansion_query_variants_by_target"), dict)
+                else {}
+            ),
+            **expansion_plan.to_payload().get("variants_by_target", {}),
+        },
+        "source_capability_strategy_summary": _source_capability_strategy_summary(
+            radar=radar,
+            expansion_plan=expansion_plan.to_payload(),
+        ),
         "search_expansion_query_variants": [
             *dict_list(provider_metadata.get("search_expansion_query_variants")),
             *expansion_plan.to_payload().get("variants", []),
@@ -842,7 +866,46 @@ def _run_search_expansion(
             ],
         ],
     }
-    for task in tasks:
+    variants = list(expansion_plan.variants)
+    for task, variant in zip(tasks, variants):
+        reserve_decision = reserve_budget_slice(
+            variant.budget_reserve_key,
+            task_id=task.task_id,
+            reason=variant.reason,
+        )
+        if not reserve_decision.accepted:
+            skipped = {
+                "task_id": task.task_id,
+                "query": task.query,
+                "source_ids": list(task.source_ids),
+                "target_id": variant.target_id,
+                "target_type": variant.target_type,
+                "budget_reserve_key": variant.budget_reserve_key,
+                "execution_status": "not_searched",
+                "not_searched_reason": reserve_decision.reason or "budget_reserve_exhausted",
+                "budget_decision": reserve_decision.to_payload(),
+            }
+            provider_metadata = {
+                **provider_metadata,
+                "targets_not_searched": [
+                    *dict_list(provider_metadata.get("targets_not_searched")),
+                    skipped,
+                ],
+                "search_expansion_results": [
+                    *dict_list(provider_metadata.get("search_expansion_results")),
+                    skipped,
+                ],
+            }
+            events.append(LiveRadarPipelineEvent(
+                event_type="search_expansion_skipped_budget_reserve",
+                phase="collection",
+                actor="application",
+                node_name="search_expansion",
+                visibility="operator",
+                summary=f"Skipped recall expansion task {task.task_id}: {reserve_decision.message}",
+                payload=skipped,
+            ))
+            continue
         result = _run_task(
             provider=provider,
             radar=radar,
@@ -869,6 +932,9 @@ def _run_search_expansion(
                     "task_id": task.task_id,
                     "query": task.query,
                     "source_ids": list(task.source_ids),
+                    "target_id": variant.target_id,
+                    "target_type": variant.target_type,
+                    "budget_reserve_key": variant.budget_reserve_key,
                     "source_count": len(result.sources),
                     "candidate_observation_count": len(result.candidate_observations),
                     "budget_decision": result.provider_metadata.get("budget_decision", {}),
@@ -886,6 +952,9 @@ def _run_search_expansion(
                 "task_id": task.task_id,
                 "query": task.query,
                 "source_ids": list(task.source_ids),
+                "target_id": variant.target_id,
+                "target_type": variant.target_type,
+                "budget_reserve_key": variant.budget_reserve_key,
                 "source_count": len(result.sources),
                 "candidate_observation_count": len(result.candidate_observations),
             },
@@ -898,6 +967,54 @@ def _run_search_expansion(
         completed_qualification_ids=completed_qualification_ids,
     )
     return sources, observations, provider_metadata, _limit_smoke_candidates(candidate_scope, smoke_candidate_limit)
+
+
+def _source_capability_strategy_summary(*, radar: dict[str, Any], expansion_plan: dict[str, Any]) -> dict[str, Any]:
+    policy = radar.get("global_search_policy") if isinstance(radar.get("global_search_policy"), dict) else {}
+    configured_sources = [
+        str(item.get("source_id") or item.get("reference") or "")
+        for item in dict_list(policy.get("sources"))
+        if str(item.get("source_id") or item.get("reference") or "").strip()
+    ]
+    variants = dict_list(expansion_plan.get("variants"))
+    return {
+        "configured_source_count": len(configured_sources),
+        "target_count": len(dict_list(expansion_plan.get("targets"))),
+        "variant_count": len(variants),
+        "official_probe_count": sum(1 for item in variants if item.get("budget_reserve_key") == "official_coverage_probe"),
+        "open_web_probe_count": sum(1 for item in variants if item.get("budget_reserve_key") == "open_web_coverage_probe"),
+        "uses_profile_driven_sources": bool(configured_sources and variants),
+    }
+
+
+def _results_by_target(value: object) -> dict[str, list[dict[str, Any]]]:
+    result: dict[str, list[dict[str, Any]]] = {}
+    for item in dict_list(value):
+        target_id = str(item.get("target_id") or "unclassified")
+        result.setdefault(target_id, []).append(item)
+    return result
+
+
+def _benchmark_recall_target_summary(provider_metadata: dict[str, Any]) -> dict[str, Any]:
+    targets = dict_list(provider_metadata.get("expansion_target_queue"))
+    if not targets:
+        return {}
+    searched_ids = {
+        str(item.get("target_id") or "")
+        for item in dict_list(provider_metadata.get("search_expansion_results"))
+        if str(item.get("execution_status") or "executed") != "not_searched"
+    }
+    not_searched = dict_list(provider_metadata.get("targets_not_searched"))
+    by_type: dict[str, int] = {}
+    for target in targets:
+        target_type = str(target.get("target_type") or "unknown")
+        by_type[target_type] = by_type.get(target_type, 0) + 1
+    return {
+        "target_count": len(targets),
+        "searched_target_count": len([target for target in targets if str(target.get("target_id") or "") in searched_ids]),
+        "not_searched_target_count": len(not_searched),
+        "by_target_type": by_type,
+    }
 
 
 def _external_budget_events(exhaustion_events: list[dict[str, object]]) -> list[LiveRadarPipelineEvent]:

@@ -25,6 +25,7 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProvider,
     WebSearchProviderResult,
 )
+from power_web_os.application.live_radar_external_budget import reserve_budget_slice
 from power_web_os.application.live_radar_universe import merge_provider_metadata
 from power_web_os.application.radar_lookup_terms import (
     concrete_candidate_scope_terms as _concrete_candidate_scope_terms,
@@ -37,6 +38,11 @@ from power_web_os.application.radar_registry_observation_helpers import (
     dedupe_text as _dedupe_text,
     radar_with_structured_observations as _radar_with_structured_observations,
     registry_snippet as _registry_snippet,
+)
+from power_web_os.application.radar_source_registry_helpers import (
+    promotable_registry_observations as _promotable_registry_observations,
+    registry_ambiguity_fanout_limit as _registry_ambiguity_fanout_limit,
+    structured_observations_from_registry as _structured_observations_from_registry,
 )
 from power_web_os.application.radar_upstream_disambiguation import (
     candidate_gap_from_review_entity as _candidate_gap_from_review_entity,
@@ -172,6 +178,29 @@ class RadarSourceRegistry:
                     observation_count=0,
                 ).model_dump())
                 continue
+            reserve_decision = reserve_budget_slice(
+                "registry_identity",
+                task_id=task.task_id,
+                reason=f"Registry identity lookup for {request.source_id}.",
+            )
+            if not reserve_decision.accepted:
+                outcomes.append(CompanySourceOutcome(
+                    source_id=request.source_id,
+                    provider_id=provider_id,
+                    connector_profile_id=connector_profile_id,
+                    outcome="not_executed_budget_limited",
+                    reason=reserve_decision.message or "Registry identity budget reserve exhausted.",
+                    query=request.query,
+                    observation_count=0,
+                ).model_dump())
+                metadata.setdefault("registry_lookup_attempts", [])
+                metadata["registry_lookup_attempts"].append({
+                    "source_id": request.source_id,
+                    "provider_id": provider_id,
+                    "outcome": "not_executed_budget_limited",
+                    "budget_decision": reserve_decision.to_payload(),
+                })
+                continue
             result = provider.lookup_companies(request)
             evidence.extend(_source_evidence_from_observations(result.observations, request=request, provider_id=provider_id))
             promotable_observations = _promotable_registry_observations(result)
@@ -184,9 +213,12 @@ class RadarSourceRegistry:
             structured_observations.extend(_structured_observations_from_registry(result.observations, request=request, provider_id=provider_id))
             outcome_payloads = [item.model_dump() for item in result.outcomes]
             if review_needed_observations:
+                fanout_limit = _registry_ambiguity_fanout_limit(radar)
+                retained_review_observations = review_needed_observations[:fanout_limit]
+                omitted_review_count = max(len(review_needed_observations) - len(retained_review_observations), 0)
                 for outcome_payload in outcome_payloads:
                     if outcome_payload.get("outcome") == "ambiguous_match":
-                        outcome_payload["review_needed_entity_count"] = len(review_needed_observations)
+                        outcome_payload["review_needed_entity_count"] = len(retained_review_observations)
                         outcome_payload["reason"] = (
                             f"{outcome_payload.get('reason') or 'Registry returned ambiguous observations.'} "
                             "Ambiguous source-backed entities were retained for upstream review."
@@ -201,30 +233,42 @@ class RadarSourceRegistry:
                     if item not in promotable_observations
                 ])
             if review_needed_observations:
+                fanout_limit = _registry_ambiguity_fanout_limit(radar)
+                retained_review_observations = review_needed_observations[:fanout_limit]
+                omitted_review_count = max(len(review_needed_observations) - len(retained_review_observations), 0)
+                metadata["registry_ambiguity_fanout_summary"] = {
+                    "source_id": request.source_id,
+                    "provider_id": provider_id,
+                    "observed_count": len(review_needed_observations),
+                    "retained_count": len(retained_review_observations),
+                    "omitted_count": omitted_review_count,
+                    "fanout_limit": fanout_limit,
+                }
                 metadata.setdefault("upstream_disambiguation_results", [])
-                metadata["upstream_disambiguation_results"].extend(review_needed_observations)
+                metadata["upstream_disambiguation_results"].extend(retained_review_observations)
                 metadata.setdefault("review_needed_upstream_entities", [])
-                metadata["review_needed_upstream_entities"].extend(review_needed_observations)
+                metadata["review_needed_upstream_entities"].extend(retained_review_observations)
                 metadata.setdefault("identity_obligation_review_records", [])
                 metadata["identity_obligation_review_records"].append({
                     "source_id": request.source_id,
                     "provider_id": provider_id,
                     "status": "attempted_review_needed",
                     "lookup_terms": list(request.lookup_terms),
-                    "review_needed_entity_count": len(review_needed_observations),
+                    "review_needed_entity_count": len(retained_review_observations),
+                    "omitted_ambiguous_entity_count": omitted_review_count,
                     "reason": "Registry observations were retained for recall-first upstream review.",
                 })
                 metadata.setdefault("candidate_universe_gaps", [])
                 metadata["candidate_universe_gaps"].extend([
                     _candidate_gap_from_review_entity(item, task=task)
-                    for item in review_needed_observations
+                    for item in retained_review_observations
                 ])
                 metadata.setdefault("cross_source_disambiguation_tasks", [])
                 metadata["cross_source_disambiguation_tasks"].extend(
                     _cross_source_disambiguation_tasks(
                         radar=radar,
                         task=task,
-                        review_entities=review_needed_observations,
+                        review_entities=retained_review_observations,
                     )
                 )
             metadata.setdefault("compiled_source_capabilities", [])
@@ -440,52 +484,3 @@ def _candidate_observations_from_registry(
             }],
         })
     return result
-
-
-def _promotable_registry_observations(result: CompanyLookupResult) -> list[CompanyRegistryObservation]:
-    """Avoid promoting every medium suggestion from an ambiguous registry lookup."""
-
-    ambiguous = any(outcome.outcome == "ambiguous_match" for outcome in result.outcomes)
-    if not ambiguous:
-        return list(result.observations)
-    return [
-        observation
-        for observation in result.observations
-        if observation.match_quality == "high" or observation.matched_by in {"inn", "ogrn"}
-    ]
-
-
-def _structured_observations_from_registry(
-    observations: list[CompanyRegistryObservation],
-    *,
-    request: CompanyLookupRequest,
-    provider_id: str,
-) -> list[dict[str, Any]]:
-    result: list[dict[str, Any]] = []
-    for observation in observations:
-        result.append({
-            "source_ref": observation.source_ref or _stable_source_ref(provider_id, observation.legal_name),
-            "source_id": request.source_id,
-            "provider_id": provider_id,
-            "entity_type": observation.entity_type or "legal_entity",
-            "legal_name": observation.legal_name,
-            "normalized_legal_name": observation.normalized_legal_name or _normalize_company_name(observation.legal_name),
-            "inn": observation.inn,
-            "ogrn": observation.ogrn,
-            "kpp": observation.kpp,
-            "status": observation.status,
-            "address": observation.address,
-            "okved": observation.okved,
-            "match_quality": observation.match_quality,
-            "matched_by": observation.matched_by,
-            "lookup_query": observation.lookup_query or request.query,
-            "provider_record_id": observation.provider_record_id,
-            "facts": dict(observation.facts),
-        })
-    return result
-
-
-def _normalize_company_name(value: str) -> str:
-    normalized = re.sub(r"[«»\"'.,]", " ", value.lower())
-    normalized = re.sub(r"\b(ао|пао|оао|зао|ооо|нао|jsc|pjsc|llc)\b", " ", normalized, flags=re.IGNORECASE)
-    return " ".join(normalized.split())

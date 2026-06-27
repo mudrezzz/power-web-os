@@ -13,6 +13,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
+from power_web_os.application.connector_capability_defaults import (
+    _accepted_input_shapes,
+    _bad_input_shapes,
+    _capability_class,
+    _language_hints,
+    _non_blocking_outcomes,
+    _required_input_kinds,
+    _returned_fact_kinds,
+    _useful_result_criteria,
+)
+
 
 INTERNAL_STAGE_NAMES = {
     "qualification_discovery",
@@ -68,6 +79,12 @@ class ConnectorProfile:
     limitations: tuple[str, ...] = ()
     credential_env_vars: tuple[str, ...] = ()
     aliases: tuple[str, ...] = ()
+    accepted_input_shapes: tuple[str, ...] = ()
+    bad_input_shapes: tuple[str, ...] = ()
+    returned_fact_kinds: tuple[str, ...] = ()
+    useful_result_criteria: tuple[str, ...] = ()
+    non_blocking_outcomes: tuple[str, ...] = ()
+    language_hints: tuple[str, ...] = ()
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -82,6 +99,12 @@ class ConnectorProfile:
             "limitations": list(self.limitations),
             "credential_env_vars": list(self.credential_env_vars),
             "aliases": list(self.aliases),
+            "accepted_input_shapes": list(self.accepted_input_shapes),
+            "bad_input_shapes": list(self.bad_input_shapes),
+            "returned_fact_kinds": list(self.returned_fact_kinds),
+            "useful_result_criteria": list(self.useful_result_criteria),
+            "non_blocking_outcomes": list(self.non_blocking_outcomes),
+            "language_hints": list(self.language_hints),
         }
 
 
@@ -102,6 +125,11 @@ class ConnectorCapabilityCard:
     returned_fact_kinds: tuple[str, ...] = ()
     credential_env_vars: tuple[str, ...] = ()
     useful_result_criteria: tuple[str, ...] = ()
+    accepted_input_shapes: tuple[str, ...] = ()
+    bad_input_shapes: tuple[str, ...] = ()
+    non_blocking_outcomes: tuple[str, ...] = ()
+    language_hints: tuple[str, ...] = ()
+    capability_class: str = ""
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -120,6 +148,11 @@ class ConnectorCapabilityCard:
             "returned_fact_kinds": list(self.returned_fact_kinds),
             "credential_env_vars": list(self.credential_env_vars),
             "useful_result_criteria": list(self.useful_result_criteria),
+            "accepted_input_shapes": list(self.accepted_input_shapes),
+            "bad_input_shapes": list(self.bad_input_shapes),
+            "non_blocking_outcomes": list(self.non_blocking_outcomes),
+            "language_hints": list(self.language_hints),
+            "capability_class": self.capability_class,
         }
 
 
@@ -218,6 +251,12 @@ def load_connector_profile(path: Path) -> tuple[ConnectorProfile | None, tuple[C
         limitations=tuple(_string_list(payload.get("limitations"))),
         credential_env_vars=tuple(_string_list(payload.get("credential_env_vars"))),
         aliases=tuple(_string_list(payload.get("aliases"))),
+        accepted_input_shapes=tuple(_string_list(payload.get("accepted_input_shapes"))),
+        bad_input_shapes=tuple(_string_list(payload.get("bad_input_shapes"))),
+        returned_fact_kinds=tuple(_string_list(payload.get("returned_fact_kinds"))),
+        useful_result_criteria=tuple(_string_list(payload.get("useful_result_criteria"))),
+        non_blocking_outcomes=tuple(_string_list(payload.get("non_blocking_outcomes"))),
+        language_hints=tuple(_string_list(payload.get("language_hints"))),
     )
     return profile, tuple(validate_connector_profile(profile, raw_payload=payload))
 
@@ -296,7 +335,29 @@ def compile_connector_capability(profile: ConnectorProfile) -> ConnectorCapabili
         required_input_kinds=tuple(_required_input_kinds(positive_text)),
         returned_fact_kinds=tuple(_returned_fact_kinds(profile)),
         credential_env_vars=profile.credential_env_vars,
-        useful_result_criteria=tuple(_useful_result_criteria(profile, supports_identity=supports_identity, supports_coverage=supports_coverage)),
+        useful_result_criteria=tuple(
+            profile.useful_result_criteria
+            or _useful_result_criteria(profile, supports_identity=supports_identity, supports_coverage=supports_coverage)
+        ),
+        accepted_input_shapes=tuple(profile.accepted_input_shapes or _accepted_input_shapes(
+            supports_broad=supports_broad,
+            supports_identity=supports_identity,
+            requires_concrete=requires_concrete,
+            source_type=source_type,
+        )),
+        bad_input_shapes=tuple(profile.bad_input_shapes or _bad_input_shapes(
+            supports_signal=supports_signal,
+            requires_concrete=requires_concrete,
+            supports_broad=supports_broad,
+        )),
+        non_blocking_outcomes=tuple(profile.non_blocking_outcomes or _non_blocking_outcomes(source_type=source_type)),
+        language_hints=tuple(profile.language_hints or _language_hints(profile)),
+        capability_class=_capability_class(
+            source_type=source_type,
+            supports_broad=supports_broad,
+            supports_identity=supports_identity,
+            requires_concrete=requires_concrete,
+        ),
     )
 
 
@@ -337,53 +398,15 @@ def _profile_text(profile: ConnectorProfile) -> str:
         *profile.bad_inputs,
         *profile.expected_facts,
         *profile.limitations,
+        *profile.accepted_input_shapes,
+        *profile.bad_input_shapes,
+        *profile.returned_fact_kinds,
+        *profile.useful_result_criteria,
+        *profile.non_blocking_outcomes,
+        *profile.language_hints,
     ]
     return " ".join(values).lower()
 
-
-def _required_input_kinds(text: str) -> list[str]:
-    result: list[str] = []
-    for key, terms in {
-        "legal_name": ["legal name", "company name"],
-        "inn": ["inn", "инн"],
-        "ogrn": ["ogrn", "огрн"],
-        "domain": ["domain"],
-        "url": ["url"],
-        "free_text_query": ["free text", "natural-language", "web search"],
-        "candidate_scope": ["candidate scope"],
-    }.items():
-        if _has_any(text, terms):
-            result.append(key)
-    return result
-
-
-def _returned_fact_kinds(profile: ConnectorProfile) -> list[str]:
-    facts: list[str] = []
-    text = _profile_text(profile)
-    for key, terms in {
-        "legal_identity": ["legal entity", "legal name", "inn", "ogrn"],
-        "registry_status": ["status"],
-        "address": ["address"],
-        "okved": ["okved"],
-        "web_source": ["url", "citation", "snippet", "web page"],
-        "signal_evidence": ["signal", "intent", "event", "news"],
-    }.items():
-        if _has_any(text, terms):
-            facts.append(key)
-    return facts
-
-
-def _useful_result_criteria(
-    profile: ConnectorProfile,
-    *,
-    supports_identity: bool,
-    supports_coverage: bool,
-) -> list[str]:
-    if supports_identity:
-        return ["resolved legal entity identity", "source-backed registry observation"]
-    if supports_coverage:
-        return ["retrieved source with URL/title/snippet", "source-backed coverage finding"]
-    return [f"source result from {profile.display_name}"]
 
 
 def _has_any(text: str, terms: list[str]) -> bool:

@@ -108,6 +108,7 @@ def dossier_response(
         source_cards=source_cards,
         source_capability_decisions=source_capability_decisions,
         source_capability_validation=_dict(acceptance_metadata.get("source_capability_validation")),
+        source_capability_strategy_summary=_dict(execution_results.get("source_capability_strategy_summary")),
         source_policy_decisions=source_policy_decisions,
         source_obligations=source_obligations,
         source_obligation_decisions=source_obligation_decisions,
@@ -132,6 +133,16 @@ def dossier_response(
         coverage_checks=coverage_checks,
         coverage_warnings=coverage_warnings,
         unresolved_candidate_gaps=unresolved_candidate_gaps,
+        expansion_target_queue=_list(execution_results.get("expansion_target_queue")),
+        search_expansion_query_variants=_list(execution_results.get("search_expansion_query_variants")),
+        search_expansion_query_variants_by_target=_dict(execution_results.get("search_expansion_query_variants_by_target")),
+        search_expansion_results=_list(execution_results.get("search_expansion_results")),
+        search_expansion_results_by_target=_dict(execution_results.get("search_expansion_results_by_target")),
+        targets_not_searched=_list(execution_results.get("targets_not_searched")),
+        budget_reserve_counters=_int_dict(execution_results.get("budget_reserve_counters")),
+        budget_reserve_exhaustion_events=_list(execution_results.get("budget_reserve_exhaustion_events")),
+        registry_ambiguity_fanout_summary=_dict(execution_results.get("registry_ambiguity_fanout_summary")),
+        benchmark_recall_target_summary=_dict(execution_results.get("benchmark_recall_target_summary")),
         discovery_iteration_count=_int(execution_results.get("discovery_iteration_count"), default=0),
         search_plan=queries,
         sources=source_responses,
@@ -397,6 +408,18 @@ def _list(value: object) -> list[dict[str, Any]]:
 
 def _dict(value: object) -> dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
+
+
+def _int_dict(value: object) -> dict[str, int]:
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, int] = {}
+    for key, item in value.items():
+        try:
+            result[str(key)] = int(item)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+    return result
 
 
 def _int(value: object, *, default: int) -> int:

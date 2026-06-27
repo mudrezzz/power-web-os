@@ -25,6 +25,7 @@ class RadarExternalCallBudgetSettings:
     openrouter_web_max_total_results_per_call: int | None = None
     smoke_max_candidates: int | None = None
     smoke_max_signals: int | None = None
+    budget_reserve_limits: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +59,8 @@ class RadarExternalCallBudget:
     exhaustion_events: list[dict[str, object]] = field(default_factory=list)
     retry_records: list[dict[str, object]] = field(default_factory=list)
     post_call_budget_overruns: list[dict[str, object]] = field(default_factory=list)
+    reserve_counts: dict[str, int] = field(default_factory=dict)
+    reserve_exhaustion_events: list[dict[str, object]] = field(default_factory=list)
 
     def reserve(self, kind: ExternalCallKind, *, key: str = "run", task_id: str = "") -> RadarExternalCallBudgetDecision:
         budget_key = f"{kind}:{key or 'run'}" if kind == "provider_retry" else f"{kind}:run"
@@ -176,6 +179,43 @@ class RadarExternalCallBudget:
             "budget_decision": decision.to_payload(),
         })
 
+    def reserve_budget_slice(
+        self,
+        reserve_key: str,
+        *,
+        units: int = 1,
+        task_id: str = "",
+        reason: str = "",
+    ) -> RadarExternalCallBudgetDecision:
+        key = f"budget_reserve:{reserve_key or 'unclassified'}"
+        limit = _non_negative(self.settings.budget_reserve_limits.get(reserve_key or "unclassified"))
+        current = self.reserve_counts.get(key, 0)
+        if limit is not None and current + max(units, 1) > limit:
+            decision = RadarExternalCallBudgetDecision(
+                accepted=False,
+                kind="budget_reserve",
+                key=key,
+                limit=limit,
+                current=current,
+                reason="budget_reserve_exhausted",
+                message=f"Radar budget reserve {reserve_key} reached: {current}/{limit}.",
+            )
+            self.reserve_exhaustion_events.append({
+                "task_id": task_id,
+                "reserve_key": reserve_key,
+                "reason_detail": reason,
+                **decision.to_payload(),
+            })
+            return decision
+        self.reserve_counts[key] = current + max(units, 1)
+        return RadarExternalCallBudgetDecision(
+            accepted=True,
+            kind="budget_reserve",
+            key=key,
+            limit=limit,
+            current=self.reserve_counts[key],
+        )
+
     def to_metadata(self) -> dict[str, object]:
         return {
             "run_profile": self.settings.run_profile,
@@ -191,6 +231,7 @@ class RadarExternalCallBudget:
                 "openrouter_web_max_total_results_per_call": self.settings.openrouter_web_max_total_results_per_call,
                 "smoke_max_candidates": self.settings.smoke_max_candidates,
                 "smoke_max_signals": self.settings.smoke_max_signals,
+                "budget_reserve_limits": dict(self.settings.budget_reserve_limits),
             },
             "external_call_budget_counters": dict(self.counts),
             "external_call_budget_counters_by_role": _counts_by_role(self.counts),
@@ -201,6 +242,8 @@ class RadarExternalCallBudget:
                 "limit": self.settings.max_openrouter_server_tool_web_searches_per_run,
             },
             "post_call_budget_overruns": list(self.post_call_budget_overruns),
+            "budget_reserve_counters": dict(self.reserve_counts),
+            "budget_reserve_exhaustion_events": list(self.reserve_exhaustion_events),
         }
 
     def _limit_for(self, kind: ExternalCallKind) -> int | None:
@@ -264,6 +307,19 @@ def record_openrouter_server_tool_usage(*, count: int, task_id: str = "") -> Rad
     return budget.record_server_tool_web_search_usage(count=count, task_id=task_id)
 
 
+def reserve_budget_slice(
+    reserve_key: str,
+    *,
+    units: int = 1,
+    task_id: str = "",
+    reason: str = "",
+) -> RadarExternalCallBudgetDecision:
+    budget = current_external_call_budget()
+    if budget is None:
+        return RadarExternalCallBudgetDecision(accepted=True, kind="budget_reserve", key=f"budget_reserve:{reserve_key}")
+    return budget.reserve_budget_slice(reserve_key, units=units, task_id=task_id, reason=reason)
+
+
 def external_budget_settings_from_context(context: dict[str, object]) -> RadarExternalCallBudgetSettings:
     profile = str(context.get("run_profile") or "live").strip().lower()
     if profile not in {"live", "smoke"}:
@@ -292,6 +348,7 @@ def external_budget_settings_from_context(context: dict[str, object]) -> RadarEx
         ),
         smoke_max_candidates=_context_int_or_default(context, "smoke_max_candidates", 2 if smoke else None),
         smoke_max_signals=_context_int_or_default(context, "smoke_max_signals", 1 if smoke else None),
+        budget_reserve_limits=_budget_reserve_limits(context, smoke=smoke),
     )
 
 
@@ -321,3 +378,34 @@ def _counts_by_role(counts: dict[str, int]) -> dict[str, int]:
         role = key.split(":", 1)[0]
         roles[role] = roles.get(role, 0) + value
     return roles
+
+
+def _budget_reserve_limits(context: dict[str, object], *, smoke: bool) -> dict[str, int]:
+    configured = context.get("budget_reserve_limits")
+    if isinstance(configured, dict):
+        return {
+            str(key): parsed
+            for key, value in configured.items()
+            if (parsed := _parse_non_negative_int(value)) is not None
+        }
+    if not smoke:
+        return {}
+    return {
+        "primary_discovery": 3,
+        "registry_identity": 2,
+        "recall_expansion": 3,
+        "official_coverage_probe": 2,
+        "open_web_coverage_probe": 3,
+        "extraction_recovery": 2,
+        "signal_search": 1,
+    }
+
+
+def _parse_non_negative_int(value: object) -> int | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        parsed = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed >= 0 else None

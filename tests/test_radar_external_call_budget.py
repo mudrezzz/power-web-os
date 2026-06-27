@@ -15,6 +15,7 @@ from power_web_os.application.live_radar_external_budget import (
     RadarExternalCallBudgetSettings,
     external_call_budget_context,
     record_openrouter_server_tool_usage,
+    reserve_budget_slice,
     reserve_openrouter_http_call,
 )
 from power_web_os.application.live_radar_staged_helpers import run_task
@@ -87,6 +88,32 @@ def test_server_tool_usage_overrun_is_recorded_after_completed_call() -> None:
     assert not decision.accepted
     assert decision.reason == "external_call_budget_overrun"
     assert budget.post_call_budget_overruns[0]["task_id"] == "web-1"
+
+
+def test_budget_reserve_counters_are_separate_from_external_call_counters() -> None:
+    budget = RadarExternalCallBudget(
+        RadarExternalCallBudgetSettings(
+            max_openrouter_calls_per_run=10,
+            budget_reserve_limits={"recall_expansion": 1, "registry_identity": 1},
+        )
+    )
+
+    with external_call_budget_context(budget):
+        registry = reserve_budget_slice("registry_identity", task_id="registry")
+        expansion = reserve_budget_slice("recall_expansion", task_id="expansion-1")
+        blocked = reserve_budget_slice("recall_expansion", task_id="expansion-2")
+        openrouter = reserve_openrouter_http_call(role="web_task", task_id="web")
+
+    assert registry.accepted
+    assert expansion.accepted
+    assert not blocked.accepted
+    assert blocked.reason == "budget_reserve_exhausted"
+    assert openrouter.accepted
+    metadata = budget.to_metadata()
+    assert metadata["budget_reserve_counters"]["budget_reserve:registry_identity"] == 1
+    assert metadata["budget_reserve_counters"]["budget_reserve:recall_expansion"] == 1
+    assert metadata["external_call_budget_counters"]["openrouter:run"] == 1
+    assert metadata["budget_reserve_exhaustion_events"][0]["task_id"] == "expansion-2"
 
 
 def test_openrouter_request_uses_smoke_web_result_caps() -> None:

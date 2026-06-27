@@ -7,6 +7,8 @@ from pypdf import PdfReader
 
 AS_IS_MD = Path("docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md")
 AS_IS_PDF = Path("docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.pdf")
+TO_BE_036_MD = Path("docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_0.7.6.3.6.md")
+TO_BE_036_PDF = Path("docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_0.7.6.3.6.pdf")
 SKILL_PATHS = [
     Path(".agents/skills/radar-pipeline-to-be-design/SKILL.md"),
     Path(".agents/skills/radar-pipeline-as-is-sync/SKILL.md"),
@@ -86,5 +88,22 @@ def test_radar_pipeline_documentation_skills_are_discoverable() -> None:
     as_is = SKILL_PATHS[1].read_text(encoding="utf-8")
     finalize = SKILL_PATHS[2].read_text(encoding="utf-8")
     assert "Do not implement production code" in to_be
+    assert "RADAR_SEARCH_PIPELINE_TO_BE_<slice>.pdf" in to_be
+    assert "--source docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.md" in to_be
     assert "python scripts/render_radar_pipeline_doc.py" in as_is
     assert "Do not mark a TO BE behavior as AS IS unless it is implemented" in finalize
+
+
+def test_current_radar_pipeline_to_be_pdf_exists_and_is_rendered() -> None:
+    assert TO_BE_036_MD.exists()
+    assert TO_BE_036_PDF.exists()
+    reader = PdfReader(str(TO_BE_036_PDF))
+    text = "\n".join(page.extract_text() or "" for page in reader.pages)
+
+    assert "Radar Search Pipeline TO BE: 0.7.6.3.6" in text
+    assert "Figure 1. Source-profile-driven recall expansion flow" in text
+    assert "Figure 2. Expansion target queue flow" in text
+    for marker in FORBIDDEN_PDF_MERMAID_MARKERS:
+        assert marker not in text
+    for marker in FORBIDDEN_PRODUCT_MARKERS:
+        assert marker not in text

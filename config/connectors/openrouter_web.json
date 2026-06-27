@@ -30,5 +30,35 @@
     "Requires extraction and evidence-ref reconciliation before product use",
     "Does not replace structured registry lookup"
   ],
+  "accepted_input_shapes": [
+    "broad_query",
+    "domain_or_url",
+    "alias_or_language_variant",
+    "candidate_scope"
+  ],
+  "bad_input_shapes": [
+    "secret_value",
+    "private_reasoning_request"
+  ],
+  "returned_fact_kinds": [
+    "url",
+    "title",
+    "snippet",
+    "citation",
+    "coverage_evidence",
+    "signal_evidence",
+    "candidate_universe_gap"
+  ],
+  "useful_result_criteria": [
+    "Retrieved URL/title/snippet",
+    "Source-backed candidate universe observation",
+    "Source-backed searched-negative signal outcome"
+  ],
+  "non_blocking_outcomes": [
+    "retrieved_not_linked",
+    "analyzed_only",
+    "no_supporting_evidence"
+  ],
+  "language_hints": ["ru", "en", "source_language"],
   "credential_env_vars": ["OPENROUTER_API_KEY"]
 }

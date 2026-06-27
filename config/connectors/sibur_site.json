@@ -28,5 +28,33 @@
     "May mention production sites or projects that need entity resolution",
     "Does not guarantee full holding-contour enumeration"
   ],
+  "accepted_input_shapes": [
+    "domain_or_url",
+    "official_domain_query",
+    "alias_or_language_variant",
+    "candidate_scope"
+  ],
+  "bad_input_shapes": [
+    "structured_registry_lookup",
+    "inn_only_lookup"
+  ],
+  "returned_fact_kinds": [
+    "official_url",
+    "title",
+    "snippet",
+    "official_relation",
+    "coverage_evidence",
+    "production_site_or_project_mention"
+  ],
+  "useful_result_criteria": [
+    "Official-domain page confirms relation or coverage",
+    "Official source-backed site, branch, asset, or project mention"
+  ],
+  "non_blocking_outcomes": [
+    "no_supporting_evidence",
+    "retrieved_not_linked",
+    "analyzed_only"
+  ],
+  "language_hints": ["ru", "en"],
   "credential_env_vars": []
 }

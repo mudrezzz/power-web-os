@@ -69,6 +69,8 @@ DIAGRAMS = {
     "source_lifecycle": DiagramSpec("Figure 4. Source lifecycle and rejection branches", "source_lifecycle"),
     "context_data_flow": DiagramSpec("Figure 5. Context boundaries across pipeline roles", "context"),
     "as_is_to_be_lifecycle": DiagramSpec("Figure 6. AS IS / TO BE maintenance cycle", "lifecycle"),
+    "to_be_strategy_pipeline": DiagramSpec("Figure 1. Source-profile-driven recall expansion flow", "strategy_pipeline"),
+    "to_be_expansion_target_queue": DiagramSpec("Figure 2. Expansion target queue flow", "target_queue"),
 }
 
 
@@ -88,9 +90,9 @@ class RadarDiagram(Flowable):
 
     def wrap(self, available_width: float, available_height: float) -> tuple[float, float]:
         self.width = available_width
-        if self.diagram_id in {"high_level_pipeline", "planner_sequence", "checkpoint_loop"}:
+        if self.diagram_id in {"high_level_pipeline", "planner_sequence", "checkpoint_loop", "to_be_strategy_pipeline"}:
             self.height = 11.6 * cm
-        elif self.diagram_id == "as_is_to_be_lifecycle":
+        elif self.diagram_id in {"as_is_to_be_lifecycle", "to_be_expansion_target_queue"}:
             self.height = 10.2 * cm
         elif self.diagram_id == "context_data_flow":
             self.height = 7.2 * cm
@@ -108,6 +110,8 @@ class RadarDiagram(Flowable):
             "source_lifecycle": self._draw_source_lifecycle,
             "context": self._draw_context,
             "lifecycle": self._draw_as_is_lifecycle,
+            "strategy_pipeline": self._draw_strategy_pipeline,
+            "target_queue": self._draw_target_queue,
         }.get(spec.kind, self._draw_unknown)()
 
     def _caption(self, text: str) -> None:
@@ -275,6 +279,51 @@ class RadarDiagram(Flowable):
             y -= 42
         self._box(0, 8, self.width, 24, "Rule", "A substantial Radar pipeline slice is Done only after implemented behavior is reflected in AS IS Markdown/PDF.", SOFT_AMBER)
 
+    def _draw_strategy_pipeline(self) -> None:
+        steps = [
+            ("1. Compile profiles", "selected sources -> capability cards", SOFT_GREEN),
+            ("2. Enrich source cards", "best-for, not-for, inputs, facts, obligations", SOFT_BLUE),
+            ("3. Plan and validate", "planner suggests; backend rejects incompatible use", SOFT_AMBER),
+            ("4. Build target queue", "holding, subsidiaries, sites, aliases, source-backed gaps", SOFT_BLUE),
+            ("5. Reserve budgets", "registry, recall expansion, official/open-web probes, signals", SOFT_AMBER),
+            ("6. Execute by priority", "provider-neutral actions under capability and reserve guards", SOFT_GREEN),
+            ("7. Explain outcome", "dossier/report show targets, skipped reasons, reserve spend", SOFT_GRAY),
+        ]
+        box_w = self.width
+        box_h = 34
+        top_y = self.height - 72
+        previous_y = None
+        for idx, (title, body, fill) in enumerate(steps):
+            y = top_y - idx * 43
+            self._box(0, y, box_w, box_h, title, body, fill)
+            if previous_y is not None:
+                self._arrow(self.width / 2, previous_y, self.width / 2, y + box_h)
+            previous_y = y
+
+    def _draw_target_queue(self) -> None:
+        self._box(0, self.height - 56, self.width, 31, "Checkpoint says recall is weak", "source-backed gaps, coverage risk, budget snapshot", SOFT_AMBER)
+        self._arrow(self.width / 2, self.height - 56, self.width / 2, self.height - 69)
+        self._box(0, self.height - 99, self.width, 31, "Collect candidate targets", "retrieved names, unresolved gaps, aliases, benchmark-only misses", SOFT_BLUE)
+        self._arrow(self.width / 2, self.height - 99, self.width / 2, self.height - 113)
+
+        targets = [
+            ("1. Holding/group", "highest priority"),
+            ("2. Subsidiary/legal entity", "source-backed or expected"),
+            ("3. Site/branch/asset", "review-needed upstream"),
+            ("4. Alias/language variant", "Russian/legal-form/English"),
+            ("5. Registry suggestion", "capped lower-priority fan-out"),
+        ]
+        box_w = (self.width - 12) / 2
+        target_h = 28
+        start_y = self.height - 137
+        for idx, (title, body) in enumerate(targets):
+            col = idx % 2
+            row = idx // 2
+            x = col * (box_w + 12)
+            y = start_y - row * 32
+            self._box(x, y, box_w, target_h, title, body, SOFT_GRAY)
+        self._box(0, 5, self.width, 22, "Execution rule", "Run targets by priority and reserve availability. Persist not-searched reasons for every skipped target.", SOFT_GREEN)
+
     def _draw_unknown(self) -> None:
         self._box(0, self.height - 70, self.width, 40, "Unknown diagram", self.diagram_id, SOFT_RED)
 
@@ -414,12 +463,19 @@ def _styles(font_name: str) -> dict[str, ParagraphStyle]:
     }
 
 
-def _markdown_to_story(source: Path, styles: dict[str, ParagraphStyle], page_width: float) -> list:
+def _document_subtitle(title: str) -> str:
+    if "TO BE" in title:
+        return "Review design for a planned Radar search pipeline change"
+    return "Current implementation guide for Radar candidate and signal search"
+
+
+def _markdown_to_story(source: Path, styles: dict[str, ParagraphStyle], page_width: float) -> tuple[list, str]:
     story: list = []
     lines = source.read_text(encoding="utf-8").splitlines()
     in_mermaid = False
     pending_diagram: str | None = None
     table_rows: list[list[str]] = []
+    document_title = "Radar Search Pipeline"
     diagram_pattern = re.compile(r"<!--\s*diagram:\s*([a-zA-Z0-9_-]+)\s*-->")
 
     def flush_table() -> None:
@@ -459,8 +515,9 @@ def _markdown_to_story(source: Path, styles: dict[str, ParagraphStyle], page_wid
             story.append(Spacer(1, 0.05 * cm))
             continue
         if line.startswith("# "):
-            story.append(Paragraph(_inline_code(line[2:]), styles["Title"]))
-            story.append(Paragraph("Current implementation guide for Radar candidate and signal search", styles["Subtitle"]))
+            document_title = line[2:].strip()
+            story.append(Paragraph(_inline_code(document_title), styles["Title"]))
+            story.append(Paragraph(_document_subtitle(document_title), styles["Subtitle"]))
             story.append(HRFlowable(width="100%", thickness=0.7, color=BORDER, spaceBefore=5, spaceAfter=8))
         elif line.startswith("## "):
             title = line[3:]
@@ -476,14 +533,15 @@ def _markdown_to_story(source: Path, styles: dict[str, ParagraphStyle], page_wid
         else:
             story.append(Paragraph(_inline_code(line), styles["Body"]))
     flush_table()
-    return story
+    return story, document_title
 
 
 def _footer(canvas, doc) -> None:
     canvas.saveState()
     canvas.setFont("DocFont", 7)
     canvas.setFillColor(MUTED)
-    canvas.drawString(doc.leftMargin, 0.65 * cm, "Power Web OS - Radar Search Pipeline AS IS")
+    footer_title = getattr(doc, "radar_footer_title", "Radar Search Pipeline")
+    canvas.drawString(doc.leftMargin, 0.65 * cm, f"Power Web OS - {footer_title}")
     canvas.drawRightString(A4[0] - doc.rightMargin, 0.65 * cm, f"Page {doc.page}")
     canvas.restoreState()
 
@@ -500,11 +558,12 @@ def render(source: Path = DEFAULT_SOURCE, output: Path = DEFAULT_OUTPUT) -> None
         rightMargin=right_margin,
         topMargin=1.15 * cm,
         bottomMargin=1.05 * cm,
-        title="Radar Search Pipeline AS IS",
+        title=source.stem,
         author="Power Web OS",
     )
     styles = _styles(font_name)
-    story = _markdown_to_story(source, styles, page_width - left_margin - right_margin)
+    story, document_title = _markdown_to_story(source, styles, page_width - left_margin - right_margin)
+    doc.radar_footer_title = document_title
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
 
 

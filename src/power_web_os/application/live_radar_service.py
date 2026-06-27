@@ -535,9 +535,14 @@ def _merge_external_budget_metadata(base: dict[str, Any], current: dict[str, Any
     if not base:
         return dict(current)
     merged = dict(current)
-    for key in ("external_call_budget_counters", "external_call_budget_counters_by_role"):
+    for key in ("external_call_budget_counters", "external_call_budget_counters_by_role", "budget_reserve_counters"):
         merged[key] = _merge_counter_dicts(base.get(key), current.get(key))
-    for key in ("external_call_budget_exhaustion_events", "provider_retry_records", "post_call_budget_overruns"):
+    for key in (
+        "external_call_budget_exhaustion_events",
+        "provider_retry_records",
+        "post_call_budget_overruns",
+        "budget_reserve_exhaustion_events",
+    ):
         merged[key] = [*_list_payload(base.get(key)), *_list_payload(current.get(key))]
     server_usage = dict(current.get("openrouter_server_tool_usage") or {})
     if not server_usage:

@@ -33,15 +33,23 @@ def test_default_connector_profiles_load_and_compile() -> None:
     assert not dadata.supports_signal_evidence
     assert "free_text_query" not in dadata.required_input_kinds
     assert "DADATA_API_KEY" in dadata.credential_env_vars
+    assert dadata.capability_class == "lookup_only_identity_enrichment"
+    assert "concrete_company" in dadata.accepted_input_shapes
+    assert "broad_query" in dadata.bad_input_shapes
+    assert "alias_no_match_non_blocking" in dadata.non_blocking_outcomes
+    assert {"ru", "en"} <= set(dadata.language_hints)
     assert openrouter is not None
     assert openrouter.source_type == "search_engine"
     assert openrouter.supports_broad_discovery
     assert openrouter.supports_coverage
     assert openrouter.supports_signal_evidence
+    assert openrouter.capability_class == "broad_web_retrieval"
+    assert "broad_query" in openrouter.accepted_input_shapes
     assert sibur is not None
     assert sibur.source_type == "url"
     assert sibur.supports_coverage
     assert not sibur.supports_lookup
+    assert sibur.capability_class == "official_or_domain_coverage"
 
 
 def test_default_connector_registry_loads_from_docker_like_cwd(tmp_path: Path, monkeypatch) -> None:
@@ -109,6 +117,28 @@ def test_human_profile_compiles_to_lookup_only_capability() -> None:
     assert not capability.supports_signal_evidence
     assert "free_text_query" not in capability.required_input_kinds
     assert "legal_identity" in capability.returned_fact_kinds
+
+
+def test_spark_like_registry_profile_compiles_without_provider_specific_branch() -> None:
+    profile = ConnectorProfile(
+        id="spark_registry",
+        display_name="SPARK registry",
+        description="Structured company registry lookup for legal identity, registry status, and enrichment facts.",
+        source_type="company_registry",
+        runtime_provider_id="spark",
+        good_inputs=("Concrete company name", "INN", "OGRN", "Russian legal-name alias"),
+        bad_inputs=("Broad holding contour enumeration", "Signal evidence query"),
+        expected_facts=("Legal entity name", "INN", "OGRN", "Registry status", "Industry"),
+        limitations=("Lookup-only source; requires concrete input",),
+    )
+
+    capability = compile_connector_capability(profile)
+
+    assert capability.capability_class == "lookup_only_identity_enrichment"
+    assert capability.requires_concrete_input
+    assert not capability.supports_broad_discovery
+    assert "broad_query" in capability.bad_input_shapes
+    assert "alias_no_match_non_blocking" in capability.non_blocking_outcomes
 
 
 def test_planner_source_cards_are_compiled_without_credentials() -> None:

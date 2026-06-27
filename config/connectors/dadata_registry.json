@@ -32,5 +32,37 @@
     "Requires concrete legal name, INN, OGRN, or candidate scope",
     "Does not provide current intent signal evidence"
   ],
+  "accepted_input_shapes": [
+    "concrete_company",
+    "candidate_scope",
+    "inn",
+    "ogrn",
+    "alias_or_language_variant"
+  ],
+  "bad_input_shapes": [
+    "broad_query",
+    "placeholder_candidate_scope",
+    "holding_contour_enumeration",
+    "signal_evidence_query"
+  ],
+  "returned_fact_kinds": [
+    "legal_identity",
+    "registry_status",
+    "registered_address",
+    "industry_or_okved",
+    "registry_identifier"
+  ],
+  "useful_result_criteria": [
+    "Exact INN or OGRN match",
+    "High-confidence legal-name match",
+    "Ambiguous source-backed observation retained for review"
+  ],
+  "non_blocking_outcomes": [
+    "alias_no_match_non_blocking",
+    "registry_lookup_insufficient",
+    "ambiguous_match_review_needed",
+    "identity_lookup_needs_better_terms"
+  ],
+  "language_hints": ["ru", "en"],
   "credential_env_vars": ["DADATA_API_KEY", "DADATA_SECRET_KEY"]
 }

@@ -22,12 +22,19 @@ Read these sources in order:
 
 ## Output
 
-Create:
+Create both:
 
 `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.md`
+`docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.pdf`
 
 Use the slice id exactly, replacing characters only when required by the file
 system.
+
+Generate the PDF from the Markdown with:
+
+```bash
+python scripts/render_radar_pipeline_doc.py --source docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.md --output docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.pdf
+```
 
 ## Required TO BE Sections
 
@@ -53,10 +60,18 @@ system.
   dumps.
 - Keep the design slice-sized. Large redesigns should be split into smaller
   TO BE documents and roadmap slices.
+- The Markdown may keep Mermaid source for GitHub readability, but the PDF must
+  contain rendered diagrams/controlled diagram flowables, not raw Mermaid
+  notation.
 
 ## Completion Checklist
 
 - TO BE document exists under `docs/radar/to-be/`.
+- TO BE PDF exists next to the Markdown.
+- TO BE PDF was visually checked or rendered to preview images when layout
+  changed.
+- TO BE PDF does not expose raw Mermaid code, raw prompts, secrets, raw hidden
+  reasoning, headers, tokens, or provider dumps.
 - The user can review the intended algorithm without reading the codebase.
 - Tests are specific to the changed logic.
 - The next implementation slice can be generated from the TO BE.
