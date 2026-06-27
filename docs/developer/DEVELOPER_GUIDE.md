@@ -116,6 +116,44 @@ so the repository can be tested without a running database service. Set
 `POWER_WEB_OS_DATABASE_URL=postgresql+psycopg://user:password@host:5432/power_web_os`
 for PostgreSQL-backed development.
 
+## Radar Search Pipeline Documentation
+
+The current Radar candidate and signal search algorithm is documented in:
+
+```text
+docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md
+docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.pdf
+```
+
+The Markdown file is the canonical source. The PDF is a generated review
+artifact with rendered process diagrams. Do not treat raw Mermaid blocks in the
+Markdown as sufficient PDF output; regenerate the PDF whenever the AS IS
+document changes:
+
+```bash
+python scripts/render_radar_pipeline_doc.py
+python -m pytest tests/test_radar_pipeline_documentation_contract.py -q
+```
+
+Before implementing a substantial change to Radar planning, retrieval,
+extraction, source routing, registry lookup, candidate universe retention,
+checkpoint behavior, budgets, signal search, dossier projection, or evaluation,
+create a TO BE document:
+
+```text
+docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.md
+```
+
+Use the project skills for the documentation loop:
+
+- `$radar-pipeline-to-be-design` before implementation;
+- `$radar-pipeline-as-is-sync` after implementation changes AS IS behavior;
+- `$radar-pipeline-to-as-is-finalize` when a TO BE slice is implemented and
+  must be reconciled with actual behavior.
+
+Future Radar pipeline slices are not complete until the AS IS Markdown/PDF and
+the documentation contract test are current.
+
 Direct checkout demo without installing:
 
 ```bash

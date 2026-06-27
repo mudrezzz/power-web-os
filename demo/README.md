@@ -356,6 +356,14 @@ universe as `not_standalone_legal_entity` instead of disappearing from the
 evaluation. This affects `review_recall` only; strict product candidates remain
 legal entities with evidence-backed account qualification.
 
+The current Radar search algorithm is described in
+`docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` and the generated PDF companion
+`docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.pdf`. Read that document before treating
+a smoke/evaluation result as evidence for a new corrective slice: it explains
+the planner, extractor, backup extractor, source registry, search expansion,
+DaData lookup, checkpoint, signal search, dossier, and evaluation loops and the
+diagnostic fields to inspect.
+
 After `0.7.6.3.2`, the evaluation report also classifies false negatives with
 `false_negative_diagnostics`. Use that first to see whether a missed entity was
 already present in saved source diagnostics, present but not matched, or absent

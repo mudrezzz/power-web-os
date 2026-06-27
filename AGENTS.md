@@ -272,5 +272,8 @@ Use these skills when available:
 - `$radar-run-diagnostics` when the user provides a Radar run id and asks what happened, why results look wrong, whether the behavior matches the roadmap, or what corrective slice should come next.
 - `$radar-run-self-test` when the user asks Codex to start a Radar run itself, poll it to completion or timeout, and then diagnose the result without making the user act as the tester.
 - `$radar-run-autofix` when the user asks Codex to run Radar, diagnose the result, compare it with `ROADMAP.md`, and automatically patch non-architectural defects in a bounded correction loop before rerunning.
+- `$radar-pipeline-to-be-design` before substantial Radar search pipeline changes that affect planner, retrieval, extraction, source routing, registry lookup, candidate universe, checkpoints, budgets, signal search, dossier projection, or evaluation.
+- `$radar-pipeline-as-is-sync` after implemented Radar pipeline behavior changes and `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` plus the generated PDF must be synchronized.
+- `$radar-pipeline-to-as-is-finalize` after a TO BE Radar pipeline slice is implemented and the reviewed design must be reconciled with actual AS IS behavior.
 
 Do not duplicate full skill workflows here. The `SKILL.md` files are the source of truth for task-specific procedures.

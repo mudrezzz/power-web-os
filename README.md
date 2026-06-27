@@ -129,6 +129,7 @@ npm --prefix ./frontend run visual:smoke
 
 - [Roadmap](ROADMAP.md)
 - [System Architecture Overview](docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md)
+- [Radar Search Pipeline AS IS](docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md)
 - [Architecture Decision Records](docs/adr/README.md)
 - [Contributor Guide](docs/contributor/CONTRIBUTING.md)
 - [Developer Guide](docs/developer/DEVELOPER_GUIDE.md)

@@ -28,6 +28,7 @@ ADRs capture decisions that shape product architecture.
 - `2026-06-23-radar-source-obligations-and-adaptive-checkpoints.md` - Treat Radar source policies as enforceable obligations and add adaptive execution checkpoints before benchmark runs.
 - `2026-06-23-radar-entity-resolution-before-account-scoring.md` - Resolve legal entities separately from sites, projects, and assets before Radar account scoring.
 - `2026-06-25-connector-profiles-compile-to-source-capabilities.md` - Let external source connectors describe themselves in plugin-friendly profiles, then compile them into internal Radar source capabilities for planner and validator use.
+- `2026-06-27-radar-search-pipeline-as-is-to-be-docs.md` - Maintain Radar search pipeline AS IS/TO BE documents and rendered PDF diagrams as part of the implementation control loop.
 
 ## Template
 

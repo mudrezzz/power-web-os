@@ -263,6 +263,14 @@ what counts as a useful result. The Radar definition remains responsible for
 choosing sources and usage obligations; the connector profile explains what each
 source can actually do.
 
+The detailed current algorithm is maintained outside this overview in
+`docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` with a generated PDF companion at
+`docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.pdf`. Substantial future changes to
+Radar planning, retrieval, extraction, registry lookup, candidate universe
+retention, checkpoints, budgets, signal search, dossier projection, or
+evaluation should first produce a reviewed TO BE document under
+`docs/radar/to-be/` and then update the AS IS document after implementation.
+
 Candidate universe execution is now iterative. Accepted discovery plans may
 contain executable `coverage_check` stages. The application service runs initial
 candidate discovery, applies qualification gates, executes coverage checks,

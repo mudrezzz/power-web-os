@@ -5131,6 +5131,146 @@ Principles:
     fails, classify the blocker as retrieval expansion quality, projection, or
     evaluation matcher before planning another corrective slice.
 
+### Slice 0.7.6.3.5: Radar search pipeline AS IS/TO BE documentation system
+
+- Status: `Done`
+- Goal: Create a durable, detailed documentation system for the current Radar
+  candidate and signal search pipeline. The AS IS document must describe the
+  actual implementation after each completed pipeline slice; TO BE documents
+  must be prepared before substantial pipeline changes so the intended
+  algorithm can be reviewed before implementation.
+- User value: A user or new developer can understand how Radar search works
+  without reading scattered RCA notes, test fixtures, roadmap entries, and
+  provider code. Agents can quickly identify the correct extension point before
+  changing planner, retrieval, extraction, source routing, checkpointing,
+  scoring, or evaluation behavior.
+- Scope:
+  - Add `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` as the canonical Markdown
+    source of truth for the current candidate/signal search algorithm.
+  - Add generated `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.pdf`.
+  - The AS IS document must describe:
+    - end-to-end Radar run flow from API run creation to dossier/evaluation;
+    - active definition loading, source policy, connector profiles, capability
+      cards, and planner source cards;
+    - planner, extractor, backup extractor, source registry, DaData/company
+      registry, retrieval provider, checkpoint service, entity resolver,
+      scorer, dossier projector, and evaluator roles;
+    - staged execution loops: planning/revision, discovery, search expansion,
+      registry lookup, extraction recovery, checkpoint/adaptive decisions,
+      qualification/coverage, signal search, projection, and evaluation;
+    - context passed between roles and context that must never be passed
+      (`secrets`, raw hidden reasoning, raw provider dumps);
+    - execution budgets, external-call budgets, provider retry budgets, smoke
+      and benchmark profiles;
+    - failure/review semantics: `not_observed`, `not_searched_*`,
+      `stopped_for_review`, `blocked_by_policy`, `budget_limited`,
+      `schema_rejected`, `linking_failed`, and review-needed entities;
+    - source lifecycle states: `retrieved`, `analyzed`, `parsed`, `linked`,
+      `used`, `analyzed_only`, `schema_rejected`, `linking_failed`,
+      `verification_failed`, and `budget_limited`;
+    - extension points and the required tests for each extension point.
+  - Add rendered process diagrams:
+    - high-level Radar pipeline flow;
+    - role interaction sequence for planner/extractor/backup/source registry;
+    - checkpoint/adaptive loop;
+    - source lifecycle;
+    - context/data-flow map;
+    - AS IS/TO BE maintenance lifecycle.
+  - Markdown may contain Mermaid source blocks, but generated PDF must contain
+    rendered diagrams/images, not raw Mermaid notation.
+  - Add a TO BE document convention:
+    `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.md`.
+  - Add agent skills:
+    - `radar-pipeline-to-be-design`: create TO BE pipeline design before a
+      substantial Radar pipeline slice;
+    - `radar-pipeline-as-is-sync`: update AS IS Markdown/PDF after implementation;
+    - `radar-pipeline-to-as-is-finalize`: compare implemented behavior with
+      TO BE, record deviations, and finalize AS IS.
+  - Add a lightweight documentation contract test ensuring the AS IS Markdown
+    and PDF exist, the Markdown has required sections, and the PDF does not
+    expose raw Mermaid code markers.
+- Done:
+  - Added `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` as the canonical AS IS
+    map for the current Radar candidate and signal search pipeline.
+  - Added generated `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.pdf` with rendered
+    diagram flowables instead of raw Mermaid notation.
+  - Added `docs/radar/to-be/README.md` with the TO BE naming convention and
+    finalization rule.
+  - Added `scripts/render_radar_pipeline_doc.py` to regenerate the PDF from the
+    Markdown source.
+  - Added agent skills:
+    - `radar-pipeline-to-be-design`;
+    - `radar-pipeline-as-is-sync`;
+    - `radar-pipeline-to-as-is-finalize`.
+  - Added ADR `docs/adr/2026-06-27-radar-search-pipeline-as-is-to-be-docs.md`.
+  - Updated `README.md`, `AGENTS.md`, architecture overview, developer guide,
+    demo README, and ADR index with the AS IS/TO BE workflow.
+  - Added `tests/test_radar_pipeline_documentation_contract.py`.
+- Out of scope:
+  - Changing Radar execution behavior.
+  - Changing planner prompts or provider contracts.
+  - Adding frontend screens.
+  - Claiming benchmark quality improvements.
+- Implementation notes:
+  - Treat Markdown as the source of truth and PDF as generated review artifact.
+  - Prefer a deterministic script or documented command for rendering Mermaid
+    diagrams before PDF generation.
+  - Keep generated PDF product-safe: no secrets, raw prompts, raw hidden
+    reasoning, headers, tokens, or raw provider dumps.
+  - The AS IS document should reference tests and observability fields instead
+    of duplicating large implementation snippets.
+  - Update the roadmap process so future slices touching Radar planning,
+    retrieval, extraction, registry lookup, candidate universe, checkpoints,
+    budgets, signal search, dossier projection, or evaluation must update AS IS.
+- Tests:
+  - Documentation contract test checks:
+    - `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` exists;
+    - `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.pdf` exists;
+    - required sections are present: roles, end-to-end flow, loops, context
+      management, budgets, failure semantics, source lifecycle, extension
+      points, and test map;
+    - PDF text does not contain raw Mermaid markers such as
+      `````mermaid`, `flowchart TD`, or `sequenceDiagram`;
+    - document text contains no secret-like markers or hidden reasoning keys.
+  - Skill contract tests, if existing skill tests support them, check that the
+    three Radar pipeline documentation skills exist and point to the AS IS/TO BE
+    workflow.
+- Validation:
+  - Done: `python scripts/render_radar_pipeline_doc.py`.
+  - Done: fallback PDF verification via `pypdf`: 10 pages, title present,
+    rendered diagram markers present, no raw Mermaid markers in extracted text.
+  - Done: `python -m pytest tests/test_radar_pipeline_documentation_contract.py -q`.
+  - Done: `python -m pytest tests/test_backend_architecture_contract.py -q`.
+- Docs:
+  - Update `docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md` with the new
+    Radar pipeline documentation boundary.
+  - Update `docs/developer/DEVELOPER_GUIDE.md` with the AS IS/TO BE update
+    procedure.
+  - Update `demo/README.md` only if benchmark/Radar validation flow references
+    the new document.
+  - Add or update an ADR if the rendering/tooling choice introduces a durable
+    documentation-generation decision.
+- Demo impact:
+  - No user-facing demo change.
+  - Demo/benchmark operators get a single current document explaining how to
+    interpret Radar run diagnostics and where to extend the pipeline.
+- Acceptance criteria:
+  - AS IS Markdown and PDF exist and describe the current Radar search pipeline
+    in enough detail to identify extension points without reading the whole
+    codebase.
+  - PDF contains rendered diagrams, not raw Mermaid notation.
+  - TO BE workflow and file naming convention are documented.
+  - Agent skills for TO BE design and AS IS synchronization are available.
+  - Documentation contract tests pass.
+  - `ROADMAP.md` records that substantial future Radar pipeline slices must
+    prepare TO BE first and finalize AS IS after implementation.
+- Risks:
+  - The document can drift if not enforced; mitigate with a contract test and
+    explicit slice completion criteria.
+  - PDF rendering can become brittle across local/Docker environments; mitigate
+    by documenting the exact render command and keeping temporary render assets
+    out of the canonical source.
+
 ### Slice 0.7: Human review queue loop
 
 - Status: `Backlog`
@@ -5678,11 +5818,11 @@ None.
 
 ## Next Recommended Task
 
-Run the bounded Docker/API/worker SIBUR benchmark smoke again, then evaluate it
-against `sibur_contour_curated_v1`. `0.7.6.3.4` added recall-first search
-expansion and multi-term DaData identity lookup, so the next decision should be
-evidence-based: if `benchmark_smoke` reaches the diagnostic gate, allow one
-bounded `benchmark_live`; if it still fails, plan the next corrective slice from
-the actual failure bucket (`retrieval_expansion_quality`,
+Rerun the bounded Docker/API/worker `benchmark-sibur-holding-contour` smoke and
+evaluate it against `sibur_contour_curated_v1`. `0.7.6.3.5` added the AS IS/TO
+BE documentation loop, so any next substantial Radar pipeline correction should
+first produce a reviewed TO BE document and then update the AS IS Markdown/PDF
+after implementation. If the benchmark smoke still fails, plan the next
+corrective slice from the actual failure bucket (`retrieval_expansion_quality`,
 `projection_or_universe_retention`, `identity_lookup_terms`, `source_budget`, or
 `evaluation_matcher`).
