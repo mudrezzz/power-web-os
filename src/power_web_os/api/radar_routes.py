@@ -149,76 +149,7 @@ def queue_radar_run(radar_id: str, request: RadarRunRequest, context: RadarConte
             idempotency_key=request.idempotency_key,
             correlation_id=request.correlation_id,
             requester=request.requester,
-            task_context={
-                **request.task_context,
-                "max_web_tasks_per_subject": context.radar_max_web_tasks_per_subject,
-                "max_discovery_tasks_per_rule": context.radar_max_discovery_tasks_per_rule,
-                "max_gate_tasks_per_candidate_rule": context.radar_max_gate_tasks_per_candidate_rule,
-                "max_signal_tasks_per_candidate_signal": context.radar_max_signal_tasks_per_candidate_signal,
-                "max_total_web_tasks_per_run": context.radar_max_total_web_tasks_per_run,
-                "source_verification_mode": context.radar_source_verification_mode,
-                "min_useful_sources_per_discovery_task": context.radar_min_useful_sources_per_discovery_task,
-                "min_candidates_per_discovery_task": context.radar_min_candidates_per_discovery_task,
-                "max_discovery_retries_per_task": context.radar_max_discovery_retries_per_task,
-                "max_checkpoint_revisions_per_run": context.radar_max_checkpoint_revisions_per_run,
-                "max_checkpoint_retries_per_stage": context.radar_max_checkpoint_retries_per_stage,
-                "run_profile": _task_context_or_default(request.task_context, "run_profile", context.radar_run_profile),
-                "max_openrouter_calls_per_run": _task_context_or_default(
-                    request.task_context,
-                    "max_openrouter_calls_per_run",
-                    context.radar_max_openrouter_calls_per_run,
-                ),
-                "max_openrouter_planner_calls_per_run": _task_context_or_default(
-                    request.task_context,
-                    "max_openrouter_planner_calls_per_run",
-                    context.radar_max_openrouter_planner_calls_per_run,
-                ),
-                "max_openrouter_web_task_calls_per_run": _task_context_or_default(
-                    request.task_context,
-                    "max_openrouter_web_task_calls_per_run",
-                    context.radar_max_openrouter_web_task_calls_per_run,
-                ),
-                "max_openrouter_server_tool_web_searches_per_run": _task_context_or_default(
-                    request.task_context,
-                    "max_openrouter_server_tool_web_searches_per_run",
-                    context.radar_max_openrouter_server_tool_web_searches_per_run,
-                ),
-                "max_dadata_lookups_per_run": _task_context_or_default(
-                    request.task_context,
-                    "max_dadata_lookups_per_run",
-                    context.radar_max_dadata_lookups_per_run,
-                ),
-                "max_source_verification_requests_per_run": _task_context_or_default(
-                    request.task_context,
-                    "max_source_verification_requests_per_run",
-                    context.radar_max_source_verification_requests_per_run,
-                ),
-                "max_provider_retries_per_task": _task_context_or_default(
-                    request.task_context,
-                    "max_provider_retries_per_task",
-                    context.radar_max_provider_retries_per_task,
-                ),
-                "openrouter_web_max_results_per_call": _task_context_or_default(
-                    request.task_context,
-                    "openrouter_web_max_results_per_call",
-                    context.radar_openrouter_web_max_results_per_call,
-                ),
-                "openrouter_web_max_total_results_per_call": _task_context_or_default(
-                    request.task_context,
-                    "openrouter_web_max_total_results_per_call",
-                    context.radar_openrouter_web_max_total_results_per_call,
-                ),
-                "smoke_max_candidates": _task_context_or_default(
-                    request.task_context,
-                    "smoke_max_candidates",
-                    context.radar_smoke_max_candidates,
-                ),
-                "smoke_max_signals": _task_context_or_default(
-                    request.task_context,
-                    "smoke_max_signals",
-                    context.radar_smoke_max_signals,
-                ),
-            },
+            task_context=_run_task_context(request.task_context, context),
             api_runtime_config=context.runtime_config_report,
         )
     )
@@ -449,6 +380,38 @@ def _payload_list(value: object) -> list[dict[str, object]]:
     if not isinstance(value, list):
         return []
     return [dict(item) for item in value if isinstance(item, dict)]
+
+
+def _run_task_context(request_task_context: dict[str, object], context: RadarApiContext) -> dict[str, object]:
+    defaults = (
+        ("max_web_tasks_per_subject", context.radar_max_web_tasks_per_subject),
+        ("max_discovery_tasks_per_rule", context.radar_max_discovery_tasks_per_rule),
+        ("max_gate_tasks_per_candidate_rule", context.radar_max_gate_tasks_per_candidate_rule),
+        ("max_signal_tasks_per_candidate_signal", context.radar_max_signal_tasks_per_candidate_signal),
+        ("max_total_web_tasks_per_run", context.radar_max_total_web_tasks_per_run),
+        ("source_verification_mode", context.radar_source_verification_mode),
+        ("min_useful_sources_per_discovery_task", context.radar_min_useful_sources_per_discovery_task),
+        ("min_candidates_per_discovery_task", context.radar_min_candidates_per_discovery_task),
+        ("max_discovery_retries_per_task", context.radar_max_discovery_retries_per_task),
+        ("max_checkpoint_revisions_per_run", context.radar_max_checkpoint_revisions_per_run),
+        ("max_checkpoint_retries_per_stage", context.radar_max_checkpoint_retries_per_stage),
+        ("run_profile", context.radar_run_profile),
+        ("max_openrouter_calls_per_run", context.radar_max_openrouter_calls_per_run),
+        ("max_openrouter_planner_calls_per_run", context.radar_max_openrouter_planner_calls_per_run),
+        ("max_openrouter_web_task_calls_per_run", context.radar_max_openrouter_web_task_calls_per_run),
+        ("max_openrouter_server_tool_web_searches_per_run", context.radar_max_openrouter_server_tool_web_searches_per_run),
+        ("max_dadata_lookups_per_run", context.radar_max_dadata_lookups_per_run),
+        ("max_source_verification_requests_per_run", context.radar_max_source_verification_requests_per_run),
+        ("max_provider_retries_per_task", context.radar_max_provider_retries_per_task),
+        ("openrouter_web_max_results_per_call", context.radar_openrouter_web_max_results_per_call),
+        ("openrouter_web_max_total_results_per_call", context.radar_openrouter_web_max_total_results_per_call),
+        ("smoke_max_candidates", context.radar_smoke_max_candidates),
+        ("smoke_max_signals", context.radar_smoke_max_signals),
+    )
+    return {
+        **request_task_context,
+        **{key: _task_context_or_default(request_task_context, key, default) for key, default in defaults},
+    }
 
 
 def _task_context_or_default(task_context: dict[str, object], key: str, default: object) -> object:

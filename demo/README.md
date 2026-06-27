@@ -333,7 +333,9 @@ stopped for an explicit review reason, `budget_limited` means configured
 benchmark limits shaped the result, and `failed_runtime` means infrastructure or
 worker execution failed. Use `benchmark_smoke` for all benchmark radars; use
 `benchmark_live` only for one radar at a time after the smoke report is
-actionable.
+actionable. Benchmark profiles send explicit `task_context` budgets through the
+API request; those profile budgets should take precedence over local `.env`
+defaults so the report remains reproducible across machines.
 
 After `0.7.6.3`, evaluate the SIBUR benchmark against a small curated baseline:
 
@@ -365,6 +367,22 @@ python -m power_web_os.demo probe-radar-coverage --api-url http://127.0.0.1:8001
 
 This writes `demo/output/radar_coverage_probe_report.json`. It is an RCA tool:
 probe hits do not change the original benchmark recall/precision metrics.
+
+After `0.7.6.3.4`, weak upstream discovery should expand the search pool before
+the run returns an empty diagnostic result. In the dossier, check
+`search_expansion_query_variants` and `search_expansion_results`: they should
+show official-domain queries such as `site:sibur.ru <entity>`, open-web relation
+queries such as `<entity> СИБУР`, identity queries with `ИНН/ОГРН`, and
+industrial/site queries with `завод`, `ГПЗ`, `площадка`, or `филиал` when the
+source policy allows those sources. The expansion is bounded and still counts
+against normal web-task/external-call budgets.
+
+DaData identity lookup also became multi-term. Inspect `registry_lookup_terms`
+and `registry_lookup_attempts`: an English alias can fail with `no_match`
+without blocking the run if later Russian/legal-form terms or official/web
+evidence support the entity. A source-backed but unresolved branch, plant, site,
+or weak legal-entity mention should remain in the candidate universe with
+review flags instead of becoming a strict product account.
 
 Live Radar also resolves entity type before scoring. The shortlist is an account
 shortlist, so normal candidates are legal entities. Production sites, projects,

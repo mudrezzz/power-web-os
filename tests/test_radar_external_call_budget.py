@@ -207,7 +207,7 @@ def test_provider_schema_invalid_stops_when_retry_budget_is_exhausted() -> None:
     assert result.provider_metadata["budget_decision"]["state"] == "not_executed_budget_limited"
 
 
-def test_required_dadata_no_match_is_attempted_empty_not_satisfied() -> None:
+def test_required_dadata_no_match_is_identity_not_confirmed_not_satisfied() -> None:
     decisions = obligation_decisions_from_plan(
         global_policy={"sources": [_source("dadata_registry", "company_registry", "required_for_identity")]},
         steps=[_task_with_source("step-1", "qualification_discovery", ["dadata_registry"])],
@@ -215,7 +215,7 @@ def test_required_dadata_no_match_is_attempted_empty_not_satisfied() -> None:
         source_provider_outcomes=[{"source_id": "dadata_registry", "outcome": "no_match", "observation_count": 0}],
     )
 
-    assert decisions[0]["status"] == "attempted_empty"
+    assert decisions[0]["status"] == "identity_not_confirmed_after_all_terms"
     assert source_obligation_summary(decisions)["blocking_count"] == 1
 
 

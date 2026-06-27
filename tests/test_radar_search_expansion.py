@@ -1,0 +1,368 @@
+from __future__ import annotations
+
+from typing import Any
+
+from power_web_os.application.live_radar_contracts import (
+    RadarExecutionPlan,
+    RadarExecutionTask,
+    RadarSourceEvidence,
+    WebSearchProviderResult,
+)
+from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
+from power_web_os.application.radar_registry_lookup_terms import RegistryLookupTermGenerator
+from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
+from power_web_os.application.radar_source_obligations import obligation_decisions_from_plan, source_obligation_summary
+from power_web_os.application.radar_source_providers import CompanyLookupRequest, RadarSourceRegistry
+from power_web_os.integrations.dadata_provider import RecordedDaDataCompanyRegistryProvider
+
+
+def test_search_expansion_generates_official_and_open_web_query_variants() -> None:
+    service = RadarSearchExpansionService(max_variants=8)
+
+    plan = service.plan_expansion(
+        radar=_radar_with_sources(),
+        candidate_scope=["Губкинский газоперерабатывающий завод"],
+        provider_metadata={},
+        coverage_checks=[{"completeness_risk": "high"}],
+        unresolved_candidate_gaps=[],
+    )
+
+    queries = [item.query for item in plan.variants]
+    assert plan.should_expand is True
+    assert "site:sibur.ru Губкинский газоперерабатывающий завод" in queries
+    assert "Губкинский газоперерабатывающий завод СИБУР" in queries
+    assert "Губкинский газоперерабатывающий завод ИНН ОГРН" in queries
+    assert "Губкинский газоперерабатывающий завод завод ГПЗ площадка филиал" in queries
+    assert any("sibur_site" in item.source_ids for item in plan.variants)
+    assert any("openrouter_web" in item.source_ids for item in plan.variants)
+
+
+def test_search_expansion_respects_disabled_sources() -> None:
+    radar = _radar_with_sources()
+    radar["global_search_policy"]["sources"][2]["usage_obligation"] = "disabled"
+
+    plan = RadarSearchExpansionService(max_variants=8).plan_expansion(
+        radar=radar,
+        candidate_scope=["Губкинский газоперерабатывающий завод"],
+        provider_metadata={},
+        coverage_checks=[{"completeness_risk": "medium"}],
+        unresolved_candidate_gaps=[],
+    )
+
+    assert plan.should_expand is True
+    assert all("openrouter_web" not in item.source_ids for item in plan.variants)
+    assert any(item.query.startswith("site:sibur.ru") for item in plan.variants)
+
+
+def test_registry_lookup_terms_generate_russian_variants_for_english_aliases() -> None:
+    generator = RegistryLookupTermGenerator()
+
+    polief = generator.terms_for_lookup(query='JSC "POLIEF"', candidate_scope=['JSC "POLIEF"'])
+    neftekhim = generator.terms_for_lookup(query="SIBUR-Neftekhim JSC", candidate_scope=["SIBUR-Neftekhim JSC"])
+    khimprom = generator.terms_for_lookup(query="SIBUR-Khimprom JSC", candidate_scope=["SIBUR-Khimprom JSC"])
+
+    assert {'JSC "POLIEF"', "POLIEF", "ПОЛИЭФ", "АО ПОЛИЭФ"} <= set(polief.values)
+    assert {"SIBUR-Neftekhim", "СИБУР-Нефтехим", "АО СИБУР-Нефтехим"} <= set(neftekhim.values)
+    assert {"SIBUR-Khimprom", "СИБУР-Химпром", "АО СИБУР-Химпром"} <= set(khimprom.values)
+
+
+def test_registry_lookup_terms_generate_site_relation_terms_from_russian_factory_name() -> None:
+    plan = RegistryLookupTermGenerator().terms_for_lookup(
+        query="ГУБКИНСКИЙ ГАЗОПЕРЕРАБАТЫВАЮЩИЙ ЗАВОД",
+        candidate_scope=["ГУБКИНСКИЙ ГАЗОПЕРЕРАБАТЫВАЮЩИЙ ЗАВОД"],
+        source_texts=["СИБУРТЮМЕНЬГАЗ управляет Губкинским ГПЗ"],
+        limit=10,
+    )
+
+    assert "ГУБКИНСКИЙ ГАЗОПЕРЕРАБАТЫВАЮЩИЙ ЗАВОД" in plan.values
+    assert "ГУБКИНСКИЙ ГПЗ" in plan.values
+    assert "ГУБКИНСКИЙ ГАЗОПЕРЕРАБАТЫВАЮЩИЙ ЗАВОД СИБУР" in plan.values
+    assert "ГУБКИНСКИЙ ГАЗОПЕРЕРАБАТЫВАЮЩИЙ ЗАВОД СИБУРТЮМЕНЬГАЗ" in plan.values
+
+
+def test_registry_lookup_terms_skip_broad_and_placeholder_input() -> None:
+    generator = RegistryLookupTermGenerator()
+
+    broad = generator.terms_for_lookup(query="Найди все юридические лица группы СИБУР")
+    placeholder = generator.terms_for_lookup(query="Кандидаты из шага 1", candidate_scope=["Кандидаты из шага 1"])
+
+    assert broad.values == []
+    assert placeholder.values == []
+
+
+def test_recorded_dadata_tries_english_then_russian_terms_until_match() -> None:
+    provider = RecordedDaDataCompanyRegistryProvider(fixtures=[{
+        "source_ref": "dadata_polief",
+        "legal_name": 'АО "ПОЛИЭФ"',
+        "inn": "0258005638",
+        "ogrn": "1020201699495",
+    }])
+    request = CompanyLookupRequest(
+        radar_id="test",
+        task_id="identity-polief",
+        stage="qualification_gate",
+        subject_id="q1",
+        query='JSC "POLIEF"',
+        source_id="dadata_registry",
+        lookup_terms=['JSC "POLIEF"', "ПОЛИЭФ", "АО ПОЛИЭФ"],
+        candidate_scope=['JSC "POLIEF"'],
+    )
+
+    result = provider.lookup_companies(request)
+
+    attempts = result.provider_metadata["registry_lookup_attempts"]
+    assert [item["term"] for item in attempts] == ['JSC "POLIEF"', "ПОЛИЭФ"]
+    assert [item["outcome"] for item in attempts] == ["no_match", "used"]
+    assert result.observations[0].legal_name == 'АО "ПОЛИЭФ"'
+    assert result.outcomes[-1].observation_count == 1
+
+
+def test_source_registry_uses_generated_russian_dadata_terms_for_english_alias() -> None:
+    provider = RecordedDaDataCompanyRegistryProvider(fixtures=[{
+        "source_ref": "dadata_polief",
+        "legal_name": 'АО "ПОЛИЭФ"',
+        "inn": "0258005638",
+    }])
+    task = RadarExecutionTask(
+        task_id="identity-polief",
+        stage="qualification_gate",
+        subject_type="qualification",
+        subject_id="q1",
+        query='JSC "POLIEF"',
+        purpose="Confirm identity.",
+        source_ids=["dadata_registry"],
+        candidate_scope=['JSC "POLIEF"'],
+    )
+
+    result = RadarSourceRegistry(company_registry_providers={"dadata": provider}).lookup_for_task(
+        radar=_radar_with_sources(),
+        task=task,
+    )
+
+    assert {'JSC "POLIEF"', "POLIEF", "ПОЛИЭФ", "АО ПОЛИЭФ"} <= set(provider.requests[0].lookup_terms)
+    assert any(item["term"] in {"ПОЛИЭФ", "АО ПОЛИЭФ"} for item in result.provider_metadata["registry_lookup_attempts"])
+    assert result.candidate_observations[0]["legal_name"] == 'АО "ПОЛИЭФ"'
+
+
+def test_identity_obligation_no_match_is_non_blocking_with_source_backed_web_evidence() -> None:
+    task = RadarExecutionTask(
+        task_id="identity-polief",
+        stage="qualification_gate",
+        subject_type="qualification",
+        subject_id="q1",
+        query='JSC "POLIEF"',
+        purpose="Confirm identity.",
+        source_ids=["dadata_registry"],
+        candidate_scope=['JSC "POLIEF"'],
+    )
+    source = RadarSourceEvidence(
+        evidence_ref="web_polief",
+        title="ПОЛИЭФ - СИБУР",
+        url="https://www.sibur.ru/polief",
+        snippet="ПОЛИЭФ входит в производственный контур СИБУР.",
+        source_type="web",
+    )
+    observations = [{"legal_name": 'JSC "POLIEF"', "evidence_refs": ["web_polief"]}]
+
+    decisions = obligation_decisions_from_plan(
+        global_policy=_identity_only_radar()["global_search_policy"],
+        steps=[task],
+        source_policy_decisions=[{"source_id": "dadata_registry", "decision": "selected"}],
+        source_provider_outcomes=[{
+            "source_id": "dadata_registry",
+            "provider_id": "dadata",
+            "outcome": "no_match",
+            "query": 'JSC "POLIEF"',
+            "observation_count": 0,
+        }],
+        sources=[source],
+        observations=observations,
+    )
+
+    by_source = {item["source_id"]: item for item in decisions}
+    assert by_source["dadata_registry"]["status"] == "cross_source_identity_supported"
+    assert source_obligation_summary(decisions)["blocking_count"] == 0
+
+
+def test_identity_obligation_no_match_without_evidence_remains_blocking() -> None:
+    task = RadarExecutionTask(
+        task_id="identity-polief",
+        stage="qualification_gate",
+        subject_type="qualification",
+        subject_id="q1",
+        query='JSC "POLIEF"',
+        purpose="Confirm identity.",
+        source_ids=["dadata_registry"],
+        candidate_scope=['JSC "POLIEF"'],
+    )
+
+    decisions = obligation_decisions_from_plan(
+        global_policy=_identity_only_radar()["global_search_policy"],
+        steps=[task],
+        source_policy_decisions=[{"source_id": "dadata_registry", "decision": "selected"}],
+        source_provider_outcomes=[{
+            "source_id": "dadata_registry",
+            "provider_id": "dadata",
+            "outcome": "no_match",
+            "query": 'JSC "POLIEF"',
+            "observation_count": 0,
+        }],
+        sources=[],
+        observations=[],
+    )
+
+    by_source = {item["source_id"]: item for item in decisions}
+    assert by_source["dadata_registry"]["status"] == "identity_not_confirmed_after_all_terms"
+    assert source_obligation_summary(decisions)["blocking_count"] == 1
+
+
+def test_staged_execution_runs_search_expansion_for_coverage_gap() -> None:
+    provider = _ExpansionProvider()
+    radar = _radar_with_sources()
+    radar["qualification_criteria"] = [{"code": "q1", "label": "SIBUR relation", "requirement_level": "required"}]
+    plan = RadarExecutionPlan(
+        radar_id="test",
+        tasks=[
+            RadarExecutionTask(
+                task_id="discover",
+                stage="qualification_discovery",
+                subject_type="qualification",
+                subject_id="q1",
+                query="Find SIBUR production assets.",
+                purpose="Discover.",
+                source_ids=["openrouter_web"],
+            ),
+            RadarExecutionTask(
+                task_id="coverage",
+                stage="coverage_check",
+                subject_type="qualification",
+                subject_id="q1",
+                query="Check weak coverage.",
+                purpose="Coverage.",
+                source_ids=["openrouter_web", "sibur_site"],
+            ),
+        ],
+    )
+
+    _, events, execution_results = run_staged_radar_execution(
+        radar=radar,
+        execution_plan=plan,
+        provider=provider,
+        max_total_web_tasks_per_run=10,
+    )
+
+    expansion_queries = [item["query"] for item in execution_results["search_expansion_query_variants"]]
+    assert any("Губкинский газоперерабатывающий завод СИБУР" in query for query in expansion_queries)
+    assert any(call.queries[0].query_id.startswith("coverage:search-expansion") for call in provider.calls)
+    assert any(event.event_type == "search_expansion_executed" for event in events)
+    assert any(item["legal_name"] == "Губкинский ГПЗ" for item in execution_results["candidate_universe"])
+
+
+class _ExpansionProvider:
+    runtime_name = "expansion-provider"
+
+    def __init__(self) -> None:
+        self.calls: list[Any] = []
+
+    def run_search_plan(self, *, radar: dict[str, Any], search_plan: Any) -> WebSearchProviderResult:
+        self.calls.append(search_plan)
+        query = search_plan.queries[0]
+        if query.query_id == "discover":
+            return WebSearchProviderResult(
+                sources=[RadarSourceEvidence(
+                    evidence_ref="src_candidate_a",
+                    title="Candidate A - SIBUR",
+                    url="https://www.sibur.ru/example/a",
+                    snippet="Candidate A is connected to SIBUR.",
+                    source_type="web",
+                )],
+                candidate_observations=[{
+                    "legal_name": "Candidate A",
+                    "evidence_refs": ["src_candidate_a"],
+                    "qualification": [{
+                        "criterion_code": "q1",
+                        "status": "confirmed",
+                        "evidence_refs": ["src_candidate_a"],
+                    }],
+                }],
+            )
+        if query.query_id == "coverage":
+            return WebSearchProviderResult(provider_metadata={
+                "coverage_findings": [{"summary": "Coverage is weak.", "completeness_risk": "high"}],
+                "candidate_universe_gaps": [{
+                    "legal_name": "Губкинский газоперерабатывающий завод",
+                    "reason": "Coverage gap from weak discovery.",
+                    "source_refs": [],
+                }],
+            })
+        if "Губкинский" in query.query:
+            return WebSearchProviderResult(
+                sources=[RadarSourceEvidence(
+                    evidence_ref="src_gubkin",
+                    title="СИБУР рассказал про Губкинский газоперерабатывающий завод",
+                    url="https://www.sibur.ru/example/gubkinsky-gpp",
+                    snippet="Губкинский ГПЗ связан с производственным контуром СИБУР.",
+                    source_type="web",
+                )],
+                candidate_observations=[{
+                    "legal_name": "Губкинский ГПЗ",
+                    "entity_type": "production_site",
+                    "not_candidate_reason": "not_standalone_legal_entity",
+                    "evidence_refs": ["src_gubkin"],
+                    "review_flags": ["requires_human_review", "not_standalone_legal_entity"],
+                    "qualification": [{
+                        "criterion_code": "q1",
+                        "status": "weak",
+                        "evidence_refs": ["src_gubkin"],
+                    }],
+                }],
+            )
+        return WebSearchProviderResult()
+
+
+def _radar_with_sources() -> dict[str, Any]:
+    return {
+        "radar_id": "test",
+        "name": "SIBUR benchmark",
+        "description": "Find SIBUR production assets.",
+        "intent_signals": [],
+        "global_search_policy": {
+            "allow_open_web": True,
+            "sources": [
+                {
+                    "source_id": "dadata_registry",
+                    "source_type": "company_registry",
+                    "provider_id": "dadata",
+                    "reference": "company_registry:dadata",
+                    "usage_obligation": "required_for_identity",
+                },
+                {
+                    "source_id": "sibur_site",
+                    "source_type": "url",
+                    "reference": "https://www.sibur.ru",
+                    "usage_obligation": "preferred",
+                },
+                {
+                    "source_id": "openrouter_web",
+                    "source_type": "search_engine",
+                    "reference": "openrouter:web_search",
+                    "usage_obligation": "required_for_coverage",
+                },
+            ],
+        },
+    }
+
+
+def _identity_only_radar() -> dict[str, Any]:
+    return {
+        "radar_id": "identity-only",
+        "global_search_policy": {
+            "sources": [{
+                "source_id": "dadata_registry",
+                "source_type": "company_registry",
+                "provider_id": "dadata",
+                "reference": "company_registry:dadata",
+                "usage_obligation": "required_for_identity",
+            }],
+        },
+    }

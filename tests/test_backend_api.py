@@ -480,6 +480,17 @@ def test_post_radar_run_preserves_explicit_smoke_task_context(tmp_path: Path) ->
             "requester": "test",
             "task_context": {
                 "run_profile": "smoke",
+                "max_web_tasks_per_subject": 4,
+                "max_discovery_tasks_per_rule": 5,
+                "max_gate_tasks_per_candidate_rule": 6,
+                "max_signal_tasks_per_candidate_signal": 7,
+                "max_total_web_tasks_per_run": 18,
+                "source_verification_mode": "off",
+                "min_useful_sources_per_discovery_task": 8,
+                "min_candidates_per_discovery_task": 9,
+                "max_discovery_retries_per_task": 10,
+                "max_checkpoint_revisions_per_run": 11,
+                "max_checkpoint_retries_per_stage": 12,
                 "max_openrouter_calls_per_run": 0,
                 "max_dadata_lookups_per_run": 1,
                 "max_source_verification_requests_per_run": 2,
@@ -494,6 +505,17 @@ def test_post_radar_run_preserves_explicit_smoke_task_context(tmp_path: Path) ->
     run_id = response.json()["run_id"]
     task_context = client.get(f"/api/radar-runs/{run_id}/dossier").json()["run_context"]["task_context"]
     assert task_context["run_profile"] == "smoke"
+    assert task_context["max_web_tasks_per_subject"] == 4
+    assert task_context["max_discovery_tasks_per_rule"] == 5
+    assert task_context["max_gate_tasks_per_candidate_rule"] == 6
+    assert task_context["max_signal_tasks_per_candidate_signal"] == 7
+    assert task_context["max_total_web_tasks_per_run"] == 18
+    assert task_context["source_verification_mode"] == "off"
+    assert task_context["min_useful_sources_per_discovery_task"] == 8
+    assert task_context["min_candidates_per_discovery_task"] == 9
+    assert task_context["max_discovery_retries_per_task"] == 10
+    assert task_context["max_checkpoint_revisions_per_run"] == 11
+    assert task_context["max_checkpoint_retries_per_stage"] == 12
     assert task_context["max_openrouter_calls_per_run"] == 0
     assert task_context["max_dadata_lookups_per_run"] == 1
     assert task_context["max_source_verification_requests_per_run"] == 2

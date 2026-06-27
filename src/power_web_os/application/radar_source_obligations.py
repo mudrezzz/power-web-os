@@ -61,6 +61,7 @@ def source_obligation_summary(decisions: list[dict[str, Any]]) -> dict[str, Any]
             "attempted_empty",
             "attempted_insufficient",
             "attempted_unlinked",
+            "identity_not_confirmed_after_all_terms",
         }
     ]
     return {
@@ -206,6 +207,14 @@ def _runtime_obligation_outcome(
             return {"status": "unavailable", "outcome": outcome, "useful": False}
         if outcome in {"policy_skipped", "not_executed_budget_limited", "not_executed_input_not_available"}:
             return {"status": "blocked", "outcome": outcome, "useful": False}
+        if (
+            usage == "required_for_identity"
+            and outcome in {"empty", "provider_empty", "no_match"}
+            and _has_source_backed_identity_evidence(sources=sources, observations=observations)
+        ):
+            return {"status": "cross_source_identity_supported", "outcome": outcome, "useful": True}
+        if usage == "required_for_identity" and outcome in {"empty", "provider_empty", "no_match"}:
+            return {"status": "identity_not_confirmed_after_all_terms", "outcome": outcome, "useful": False}
         if outcome in {"empty", "provider_empty", "no_match"} or observation_count == 0 and outcome in {"used", "no_match"}:
             return {"status": "attempted_empty", "outcome": outcome, "useful": False}
         if outcome == "ambiguous_match" and _int_value(provider_outcome.get("review_needed_entity_count")) > 0:
@@ -274,6 +283,21 @@ def _linked_source_refs(observations: list[dict[str, Any]]) -> set[str]:
                     if str(ref).strip():
                         refs.add(str(ref))
     return refs
+
+
+def _has_source_backed_identity_evidence(*, sources: list[Any], observations: list[dict[str, Any]]) -> bool:
+    linked_refs = _linked_source_refs(observations)
+    if not linked_refs:
+        return False
+    for source in sources:
+        ref = _source_ref(source)
+        if not ref or ref not in linked_refs:
+            continue
+        source_type = str(source.get("source_type") if isinstance(source, dict) else getattr(source, "source_type", "") or "")
+        url = str(source.get("url") if isinstance(source, dict) else getattr(source, "url", "") or "")
+        if source_type != "company_registry" or url:
+            return True
+    return False
 
 
 def _int_value(value: Any) -> int:

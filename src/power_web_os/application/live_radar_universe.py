@@ -31,6 +31,13 @@ def merge_provider_metadata(existing: dict[str, Any], incoming: dict[str, Any]) 
         "structured_company_observations",
         "upstream_disambiguation_results",
         "cross_source_disambiguation_tasks",
+        "search_expansion_tasks",
+        "search_expansion_query_variants",
+        "search_expansion_results",
+        "registry_lookup_terms",
+        "registry_lookup_attempts",
+        "identity_obligation_review_records",
+        "review_needed_upstream_entities",
     ):
         merged[key] = [*dict_list(existing.get(key)), *dict_list(incoming.get(key))]
     return merged

@@ -33,7 +33,10 @@ def test_recorded_dadata_lookup_maps_company_observation() -> None:
     assert result.observations[0].matched_by == "legal_name"
     assert result.observations[0].legal_name == "АО Тестовый завод"
     assert result.outcomes[0].outcome == "used"
-    assert result.provider_metadata == {"provider": "dadata", "dadata_mode": "recorded"}
+    assert result.provider_metadata["provider"] == "dadata"
+    assert result.provider_metadata["dadata_mode"] == "recorded"
+    assert result.provider_metadata["registry_lookup_terms"][0]["value"] == "Тестовый завод"
+    assert result.provider_metadata["registry_lookup_attempts"][0]["outcome"] == "used"
 
 
 def test_recorded_dadata_lookup_by_inn_has_high_match_quality() -> None:

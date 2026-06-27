@@ -86,11 +86,19 @@ diagnostics can prove that connector capabilities are actually active.
   such as `candidates from step 1` are internal planning references, not valid
   connector input. If no concrete candidate exists, the provider call is skipped
   with `not_executed_input_not_available`.
+- Concrete registry enrichment should use bounded lookup-term generation, not a
+  single planner alias. The application can derive identifiers, Russian
+  legal-form terms, short names, and English aliases from candidate/source
+  context, then execute those terms under the same provider budget.
 - Ambiguous lookup-only registry observations are not automatic rejection in
   upstream discovery. If they include source-backed company, branch, site, or
   asset facts, execution may retain them as review-needed universe entities or
   linked facts and request bounded cross-checks through allowed official/web
   connector capabilities.
+- Weak discovery can trigger recall-first source expansion through compiled
+  source capabilities: official-domain, open-web relation, identity, and
+  industrial/site query variants are generated only for policy-allowed sources
+  and remain bounded by execution/external-call budgets.
 - Source cards can drive executable cross-source disambiguation tasks, not only
   planner validation. A smoke run should record whether each cross-check was
   executed, skipped by budget or policy, failed schema validation, found no

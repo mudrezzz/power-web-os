@@ -32,6 +32,7 @@ from power_web_os.application.radar_lookup_terms import (
     looks_like_broad_discovery as _safe_looks_like_broad_discovery,
     lookup_terms_from_text as _safe_lookup_terms_from_text,
 )
+from power_web_os.application.radar_registry_lookup_terms import RegistryLookupTermGenerator
 from power_web_os.application.radar_registry_observation_helpers import (
     dedupe_text as _dedupe_text,
     radar_with_structured_observations as _radar_with_structured_observations,
@@ -202,6 +203,17 @@ class RadarSourceRegistry:
             if review_needed_observations:
                 metadata.setdefault("upstream_disambiguation_results", [])
                 metadata["upstream_disambiguation_results"].extend(review_needed_observations)
+                metadata.setdefault("review_needed_upstream_entities", [])
+                metadata["review_needed_upstream_entities"].extend(review_needed_observations)
+                metadata.setdefault("identity_obligation_review_records", [])
+                metadata["identity_obligation_review_records"].append({
+                    "source_id": request.source_id,
+                    "provider_id": provider_id,
+                    "status": "attempted_review_needed",
+                    "lookup_terms": list(request.lookup_terms),
+                    "review_needed_entity_count": len(review_needed_observations),
+                    "reason": "Registry observations were retained for recall-first upstream review.",
+                })
                 metadata.setdefault("candidate_universe_gaps", [])
                 metadata["candidate_universe_gaps"].extend([
                     _candidate_gap_from_review_entity(item, task=task)
@@ -306,8 +318,13 @@ def _provider_id(source: dict[str, Any]) -> str:
 
 def _lookup_request(*, radar: dict[str, Any], task: RadarExecutionTask, source: dict[str, Any]) -> CompanyLookupRequest:
     concrete_scope = _concrete_candidate_scope_terms(task.candidate_scope)
-    terms = [*concrete_scope, *_safe_lookup_terms_from_text(task.query)]
-    terms.extend(str(item) for item in source.get("keywords", []) if isinstance(item, str))
+    generator = RegistryLookupTermGenerator()
+    term_plan = generator.terms_for_lookup(
+        query=task.query,
+        candidate_scope=concrete_scope or list(task.candidate_scope),
+        source_texts=_source_texts_for_lookup(radar),
+        source_keywords=[str(item) for item in source.get("keywords", []) if isinstance(item, str)],
+    )
     return CompanyLookupRequest(
         radar_id=str(radar.get("radar_id") or ""),
         task_id=task.task_id,
@@ -317,9 +334,22 @@ def _lookup_request(*, radar: dict[str, Any], task: RadarExecutionTask, source: 
         source_id=str(source.get("source_id") or source.get("reference") or "company_registry"),
         source_label=str(source.get("label") or source.get("source_id") or "Company registry"),
         source_reference=str(source.get("reference") or ""),
-        lookup_terms=[item for item in _dedupe_text(terms) if item],
+        lookup_terms=[item for item in _dedupe_text(term_plan.values) if item],
         candidate_scope=concrete_scope,
     )
+
+
+def _source_texts_for_lookup(radar: dict[str, Any]) -> list[str]:
+    texts: list[str] = []
+    for key in ("structured_company_observations", "retrieved_sources", "analyzed_sources"):
+        value = radar.get(key)
+        if not isinstance(value, list):
+            continue
+        for item in value:
+            if not isinstance(item, dict):
+                continue
+            texts.append(" ".join(str(item.get(part) or "") for part in ("legal_name", "title", "snippet", "url")))
+    return texts
 
 
 def _safe_lookup_is_too_broad(task: RadarExecutionTask, *, request: CompanyLookupRequest | None = None) -> bool:

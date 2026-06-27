@@ -161,7 +161,10 @@ def test_high_coverage_risk_blocks_signal_search_until_recovery_improves_it() ->
         provider=provider,
     )
 
-    assert provider.stages == ["qualification_discovery", "coverage_check"]
+    assert provider.stages[:2] == ["qualification_discovery", "coverage_check"]
+    assert "signal_search" not in provider.stages
+    assert execution_results["search_expansion_query_variants"]
+    assert execution_results["search_expansion_results"]
     assert_stopped_for_review(execution_results)
     assert execution_results["checkpoint_decisions"][-1]["reason_code"] == "coverage_risk_high"
     assert_no_normal_negative_signal_projection(execution_results)

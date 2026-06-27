@@ -89,12 +89,12 @@ def run_coverage_probe(
                 results.append(_probe_result(target, "probe_provider_failed", message=str(error)))
                 continue
             urls = [source.url for source in result.sources]
-            if result.provider_metadata.get("budget_decision"):
-                results.append(_probe_result(target, "probe_budget_limited", urls=urls, message="Probe budget limited."))
-            elif any("sibur.ru" in url.lower() for url in urls):
+            if any("sibur.ru" in url.lower() for url in urls):
                 results.append(_probe_result(target, "probe_found_official_source", urls=urls))
             elif urls:
                 results.append(_probe_result(target, "probe_found_open_web_source", urls=urls))
+            elif result.provider_metadata.get("budget_decision"):
+                results.append(_probe_result(target, "probe_budget_limited", urls=urls, message="Probe budget limited."))
             else:
                 results.append(_probe_result(target, "probe_no_source", urls=[]))
     report = {

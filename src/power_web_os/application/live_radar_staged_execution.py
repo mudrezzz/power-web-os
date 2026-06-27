@@ -41,6 +41,7 @@ from power_web_os.application.radar_source_obligations import (
     obligation_decisions_from_plan,
     source_obligation_summary,
 )
+from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
 from power_web_os.application.live_radar_staged_helpers import (
     candidate_names_matching as _candidate_names_matching,
     combine_task_results as _combine_task_results,
@@ -168,6 +169,7 @@ def run_staged_radar_execution(
         )
     )
     checkpoint_executor = RadarCheckpointActionExecutor()
+    search_expansion_service = RadarSearchExpansionService(max_variants=4 if run_profile == "smoke" else 6)
     retrieval_plan = retrieval_plan_from_execution_plan(execution_plan)
 
     discovery_tasks = _tasks_for_stage(execution_plan, "qualification_discovery")
@@ -375,6 +377,27 @@ def run_staged_radar_execution(
             candidate_scope = _limit_smoke_candidates(candidate_scope, external_budget.settings.smoke_max_candidates)
 
         if not stopped_for_review_reason:
+            sources, observations, provider_metadata, candidate_scope = _run_search_expansion(
+                radar=radar,
+                execution_plan=execution_plan,
+                provider=provider,
+                service=search_expansion_service,
+                base_tasks=coverage_tasks or discovery_tasks,
+                sources=sources,
+                observations=observations,
+                provider_metadata=provider_metadata,
+                candidate_scope=candidate_scope,
+                completed_qualification_ids=completed_qualification_ids,
+                coverage_checks=coverage_checks,
+                unresolved_candidate_gaps=unresolved_candidate_gaps,
+                events=events,
+                executed_task_ids=executed_task_ids,
+                budget=task_budget,
+                external_budget=external_budget,
+                smoke_candidate_limit=external_budget.settings.smoke_max_candidates,
+            )
+
+        if not stopped_for_review_reason:
             recovery_state, _ = checkpoint_executor.recover(
                 checkpoint_id="after-coverage",
                 phase="after_coverage",
@@ -543,11 +566,11 @@ def run_staged_radar_execution(
             payload=smoke_cap_metadata,
             candidate_refs=[item["legal_name"] for item in smoke_overflow_gaps if item.get("legal_name")],
         ))
+    unresolved_candidate_gaps.extend(gap_payloads(dict_list(provider_metadata.get("candidate_universe_gaps")), origin_task_id="entity_resolution"))
     candidate_universe = candidate_universe_entries(
         candidates=normalized_candidates, completed_qualification_ids=completed_qualification_ids,
         origin_task_id=first_task_id(execution_plan.tasks), gap_names={candidate_name(item) for item in unresolved_candidate_gaps if candidate_name(item)},
     )
-    unresolved_candidate_gaps.extend(gap_payloads(dict_list(provider_metadata.get("candidate_universe_gaps")), origin_task_id="entity_resolution"))
     candidate_universe_payload = _candidate_universe_with_entity_metadata(
         _candidate_universe_with_signal_statuses(candidate_universe, signal_search_statuses),
         observations,
@@ -614,6 +637,13 @@ def run_staged_radar_execution(
             "retrieved_source_count": provider_metadata.get("retrieved_source_count", 0),
             "source_outcomes": provider_metadata.get("source_outcomes", []),
             "source_provider_outcomes": provider_metadata.get("source_provider_outcomes", []),
+            "search_expansion_tasks": provider_metadata.get("search_expansion_tasks", []),
+            "search_expansion_query_variants": provider_metadata.get("search_expansion_query_variants", []),
+            "search_expansion_results": provider_metadata.get("search_expansion_results", []),
+            "registry_lookup_terms": provider_metadata.get("registry_lookup_terms", []),
+            "registry_lookup_attempts": provider_metadata.get("registry_lookup_attempts", []),
+            "identity_obligation_review_records": provider_metadata.get("identity_obligation_review_records", []),
+            "review_needed_upstream_entities": provider_metadata.get("review_needed_upstream_entities", []),
             "source_obligations": [
                 {
                     "source_id": item.get("source_id"),
@@ -759,6 +789,117 @@ def _extract_retrieved_candidates(
     return merged_sources, merged_observations, merged_metadata, merged_scope
 
 
+def _run_search_expansion(
+    *,
+    radar: dict[str, Any],
+    execution_plan: RadarExecutionPlan,
+    provider: WebSearchProvider,
+    service: RadarSearchExpansionService,
+    base_tasks: list[RadarExecutionTask],
+    sources: list[RadarSourceEvidence],
+    observations: list[dict[str, Any]],
+    provider_metadata: dict[str, Any],
+    candidate_scope: list[str],
+    completed_qualification_ids: list[str],
+    coverage_checks: list[dict[str, Any]],
+    unresolved_candidate_gaps: list[dict[str, Any]],
+    events: list[LiveRadarPipelineEvent],
+    executed_task_ids: list[str],
+    budget: RadarExecutionBudget,
+    external_budget: RadarExternalCallBudget | None,
+    smoke_candidate_limit: int | None,
+) -> tuple[list[RadarSourceEvidence], list[dict[str, Any]], dict[str, Any], list[str]]:
+    expansion_plan = service.plan_expansion(
+        radar=radar,
+        candidate_scope=candidate_scope,
+        provider_metadata=provider_metadata,
+        coverage_checks=coverage_checks,
+        unresolved_candidate_gaps=unresolved_candidate_gaps,
+    )
+    provider_metadata = {
+        **provider_metadata,
+        "search_expansion_query_variants": [
+            *dict_list(provider_metadata.get("search_expansion_query_variants")),
+            *expansion_plan.to_payload().get("variants", []),
+        ],
+    }
+    if not expansion_plan.should_expand:
+        return sources, observations, provider_metadata, candidate_scope
+    tasks = service.tasks_from_plan(plan=expansion_plan, base_task=base_tasks[0] if base_tasks else None)
+    provider_metadata = {
+        **provider_metadata,
+        "search_expansion_tasks": [
+            *dict_list(provider_metadata.get("search_expansion_tasks")),
+            *[
+                {
+                    "task_id": task.task_id,
+                    "query": task.query,
+                    "source_ids": list(task.source_ids),
+                    "source_scope": task.source_scope,
+                    "reason": expansion_plan.reason,
+                }
+                for task in tasks
+            ],
+        ],
+    }
+    for task in tasks:
+        result = _run_task(
+            provider=provider,
+            radar=radar,
+            task=task,
+            radar_id=execution_plan.radar_id,
+            budget=budget,
+            external_budget=external_budget,
+        )
+        gaps = gap_items(result)
+        result = result.model_copy(update={
+            "candidate_observations": [
+                *result.candidate_observations,
+                *gap_observations(gaps, origin_task_id=task.task_id),
+            ],
+        })
+        sources, observations, provider_metadata = _merge_result(sources, observations, provider_metadata, result)
+        executed_task_ids.append(f"{task.task_id}:search_expansion")
+        unresolved_candidate_gaps.extend(gap_payloads(gaps, origin_task_id=task.task_id))
+        provider_metadata = {
+            **provider_metadata,
+            "search_expansion_results": [
+                *dict_list(provider_metadata.get("search_expansion_results")),
+                {
+                    "task_id": task.task_id,
+                    "query": task.query,
+                    "source_ids": list(task.source_ids),
+                    "source_count": len(result.sources),
+                    "candidate_observation_count": len(result.candidate_observations),
+                    "budget_decision": result.provider_metadata.get("budget_decision", {}),
+                },
+            ],
+        }
+        events.append(LiveRadarPipelineEvent(
+            event_type="search_expansion_executed",
+            phase="collection",
+            actor="application",
+            node_name="search_expansion",
+            visibility="operator",
+            summary=f"Executed recall-first search expansion task {task.task_id}.",
+            payload={
+                "task_id": task.task_id,
+                "query": task.query,
+                "source_ids": list(task.source_ids),
+                "source_count": len(result.sources),
+                "candidate_observation_count": len(result.candidate_observations),
+            },
+            source_refs=[source.evidence_ref for source in result.sources if source.evidence_ref],
+        ))
+    candidate_scope = _eligible_candidate_names(
+        radar=radar,
+        sources=sources,
+        observations=observations,
+        completed_qualification_ids=completed_qualification_ids,
+    )
+    return sources, observations, provider_metadata, _limit_smoke_candidates(candidate_scope, smoke_candidate_limit)
+
+
 def _external_budget_events(exhaustion_events: list[dict[str, object]]) -> list[LiveRadarPipelineEvent]:
     return [
         LiveRadarPipelineEvent(
@@ -781,7 +922,16 @@ def _append_review_needed_universe_entities(
 ) -> list[dict[str, Any]]:
     known = {str(item.get("legal_name") or "").casefold() for item in candidate_universe}
     result = list(candidate_universe)
-    for item in dict_list(provider_metadata.get("upstream_disambiguation_results")):
+    review_sources = [
+        *dict_list(provider_metadata.get("upstream_disambiguation_results")),
+        *[
+            item
+            for item in dict_list(provider_metadata.get("candidate_universe_gaps"))
+            if _string_list(item.get("source_refs")) or str(item.get("entity_type") or "") in {"branch", "production_site", "asset", "project"}
+        ],
+        *dict_list(provider_metadata.get("review_needed_upstream_entities")),
+    ]
+    for item in review_sources:
         name = str(item.get("legal_name") or item.get("entity_name") or "").strip()
         if not name or name.casefold() in known:
             continue

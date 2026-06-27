@@ -5003,7 +5003,7 @@ Principles:
 
 ### Slice 0.7.6.3.3: SIBUR benchmark manual smoke RCA and next corrective bucket
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Run the bounded Docker SIBUR benchmark smoke after `0.7.6.3.2`,
   evaluate it, optionally run coverage probes, and decide the next measured
   corrective slice from the report rather than guessing.
@@ -5020,6 +5020,116 @@ Principles:
   - The report reaches a terminal RCA verdict: extraction-model issue,
     retrieval coverage issue, projection/evaluation issue, or ready for
     broader benchmark live testing.
+- Completion notes:
+  - Done: Rebuilt Docker API/worker/backend-init and verified
+    `benchmark-sibur-holding-contour` preflight passed 24/24 checks.
+  - Done: First benchmark smoke run
+    `radar-run-388dc4aa-c7fa-4c6f-95e3-48b6dfedc555` proved a small API
+    wiring defect: `benchmark_smoke` semantic budgets were overwritten by
+    `.env` values, while external-call budgets used the benchmark profile.
+  - Done: Fixed API task-context merge so explicit semantic budgets
+    (`max_total_web_tasks_per_run`, discovery/gate/signal limits, checkpoint
+    caps, and verification/useful-result thresholds) override runtime defaults
+    in the same way as external-call budgets.
+  - Done: Fixed coverage-probe RCA classification so found official/open-web
+    sources are not hidden behind a retry-budget marker.
+  - Done: Final benchmark smoke run
+    `radar-run-2c7204c9-f271-461a-b8a3-90450a2cb494` used the intended
+    `benchmark_smoke` budget profile: total web tasks `18`, discovery tasks
+    per rule `3`, OpenRouter calls `10`, web-task calls `8`, DaData lookups
+    `4`, source verification requests `30`, max promoted smoke candidates `3`,
+    and max signals `1`.
+  - Done: Final run status was `completed`, but semantic outcome was
+    `blocked_by_policy` with reason
+    `budget_exhausted, extraction_schema_failed, quality_sufficient,
+    source_obligation_unmet`; required identity source `dadata_registry`
+    ended as `attempted_empty`, so the run correctly did not proceed to signal
+    search.
+  - Done: Evaluation report for the final run measured
+    `strict_recall=0.6667`, `review_recall=0.0`, `precision=null`,
+    `true_positive_count=6`, `false_negative_count=6`,
+    `false_positive_count=0`, and `ambiguous_match_count=0`.
+  - Done: False negatives were `rusvinyl`, `kazanorgsintez`,
+    `sibur-tyumen-gas`, `gubkinsky-gpp`, `vyngapurovsky-gpp`, and
+    `tobolsk-site`; all were classified as `not_retrieved_in_run`.
+  - Done: Bounded coverage probe with `--probe-limit 5` found official
+    `sibur.ru` sources for all five probed false negatives
+    (`rusvinyl`, `kazanorgsintez`, `sibur-tyumen-gas`, `gubkinsky-gpp`,
+    `vyngapurovsky-gpp`), proving the remaining blocker is retrieval coverage
+    strategy/source-obligation handling rather than lack of public official
+    evidence.
+  - Verdict: Do not run broader `benchmark_live` yet. The next corrective
+    bucket is retrieval coverage strategy plus registry/identity obligation
+    handling for source-backed benchmark entities.
+- Validation:
+  - Done: `python -m pytest tests/test_radar_benchmark.py tests/test_radar_evaluation.py -q`.
+  - Done: `python -m pytest tests/test_radar_runtime_config.py -q`.
+  - Done: `python -m pytest tests/test_backend_architecture_contract.py -q`.
+  - Done: `python -m pytest tests/test_backend_api.py -q -k "explicit_smoke_task_context or runtime_config"`.
+
+### Slice 0.7.6.3.4: Recall-first upstream search expansion and DaData lookup-term repair
+
+- Status: `Done`
+- Goal: Fix the measured retrieval/identity blockers from `0.7.6.3.3` before
+  allowing `benchmark_live`. Broad discovery can be weak even when simple
+  targeted queries find official or open-web evidence, and DaData can fail an
+  English alias even though Russian/legal-form terms would work better.
+- User value: A user can run a bounded SIBUR benchmark smoke and see Radar try
+  a wider upstream search pool before returning an empty or blocked result.
+  Source-backed sites, branches, assets, and weak legal-entity mentions are
+  retained as review-needed upstream entities instead of being lost.
+- Done:
+  - Added `RadarSearchExpansionService`. When discovery/coverage is weak, it
+    creates bounded official-domain, open-web, relation, identity, and
+    industrial/site query variants from source-backed gaps and candidate
+    context.
+  - Expansion respects source policy: disabled web/official sources are not
+    used; if both `sibur_site` and `openrouter_web` are allowed, both official
+    and open-web variants can be generated.
+  - Added `RegistryLookupTermGenerator`. Registry lookups now receive ordered
+    lookup terms instead of a single alias: identifiers first, then Russian
+    legal-form/short terms, then English aliases.
+  - DaData recorded/live adapters execute lookup terms one by one under the
+    existing DaData budget, record every attempt in `registry_lookup_attempts`,
+    and stop once a useful match is found.
+  - DaData `no_match` for one alias is no longer a hard block when official/web
+    source-backed identity evidence exists; the obligation can continue as
+    review-needed via `cross_source_identity_supported`.
+  - Recall-first candidate universe projection now retains source-backed
+    `candidate_universe_gaps` as review-needed universe entries without
+    promoting unresolved sites/branches/assets into product candidates.
+  - Dossier/execution metadata can expose `search_expansion_tasks`,
+    `search_expansion_query_variants`, `search_expansion_results`,
+    `registry_lookup_terms`, `registry_lookup_attempts`,
+    `identity_obligation_review_records`, and `review_needed_upstream_entities`.
+- Test coverage:
+  - Unit tests cover `RadarSearchExpansionService` query generation, source
+    policy filtering, dedupe, caps, and required query families.
+  - Unit tests cover `RegistryLookupTermGenerator` for `JSC "POLIEF"`,
+    `SIBUR-Neftekhim JSC`, `SIBUR-Khimprom JSC`, Russian factory/site names,
+    identifiers, placeholders, and broad natural-language rejection.
+  - Fake DaData tests cover English alias `no_match` followed by Russian term
+    match, exact lookup stopping, budget-limited attempts, and recorded attempt
+    metadata.
+  - Source-obligation tests cover identity `no_match` plus source-backed
+    official/web evidence as non-blocking review-needed continuation.
+  - Adaptive pipeline tests cover high coverage risk creating expansion
+    diagnostics while preventing signal search until recovery improves the
+    state.
+  - Evaluation/API tests remain compatible with strict product candidates and
+    review-needed upstream universe entities.
+- Validation:
+  - Done: `python -m pytest tests/test_radar_search_expansion.py tests/test_live_icp_radar.py -q`.
+  - Done: `python -m pytest tests/test_radar_adaptive_execution.py -q`.
+  - Done: `python -m pytest tests/test_radar_evaluation.py tests/test_radar_benchmark.py -q`.
+  - Done: `python -m pytest tests/test_backend_api.py tests/test_radar_external_call_budget.py -q`.
+  - Done: `python -m pytest tests/test_radar_preflight.py -q`.
+  - Done: `python -m pytest tests/test_backend_architecture_contract.py -q`.
+- Next:
+  - Rebuild Docker API/worker and run bounded
+    `benchmark-sibur-holding-contour` smoke plus evaluation. If recall still
+    fails, classify the blocker as retrieval expansion quality, projection, or
+    evaluation matcher before planning another corrective slice.
 
 ### Slice 0.7: Human review queue loop
 
@@ -5568,11 +5678,11 @@ None.
 
 ## Next Recommended Task
 
-Execute `Slice 0.7.6.3.3: SIBUR benchmark manual smoke RCA and next corrective
-bucket`. The runtime smoke contour is now wired for Docker API/worker execution,
-connector source cards, live DaData, OpenRouter Perplexity retrieval, bounded
-budgets, and extraction backup-model diagnostics. The next step is to run the
-bounded `benchmark-sibur-holding-contour` Docker smoke, evaluate it against the
-curated baseline, optionally run targeted coverage probes for remaining false
-negatives, and decide whether the broader benchmark run is ready or another
-measured corrective slice is needed.
+Run the bounded Docker/API/worker SIBUR benchmark smoke again, then evaluate it
+against `sibur_contour_curated_v1`. `0.7.6.3.4` added recall-first search
+expansion and multi-term DaData identity lookup, so the next decision should be
+evidence-based: if `benchmark_smoke` reaches the diagnostic gate, allow one
+bounded `benchmark_live`; if it still fails, plan the next corrective slice from
+the actual failure bucket (`retrieval_expansion_quality`,
+`projection_or_universe_retention`, `identity_lookup_terms`, `source_budget`, or
+`evaluation_matcher`).

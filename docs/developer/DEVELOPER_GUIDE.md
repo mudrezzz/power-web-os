@@ -494,6 +494,28 @@ The probe writes `demo/output/radar_coverage_probe_report.json` with statuses
 such as `probe_found_official_source`, `probe_found_open_web_source`,
 `probe_no_source`, `probe_provider_failed`, and `probe_budget_limited`.
 
+`0.7.6.3.4` makes upstream discovery recall-first before broader benchmarks.
+`RadarSearchExpansionService` converts weak discovery, high/medium coverage
+risk, retrieved-but-unlinked sources, and source-backed candidate-universe gaps
+into bounded expansion tasks. It must generate official-domain, open-web
+relation, identity, and industrial/site query variants only when source policy
+allows the corresponding source. `RegistryLookupTermGenerator` builds bounded
+company-registry terms from candidate names and source snippets: identifiers
+first, then Russian legal-form or short names, then English aliases. DaData
+recorded/live adapters execute these terms one by one under the existing
+DaData budget and persist `registry_lookup_attempts`.
+
+Do not validate this logic only with a full benchmark smoke. Keep unit tests for
+query expansion, lookup-term generation, multi-term DaData execution,
+source-obligation semantics, recall-first universe projection, and adaptive
+checkpoint integration. The current fast gate is:
+
+```bash
+python -m pytest tests/test_radar_search_expansion.py tests/test_live_icp_radar.py -q
+python -m pytest tests/test_radar_adaptive_execution.py -q
+python -m pytest tests/test_radar_evaluation.py tests/test_radar_benchmark.py -q
+```
+
 Default queue settings:
 
 ```text

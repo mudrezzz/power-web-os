@@ -430,6 +430,16 @@ bounded provider prompts as `structured_company_observations`, so the LLM sees
 source-backed company facts rather than an instruction to perform a registry
 lookup itself.
 
+Upstream discovery is recall-first at the application layer. When discovery or
+coverage is weak, `RadarSearchExpansionService` can create bounded additional
+queries from source-backed gaps and policy-approved source cards: official
+domain queries, open-web relation queries, identity queries, and industrial/site
+queries. Structured registry lookup uses `RegistryLookupTermGenerator` to build
+multiple concrete terms from candidates and source snippets, so an English alias
+failure does not block source-backed Russian/legal-form evidence. These
+services do not hardcode provider stages or promote sites/branches into product
+accounts; they preserve review-needed universe entities for evaluation and HITL.
+
 `GET /api/radar-runs/{run_id}/journal` returns ordered structured audit events.
 The journal is not raw hidden chain-of-thought. Application services reject
 payload keys such as `chain_of_thought`, `hidden_reasoning`, and

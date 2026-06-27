@@ -116,6 +116,29 @@ def test_coverage_probe_classifies_official_source_with_fake_provider() -> None:
     _assert_safe(report)
 
 
+def test_coverage_probe_prefers_found_official_source_over_retry_budget_marker() -> None:
+    provider = _FakeCoverageProvider(with_budget_marker=True)
+
+    report = run_coverage_probe(
+        run={"run_id": "radar-run-1"},
+        radar_id="benchmark-sibur-holding-contour",
+        targets=[
+            CoverageProbeTarget(
+                baseline_id="gubkinsky-gpp",
+                canonical_name="Губкинский газоперерабатывающий завод",
+                aliases=("Губкинский ГПЗ",),
+                entity_type="production_site",
+            )
+        ],
+        provider=provider,
+        probe_limit=1,
+    )
+
+    assert report["summary"] == {"probe_found_official_source": 1}
+    assert report["results"][0]["status"] == "probe_found_official_source"
+    _assert_safe(report)
+
+
 class _FakeBenchmarkClient:
     def __init__(self) -> None:
         self.posts: list[tuple[str, dict[str, Any]]] = []
@@ -151,8 +174,9 @@ class _FakeBenchmarkClient:
 
 
 class _FakeCoverageProvider:
-    def __init__(self) -> None:
+    def __init__(self, *, with_budget_marker: bool = False) -> None:
         self.queries: list[str] = []
+        self.with_budget_marker = with_budget_marker
 
     def run_search_plan(self, *, radar: dict[str, object], search_plan):
         _ = radar
@@ -165,7 +189,8 @@ class _FakeCoverageProvider:
                     url="https://www.sibur.ru/example/gubkinsky-gpp",
                     snippet="Губкинский ГПЗ связан с СИБУР.",
                 )
-            ]
+            ],
+            provider_metadata={"budget_decision": {"accepted": False}} if self.with_budget_marker else {},
         )
 
 

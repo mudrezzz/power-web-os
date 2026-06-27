@@ -1,9 +1,4 @@
-"""DaData company registry provider adapter.
-
-DaData is used as structured company data, not as open web retrieval. The
-adapter maps DaData party suggestions into application-level registry
-observations and keeps credentials out of traces and artifacts.
-"""
+"""DaData company registry provider adapter."""
 
 from __future__ import annotations
 
@@ -26,6 +21,13 @@ from power_web_os.application.radar_source_providers import (
     RadarSourceRegistry,
 )
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
+from power_web_os.integrations.dadata_lookup_terms import (
+    attempt_payload,
+    lookup_terms_for_execution,
+    request_for_term,
+    term_payload,
+)
+from power_web_os.integrations.dadata_recorded_fixtures import default_recorded_fixtures
 
 DEFAULT_DADATA_URL = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/party"
 
@@ -34,52 +36,73 @@ class RecordedDaDataCompanyRegistryProvider(CompanyRegistryProvider):
     provider_id = "dadata"
 
     def __init__(self, fixtures: list[dict[str, Any]] | None = None) -> None:
-        self._fixtures = fixtures or _default_recorded_fixtures()
+        self._fixtures = fixtures or default_recorded_fixtures()
         self.requests: list[CompanyLookupRequest] = []
 
     def lookup_companies(self, request: CompanyLookupRequest) -> CompanyLookupResult:
         self.requests.append(request)
-        budget_decision = reserve_external_call("dadata", key=request.source_id or self.provider_id, task_id=request.task_id)
-        if not budget_decision.accepted:
-            return _budget_limited_lookup_result(
-                request,
+        observations: list[CompanyRegistryObservation] = []
+        outcomes: list[CompanySourceOutcome] = []
+        attempts: list[dict[str, Any]] = []
+        limited_budget_decision: dict[str, Any] | None = None
+        for term in lookup_terms_for_execution(request):
+            term_request = request_for_term(request, term)
+            budget_decision = reserve_external_call("dadata", key=request.source_id or self.provider_id, task_id=request.task_id)
+            if not budget_decision.accepted:
+                limited = _budget_limited_lookup_result(
+                    term_request,
+                    provider_id=self.provider_id,
+                    mode="recorded",
+                    decision=budget_decision.to_payload(),
+                )
+                outcomes.extend(limited.outcomes)
+                limited_budget_decision = dict(limited.provider_metadata.get("budget_decision") or {})
+                attempts.append(attempt_payload(term=term, outcome=limited.outcomes[0], observation_count=0))
+                break
+            observations = [
+                _with_match_metadata(_observation_from_fixture(item), request=term_request, matched_by=_matched_by_fixture(item, term_request))
+                for item in self._fixtures
+                if _matches_request(item, term_request)
+            ][: request.limit]
+            outcome = CompanySourceOutcome(
+                source_id=request.source_id,
                 provider_id=self.provider_id,
-                mode="recorded",
-                decision=budget_decision.to_payload(),
+                outcome=_lookup_outcome(observations),
+                reason=(
+                    f"Recorded DaData fixture returned {len(observations)} company observations."
+                    if observations
+                    else "Recorded DaData fixture had no matching company observations."
+                ),
+                query=term,
+                observation_count=len(observations),
             )
-        observations = [
-            _with_match_metadata(_observation_from_fixture(item), request=request, matched_by=_matched_by_fixture(item, request))
-            for item in self._fixtures
-            if _matches_request(item, request)
-        ][: request.limit]
-        outcome = CompanySourceOutcome(
-            source_id=request.source_id,
-            provider_id=self.provider_id,
-            outcome=_lookup_outcome(observations),
-            reason=(
-                f"Recorded DaData fixture returned {len(observations)} company observations."
-                if observations
-                else "Recorded DaData fixture had no matching company observations."
-            ),
-            query=request.query,
-            observation_count=len(observations),
-        )
+            outcomes.append(outcome)
+            attempts.append(attempt_payload(term=term, outcome=outcome, observation_count=len(observations)))
+            if observations:
+                break
         _trace_dadata(
             trace_type="provider_response",
             title="DaData recorded lookup",
-            summary=outcome.reason,
+            summary=outcomes[-1].reason if outcomes else "Recorded DaData lookup did not execute.",
             payload={
                 "mode": "recorded",
                 "source_id": request.source_id,
                 "lookup_terms": request.lookup_terms,
+                "attempts": attempts,
                 "observation_count": len(observations),
                 "observations": [item.model_dump() for item in observations],
             },
         )
         return CompanyLookupResult(
             observations=observations,
-            outcomes=[outcome],
-            provider_metadata={"provider": "dadata", "dadata_mode": "recorded"},
+            outcomes=outcomes,
+            provider_metadata={
+                "provider": "dadata",
+                "dadata_mode": "recorded",
+                "registry_lookup_terms": [term_payload(term) for term in lookup_terms_for_execution(request)],
+                "registry_lookup_attempts": attempts,
+                **({"budget_decision": limited_budget_decision} if limited_budget_decision else {}),
+            },
         )
 
 
@@ -104,15 +127,46 @@ class DaDataCompanyRegistryProvider(CompanyRegistryProvider):
     def lookup_companies(self, request: CompanyLookupRequest) -> CompanyLookupResult:
         if not self._api_key or not self._secret_key:
             return _unavailable_result(request, provider_id=self.provider_id, reason="DaData live credentials are required for live company lookup.")
-        budget_decision = reserve_external_call("dadata", key=request.source_id or self.provider_id, task_id=request.task_id)
-        if not budget_decision.accepted:
-            return _budget_limited_lookup_result(
-                request,
-                provider_id=self.provider_id,
-                mode="live",
-                decision=budget_decision.to_payload(),
-            )
-        query = _best_query(request)
+        observations: list[CompanyRegistryObservation] = []
+        outcomes: list[CompanySourceOutcome] = []
+        attempts: list[dict[str, Any]] = []
+        status_code = 0
+        limited_budget_decision: dict[str, Any] | None = None
+        for query in lookup_terms_for_execution(request):
+            term_request = request_for_term(request, query)
+            budget_decision = reserve_external_call("dadata", key=request.source_id or self.provider_id, task_id=request.task_id)
+            if not budget_decision.accepted:
+                limited = _budget_limited_lookup_result(
+                    term_request,
+                    provider_id=self.provider_id,
+                    mode="live",
+                    decision=budget_decision.to_payload(),
+                )
+                outcomes.extend(limited.outcomes)
+                limited_budget_decision = dict(limited.provider_metadata.get("budget_decision") or {})
+                attempts.append(attempt_payload(term=query, outcome=limited.outcomes[0], observation_count=0))
+                break
+            result, status_code = self._lookup_single_term(request=term_request, query=query)
+            outcomes.extend(result.outcomes)
+            observations = result.observations
+            if result.outcomes:
+                attempts.append(attempt_payload(term=query, outcome=result.outcomes[0], observation_count=len(observations)))
+            if observations or any(outcome.outcome in {"provider_unavailable", "invalid_credentials", "rate_limited", "schema_invalid"} for outcome in result.outcomes):
+                break
+        return CompanyLookupResult(
+            observations=observations,
+            outcomes=outcomes,
+            provider_metadata={
+                "provider": "dadata",
+                "dadata_mode": "live",
+                "dadata_status_code": status_code,
+                "registry_lookup_terms": [term_payload(term) for term in lookup_terms_for_execution(request)],
+                "registry_lookup_attempts": attempts,
+                **({"budget_decision": limited_budget_decision} if limited_budget_decision else {}),
+            },
+        )
+
+    def _lookup_single_term(self, *, request: CompanyLookupRequest, query: str) -> tuple[CompanyLookupResult, int]:
         payload = {"query": query, "count": request.limit}
         _trace_dadata(
             trace_type="provider_request",
@@ -145,7 +199,7 @@ class DaDataCompanyRegistryProvider(CompanyRegistryProvider):
                 duration_ms=_duration_ms(started_at),
                 payload={"error_type": error.__class__.__name__, "status_code": error.code, "message": outcome.reason, "source_id": request.source_id},
             )
-            return CompanyLookupResult(outcomes=[outcome], provider_metadata={"provider": self.provider_id, "dadata_mode": "unavailable"})
+            return CompanyLookupResult(outcomes=[outcome], provider_metadata={"provider": self.provider_id, "dadata_mode": "unavailable"}), 0
         except (URLError, TimeoutError) as error:
             _trace_dadata(
                 trace_type="provider_error",
@@ -154,14 +208,14 @@ class DaDataCompanyRegistryProvider(CompanyRegistryProvider):
                 duration_ms=_duration_ms(started_at),
                 payload={"error_type": error.__class__.__name__, "message": str(error), "source_id": request.source_id},
             )
-            return _unavailable_result(request, provider_id=self.provider_id, reason="DaData lookup request failed before a usable response was received.")
+            return _unavailable_result(request, provider_id=self.provider_id, reason="DaData lookup request failed before a usable response was received."), 0
         try:
             payload_json = json.loads(body)
         except json.JSONDecodeError:
-            return _schema_invalid_result(request, provider_id=self.provider_id, reason="DaData returned a non-JSON response.")
+            return _schema_invalid_result(request, provider_id=self.provider_id, reason="DaData returned a non-JSON response."), status_code
         suggestions = payload_json.get("suggestions")
         if not isinstance(suggestions, list):
-            return _schema_invalid_result(request, provider_id=self.provider_id, reason="DaData response does not contain a suggestions list.")
+            return _schema_invalid_result(request, provider_id=self.provider_id, reason="DaData response does not contain a suggestions list."), status_code
         observations = [
             _with_match_metadata(_observation_from_dadata_suggestion(item), request=request, matched_by=_matched_by_dadata(item, request))
             for item in suggestions
@@ -187,11 +241,7 @@ class DaDataCompanyRegistryProvider(CompanyRegistryProvider):
                 "observations": [item.model_dump() for item in observations[:10]],
             },
         )
-        return CompanyLookupResult(
-            observations=observations,
-            outcomes=[outcome],
-            provider_metadata={"provider": "dadata", "dadata_mode": "live", "dadata_status_code": status_code},
-        )
+        return CompanyLookupResult(observations=observations, outcomes=[outcome]), status_code
 
 
 def dadata_source_registry_from_env(*, env_path: Path | None = None) -> RadarSourceRegistry:
@@ -410,30 +460,6 @@ def _normalize_company_name(value: str) -> str:
     normalized = re.sub(r"[«»\"'.,]", " ", value.lower())
     normalized = re.sub(r"\b(ао|пао|оао|зао|ооо|нао|jsc|pjsc|llc)\b", " ", normalized, flags=re.IGNORECASE)
     return " ".join(normalized.split())
-
-
-def _default_recorded_fixtures() -> list[dict[str, Any]]:
-    return [
-        {
-            "source_ref": "dadata_1651025328",
-            "legal_name": "ПАО «Нижнекамскнефтехим»",
-            "inn": "1651025328",
-            "ogrn": "1021602502316",
-            "status": "ACTIVE",
-            "address": "Республика Татарстан, Нижнекамск",
-            "okved": "20.17",
-            "registry_url": "https://dadata.ru/suggestions/",
-        },
-        {
-            "source_ref": "dadata_2465014500",
-            "legal_name": "АО «Красноярский завод синтетического каучука»",
-            "inn": "2465014500",
-            "status": "ACTIVE",
-            "address": "Красноярский край, Красноярск",
-            "okved": "20.17",
-            "registry_url": "https://dadata.ru/suggestions/",
-        },
-    ]
 
 
 def _trace_dadata(
