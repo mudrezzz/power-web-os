@@ -4,7 +4,7 @@ Status: AS IS
 
 Product area: Radar candidate and signal search
 
-Updated after slice: 0.7.6.3.6.5
+Updated after slice: 0.7.6.3.6.5.1
 
 Last updated: 2026-06-28
 
@@ -219,6 +219,32 @@ Planner source cards are compact, product-safe versions of the capabilities.
 They contain no credentials, API keys, headers, tokens, or provider secrets.
 
 ## 9. Retrieval, Extraction, And Recovery Loop
+
+Pipeline-critical LLM calls must return structured JSON. The shared contract is:
+
+1. Call the primary role model.
+2. Parse JSON and validate the role-specific application schema.
+3. Retry the primary model once with strict repair context when output is
+   non-JSON or schema-invalid.
+4. Retry the configured backup model once when primary retry is still invalid.
+5. Stop the affected branch with an exact diagnostic reason when recovery is
+   exhausted.
+
+Current role routing:
+
+| Role | Primary model setting | Backup model setting | Temperature setting |
+|---|---|---|---|
+| Planner | `OPENROUTER_PLANNER_MODEL` | `OPENROUTER_PLANNER_BACKUP_MODEL`, then `OPENROUTER_BACKUP_MODEL` | `OPENROUTER_PLANNER_TEMPERATURE` |
+| Extraction | `OPENROUTER_EXTRACTOR_MODEL` | `OPENROUTER_EXTRACTION_BACKUP_MODEL`, then `OPENROUTER_BACKUP_MODEL` | `OPENROUTER_EXTRACTOR_TEMPERATURE` |
+| Signal/default | `OPENROUTER_MODEL` | future role-specific backup | `OPENROUTER_SIGNAL_TEMPERATURE` |
+| Backup attempt | configured role backup | none | `OPENROUTER_BACKUP_TEMPERATURE` |
+
+Default temperature is `0`. Retry and backup attempts count against both
+external OpenRouter budgets and provider-retry budgets. Technical trace records
+attempt role, attempt index, model, temperature, and failure reason without
+headers, API keys, hidden reasoning, or raw provider dumps.
+
+### Retrieval And Extraction Path
 
 The retrieval/extraction path is split conceptually:
 
@@ -658,6 +684,7 @@ flowchart LR
 |---|---|---|
 | New source connector | `config/connectors`, connector profile registry, source provider port/adapter. | Connector profile tests, preflight, source card validation. |
 | Planner capability change | source card compiler, planning input, plan acceptance. | Planner/validator fake tests, no-secret trace tests. |
+| Structured LLM role or model routing | role adapter, OpenRouter request builder, runtime config, universal LLM call contract ADR. | Non-JSON test, schema-invalid test, retry/backup budget test, no-secret trace test. |
 | Search expansion strategy | `RadarSearchExpansionService`. | Unit tests for query families, policy filtering, caps, dedupe. |
 | Registry lookup terms | `RegistryLookupTermGenerator`. | Unit tests for aliases, Russian/English/legal-form terms, identifiers, placeholders. |
 | Extraction schema repair | extraction contract and OpenRouter provider recovery path. | Malformed-output fixtures, retry/backup budget tests. |

@@ -2425,6 +2425,130 @@ def test_openrouter_discovery_planner_normalizes_localized_coverage_risk() -> No
     assert plan.coverage_hypotheses[0].completeness_risk == "low"
 
 
+def test_openrouter_discovery_planner_uses_backup_after_non_json_retries(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    calls: list[tuple[str, float]] = []
+
+    class FakeResponse:
+        status_code = 200
+
+        def __init__(self, *, text: str = "", payload: dict[str, object] | None = None) -> None:
+            self.text = text
+            self._payload = payload
+
+        def json(self):
+            if self._payload is None:
+                raise json.JSONDecodeError("Expecting value", self.text, 0)
+            return self._payload
+
+    valid_payload = {
+        "id": "planner-backup",
+        "choices": [{
+            "message": {
+                "content": json.dumps({
+                    "plan_summary": "Backup plan.",
+                    "steps": [],
+                    "coverage_hypotheses": [{"summary": "Risk.", "completeness_risk": "low"}],
+                })
+            }
+        }],
+        "usage": {},
+    }
+    responses = [
+        FakeResponse(text="not json"),
+        FakeResponse(text="still not json"),
+        FakeResponse(payload=valid_payload),
+    ]
+
+    class FakeHttpx:
+        @staticmethod
+        def post(*args, **kwargs):
+            calls.append((kwargs["json"]["model"], kwargs["json"]["temperature"]))
+            return responses.pop(0)
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join([
+            "OPENROUTER_API_KEY=test-key",
+            "OPENROUTER_PLANNER_MODEL=planner/model",
+            "OPENROUTER_PLANNER_BACKUP_MODEL=backup/model",
+            "OPENROUTER_PLANNER_TEMPERATURE=0",
+            "OPENROUTER_BACKUP_TEMPERATURE=0.2",
+        ]),
+        encoding="utf-8",
+    )
+    monkeypatch.setitem(sys.modules, "httpx", FakeHttpx)
+
+    planning_input = build_discovery_planning_input(
+        radar=build_live_mini_radar_definition(),
+        task_context={"requester": "test"},
+        live=True,
+        provider_metadata={},
+    )
+
+    plan = OpenRouterDiscoveryPlanner(env_path=env_file).propose_plan(planning_input=planning_input)
+
+    assert plan.plan_summary == "Backup plan."
+    assert calls == [("planner/model", 0.0), ("planner/model", 0.0), ("backup/model", 0.2)]
+
+
+def test_openrouter_discovery_planner_retries_schema_invalid_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    calls: list[str] = []
+
+    class FakeResponse:
+        status_code = 200
+        text = "{}"
+
+        def __init__(self, content: dict[str, object]) -> None:
+            self._content = content
+
+        def json(self):
+            return {
+                "id": "planner-response",
+                "choices": [{"message": {"content": json.dumps(self._content)}}],
+                "usage": {},
+            }
+
+    responses = [
+        FakeResponse({"not_a_plan": True}),
+        FakeResponse({"plan_summary": "Primary retry plan.", "steps": [], "coverage_hypotheses": []}),
+    ]
+
+    class FakeHttpx:
+        @staticmethod
+        def post(*args, **kwargs):
+            calls.append(kwargs["json"]["model"])
+            return responses.pop(0)
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join([
+            "OPENROUTER_API_KEY=test-key",
+            "OPENROUTER_PLANNER_MODEL=planner/model",
+            "OPENROUTER_BACKUP_MODEL=backup/model",
+        ]),
+        encoding="utf-8",
+    )
+    monkeypatch.setitem(sys.modules, "httpx", FakeHttpx)
+
+    planning_input = build_discovery_planning_input(
+        radar=build_live_mini_radar_definition(),
+        task_context={"requester": "test"},
+        live=True,
+        provider_metadata={},
+    )
+
+    plan = OpenRouterDiscoveryPlanner(env_path=env_file).propose_plan(planning_input=planning_input)
+
+    assert plan.plan_summary == "Primary retry plan."
+    assert calls == ["planner/model", "planner/model"]
+
+
 def test_execution_plan_compilation_is_generic_and_qualification_first() -> None:
     radar = {
         "radar_id": "generic-industrial",

@@ -6181,6 +6181,92 @@ Principles:
     call can still overrun a slice. Mitigation: scheduler preflights current
     capacity and reports post-call budget usage separately.
 
+### Slice 0.7.6.3.6.5.1: Universal LLM call contract and backup-model routing
+
+- Status: `Done`
+- Goal: Stop fixing malformed OpenRouter JSON one role at a time. All
+  pipeline-critical structured LLM calls must follow the same bounded
+  primary/retry/backup contract and expose exact diagnostics.
+- User value: A smoke or benchmark run should clearly answer: which role called
+  which model, what failed, whether a retry happened, whether a backup model was
+  tried, and whether budget prevented recovery.
+- Problem statement:
+  - Extraction already had primary retry and extraction backup recovery for
+    non-JSON/schema-invalid payloads.
+  - Planner still made a single structured OpenRouter request and then depended
+    on the response being valid JSON and matching `RadarDiscoveryPlan`.
+  - Runtime config showed role models, but not planner backup or per-role
+    temperature settings.
+  - The retry/backup rule was not captured as an ADR-level architecture
+    requirement, so future structured LLM roles could repeat the same gap.
+- Scope completed:
+  - Added ADR `2026-06-28-universal-llm-call-contract.md`.
+  - Added planner retry contract:
+    primary planner model -> strict primary retry -> planner backup model.
+  - Added planner backup selection:
+    `OPENROUTER_PLANNER_BACKUP_MODEL`, falling back to
+    `OPENROUTER_BACKUP_MODEL`.
+  - Added configurable role temperatures:
+    `OPENROUTER_PLANNER_TEMPERATURE`,
+    `OPENROUTER_EXTRACTOR_TEMPERATURE`,
+    `OPENROUTER_SIGNAL_TEMPERATURE`,
+    `OPENROUTER_BACKUP_TEMPERATURE`.
+  - Extraction/retrieval OpenRouter requests now pass role temperature into the
+    provider request and technical trace.
+  - Planner retry and backup attempts count through provider retry and
+    OpenRouter planner budgets.
+  - Runtime config report exposes planner backup model and role temperatures.
+  - TO BE Markdown/PDF added for the corrective behavior.
+- Tests:
+  - Planner non-JSON primary and primary retry recover through backup.
+  - Planner schema-invalid JSON triggers primary retry.
+  - Existing extraction non-JSON primary/retry/backup recovery remains green.
+  - Runtime config exposes backup/temperature fields and still redacts secrets.
+- Manual acceptance required next:
+  - Done: ran two bounded Docker `benchmark_smoke` + evaluation passes for
+    `benchmark-sibur-holding-contour`.
+  - Balanced preset:
+    - run id: `radar-run-87a15759-c120-4d3d-94b7-868f420c5040`;
+    - models: `deepseek/deepseek-v4-pro`,
+      `google/gemini-3.1-pro-preview`, `openai/gpt-5-mini`,
+      `anthropic/claude-sonnet-4.6`, `qwen/qwen3.7-max`;
+    - outcome: `stopped_for_review`, verdict `budget_limited`;
+    - strict recall `0.7778`, review recall `0.3333`;
+    - retrieved sources `15`, diagnostic sources `72`;
+    - checkpoint used `repair_extraction` twice and stopped on budget before
+      signal search;
+    - target guarantee failure remained
+      `known_subsidiary_or_legal_entity_target` with
+      `external_budget_limited`.
+  - Light preset:
+    - run id: `radar-run-edee22a0-b1ee-449a-94b9-5d258ec8ed70`;
+    - models: `deepseek/deepseek-v4-pro`, `z-ai/glm-5.2`,
+      `openai/gpt-5-mini`, `qwen/qwen3.7-max`, `moonshotai/kimi-k2.6`;
+    - outcome: `stopped_for_review`, verdict `budget_limited`;
+    - strict recall `0.4444`, review recall `0.6667`;
+    - retrieved sources `9`, diagnostic sources `39`;
+    - checkpoint used `revise_plan` twice because of
+      `evidence_linking_failed`, then stopped on budget before signal search;
+    - target guarantee failure remained
+      `known_subsidiary_or_legal_entity_target` with
+      `external_budget_limited`.
+  - Comparison artifact:
+    `demo/output/radar_model_preset_comparison.json`.
+  - Verdict:
+    - balanced preset is the safer default for the next smoke because strict
+      legal-entity recall is materially higher;
+    - light preset found more production-site review matches but lost too many
+      legal entities and produced more evidence-linking/revision pressure;
+    - neither preset is ready for broader `benchmark_live`;
+    - next corrective work should still focus on target-lane budget allocation
+      and post-extraction materialization/projection, not on model switching
+      alone.
+- Out of scope:
+  - Choosing a permanent default model lineup.
+  - Automatic production model switching without explicit config.
+  - Fixing post-extraction materialization; that remains the next backlog slice
+    `0.7.6.3.6.6`.
+
 ### Slice 0.7.6.3.6.6: Post-extraction fallback materialization and registry enrichment recheck
 
 - Status: `Backlog`

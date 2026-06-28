@@ -14,7 +14,11 @@ from power_web_os.application.live_radar_contracts import (
     RadarDiscoveryPlan,
     RadarDiscoveryPlanValidationResult,
 )
-from power_web_os.application.live_radar_external_budget import reserve_openrouter_http_call
+from power_web_os.application.live_radar_external_budget import (
+    current_external_call_budget,
+    reserve_external_call,
+    reserve_openrouter_http_call,
+)
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 from power_web_os.integrations.live_radar_openrouter import _load_env_file
 
@@ -41,11 +45,32 @@ class OpenRouterDiscoveryPlanner(RadarDiscoveryPlanner):
             or self._env.get("OPENROUTER_MODEL")
             or os.getenv("OPENROUTER_MODEL")
         )
+        self._backup_model = (
+            self._env.get("OPENROUTER_PLANNER_BACKUP_MODEL")
+            or os.getenv("OPENROUTER_PLANNER_BACKUP_MODEL")
+            or self._env.get("OPENROUTER_BACKUP_MODEL")
+            or os.getenv("OPENROUTER_BACKUP_MODEL")
+            or ""
+        )
+        self._temperature = _float_setting(
+            self._env.get("OPENROUTER_PLANNER_TEMPERATURE")
+            or os.getenv("OPENROUTER_PLANNER_TEMPERATURE"),
+            default=0.0,
+        )
+        self._backup_temperature = _float_setting(
+            self._env.get("OPENROUTER_BACKUP_TEMPERATURE")
+            or os.getenv("OPENROUTER_BACKUP_TEMPERATURE"),
+            default=self._temperature,
+        )
         self._timeout_seconds = timeout_seconds
 
     @property
     def model(self) -> str:
         return self._model or "openai/gpt-4.1-mini"
+
+    @property
+    def backup_model(self) -> str:
+        return self._backup_model.strip()
 
     def propose_plan(
         self,
@@ -60,81 +85,184 @@ class OpenRouterDiscoveryPlanner(RadarDiscoveryPlanner):
         except ImportError as error:  # pragma: no cover - install-shape guard.
             raise RuntimeError("Install the agent extra to run OpenRouter discovery planning: pip install -e .[agent]") from error
 
-        payload = build_openrouter_discovery_planner_request(
-            planning_input=planning_input,
-            previous_validation=previous_validation,
-            model=self.model,
-        )
-        append_current_trace(RadarRunTechnicalTraceCommand(
-            run_id="",
-            phase="planning",
-            node_name="discovery_planner",
-            trace_type="provider_request",
-            title="OpenRouter discovery planner request",
-            summary="OpenRouter request for structured discovery plan.",
-            payload={"url": "https://openrouter.ai/api/v1/chat/completions", "model": self.model, "request": payload},
-        ))
-        budget_decision = reserve_openrouter_http_call(role="planner", task_id="discovery_planner")
-        if not budget_decision.accepted:
-            append_current_trace(RadarRunTechnicalTraceCommand(
-                run_id="",
-                phase="planning",
-                node_name="discovery_planner",
-                trace_type="provider_error",
-                title="OpenRouter discovery planner skipped by external budget",
-                summary=budget_decision.message,
-                payload={"model": self.model, "budget_decision": budget_decision.to_payload()},
-            ))
-            raise RuntimeError(budget_decision.message or "OpenRouter discovery planner skipped by external budget.")
-        started_at = perf_counter()
-        try:
-            response = httpx.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self._api_key}",
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "https://github.com/mudrezzz/power-web-os",
-                    "X-Title": "Power Web OS Radar Discovery Planner",
-                },
-                json=payload,
-                timeout=self._timeout_seconds,
+        last_reason = "planner_not_attempted"
+        for attempt_index, role, model, temperature in self._planner_attempts():
+            if role != "primary":
+                retry_decision = reserve_external_call(
+                    "provider_retry",
+                    key="discovery_planner",
+                    task_id="discovery_planner",
+                )
+                if not retry_decision.accepted:
+                    last_reason = "planner_retry_budget_exhausted"
+                    _trace_planner_error(
+                        title="OpenRouter discovery planner retry skipped by budget",
+                        summary=retry_decision.message,
+                        payload={
+                            "model": model,
+                            "attempt_role": role,
+                            "attempt_index": attempt_index,
+                            "budget_decision": retry_decision.to_payload(),
+                        },
+                    )
+                    break
+                budget = current_external_call_budget()
+                if budget is not None:
+                    budget.record_retry(
+                        task_id="discovery_planner",
+                        reason=f"planner_{last_reason}",
+                        attempt=attempt_index,
+                        decision=retry_decision,
+                    )
+
+            payload = build_openrouter_discovery_planner_request(
+                planning_input=planning_input,
+                previous_validation=previous_validation,
+                model=model,
+                temperature=temperature,
             )
-        except Exception as error:
             append_current_trace(RadarRunTechnicalTraceCommand(
                 run_id="",
                 phase="planning",
                 node_name="discovery_planner",
-                trace_type="provider_error",
-                title="OpenRouter discovery planner error",
-                summary=str(error),
-                duration_ms=_duration_ms(started_at),
-                payload={"error_type": error.__class__.__name__, "message": str(error), "model": self.model},
+                trace_type="provider_request",
+                title="OpenRouter discovery planner request",
+                summary="OpenRouter request for structured discovery plan.",
+                payload={
+                    "url": "https://openrouter.ai/api/v1/chat/completions",
+                    "model": model,
+                    "attempt_role": role,
+                    "attempt_index": attempt_index,
+                    "temperature": temperature,
+                    "request": payload,
+                },
             ))
-            raise
-        if response.status_code >= 400:
+            budget_decision = reserve_openrouter_http_call(role="planner", task_id="discovery_planner")
+            if not budget_decision.accepted:
+                _trace_planner_error(
+                    title="OpenRouter discovery planner skipped by external budget",
+                    summary=budget_decision.message,
+                    payload={
+                        "model": model,
+                        "attempt_role": role,
+                        "attempt_index": attempt_index,
+                        "budget_decision": budget_decision.to_payload(),
+                    },
+                )
+                raise RuntimeError(budget_decision.message or "OpenRouter discovery planner skipped by external budget.")
+            started_at = perf_counter()
+            try:
+                response = httpx.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self._api_key}",
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "https://github.com/mudrezzz/power-web-os",
+                        "X-Title": "Power Web OS Radar Discovery Planner",
+                    },
+                    json=payload,
+                    timeout=self._timeout_seconds,
+                )
+            except Exception as error:
+                append_current_trace(RadarRunTechnicalTraceCommand(
+                    run_id="",
+                    phase="planning",
+                    node_name="discovery_planner",
+                    trace_type="provider_error",
+                    title="OpenRouter discovery planner error",
+                    summary=str(error),
+                    duration_ms=_duration_ms(started_at),
+                    payload={
+                        "error_type": error.__class__.__name__,
+                        "message": str(error),
+                        "model": model,
+                        "attempt_role": role,
+                        "attempt_index": attempt_index,
+                    },
+                ))
+                raise
+            if response.status_code >= 400:
+                append_current_trace(RadarRunTechnicalTraceCommand(
+                    run_id="",
+                    phase="planning",
+                    node_name="discovery_planner",
+                    trace_type="provider_error",
+                    title="OpenRouter discovery planner response error",
+                    summary=f"OpenRouter returned HTTP {response.status_code}.",
+                    duration_ms=_duration_ms(started_at),
+                    payload={
+                        "status_code": response.status_code,
+                        "body": response.text[:2000],
+                        "model": model,
+                        "attempt_role": role,
+                        "attempt_index": attempt_index,
+                    },
+                ))
+                raise RuntimeError(f"OpenRouter discovery planner failed with {response.status_code}: {response.text[:240]}")
+            try:
+                response_payload = response.json()
+            except json.JSONDecodeError as error:
+                last_reason = f"{role}_non_json_http_200"
+                _trace_planner_error(
+                    title="OpenRouter discovery planner non-JSON response",
+                    summary="OpenRouter returned HTTP 200 with a planner response body that is not valid JSON.",
+                    duration_ms=_duration_ms(started_at),
+                    payload={
+                        "error_type": error.__class__.__name__,
+                        "message": str(error),
+                        "status_code": response.status_code,
+                        "body_excerpt": response.text[:2000],
+                        "model": model,
+                        "attempt_role": role,
+                        "attempt_index": attempt_index,
+                        "planner_failure_reason": last_reason,
+                    },
+                )
+                continue
             append_current_trace(RadarRunTechnicalTraceCommand(
                 run_id="",
                 phase="planning",
                 node_name="discovery_planner",
-                trace_type="provider_error",
-                title="OpenRouter discovery planner response error",
-                summary=f"OpenRouter returned HTTP {response.status_code}.",
+                trace_type="provider_response",
+                title="OpenRouter discovery planner response",
+                summary="OpenRouter returned a structured discovery plan response.",
                 duration_ms=_duration_ms(started_at),
-                payload={"status_code": response.status_code, "body": response.text[:2000], "model": self.model},
+                payload=_response_trace_payload(
+                    response_payload,
+                    model=model,
+                    attempt_role=role,
+                    attempt_index=attempt_index,
+                ),
             ))
-            raise RuntimeError(f"OpenRouter discovery planner failed with {response.status_code}: {response.text[:240]}")
-        response_payload = response.json()
-        append_current_trace(RadarRunTechnicalTraceCommand(
-            run_id="",
-            phase="planning",
-            node_name="discovery_planner",
-            trace_type="provider_response",
-            title="OpenRouter discovery planner response",
-            summary="OpenRouter returned a structured discovery plan response.",
-            duration_ms=_duration_ms(started_at),
-            payload=_response_trace_payload(response_payload, model=self.model),
-        ))
-        return _plan_from_response(response_payload)
+            try:
+                return _plan_from_response(response_payload)
+            except Exception as error:
+                last_reason = f"{role}_schema_invalid"
+                _trace_planner_error(
+                    title="OpenRouter discovery planner schema invalid",
+                    summary="OpenRouter planner response was JSON but did not match the Radar discovery plan contract.",
+                    duration_ms=_duration_ms(started_at),
+                    payload={
+                        "error_type": error.__class__.__name__,
+                        "message": str(error),
+                        "model": model,
+                        "attempt_role": role,
+                        "attempt_index": attempt_index,
+                        "planner_failure_reason": last_reason,
+                    },
+                )
+                continue
+        raise RuntimeError(f"OpenRouter discovery planner failed to return a valid plan: {last_reason}")
+
+    def _planner_attempts(self) -> list[tuple[int, str, str, float]]:
+        attempts = [
+            (1, "primary", self.model, self._temperature),
+            (2, "primary_retry", self.model, self._temperature),
+        ]
+        backup_model = self.backup_model
+        if backup_model and backup_model != self.model:
+            attempts.append((3, "backup", backup_model, self._backup_temperature))
+        return attempts
 
 
 def build_openrouter_discovery_planner_request(
@@ -142,6 +270,7 @@ def build_openrouter_discovery_planner_request(
     planning_input: RadarDiscoveryPlanningInput,
     previous_validation: RadarDiscoveryPlanValidationResult | None,
     model: str,
+    temperature: float = 0.0,
 ) -> dict[str, Any]:
     prompt = {
         "task": "Create a structured candidate-universe discovery plan. Do not execute search. Do not evaluate intent signals.",
@@ -222,7 +351,7 @@ def build_openrouter_discovery_planner_request(
             {"role": "system", "content": "You are a B2B account discovery planning agent. Return strict JSON only."},
             {"role": "user", "content": json.dumps(prompt, ensure_ascii=False)},
         ],
-        "temperature": 0,
+        "temperature": temperature,
         "response_format": {"type": "json_object"},
         "metadata": {"planner_role": "discovery_strategy"},
     }
@@ -270,11 +399,19 @@ def _parse_json_object(value: str) -> dict[str, Any]:
     return {}
 
 
-def _response_trace_payload(payload: dict[str, Any], *, model: str) -> dict[str, Any]:
+def _response_trace_payload(
+    payload: dict[str, Any],
+    *,
+    model: str,
+    attempt_role: str = "primary",
+    attempt_index: int = 1,
+) -> dict[str, Any]:
     message = payload.get("choices", [{}])[0].get("message", {})
     return {
         "response_id": payload.get("id"),
         "model": model,
+        "attempt_role": attempt_role,
+        "attempt_index": attempt_index,
         "usage": payload.get("usage", {}),
         "message": {"role": message.get("role"), "content": message.get("content")},
     }
@@ -282,3 +419,29 @@ def _response_trace_payload(payload: dict[str, Any], *, model: str) -> dict[str,
 
 def _duration_ms(started_at: float) -> int:
     return int((perf_counter() - started_at) * 1000)
+
+
+def _trace_planner_error(
+    *,
+    title: str,
+    summary: str,
+    payload: dict[str, Any],
+    duration_ms: int | None = None,
+) -> None:
+    append_current_trace(RadarRunTechnicalTraceCommand(
+        run_id="",
+        phase="planning",
+        node_name="discovery_planner",
+        trace_type="provider_error",
+        title=title,
+        summary=summary,
+        duration_ms=duration_ms,
+        payload=payload,
+    ))
+
+
+def _float_setting(value: str | None, *, default: float) -> float:
+    try:
+        return float(str(value).strip()) if value not in {None, ""} else default
+    except ValueError:
+        return default

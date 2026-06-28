@@ -57,12 +57,17 @@ falling back through `OPENROUTER_ADVANCED_MODEL` to `OPENROUTER_MODEL`.
 For extraction recovery only, `OPENROUTER_EXTRACTION_BACKUP_MODEL` can be tried
 after the primary extractor and strict primary retry still return non-JSON or
 schema-invalid payloads. The generic `OPENROUTER_BACKUP_MODEL` is accepted as a
-compatibility alias, but it is not used for planner or signal-search calls.
+compatibility alias.
 OpenRouter planner requests are a separate boundary: they receive Radar
 settings, qualification rules, source policy, and task context, then return a
 JSON discovery plan for backend validation. Planner output is advisory until the
 application validator accepts it. Planner requests use `OPENROUTER_PLANNER_MODEL`
-with the same advanced/default fallback.
+with the same advanced/default fallback. Planner recovery follows the same
+structured-output contract: primary planner model, strict primary retry, then
+`OPENROUTER_PLANNER_BACKUP_MODEL` or the generic `OPENROUTER_BACKUP_MODEL`.
+Role temperature is configurable through `OPENROUTER_PLANNER_TEMPERATURE`,
+`OPENROUTER_EXTRACTOR_TEMPERATURE`, `OPENROUTER_SIGNAL_TEMPERATURE`, and
+`OPENROUTER_BACKUP_TEMPERATURE`; defaults stay deterministic at `0`.
 
 DaData source-provider requests are a separate structured-data boundary. The
 adapter reads `DADATA_API_KEY`, `DADATA_SECRET_KEY`,

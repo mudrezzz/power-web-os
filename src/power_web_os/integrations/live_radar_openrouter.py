@@ -85,6 +85,21 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
             or os.getenv("OPENROUTER_BACKUP_MODEL")
             or ""
         )
+        self._extractor_temperature = _float_setting(
+            self._env.get("OPENROUTER_EXTRACTOR_TEMPERATURE")
+            or os.getenv("OPENROUTER_EXTRACTOR_TEMPERATURE"),
+            default=0.0,
+        )
+        self._signal_temperature = _float_setting(
+            self._env.get("OPENROUTER_SIGNAL_TEMPERATURE")
+            or os.getenv("OPENROUTER_SIGNAL_TEMPERATURE"),
+            default=0.0,
+        )
+        self._backup_temperature = _float_setting(
+            self._env.get("OPENROUTER_BACKUP_TEMPERATURE")
+            or os.getenv("OPENROUTER_BACKUP_TEMPERATURE"),
+            default=self._extractor_temperature,
+        )
         self._web_mode = web_mode or self._env.get("OPENROUTER_WEB_MODE") or os.getenv("OPENROUTER_WEB_MODE") or "auto"
         self._retrieval_provider = (
             self._env.get("POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER")
@@ -167,6 +182,7 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
             web_search_engine=self.web_search_engine,
             web_max_results=_current_web_max_results(),
             web_max_total_results=_current_web_max_total_results(),
+            temperature=self._temperature_for_search_plan(search_plan, attempt_role=attempt_role),
         )
         compiled_prompt = openrouter_compiled_prompt_summary(payload)
         retrieval_request = retrieval_request_from_search_plan(
@@ -185,6 +201,7 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                 "web_mode": mode,
                 "attempt_role": attempt_role,
                 "attempt_index": attempt_index,
+                "temperature": payload.get("temperature"),
                 "retrieval_request": retrieval_request.model_dump(),
                 "task_card": compiled_prompt.get("task_card", {}),
                 "compiled_prompt": compiled_prompt,
@@ -454,6 +471,14 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
         if stages & {"qualification_discovery", "qualification_gate", "coverage_check"}:
             return self.extractor_model
         return self.model
+
+    def _temperature_for_search_plan(self, search_plan: RadarSearchPlan, *, attempt_role: str) -> float:
+        if attempt_role == "backup":
+            return self._backup_temperature
+        stages = {query.stage for query in search_plan.queries}
+        if stages & {"qualification_discovery", "qualification_gate", "coverage_check"}:
+            return self._extractor_temperature
+        return self._signal_temperature
 
 
 def normalize_openrouter_response(payload: dict[str, Any], *, fallback_metadata: dict[str, Any]) -> WebSearchProviderResult:
@@ -841,3 +866,10 @@ def _load_env_file(path: Path) -> dict[str, str]:
             values[key.strip()] = value.strip().strip('"').strip("'")
         return values
     return {key: str(value) for key, value in dotenv_values(path).items() if value is not None}
+
+
+def _float_setting(value: str | None, *, default: float) -> float:
+    try:
+        return float(str(value).strip()) if value not in {None, ""} else default
+    except ValueError:
+        return default

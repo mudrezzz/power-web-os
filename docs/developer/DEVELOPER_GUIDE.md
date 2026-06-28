@@ -930,9 +930,14 @@ OPENROUTER_API_KEY=
 OPENROUTER_MODEL=openai/gpt-4.1-mini
 OPENROUTER_ADVANCED_MODEL=deepseek/deepseek-v3.2
 OPENROUTER_PLANNER_MODEL=deepseek/deepseek-v3.2
+OPENROUTER_PLANNER_BACKUP_MODEL=
 OPENROUTER_EXTRACTOR_MODEL=deepseek/deepseek-v3.2
 OPENROUTER_EXTRACTION_BACKUP_MODEL=
 OPENROUTER_BACKUP_MODEL=
+OPENROUTER_PLANNER_TEMPERATURE=0
+OPENROUTER_EXTRACTOR_TEMPERATURE=0
+OPENROUTER_SIGNAL_TEMPERATURE=0
+OPENROUTER_BACKUP_TEMPERATURE=0
 OPENROUTER_WEB_MODE=server_tools
 POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=1
 POWER_WEB_OS_RADAR_MAX_DISCOVERY_TASKS_PER_RULE=
@@ -951,9 +956,13 @@ extractor fall back to `OPENROUTER_ADVANCED_MODEL`, then to `OPENROUTER_MODEL`.
 `OPENROUTER_EXTRACTION_BACKUP_MODEL` can be set for bounded extraction recovery
 when the primary extractor repeatedly returns non-JSON or schema-invalid
 payloads. `OPENROUTER_BACKUP_MODEL` is accepted as a generic compatibility
-alias, but role-specific `OPENROUTER_EXTRACTION_BACKUP_MODEL` is preferred.
-The backup model is used only for discovery/qualification/coverage extraction
-retry attempts; planner and signal-search calls keep their own routing.
+alias, but role-specific `OPENROUTER_EXTRACTION_BACKUP_MODEL` is preferred for
+extraction. Planner calls follow the same structured-output contract:
+`OPENROUTER_PLANNER_MODEL`, one strict primary retry, then
+`OPENROUTER_PLANNER_BACKUP_MODEL` or the generic `OPENROUTER_BACKUP_MODEL`.
+Role temperatures are configurable, but default to `0` for deterministic JSON:
+planner, extractor, signal/default, and backup attempts use the corresponding
+`OPENROUTER_*_TEMPERATURE` setting.
 
 `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` is a compatibility safety limit
 for backend-controlled live Radar web/provider tasks. The checked-in

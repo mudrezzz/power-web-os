@@ -410,6 +410,14 @@ actually executed, or precisely blocked. `source_verification_cache_stats`
 explains whether repeated URL checks were deduped before spending the
 source-verification budget.
 
+After `0.7.6.3.6.5.1`, structured LLM calls use the same bounded recovery
+contract. Planner and extraction diagnostics should show the primary model,
+strict primary retry, backup model when attempted, role temperature, and exact
+JSON/schema failure reason. When comparing model presets, inspect
+`extraction_model_attempts`, planner provider trace attempts,
+`provider_retry_records`, OpenRouter role counters, and final recall/precision
+together.
+
 The benchmark CLI poll timeout defaults to 1200 seconds. This timeout is not the
 main work limiter; external-call budgets are. With low-cost OpenRouter routing a
 bounded smoke can still take more than 15 minutes while staying within

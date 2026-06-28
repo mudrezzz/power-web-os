@@ -23,6 +23,7 @@ def build_openrouter_request(
     web_search_engine: str = "auto",
     web_max_results: int | None = None,
     web_max_total_results: int | None = None,
+    temperature: float = 0.0,
 ) -> dict[str, Any]:
     query = search_plan.queries[0] if len(search_plan.queries) == 1 else None
     prompt = compact_task_prompt(radar=radar, search_plan=search_plan).model_dump()
@@ -35,7 +36,7 @@ def build_openrouter_request(
             },
             {"role": "user", "content": json.dumps(prompt, ensure_ascii=False)},
         ],
-        "temperature": 0,
+        "temperature": temperature,
         "response_format": {"type": "json_object"},
     }
     if web_mode == "server_tools":

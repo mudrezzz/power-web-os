@@ -17,8 +17,13 @@ def test_runtime_config_report_redacts_secrets_and_builds_fingerprint() -> None:
             "OPENROUTER_MODEL": "fast/model",
             "OPENROUTER_ADVANCED_MODEL": "advanced/model",
             "OPENROUTER_PLANNER_MODEL": "planner/model",
+            "OPENROUTER_PLANNER_BACKUP_MODEL": "planner-backup/model",
             "OPENROUTER_EXTRACTOR_MODEL": "extractor/model",
             "OPENROUTER_EXTRACTION_BACKUP_MODEL": "backup/model",
+            "OPENROUTER_PLANNER_TEMPERATURE": "0.1",
+            "OPENROUTER_EXTRACTOR_TEMPERATURE": "0",
+            "OPENROUTER_SIGNAL_TEMPERATURE": "0.2",
+            "OPENROUTER_BACKUP_TEMPERATURE": "0.15",
             "OPENROUTER_WEB_MODE": "server_tools",
             "POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER": "openrouter_perplexity",
             "POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE": "perplexity",
@@ -47,7 +52,12 @@ def test_runtime_config_report_redacts_secrets_and_builds_fingerprint() -> None:
     assert report["component"] == "test"
     assert len(report["fingerprint"]) == 16
     assert report["config"]["openrouter"]["api_key_present"] is True
+    assert report["config"]["openrouter"]["planner_backup_model"] == "planner-backup/model"
     assert report["config"]["openrouter"]["extraction_backup_model"] == "backup/model"
+    assert report["config"]["openrouter"]["planner_temperature"] == 0.1
+    assert report["config"]["openrouter"]["extractor_temperature"] == 0
+    assert report["config"]["openrouter"]["signal_temperature"] == 0.2
+    assert report["config"]["openrouter"]["backup_temperature"] == 0.15
     assert report["config"]["dadata"]["credentials_present"] is True
     assert report["config"]["retrieval"]["provider"] == "openrouter_perplexity"
     assert report["config"]["retrieval"]["openrouter_web_search_engine"] == "perplexity"

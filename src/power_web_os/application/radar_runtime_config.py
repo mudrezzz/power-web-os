@@ -152,9 +152,14 @@ def build_effective_runtime_config_report(
     advanced_model = str(value("OPENROUTER_ADVANCED_MODEL", "") or "")
     planner_model = str(value("OPENROUTER_PLANNER_MODEL", advanced_model or openrouter_model) or advanced_model or openrouter_model)
     extractor_model = str(value("OPENROUTER_EXTRACTOR_MODEL", advanced_model or openrouter_model) or advanced_model or openrouter_model)
+    planner_backup_model = str(value("OPENROUTER_PLANNER_BACKUP_MODEL", value("OPENROUTER_BACKUP_MODEL", "")) or "")
     extraction_backup_model = str(
         value("OPENROUTER_EXTRACTION_BACKUP_MODEL", value("OPENROUTER_BACKUP_MODEL", "")) or ""
     )
+    planner_temperature = _optional_float_value(value("OPENROUTER_PLANNER_TEMPERATURE", ""))
+    extractor_temperature = _optional_float_value(value("OPENROUTER_EXTRACTOR_TEMPERATURE", ""))
+    signal_temperature = _optional_float_value(value("OPENROUTER_SIGNAL_TEMPERATURE", ""))
+    backup_temperature = _optional_float_value(value("OPENROUTER_BACKUP_TEMPERATURE", ""))
     web_mode = str(value("OPENROUTER_WEB_MODE", "auto") or "auto")
     retrieval_provider = str(value("POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER", "openrouter") or "openrouter")
     retrieval_engine_default = "perplexity" if retrieval_provider == "openrouter_perplexity" else "auto"
@@ -175,8 +180,13 @@ def build_effective_runtime_config_report(
             "model": openrouter_model,
             "advanced_model": advanced_model,
             "planner_model": planner_model,
+            "planner_backup_model": planner_backup_model,
             "extractor_model": extractor_model,
             "extraction_backup_model": extraction_backup_model,
+            "planner_temperature": planner_temperature,
+            "extractor_temperature": extractor_temperature,
+            "signal_temperature": signal_temperature,
+            "backup_temperature": backup_temperature,
             "web_mode": web_mode,
         },
         "retrieval": {
@@ -415,6 +425,13 @@ def _optional_non_negative_int_value(value: Any) -> int | None:
     except (TypeError, ValueError):
         return None
     return parsed if parsed >= 0 else None
+
+
+def _optional_float_value(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _fingerprint_payload(config: dict[str, Any]) -> dict[str, Any]:
