@@ -410,6 +410,13 @@ actually executed, or precisely blocked. `source_verification_cache_stats`
 explains whether repeated URL checks were deduped before spending the
 source-verification budget.
 
+After `0.7.6.3.6.7`, also inspect `work_scheduler_plan`,
+`work_scheduler_ledger`, `work_admission_decisions`, `work_lane_summary`,
+`work_guarantee_failures`, `work_execution_order`, and `rejected_work_items`.
+These fields show whether guaranteed recall-expansion lanes were admitted before
+provider execution and whether regular OpenRouter web tasks were blocked to
+preserve reserved capacity for those lanes.
+
 After `0.7.6.3.6.5.1`, structured LLM calls use the same bounded recovery
 contract. Planner and extraction diagnostics should show the primary model,
 strict primary retry, backup model when attempted, role temperature, and exact

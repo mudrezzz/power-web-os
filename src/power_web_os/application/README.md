@@ -71,6 +71,10 @@ provider SDK details.
   source registry wrapper. It may select company-registry providers such as
   DaData by source policy, but it does not know HTTP, MCP, SDK, or secret
   handling details.
+- `radar_work_scheduler.py` owns Radar work admission and protected budget
+  capacity for application-approved lanes such as benchmark recall expansion.
+  It orders and admits work, but does not call providers or mutate source
+  policy.
 
 ## Dependency Rules
 
@@ -160,6 +164,12 @@ reviews candidate coverage, linked source evidence, source obligations,
 schema/linking issues, and budget pressure before the next expensive phase can
 run. Provider adapters may supply observations, but they do not decide whether a
 weak candidate universe is good enough for signal search.
+
+Central work scheduling follows the same rule. `RadarWorkScheduler` decides
+whether checkpoint-approved work may consume protected capacity before local
+executors call providers. `RadarExecutionBudget` and `RadarExternalCallBudget`
+remain counters and guards; the scheduler owns admission order for guaranteed
+work lanes.
 
 The checkpoint decision service is not enough to claim full adaptive execution.
 The follow-up recovery layer must apply checkpoint actions explicitly in the

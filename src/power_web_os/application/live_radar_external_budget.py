@@ -63,6 +63,7 @@ class RadarExternalCallBudget:
     reserve_counts: dict[str, int] = field(default_factory=dict)
     reserve_exhaustion_events: list[dict[str, object]] = field(default_factory=list)
     protected_recall_expansion_tasks: dict[str, str] = field(default_factory=dict)
+    openrouter_total_reservations: dict[str, dict[str, object]] = field(default_factory=dict)
 
     def reserve(self, kind: ExternalCallKind, *, key: str = "run", task_id: str = "") -> RadarExternalCallBudgetDecision:
         budget_key = f"{kind}:{key or 'run'}" if kind == "provider_retry" else f"{kind}:run"
@@ -98,6 +99,9 @@ class RadarExternalCallBudget:
         role_kind = "openrouter_planner" if role == "planner" else "openrouter_web_task"
         if role_kind == "openrouter_web_task" and task_id in self.protected_recall_expansion_tasks:
             return self._reserve_protected_recall_expansion_openrouter_call(task_id=task_id)
+        reserved_capacity_block = self._reserved_openrouter_capacity_decision(role_kind=role_kind, task_id=task_id)
+        if reserved_capacity_block is not None:
+            return reserved_capacity_block, reserved_capacity_block
         total_block = self._exhausted_decision("openrouter", budget_key="openrouter:run", key="run", task_id=task_id)
         if total_block is not None:
             return total_block, total_block
@@ -121,6 +125,21 @@ class RadarExternalCallBudget:
         if not task_id:
             return
         self.protected_recall_expansion_tasks[task_id] = reserve_key or "recall_expansion"
+
+    def configure_openrouter_total_reserve(self, *, lane: str, units: int, reason: str = "") -> None:
+        if units <= 0:
+            return
+        self.openrouter_total_reservations[lane or "unclassified"] = {
+            "lane": lane or "unclassified",
+            "units": units,
+            "reason": reason,
+        }
+
+    def openrouter_total_reservation_metadata(self) -> dict[str, object]:
+        return {
+            "reservations": {key: dict(value) for key, value in self.openrouter_total_reservations.items()},
+            "reserved_remaining": self._openrouter_reserved_remaining_by_lane(),
+        }
 
     def _reserve_protected_recall_expansion_openrouter_call(
         self,
@@ -200,6 +219,53 @@ class RadarExternalCallBudget:
         )
         self.exhaustion_events.append({"task_id": task_id, **decision.to_payload()})
         return decision
+
+    def _reserved_openrouter_capacity_decision(
+        self,
+        *,
+        role_kind: str,
+        task_id: str,
+    ) -> RadarExternalCallBudgetDecision | None:
+        if role_kind != "openrouter_web_task":
+            return None
+        total_limit = self._limit_for("openrouter")
+        if total_limit is None:
+            return None
+        reserved_remaining = sum(self._openrouter_reserved_remaining_by_lane().values())
+        if reserved_remaining <= 0:
+            return None
+        current_total = self.counts.get("openrouter:run", 0)
+        allowed_regular_total = max(total_limit - reserved_remaining, 0)
+        if current_total < allowed_regular_total:
+            return None
+        decision = RadarExternalCallBudgetDecision(
+            accepted=False,
+            kind="openrouter",
+            key="openrouter:run",
+            limit=total_limit,
+            current=current_total,
+            reason="work_admission_reserved_capacity",
+            message=(
+                "OpenRouter run capacity is reserved for guaranteed recall expansion "
+                f"({reserved_remaining} calls remaining)."
+            ),
+        )
+        self.exhaustion_events.append({"task_id": task_id, **decision.to_payload()})
+        return decision
+
+    def _openrouter_reserved_remaining_by_lane(self) -> dict[str, int]:
+        protected_used = self.counts.get("openrouter_recall_expansion:run", 0)
+        result: dict[str, int] = {}
+        for lane, payload in self.openrouter_total_reservations.items():
+            try:
+                units = int(payload.get("units", 0))  # type: ignore[union-attr]
+            except (TypeError, ValueError, AttributeError):
+                units = 0
+            if lane == "recall_expansion":
+                result[lane] = max(units - protected_used, 0)
+            else:
+                result[lane] = max(units, 0)
+        return result
 
     def record_server_tool_web_search_usage(
         self,
@@ -311,6 +377,7 @@ class RadarExternalCallBudget:
             "post_call_budget_overruns": list(self.post_call_budget_overruns),
             "budget_reserve_counters": dict(self.reserve_counts),
             "budget_reserve_exhaustion_events": list(self.reserve_exhaustion_events),
+            "work_admission_reserved_capacity": self.openrouter_total_reservation_metadata(),
         }
 
     def _limit_for(self, kind: ExternalCallKind) -> int | None:
@@ -397,54 +464,11 @@ def reserve_budget_slice(
 
 
 def external_budget_settings_from_context(context: dict[str, object]) -> RadarExternalCallBudgetSettings:
-    profile = str(context.get("run_profile") or "live").strip().lower()
-    if profile not in {"live", "smoke"}:
-        profile = "live"
-    smoke = profile == "smoke"
-    return RadarExternalCallBudgetSettings(
-        run_profile=profile,
-        max_openrouter_calls_per_run=_context_int_or_default(context, "max_openrouter_calls_per_run", 8 if smoke else None),
-        max_openrouter_planner_calls_per_run=_context_int_or_default(
-            context, "max_openrouter_planner_calls_per_run", 2 if smoke else None
-        ),
-        max_openrouter_web_task_calls_per_run=_context_int_or_default(
-            context, "max_openrouter_web_task_calls_per_run", 6 if smoke else None
-        ),
-        max_recall_expansion_openrouter_calls_per_run=_context_int_or_default(
-            context, "max_recall_expansion_openrouter_calls_per_run", 2 if smoke else None
-        ),
-        max_openrouter_server_tool_web_searches_per_run=_context_int_or_default(
-            context, "max_openrouter_server_tool_web_searches_per_run", 24 if smoke else None
-        ),
-        max_dadata_lookups_per_run=_context_int_or_default(context, "max_dadata_lookups_per_run", 3 if smoke else None),
-        max_source_verification_requests_per_run=_context_int_or_default(context, "max_source_verification_requests_per_run", 20 if smoke else None),
-        max_provider_retries_per_task=_context_int(context, "max_provider_retries_per_task") if _context_int(context, "max_provider_retries_per_task") is not None else (1 if smoke else 0),
-        openrouter_web_max_results_per_call=_context_int_or_default(
-            context, "openrouter_web_max_results_per_call", 3 if smoke else None
-        ),
-        openrouter_web_max_total_results_per_call=_context_int_or_default(
-            context, "openrouter_web_max_total_results_per_call", 6 if smoke else None
-        ),
-        smoke_max_candidates=_context_int_or_default(context, "smoke_max_candidates", 2 if smoke else None),
-        smoke_max_signals=_context_int_or_default(context, "smoke_max_signals", 1 if smoke else None),
-        budget_reserve_limits=_budget_reserve_limits(context, smoke=smoke),
+    from power_web_os.application.live_radar_external_budget_settings import (
+        external_budget_settings_from_context as build_settings,
     )
 
-
-def _context_int(context: dict[str, object], key: str) -> int | None:
-    value = context.get(key)
-    if isinstance(value, bool):
-        return None
-    try:
-        parsed = int(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return None
-    return parsed if parsed >= 0 else None
-
-
-def _context_int_or_default(context: dict[str, object], key: str, default: int | None) -> int | None:
-    parsed = _context_int(context, key)
-    return default if parsed is None else parsed
+    return build_settings(context)
 
 
 def _non_negative(value: int | None) -> int | None:
@@ -457,41 +481,3 @@ def _counts_by_role(counts: dict[str, int]) -> dict[str, int]:
         role = key.split(":", 1)[0]
         roles[role] = roles.get(role, 0) + value
     return roles
-
-
-def _budget_reserve_limits(context: dict[str, object], *, smoke: bool) -> dict[str, int]:
-    defaults = _default_budget_reserve_limits(smoke=smoke)
-    configured = context.get("budget_reserve_limits")
-    if isinstance(configured, dict):
-        parsed = {
-            str(key): parsed
-            for key, value in configured.items()
-            if (parsed := _parse_non_negative_int(value)) is not None
-        }
-        return {**defaults, **parsed}
-    return defaults
-
-
-def _default_budget_reserve_limits(*, smoke: bool) -> dict[str, int]:
-    if not smoke:
-        return {}
-    return {
-        "primary_discovery": 3,
-        "registry_identity": 2,
-        "recall_expansion": 3,
-        "official_coverage_probe": 2,
-        "open_web_coverage_probe": 3,
-        "production_site_coverage_probe": 2,
-        "extraction_recovery": 2,
-        "signal_search": 1,
-    }
-
-
-def _parse_non_negative_int(value: object) -> int | None:
-    if isinstance(value, bool):
-        return None
-    try:
-        parsed = int(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return None
-    return parsed if parsed >= 0 else None

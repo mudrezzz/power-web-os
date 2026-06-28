@@ -586,6 +586,20 @@ def test_radar_run_dossier_explains_zero_product_sources(tmp_path: Path) -> None
     artifact["run_metadata"]["execution_results"]["target_probe_guarantee_failures"] = [
         {"target_type": "production_site_or_branch_target", "reason": "semantic_task_budget_limited"}
     ]
+    artifact["run_metadata"]["execution_results"]["work_scheduler_plan"] = {"work_item_count": 2}
+    artifact["run_metadata"]["execution_results"]["work_scheduler_ledger"] = {"accepted_count": 1, "rejected_count": 1}
+    artifact["run_metadata"]["execution_results"]["work_admission_decisions"] = [
+        {"work_id": "work-1", "accepted": True},
+        {"work_id": "work-2", "accepted": False, "reason": "budget_reserve_exhausted"},
+    ]
+    artifact["run_metadata"]["execution_results"]["work_lane_summary"] = {
+        "recall_expansion_production_site_branch": {"planned": 2, "accepted": 1, "rejected": 1}
+    }
+    artifact["run_metadata"]["execution_results"]["work_guarantee_failures"] = [
+        {"work_id": "work-2", "target_type": "production_site_or_branch_target", "reason": "budget_reserve_exhausted"}
+    ]
+    artifact["run_metadata"]["execution_results"]["work_execution_order"] = [{"work_id": "work-1"}]
+    artifact["run_metadata"]["execution_results"]["rejected_work_items"] = [{"work_id": "work-2"}]
     artifact["run_metadata"]["execution_results"]["source_verification_cache_stats"] = {
         "source_verification_unique_request_count": 1,
         "source_verification_duplicate_skip_count": 2,
@@ -618,6 +632,12 @@ def test_radar_run_dossier_explains_zero_product_sources(tmp_path: Path) -> None
     assert dossier["semantic_task_budget_exhaustion_events"][0]["reason"] == "semantic_task_reserve_exhausted"
     assert dossier["target_probe_guarantees"]["target_probe_minimums_satisfied"] is False
     assert dossier["target_probe_guarantee_failures"][0]["reason"] == "semantic_task_budget_limited"
+    assert dossier["work_scheduler_ledger"]["rejected_count"] == 1
+    assert dossier["work_admission_decisions"][1]["reason"] == "budget_reserve_exhausted"
+    assert dossier["work_lane_summary"]["recall_expansion_production_site_branch"]["accepted"] == 1
+    assert dossier["work_guarantee_failures"][0]["target_type"] == "production_site_or_branch_target"
+    assert dossier["work_execution_order"][0]["work_id"] == "work-1"
+    assert dossier["rejected_work_items"][0]["work_id"] == "work-2"
     assert dossier["source_verification_cache_stats"]["source_verification_duplicate_skip_count"] == 2
     assert dossier["source_verification_unique_request_count"] == 1
     assert dossier["source_verification_duplicate_skip_count"] == 2

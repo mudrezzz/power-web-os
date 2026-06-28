@@ -425,6 +425,14 @@ class RadarRunDossierResponse(BaseModel):
     semantic_task_budget_exhaustion_events: list[dict[str, Any]] = Field(default_factory=list)
     target_probe_guarantees: dict[str, Any] = Field(default_factory=dict)
     target_probe_guarantee_failures: list[dict[str, Any]] = Field(default_factory=list)
+    work_scheduler_plan: dict[str, Any] = Field(default_factory=dict)
+    work_scheduler_ledger: dict[str, Any] = Field(default_factory=dict)
+    work_admission_decisions: list[dict[str, Any]] = Field(default_factory=list)
+    work_lane_summary: dict[str, Any] = Field(default_factory=dict)
+    work_guarantee_failures: list[dict[str, Any]] = Field(default_factory=list)
+    work_execution_order: list[dict[str, Any]] = Field(default_factory=list)
+    deferred_work_items: list[dict[str, Any]] = Field(default_factory=list)
+    rejected_work_items: list[dict[str, Any]] = Field(default_factory=list)
     source_verification_cache_stats: dict[str, int] = Field(default_factory=dict)
     source_verification_unique_request_count: int = 0
     source_verification_duplicate_skip_count: int = 0

@@ -15,8 +15,6 @@ from power_web_os.application.live_radar_contracts import (
 from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
 from power_web_os.application.live_radar_external_budget import (
     RadarExternalCallBudget,
-    protect_recall_expansion_openrouter_task,
-    reserve_budget_slice,
 )
 from power_web_os.application.live_radar_staged_helpers import eligible_candidate_names, run_task
 from power_web_os.application.live_radar_staged_merge import merge_result
@@ -31,13 +29,13 @@ from power_web_os.application.live_radar_search_expansion_payloads import (
     expansion_action_payload,
     has_extraction_issues,
     not_executed_payload,
-    preflight_budget_limited_reason,
     skipped_event,
     skipped_payload,
     with_expansion_plan_metadata,
     without_extraction_issues,
 )
 from power_web_os.application.radar_search_expansion_scheduler import schedule_guaranteed_expansion_variants
+from power_web_os.application.radar_work_scheduler import RadarWorkScheduler, merge_work_scheduler_metadata
 
 
 @dataclass(slots=True)
@@ -73,7 +71,8 @@ def execute_targeted_search_expansion(
     executed_task_ids: list[str],
     budget: RadarExecutionBudget,
     external_budget: RadarExternalCallBudget | None,
-    smoke_candidate_limit: int | None,
+    work_scheduler: RadarWorkScheduler | None = None,
+    smoke_candidate_limit: int | None = None,
 ) -> TargetedSearchExpansionExecutionResult:
     expansion_plan = service.plan_expansion(
         radar=radar,
@@ -146,56 +145,43 @@ def execute_targeted_search_expansion(
             ],
         ],
     }
+    scheduler = work_scheduler or RadarWorkScheduler()
+    portfolio = scheduler.build_recall_expansion_portfolio(
+        tasks=tasks,
+        scheduled_variants=list(schedule.scheduled_variants),
+        external_budget=external_budget,
+    )
+    provider_metadata = merge_work_scheduler_metadata(provider_metadata, portfolio.to_metadata())
     executed_count = 0
     skipped_count = 0
     attempted_count = 0
-    for task, scheduled_variant in zip(tasks, list(schedule.scheduled_variants)):
+    decisions_by_work_id = {decision.work_id: decision for decision in portfolio.ledger.decisions}
+    for work_item in portfolio.work_items:
+        task = work_item.task
+        scheduled_variant = work_item.scheduled_variant
+        if scheduled_variant is None:
+            continue
         variant = scheduled_variant.variant
-        preflight_decision = (
-            external_budget.check_recall_expansion_openrouter_capacity(task_id=task.task_id)
-            if external_budget is not None
-            else None
-        )
-        if preflight_decision is not None and not preflight_decision.accepted:
+        admission_decision = decisions_by_work_id.get(work_item.work_id)
+        if admission_decision is not None and not admission_decision.accepted:
             skipped_count += 1
             skipped = skipped_payload(
                 task,
                 variant,
-                preflight_decision.to_payload(),
+                admission_decision.budget_decision,
                 checkpoint_id,
                 schedule_role=scheduled_variant.schedule_role,
-                execution_status="scheduled_but_budget_not_reserved",
-                not_searched_reason=preflight_budget_limited_reason(preflight_decision.to_payload()),
+                execution_status="work_admission_rejected",
+                not_searched_reason=admission_decision.reason,
             )
             provider_metadata = {
                 **provider_metadata,
                 "targets_not_searched": [*dict_list(provider_metadata.get("targets_not_searched")), skipped],
                 "search_expansion_results": [*dict_list(provider_metadata.get("search_expansion_results")), skipped],
             }
-            events.append(skipped_event(task, preflight_decision.message, skipped))
-            continue
-        reserve_decision = reserve_budget_slice(
-            variant.budget_reserve_key,
-            task_id=task.task_id,
-            reason=variant.reason,
-        )
-        if not reserve_decision.accepted:
-            skipped_count += 1
-            skipped = skipped_payload(
-                task,
-                variant,
-                reserve_decision.to_payload(),
-                checkpoint_id,
-                schedule_role=scheduled_variant.schedule_role,
-            )
-            provider_metadata = {
-                **provider_metadata,
-                "targets_not_searched": [*dict_list(provider_metadata.get("targets_not_searched")), skipped],
-            }
-            events.append(skipped_event(task, reserve_decision.message, skipped))
+            events.append(skipped_event(task, admission_decision.message, skipped))
             continue
 
-        protect_recall_expansion_openrouter_task(task_id=task.task_id, reserve_key=variant.budget_reserve_key)
         attempted_count += 1
         result = run_task(
             provider=provider,

@@ -4,9 +4,9 @@ Status: AS IS
 
 Product area: Radar candidate and signal search
 
-Updated after slice: 0.7.6.3.6.5.1
+Updated after slice: 0.7.6.3.6.7
 
-Last updated: 2026-06-28
+Last updated: 2026-06-29
 
 Canonical source: current implementation, tests, `ROADMAP.md`, and Radar run diagnostics
 
@@ -69,6 +69,7 @@ merged into this AS IS document and the PDF is regenerated.
 | Semantic task reserve | Application-level protected task slot for approved recall/coverage expansion tasks after the regular web-task budget is exhausted. It does not bypass external-call budgets. |
 | Expansion target | A prioritized source-backed target that weak discovery should search next, such as a holding, legal entity, production site, branch, alias/language variant, or explicit benchmark target. |
 | Expansion scheduler | Application-layer selector that orders guaranteed target-lane expansion probes before optional expansion variants and records scheduled/not-scheduled states. |
+| Work scheduler | Central application-layer admission controller that decides which approved work items can consume shared budget and which must be rejected before provider execution. |
 | `not_observed` | A searched signal with no evidence found. It must not mean "not searched". |
 | `not_searched_*` | Explicit unsearched state caused by budget, policy, missing scope, or pending output. |
 
@@ -119,7 +120,8 @@ candidate state.
 | Registry lookup term generator | `src/power_web_os/application/radar_registry_lookup_terms.py` | Build concrete lookup terms for registry providers. | Broad web discovery. |
 | Search expansion service | `src/power_web_os/application/radar_search_expansion.py`, `radar_search_expansion_models.py`, and `radar_search_expansion_support.py` | Build prioritized expansion target queues and bounded source-profile-driven query variants when discovery/coverage is weak. | Direct provider calls. |
 | Search expansion scheduler | `src/power_web_os/application/radar_search_expansion_scheduler.py` | Select guaranteed target-lane variants and order them before optional expansion work. | Provider calls or changing source policy. |
-| Search expansion executor | `src/power_web_os/application/live_radar_search_expansion_execution.py` | Execute checkpoint-approved expansion tasks under source policy and reserve budgets. | Choosing checkpoint decisions. |
+| Central work scheduler | `src/power_web_os/application/radar_work_scheduler.py` | Admit application-approved work lanes, protect shared OpenRouter capacity for guaranteed recall expansion, and record accepted/rejected work. | Provider calls, source policy mutation, or checkpoint decision policy. |
+| Search expansion executor | `src/power_web_os/application/live_radar_search_expansion_execution.py` | Execute only scheduler-admitted checkpoint expansion tasks under source policy and budget guards. | Choosing checkpoint decisions or admitting work locally. |
 | Extraction contract/repair | `src/power_web_os/application/live_radar_extraction_contract.py` | Validate and repair provider payload shape when deterministic repair is safe. | Silently converting unrecoverable output into success. |
 | Checkpoint service | `src/power_web_os/application/live_radar_checkpoints.py` | Decide continue, retry, expand, repair, revise, stop, or fail. | Direct HTTP/provider calls. |
 | Checkpoint action executor | `src/power_web_os/application/live_radar_checkpoint_actions.py` | Apply approved checkpoint actions under budgets and policy. | Unbounded loops. |
@@ -348,6 +350,13 @@ strict. Targets that are generated but do not receive an execution slot are kept
 in `targets_not_searched` with a specific reason such as `not_selected` or
 `selected_but_not_scheduled`.
 
+After target-lane ordering, `RadarWorkScheduler` performs central admission.
+This is the boundary between "selected" and "allowed to spend provider budget".
+For each scheduled expansion task it records a `RadarWorkItem`,
+`RadarWorkAdmissionDecision`, lane summary, execution order, rejected work, and
+guarantee failures. A rejected guaranteed work item is visible before provider
+execution as `work_admission_rejected`; it is not counted as searched.
+
 Query variants are compiled from connector source cards and policy:
 
 - official/domain-capable sources produce `site:<domain> <target>` plus relation
@@ -380,12 +389,12 @@ recall-expansion reserve can use two protected layers:
   `openrouter_web_task` role budget is exhausted.
 
 Before a scheduled guaranteed expansion task reaches the provider, the executor
-also performs a non-mutating external-budget preflight for total OpenRouter,
-protected recall-expansion OpenRouter, and OpenRouter server-tool web-search
-capacity. If capacity is already gone, the target is recorded as
-`scheduled_but_budget_not_reserved` with a reason such as
+asks `RadarWorkScheduler` for admission. The scheduler checks total OpenRouter,
+protected recall-expansion OpenRouter, OpenRouter server-tool web-search, and
+budget-reserve capacity before the provider is called. If capacity is already
+gone, the target is recorded as a rejected work item with a reason such as
 `external_total_budget_limited`, `openrouter_recall_expansion_budget_limited`,
-or `server_tool_budget_limited`.
+`server_tool_budget_limited`, or `budget_reserve_exhausted`.
 
 Both semantic and external layers must pass before the provider call is made.
 Semantic task reserves do not bypass total OpenRouter calls, server-tool
@@ -409,9 +418,17 @@ Expansion diagnostics include `expansion_target_summary_by_type`,
 `expansion_schedule`, `target_lane_allocation`,
 `search_expansion_results_by_target_type`, `search_expansion_execution_summary`,
 `targets_not_searched`, semantic task reserve counters, and external reserve
-counters. The execution summary is a funnel:
-generated targets, selected variants, attempted tasks, externally executed
-provider calls, sources found, and projected entities. A target with
+counters. After `0.7.6.3.6.7`, diagnostics also include
+`work_scheduler_plan`, `work_scheduler_ledger`, `work_admission_decisions`,
+`work_lane_summary`, `work_guarantee_failures`, `work_execution_order`,
+`deferred_work_items`, and `rejected_work_items`. Scheduler diagnostics are
+aggregated across all expansion portfolios in a run. Later checkpoints must not
+overwrite earlier admissions, because that would hide which guaranteed lanes
+were actually admitted before provider spending.
+
+The execution summary is a funnel: generated targets, selected variants,
+attempted tasks, externally executed provider calls, sources found, and
+projected entities. A target with
 `budget_decision.accepted=false` is not counted as searched. Evaluation can
 therefore distinguish `expansion_not_selected`,
 `expansion_global_budget_limited`, `expansion_reserve_limited`,
@@ -547,6 +564,13 @@ not-searched diagnostics for skipped expansion targets or registry identity
 attempts. Protected recall-expansion calls are reported in external counters as
 `openrouter_recall_expansion:run`, while still incrementing the total
 `openrouter:run` counter.
+
+`RadarWorkScheduler` can reserve part of the total OpenRouter run capacity for
+guaranteed recall-expansion lanes. Regular OpenRouter web-task calls are
+rejected with `work_admission_reserved_capacity` when accepting them would
+consume the shared capacity needed for admitted recall expansion. Protected
+recall-expansion calls still count against `openrouter:run`; the reservation
+only prevents earlier optional work from spending the last shared slots.
 
 Semantic task reserves are separate from external-call reserves. They live in
 `RadarExecutionBudget` and are configured through
@@ -702,6 +726,7 @@ flowchart LR
 | Connector profiles and source cards | `tests/test_connector_profiles.py`, `tests/test_live_icp_radar.py` |
 | Source obligations | `tests/test_live_icp_radar.py`, `tests/test_radar_preflight.py` |
 | Execution, semantic, and external-call budgets | `tests/test_radar_external_call_budget.py` |
+| Central work scheduler and admission control | `tests/test_radar_work_scheduler.py` |
 | Adaptive checkpoints | `tests/test_radar_adaptive_execution.py` |
 | Search expansion and lookup terms | `tests/test_radar_search_expansion.py`, `tests/test_live_icp_radar.py` |
 | Extraction recovery | `tests/test_live_icp_radar.py`, `tests/test_radar_adaptive_execution.py` |

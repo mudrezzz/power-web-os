@@ -28,8 +28,6 @@ from power_web_os.application.live_radar_external_budget import (
     current_external_call_budget,
     external_budget_settings_from_context,
     external_call_budget_context,
-    protect_recall_expansion_openrouter_task,
-    reserve_budget_slice,
 )
 from power_web_os.application.live_radar_extraction_diagnostics import (
     extraction_contract_state,
@@ -44,6 +42,10 @@ from power_web_os.application.radar_source_obligations import (
     source_obligation_summary,
 )
 from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
+from power_web_os.application.live_radar_search_expansion_payloads import benchmark_target_probe_minimums
+from power_web_os.application.radar_search_expansion_models import RadarSearchExpansionPlan
+from power_web_os.application.radar_search_expansion_scheduler import schedule_guaranteed_expansion_variants
+from power_web_os.application.radar_work_scheduler import RadarWorkScheduler, merge_work_scheduler_metadata
 from power_web_os.application.live_radar_staged_helpers import (
     candidate_names_matching as _candidate_names_matching,
     combine_task_results as _combine_task_results,
@@ -193,6 +195,8 @@ def run_staged_radar_execution(
     search_expansion_service = RadarSearchExpansionService(
         max_variants=_search_expansion_variant_cap(run_profile=run_profile, radar=radar)
     )
+    work_scheduler = RadarWorkScheduler()
+    provider_metadata = {**provider_metadata, **work_scheduler.configure_run_admission(radar=radar, external_budget=external_budget)}
     retrieval_plan = retrieval_plan_from_execution_plan(execution_plan)
     verification_cache = SourceVerificationCache(results_by_url={})
 
@@ -269,6 +273,7 @@ def run_staged_radar_execution(
                 useful_result_retry_records=useful_result_retry_records,
                 external_budget=external_budget,
                 search_expansion_service=search_expansion_service,
+                work_scheduler=work_scheduler,
                 smoke_candidate_limit=external_budget.settings.smoke_max_candidates,
             ),
         )
@@ -420,6 +425,7 @@ def run_staged_radar_execution(
                 executed_task_ids=executed_task_ids,
                 budget=task_budget,
                 external_budget=external_budget,
+                work_scheduler=work_scheduler,
                 smoke_candidate_limit=external_budget.settings.smoke_max_candidates,
             )
 
@@ -439,6 +445,7 @@ def run_staged_radar_execution(
                     useful_result_retry_records=useful_result_retry_records,
                     external_budget=external_budget,
                     search_expansion_service=search_expansion_service,
+                    work_scheduler=work_scheduler,
                     smoke_candidate_limit=external_budget.settings.smoke_max_candidates,
                 ),
             )
@@ -684,6 +691,14 @@ def run_staged_radar_execution(
             "search_expansion_execution_summary": _search_expansion_execution_summary(provider_metadata),
             "target_probe_guarantees": target_probe_guarantee_payload["summary"],
             "target_probe_guarantee_failures": target_probe_guarantee_payload["failures"],
+            "work_scheduler_plan": provider_metadata.get("work_scheduler_plan", {}),
+            "work_scheduler_ledger": provider_metadata.get("work_scheduler_ledger", {}),
+            "work_admission_decisions": provider_metadata.get("work_admission_decisions", []),
+            "work_lane_summary": provider_metadata.get("work_lane_summary", {}),
+            "work_guarantee_failures": provider_metadata.get("work_guarantee_failures", []),
+            "work_execution_order": provider_metadata.get("work_execution_order", []),
+            "deferred_work_items": provider_metadata.get("deferred_work_items", []),
+            "rejected_work_items": provider_metadata.get("rejected_work_items", []),
             "expansion_target_summary_by_type": provider_metadata.get("expansion_target_summary_by_type", {}),
             "targets_not_searched": provider_metadata.get("targets_not_searched", []),
             "benchmark_recall_target_summary": _benchmark_recall_target_summary(provider_metadata),
@@ -865,6 +880,7 @@ def _run_search_expansion(
     executed_task_ids: list[str],
     budget: RadarExecutionBudget,
     external_budget: RadarExternalCallBudget | None,
+    work_scheduler: RadarWorkScheduler,
     smoke_candidate_limit: int | None,
 ) -> tuple[list[RadarSourceEvidence], list[dict[str, Any]], dict[str, Any], list[str]]:
     expansion_plan = service.plan_expansion(
@@ -916,7 +932,26 @@ def _run_search_expansion(
     }
     if not expansion_plan.should_expand:
         return sources, observations, provider_metadata, candidate_scope
-    tasks = service.tasks_from_plan(plan=expansion_plan, base_task=base_tasks[0] if base_tasks else None)
+    schedule = schedule_guaranteed_expansion_variants(
+        variants=list(expansion_plan.variants),
+        targets=expansion_payload.get("targets", []),
+        minimums=benchmark_target_probe_minimums(radar),
+    )
+    provider_metadata = {
+        **provider_metadata,
+        **schedule.to_metadata(),
+        "targets_not_searched": _dedupe_target_records([
+            *dict_list(provider_metadata.get("targets_not_searched")),
+            *schedule.unscheduled_targets,
+        ]),
+    }
+    scheduled_plan = RadarSearchExpansionPlan(
+        should_expand=expansion_plan.should_expand,
+        variants=schedule.variants,
+        targets=expansion_plan.targets,
+        reason=expansion_plan.reason,
+    )
+    tasks = service.tasks_from_plan(plan=scheduled_plan, base_task=base_tasks[0] if base_tasks else None)
     provider_metadata = {
         **provider_metadata,
         "search_expansion_tasks": [
@@ -933,14 +968,21 @@ def _run_search_expansion(
             ],
         ],
     }
-    variants = list(expansion_plan.variants)
-    for task, variant in zip(tasks, variants):
-        reserve_decision = reserve_budget_slice(
-            variant.budget_reserve_key,
-            task_id=task.task_id,
-            reason=variant.reason,
-        )
-        if not reserve_decision.accepted:
+    portfolio = work_scheduler.build_recall_expansion_portfolio(
+        tasks=tasks,
+        scheduled_variants=list(schedule.scheduled_variants),
+        external_budget=external_budget,
+    )
+    provider_metadata = merge_work_scheduler_metadata(provider_metadata, portfolio.to_metadata())
+    decisions_by_work_id = {decision.work_id: decision for decision in portfolio.ledger.decisions}
+    for work_item in portfolio.work_items:
+        task = work_item.task
+        scheduled_variant = work_item.scheduled_variant
+        if scheduled_variant is None:
+            continue
+        variant = scheduled_variant.variant
+        admission_decision = decisions_by_work_id.get(work_item.work_id)
+        if admission_decision is not None and not admission_decision.accepted:
             skipped = {
                 "task_id": task.task_id,
                 "query": task.query,
@@ -948,9 +990,11 @@ def _run_search_expansion(
                 "target_id": variant.target_id,
                 "target_type": variant.target_type,
                 "budget_reserve_key": variant.budget_reserve_key,
-                "execution_status": "not_searched",
-                "not_searched_reason": reserve_decision.reason or "budget_reserve_exhausted",
-                "budget_decision": reserve_decision.to_payload(),
+                "execution_status": "work_admission_rejected",
+                "not_searched_reason": admission_decision.reason,
+                "budget_decision": admission_decision.budget_decision,
+                "work_id": work_item.work_id,
+                "lane": work_item.lane,
             }
             provider_metadata = {
                 **provider_metadata,
@@ -965,11 +1009,10 @@ def _run_search_expansion(
                 actor="application",
                 node_name="search_expansion",
                 visibility="operator",
-                summary=f"Skipped recall expansion task {task.task_id}: {reserve_decision.message}",
+                summary=f"Skipped recall expansion task {task.task_id}: {admission_decision.message}",
                 payload=skipped,
             ))
             continue
-        protect_recall_expansion_openrouter_task(task_id=task.task_id, reserve_key=variant.budget_reserve_key)
         result = _run_task(
             provider=provider,
             radar=radar,

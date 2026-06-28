@@ -20,6 +20,7 @@ from power_web_os.application.live_radar_staged_helpers import eligible_candidat
 from power_web_os.application.live_radar_staged_merge import merge_result
 from power_web_os.application.live_radar_search_expansion_execution import execute_targeted_search_expansion
 from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
+from power_web_os.application.radar_work_scheduler import RadarWorkScheduler
 
 
 @dataclass
@@ -51,6 +52,7 @@ class RadarCheckpointRecoveryContext:
     source_obligation_decisions: list[dict[str, Any]] = field(default_factory=list)
     external_budget: RadarExternalCallBudget | None = None
     search_expansion_service: RadarSearchExpansionService | None = None
+    work_scheduler: RadarWorkScheduler | None = None
     smoke_candidate_limit: int | None = None
 
 
@@ -173,6 +175,7 @@ class RadarCheckpointActionExecutor:
                     executed_task_ids=context.executed_task_ids,
                     budget=context.budget,
                     external_budget=context.external_budget,
+                    work_scheduler=context.work_scheduler,
                     smoke_candidate_limit=context.smoke_candidate_limit,
                 )
                 state = RadarCheckpointRecoveryState(

@@ -6366,6 +6366,92 @@ Principles:
   - Then rerun `benchmark-sibur-holding-contour` smoke/evaluation before
     considering `benchmark_live`.
 
+### Slice 0.7.6.3.6.7: Central Radar work scheduler and budget admission control
+
+- Status: `Done`
+- Goal: Stop treating Radar budgets as independent local counters and introduce
+  one application-layer admission owner for benchmark-critical work lanes.
+- Problem statement:
+  - Several previous corrective slices improved search expansion, semantic
+    reserves, protected OpenRouter recall-expansion calls, and diagnostics.
+  - Docker `benchmark_smoke` still showed late target-lane failures because
+    planner/discovery/extraction/gate work could consume shared OpenRouter run
+    budget before guaranteed recall probes executed.
+  - The active failure mode was no longer "we do not know what happened"; it
+    was "we know after the fact that important work could not run." That means
+    admission had to move earlier.
+- Scope completed:
+  - Added TO BE Markdown/PDF:
+    `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_0.7.6.3.6.7.md` and `.pdf`.
+  - Added `RadarWorkScheduler` in the application layer.
+  - Added work contracts:
+    `RadarWorkItem`, `RadarWorkCostEstimate`,
+    `RadarWorkAdmissionDecision`, `RadarWorkLedger`, and
+    `RadarWorkPortfolio`.
+  - `RadarExternalCallBudget` now supports scheduler-configured protected
+    OpenRouter run capacity for recall expansion.
+  - Regular OpenRouter web-task calls are rejected with
+    `work_admission_reserved_capacity` when they would consume capacity reserved
+    for guaranteed recall-expansion lanes.
+  - Checkpoint search expansion and the regular post-coverage expansion path
+    now pass scheduled variants through scheduler admission before provider
+    execution.
+  - Expansion diagnostics now expose:
+    `work_scheduler_plan`, `work_scheduler_ledger`,
+    `work_admission_decisions`, `work_lane_summary`,
+    `work_guarantee_failures`, `work_execution_order`,
+    `deferred_work_items`, and `rejected_work_items`.
+  - Benchmark reports and dossier/API projection include the scheduler fields.
+  - AS IS Markdown/PDF updated to describe central admission control and
+    protected OpenRouter capacity.
+- Tests:
+  - Added `tests/test_radar_work_scheduler.py` for protected OpenRouter
+    capacity, guaranteed lane admission, metadata merge, and pre-provider
+    rejection.
+  - Updated backend API and benchmark report tests for scheduler diagnostics.
+  - Passed:
+    - `python -m pytest tests/test_radar_work_scheduler.py tests/test_radar_external_call_budget.py tests/test_radar_search_expansion.py tests/test_radar_benchmark.py -q`
+    - `python -m pytest tests/test_backend_api.py -q`
+    - `python -m pytest tests/test_radar_adaptive_execution.py tests/test_live_icp_radar.py -q`
+- Docker acceptance:
+  - Rebuilt Docker API/worker/backend-init and ran
+    `benchmark-sibur-holding-contour` with `benchmark_smoke`.
+  - First run:
+    `radar-run-4f6de9aa-7a53-4e89-8ac8-f9b37939a5c4`.
+    Evaluation: `strict_recall=1.0`, `review_recall=0.6667`,
+    one false negative: `tobolsk-site` as `expansion_not_selected`.
+  - Autofix cycle 1: found that `work_scheduler_plan/ledger` was overwritten
+    by the last expansion portfolio, so the dossier could show only late
+    rejected work and hide earlier admissions. Fixed scheduler metadata merge
+    and covered it with a unit test.
+  - Second run:
+    `radar-run-904cf50f-5551-40e8-9510-462f8383ca17`.
+    Evaluation: `strict_recall=1.0`, `review_recall=0.6667`,
+    one false negative: `gubkinsky-gpp` as `expansion_not_selected`.
+  - Scheduler diagnostics are now interpretable:
+    `work_scheduler_ledger.accepted_count=5`, `rejected_count=0`,
+    no hidden scheduler rejection, source cards count is `3`.
+  - Remaining issue is no longer hidden budget theft. The selector/scheduler
+    contract admitted the selected work, but only one legal/subsidiary and one
+    production-site lane item were scheduled, while the benchmark minimum asks
+    for two of each. Dossier shows `target_probe_guarantee_failures` with
+    `scheduled_below_minimum`.
+  - Coverage probe for the remaining `gubkinsky-gpp` miss was inconclusive:
+    the host-side probe command failed OpenRouter with `401 User not found`,
+    while Docker API/worker OpenRouter calls worked. Treat this as a host
+    diagnostic credentials issue, not a Docker smoke failure.
+- Acceptance verdict:
+  - Scheduler/admission ownership is implemented and observable.
+  - `benchmark_smoke` is interpretable, but `benchmark_live` remains blocked:
+    the next defect is target selection/scheduling below lane minimums, not
+    late unknown budget consumption.
+- Relationship to `0.7.6.3.6.6`:
+  - `0.7.6.3.6.6` remains a valid post-extraction materialization backlog
+    slice.
+  - Broader budget tuning and `benchmark_live` remain blocked until bounded
+    smoke proves the central scheduler makes target-lane failures
+    interpretable.
+
 ### Slice 0.7.6.3.7: Model-role evaluation and extraction fallback policy
 
 - Status: `Backlog`
