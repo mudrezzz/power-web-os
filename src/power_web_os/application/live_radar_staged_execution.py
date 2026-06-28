@@ -190,7 +190,9 @@ def run_staged_radar_execution(
         )
     )
     checkpoint_executor = RadarCheckpointActionExecutor()
-    search_expansion_service = RadarSearchExpansionService(max_variants=4 if run_profile == "smoke" else 6)
+    search_expansion_service = RadarSearchExpansionService(
+        max_variants=_search_expansion_variant_cap(run_profile=run_profile, radar=radar)
+    )
     retrieval_plan = retrieval_plan_from_execution_plan(execution_plan)
     verification_cache = SourceVerificationCache(results_by_url={})
 
@@ -1214,6 +1216,23 @@ def _target_probe_guarantees(*, provider_metadata: dict[str, Any], radar: dict[s
     return {"summary": summary, "failures": failures}
 
 
+def _search_expansion_variant_cap(*, run_profile: str, radar: dict[str, Any]) -> int:
+    base_cap = 4 if run_profile == "smoke" else 6
+    task_context = radar.get("task_context") if isinstance(radar.get("task_context"), dict) else {}
+    minimums = task_context.get("benchmark_target_probe_minimums")
+    if not isinstance(minimums, dict) or not task_context.get("benchmark_profile"):
+        return base_cap
+    required_total = 0
+    for value in minimums.values():
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            continue
+        if parsed > 0:
+            required_total += parsed
+    return max(base_cap, required_total)
+
+
 def _int_minimums(value: dict[Any, Any]) -> dict[str, int]:
     result: dict[str, int] = {}
     for key, raw in value.items():
@@ -1246,8 +1265,16 @@ def _target_probe_failure_reason(
         return "target_not_selected"
     if any("semantic_task_reserve" in reason for reason in reasons):
         return "semantic_task_budget_limited"
-    if any("external" in reason or "global_budget" in reason for reason in reasons):
+    if any(
+        "external" in reason
+        or "global_budget" in reason
+        or "server_tool" in reason
+        or "openrouter_recall_expansion" in reason
+        for reason in reasons
+    ):
         return "external_budget_limited"
+    if any("scheduled" in reason for reason in reasons):
+        return "scheduled_below_minimum"
     if any("policy" in reason for reason in reasons):
         return "source_policy_limited"
     if reasons:

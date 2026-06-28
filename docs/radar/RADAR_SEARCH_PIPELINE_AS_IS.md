@@ -4,7 +4,7 @@ Status: AS IS
 
 Product area: Radar candidate and signal search
 
-Updated after slice: 0.7.6.3.6.4
+Updated after slice: 0.7.6.3.6.5
 
 Last updated: 2026-06-28
 
@@ -68,6 +68,7 @@ merged into this AS IS document and the PDF is regenerated.
 | Budget reserve | A sub-allocation inside the run budget for registry identity, recall expansion, official coverage, open-web coverage, extraction recovery, or signal search. |
 | Semantic task reserve | Application-level protected task slot for approved recall/coverage expansion tasks after the regular web-task budget is exhausted. It does not bypass external-call budgets. |
 | Expansion target | A prioritized source-backed target that weak discovery should search next, such as a holding, legal entity, production site, branch, alias/language variant, or explicit benchmark target. |
+| Expansion scheduler | Application-layer selector that orders guaranteed target-lane expansion probes before optional expansion variants and records scheduled/not-scheduled states. |
 | `not_observed` | A searched signal with no evidence found. It must not mean "not searched". |
 | `not_searched_*` | Explicit unsearched state caused by budget, policy, missing scope, or pending output. |
 
@@ -117,6 +118,7 @@ candidate state.
 | Source registry/provider orchestration | `src/power_web_os/application/radar_source_providers.py` | Execute structured company registry providers for allowed stages. | Signal evidence replacement. |
 | Registry lookup term generator | `src/power_web_os/application/radar_registry_lookup_terms.py` | Build concrete lookup terms for registry providers. | Broad web discovery. |
 | Search expansion service | `src/power_web_os/application/radar_search_expansion.py`, `radar_search_expansion_models.py`, and `radar_search_expansion_support.py` | Build prioritized expansion target queues and bounded source-profile-driven query variants when discovery/coverage is weak. | Direct provider calls. |
+| Search expansion scheduler | `src/power_web_os/application/radar_search_expansion_scheduler.py` | Select guaranteed target-lane variants and order them before optional expansion work. | Provider calls or changing source policy. |
 | Search expansion executor | `src/power_web_os/application/live_radar_search_expansion_execution.py` | Execute checkpoint-approved expansion tasks under source policy and reserve budgets. | Choosing checkpoint decisions. |
 | Extraction contract/repair | `src/power_web_os/application/live_radar_extraction_contract.py` | Validate and repair provider payload shape when deterministic repair is safe. | Silently converting unrecoverable output into success. |
 | Checkpoint service | `src/power_web_os/application/live_radar_checkpoints.py` | Decide continue, retry, expand, repair, revise, stop, or fail. | Direct HTTP/provider calls. |
@@ -309,13 +311,16 @@ Each target records `target_id`, `target_label`, `target_type`, `source_refs`,
 `why_target_exists`, priority, allowed source ids, expected fact kinds,
 `budget_reserve_key`, execution status, and not-searched reason.
 
-Variant selection is target-aware. The planner no longer takes a flat top-N list
-of query variants. It first deduplicates variants, then walks target-type lanes
-and target ids so one holding/legal-entity target cannot consume all early smoke
-expansion slots. Production-site and branch targets are lane-prioritized because
-they drive review recall, while product candidate projection remains strict.
-Targets that are generated but do not receive an execution slot are kept in
-`targets_not_searched` with `not_searched_reason=not_selected`.
+Variant selection is target-aware and scheduler-backed. The planner no longer
+takes a flat top-N list of query variants. It first deduplicates variants, then
+walks target-type lanes and target ids so one holding/legal-entity target cannot
+consume all early smoke expansion slots. When benchmark target minimums are
+present, `RadarSearchExpansionScheduler` orders the guaranteed lane variants
+before optional variants. Production-site and branch targets are lane-prioritized
+because they drive review recall, while product candidate projection remains
+strict. Targets that are generated but do not receive an execution slot are kept
+in `targets_not_searched` with a specific reason such as `not_selected` or
+`selected_but_not_scheduled`.
 
 Query variants are compiled from connector source cards and policy:
 
@@ -348,23 +353,34 @@ recall-expansion reserve can use two protected layers:
 - a protected `openrouter_recall_expansion` external-call slot if the regular
   `openrouter_web_task` role budget is exhausted.
 
-Both layers must pass before the provider call is made. Semantic task reserves
-do not bypass total OpenRouter calls, server-tool web-search calls, source
-verification, source policy, or connector capability guards. In
-`benchmark_smoke`, regular web-task calls stay capped at `8`, protected
-recall-expansion OpenRouter calls are capped at `4`, and the total OpenRouter
-call ceiling is `14`.
+Before a scheduled guaranteed expansion task reaches the provider, the executor
+also performs a non-mutating external-budget preflight for total OpenRouter,
+protected recall-expansion OpenRouter, and OpenRouter server-tool web-search
+capacity. If capacity is already gone, the target is recorded as
+`scheduled_but_budget_not_reserved` with a reason such as
+`external_total_budget_limited`, `openrouter_recall_expansion_budget_limited`,
+or `server_tool_budget_limited`.
+
+Both semantic and external layers must pass before the provider call is made.
+Semantic task reserves do not bypass total OpenRouter calls, server-tool
+web-search calls, source verification, source policy, or connector capability
+guards. In `benchmark_smoke`, regular web-task calls stay capped at `8`,
+protected recall-expansion OpenRouter calls are capped at `5`, total OpenRouter
+calls are capped at `16`, and server-tool web-search calls are capped at `45`.
 
 Benchmark smoke also carries target-lane guarantees in task context. The current
 minimums are one holding/group probe, two legal/subsidiary probes, and two
-production-site/branch probes. The guarantee is evaluated from executed
-expansion results, not from generated target queues. If the minimum is not met,
+production-site/branch probes. The expansion variant cap is raised to at least
+the sum of these minimums, so a `benchmark_smoke` target-lane guarantee is not
+impossible by configuration. The guarantee is evaluated from executed expansion
+results, not from generated target queues. If the minimum is not met,
 `target_probe_guarantee_failures` names the blocker, such as
-`target_not_generated`, `target_not_selected`, `semantic_task_budget_limited`,
-`external_budget_limited`, `source_policy_limited`, or
-`executed_below_minimum`.
+`target_not_generated`, `target_not_selected`, `scheduled_below_minimum`,
+`semantic_task_budget_limited`, `external_budget_limited`,
+`source_policy_limited`, or `executed_below_minimum`.
 
 Expansion diagnostics include `expansion_target_summary_by_type`,
+`expansion_schedule`, `target_lane_allocation`,
 `search_expansion_results_by_target_type`, `search_expansion_execution_summary`,
 `targets_not_searched`, semantic task reserve counters, and external reserve
 counters. The execution summary is a funnel:

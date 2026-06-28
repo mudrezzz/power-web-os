@@ -17,6 +17,8 @@ from power_web_os.application.live_radar_external_budget import (
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
 from power_web_os.application.radar_registry_lookup_terms import RegistryLookupTermGenerator
 from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
+from power_web_os.application.radar_search_expansion_models import RadarSearchExpansionVariant
+from power_web_os.application.radar_search_expansion_scheduler import schedule_guaranteed_expansion_variants
 from power_web_os.application.radar_source_obligations import obligation_decisions_from_plan, source_obligation_summary
 from power_web_os.application.radar_source_providers import CompanyLookupRequest, RadarSourceRegistry
 from power_web_os.integrations.dadata_provider import RecordedDaDataCompanyRegistryProvider
@@ -214,6 +216,56 @@ def test_search_expansion_records_not_selected_targets_when_variant_cap_is_hit()
     assert payload["targets_not_selected"]
     assert all(item["not_searched_reason"] == "not_selected" for item in payload["targets_not_selected"])
     assert payload["targets_by_type"]["production_site_or_branch_target"] >= 3
+
+
+def test_expansion_scheduler_orders_guaranteed_lanes_before_optional_variants() -> None:
+    variants = [
+        _variant("legal-1", "known_subsidiary_or_legal_entity_target", "legal query 1"),
+        _variant("site-1", "production_site_or_branch_target", "site query 1"),
+        _variant("holding-1", "holding_or_group_target", "holding query"),
+        _variant("legal-2", "known_subsidiary_or_legal_entity_target", "legal query 2"),
+        _variant("site-2", "production_site_or_branch_target", "site query 2"),
+        _variant("alias-1", "alias_or_language_variant_target", "alias query"),
+    ]
+
+    schedule = schedule_guaranteed_expansion_variants(
+        variants=variants,
+        targets=[_target(item) for item in variants],
+        minimums={
+            "holding_or_group_target": 1,
+            "known_subsidiary_or_legal_entity_target": 2,
+            "production_site_or_branch_target": 2,
+        },
+    )
+
+    first_five = schedule.scheduled_variants[:5]
+    assert [item.schedule_role for item in first_five] == ["guaranteed"] * 5
+    assert {item.variant.target_id for item in first_five} == {"holding-1", "legal-1", "legal-2", "site-1", "site-2"}
+    assert schedule.scheduled_variants[5].schedule_role == "optional"
+    assert schedule.lane_allocation["production_site_or_branch_target"]["scheduled_minimum_satisfied"] is True
+
+
+def test_expansion_scheduler_reports_unscheduled_targets() -> None:
+    variants = [_variant("holding-1", "holding_or_group_target", "holding query")]
+    targets = [
+        _target(variants[0]),
+        {
+            "target_id": "site-1",
+            "target_label": "Site 1",
+            "target_type": "production_site_or_branch_target",
+            "budget_reserve_key": "production_site_coverage_probe",
+        },
+    ]
+
+    schedule = schedule_guaranteed_expansion_variants(
+        variants=variants,
+        targets=targets,
+        minimums={"holding_or_group_target": 1, "production_site_or_branch_target": 1},
+    )
+
+    assert schedule.lane_allocation["production_site_or_branch_target"]["scheduled_minimum_satisfied"] is False
+    assert schedule.unscheduled_targets[0]["target_id"] == "site-1"
+    assert schedule.unscheduled_targets[0]["not_searched_reason"] == "selected_but_not_scheduled"
 
 
 def test_registry_lookup_terms_generate_russian_variants_for_english_aliases() -> None:
@@ -569,4 +621,29 @@ def _identity_only_radar() -> dict[str, Any]:
                 "usage_obligation": "required_for_identity",
             }],
         },
+    }
+
+
+def _variant(target_id: str, target_type: str, query: str) -> RadarSearchExpansionVariant:
+    return RadarSearchExpansionVariant(
+        query=query,
+        source_ids=["openrouter_web"],
+        source_scope="configured",
+        reason="official_domain_coverage",
+        target_id=target_id,
+        target_type=target_type,
+        budget_reserve_key=(
+            "production_site_coverage_probe"
+            if target_type == "production_site_or_branch_target"
+            else "official_coverage_probe"
+        ),
+    )
+
+
+def _target(variant: RadarSearchExpansionVariant) -> dict[str, Any]:
+    return {
+        "target_id": variant.target_id,
+        "target_label": variant.query,
+        "target_type": variant.target_type,
+        "budget_reserve_key": variant.budget_reserve_key,
     }

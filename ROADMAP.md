@@ -6086,6 +6086,200 @@ Principles:
     Mitigate by preserving original refs and recording the normalized key used
     for cache decisions.
 
+### Slice 0.7.6.3.6.5: Guaranteed expansion execution scheduler and external-budget lane allocation
+
+- Status: `Done`
+- Goal: Turn target-lane guarantees from post-run diagnostics into an execution
+  scheduling rule. `benchmark_smoke` should schedule holding, legal/subsidiary,
+  and production-site/branch probes before optional expansion work, and it
+  should fail with exact budget blockers when a guaranteed lane cannot execute.
+- User value: A user can trust the bounded smoke as an acceptance gate. If a
+  target like `poliom`, `gubkinsky-gpp`, or `tobolsk-site` remains missed, the
+  report should say whether it was scheduled, budget-reserved, executed, found,
+  projected, or precisely blocked.
+- Problem statement:
+  - `0.7.6.3.6.4` made target-lane failures visible, but Docker smoke
+    `radar-run-44abf1c6-5070-4b2a-84cd-9d37df6cb429` still missed required
+    lane minimums: holding/group `0/1`, legal/subsidiary `0/2`,
+    production-site/branch `1/2`.
+  - Coverage probe found official sources for all remaining misses, so the
+    blocker is execution scheduling and budget allocation, not source
+    availability.
+  - `run_profile=smoke` used an expansion variant cap of `4`, while benchmark
+    target minimums require `5` probes. This made the guarantee partly
+    impossible by configuration.
+- Scope:
+  - Add `RadarExpansionScheduler` as an application-layer role.
+  - Order guaranteed target-lane variants before optional variants.
+  - Raise expansion variant cap to at least the sum of configured
+    `benchmark_target_probe_minimums`.
+  - Add non-mutating external-budget preflight for guaranteed recall expansion
+    tasks before provider execution:
+    - total OpenRouter capacity;
+    - protected recall-expansion OpenRouter capacity;
+    - OpenRouter server-tool web-search capacity.
+  - Record `expansion_schedule`, `target_lane_allocation`, and
+    `targets_not_scheduled`.
+  - Add precise not-searched reasons:
+    - `selected_but_not_scheduled`;
+    - `scheduled_but_budget_not_reserved`;
+    - `external_total_budget_limited`;
+    - `openrouter_recall_expansion_budget_limited`;
+    - `server_tool_budget_limited`.
+  - Adjust `benchmark_smoke` targeted external budget allocation:
+    - total OpenRouter calls: `16`;
+    - recall-expansion OpenRouter calls: `5`;
+    - server-tool web searches: `45`;
+    - official/open-web/prod-site reserve limits sufficient for lane minimums.
+  - Keep all external calls bounded and visible; no unbounded fallback.
+- Out of scope:
+  - No new provider.
+  - No UI changes.
+  - No model-role evaluation.
+  - No scoring relaxation.
+  - No SIBUR-specific runtime branch.
+- Implementation notes:
+  - Added `src/power_web_os/application/radar_search_expansion_scheduler.py`.
+  - Split expansion metadata/event helpers into
+    `live_radar_search_expansion_payloads.py` so the executor remains below
+    architecture size limits.
+  - `RadarExternalCallBudget` now has a non-mutating
+    `check_recall_expansion_openrouter_capacity` scheduler preflight.
+  - `live_radar_staged_execution` now computes expansion variant cap from
+    benchmark lane minimums when benchmark context is present.
+- Tests:
+  - Added scheduler unit tests for guaranteed lane ordering and unscheduled
+    target diagnostics.
+  - Added external-budget unit tests for recall-expansion and server-tool
+    preflight blockers.
+  - Updated benchmark smoke budget tests.
+  - Regression passed:
+    - `python -m pytest tests/test_radar_search_expansion.py tests/test_radar_external_call_budget.py tests/test_radar_benchmark.py -q`
+    - `python -m pytest tests/test_radar_adaptive_execution.py tests/test_live_icp_radar.py -q`
+    - `python -m pytest tests/test_backend_api.py tests/test_backend_architecture_contract.py -q`
+- Docs:
+  - Added TO BE Markdown/PDF for `0.7.6.3.6.5`.
+  - Updated Radar AS IS Markdown/PDF.
+  - Updated Developer Guide and demo README.
+- Demo impact:
+  - No UI change.
+  - Benchmark report/dossier now have richer schedule/allocation diagnostics.
+- Acceptance criteria:
+  - Docker `benchmark_smoke` should either satisfy target-lane minimums or
+    explain every missing lane with a specific scheduler/budget/policy blocker.
+  - Remaining false negatives should be narrower than `expansion_not_selected`.
+  - `review_recall` should not regress below `0.3333`.
+  - `strict_recall` should not regress below `0.8889` unless provider-output
+    drift is visible.
+  - `benchmark_live` remains blocked until a fresh bounded smoke/evaluation
+    confirms scheduler behavior.
+- Risks:
+  - Higher targeted server-tool capacity may increase smoke cost. Mitigation:
+    only `benchmark_smoke` targeted expansion budgets changed, and all counters
+    remain visible.
+  - OpenRouter server-tool usage is reported after a provider response, so one
+    call can still overrun a slice. Mitigation: scheduler preflights current
+    capacity and reports post-call budget usage separately.
+
+### Slice 0.7.6.3.6.6: Post-extraction fallback materialization and registry enrichment recheck
+
+- Status: `Backlog`
+- Goal: Fix the next blocker found by the TOIR Docker smoke after
+  `0.7.6.3.6.5`: if extraction payloads fail, but retrieved/analyzed sources
+  still contain source-backed candidates, Radar should materialize those
+  candidates, run allowed identity enrichment for concrete names, and re-review
+  checkpoints before declaring a final source-obligation/policy stop.
+- User value: A smoke run should not look blocked only because the first
+  extraction JSON was malformed when the system already has enough retrieved
+  material to create review-needed candidates and try registry identity lookup.
+- Evidence:
+  - TOIR smoke `radar-run-ef74d8c0-8e19-43eb-9936-cfc0a44c383b` completed in
+    Docker with API/worker parity, `source_cards_count=3`, 6 retrieved sources,
+    18 diagnostic sources, and 2 promoted/review-needed candidates.
+  - The primary outcome was still `blocked_by_policy` with
+    `extraction_repair_exhausted`, `extraction_schema_failed`,
+    `source_obligation_unmet`, and `weak_candidate_coverage`.
+  - DaData/registry remained `attempted_insufficient` because the only runtime
+    registry outcome was a broad `registry_lookup_insufficient` query. Concrete
+    source-backed candidates appeared later through retrieved-source fallback,
+    but gate/registry enrichment had already been skipped after the extraction
+    stop.
+  - Search expansion scheduling was not the active blocker in this TOIR run:
+    expansion targets were empty because this was not a benchmark target-hint
+    run and candidate materialization happened after the terminal extraction
+    stop.
+- Scope:
+  - Add a post-extraction fallback checkpoint branch:
+    - when `extraction_schema_failed` / `extraction_repair_exhausted` is present;
+    - and retrieved/analyzed sources contain source-backed candidate or
+      site/branch mentions;
+    - materialize review-needed candidates from retrieved sources before final
+      terminal stop.
+  - Add a bounded post-materialization identity enrichment pass:
+    - run only for concrete candidate names, INN/OGRN, or strong legal-name
+      fragments;
+    - use configured registry/identity connectors through source cards;
+    - never send broad discovery text to lookup-only registries;
+    - respect DaData/SPARK-like provider neutrality: behavior is driven by
+      connector capability, not provider-specific branching.
+  - Recompute source-obligation runtime outcomes after enrichment:
+    - `required_for_identity` can become `satisfied` or
+      `attempted_review_needed` when registry returns useful/review-needed
+      observations;
+    - if identity enrichment cannot run, record
+      `not_executed_input_not_available`, `provider_unavailable`,
+      `budget_limited`, or `identity_not_confirmed_after_all_terms`.
+  - Re-run the pre-signal checkpoint after fallback materialization/enrichment.
+  - Preserve terminal safety:
+    - if extraction is truly unrecoverable and no fallback candidates exist,
+      keep `stop_review_needed`;
+    - if fallback candidates exist but identity/source obligations still fail,
+      stop with a narrower reason than generic `extraction_repair_exhausted`;
+    - signal search starts only if the re-reviewed checkpoint permits it.
+- Out of scope:
+  - No scoring relaxation.
+  - No new provider adapter.
+  - No SIBUR/DaData hardcode.
+  - No broad `benchmark_live` claim.
+- Expected diagnostics:
+  - `fallback_candidate_materialization_records`;
+  - `post_extraction_identity_enrichment_records`;
+  - concrete `registry_lookup_terms` and `registry_lookup_attempts` for
+    materialized candidates;
+  - updated source-obligation decisions after the recheck;
+  - explicit final reason:
+    `fallback_identity_satisfied`, `fallback_identity_review_needed`,
+    `fallback_identity_budget_limited`,
+    `fallback_candidates_not_projected`, or `fallback_not_available`.
+- Test plan:
+  - Unit: malformed extraction + retrieved source-backed legal entity ->
+    fallback materializes review-needed candidate.
+  - Unit: fallback materialized concrete candidate triggers registry lookup
+    through generic lookup-only connector capability.
+  - Unit: broad query is still blocked for registry and does not satisfy
+    identity.
+  - Unit: registry match/review-needed observation updates
+    `required_for_identity` outcome after recheck.
+  - Pipeline fake: extraction repair exhausted, retrieved candidates present,
+    fallback enrichment succeeds, final checkpoint no longer reports generic
+    `source_obligation_unmet`.
+  - Pipeline fake: extraction repair exhausted, no retrieved candidates, run
+    remains `stop_review_needed` with `fallback_not_available`.
+  - Regression:
+    - `python -m pytest tests/test_live_icp_radar.py tests/test_radar_adaptive_execution.py -q`
+    - `python -m pytest tests/test_backend_api.py tests/test_radar_search_expansion.py -q`
+    - `python -m pytest tests/test_backend_architecture_contract.py -q`
+    - `python -m pytest`
+- Manual acceptance:
+  - Rebuild Docker API/worker.
+  - Run TOIR smoke with live DaData + `openrouter_perplexity`.
+  - Expected: if retrieved-source fallback finds concrete candidates, dossier
+    shows concrete registry lookup attempts after materialization; if the run
+    still stops, the reason is identity/projection/budget-specific rather than
+    the current broad-query `attempted_insufficient`.
+  - Then rerun `benchmark-sibur-holding-contour` smoke/evaluation before
+    considering `benchmark_live`.
+
 ### Slice 0.7.6.3.7: Model-role evaluation and extraction fallback policy
 
 - Status: `Backlog`

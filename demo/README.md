@@ -401,12 +401,14 @@ OpenRouter calls are shown under `openrouter_recall_expansion:run`; they are
 bounded separately from regular `openrouter_web_task:run` but still count toward
 the total `openrouter:run` budget.
 
-After `0.7.6.3.6.4`, benchmark smoke also reports semantic task reserves and
-target-lane guarantees. Check `semantic_task_budget_counters`,
+After `0.7.6.3.6.5`, benchmark smoke also reports the expansion scheduler and
+target-lane guarantees. Check `expansion_schedule`,
+`target_lane_allocation`, `semantic_task_budget_counters`,
 `target_probe_guarantees`, and `target_probe_guarantee_failures` to see whether
-holding, legal/subsidiary, and production-site lanes were actually executed or
-precisely blocked. `source_verification_cache_stats` explains whether repeated
-URL checks were deduped before spending the source-verification budget.
+holding, legal/subsidiary, and production-site lanes were scheduled first,
+actually executed, or precisely blocked. `source_verification_cache_stats`
+explains whether repeated URL checks were deduped before spending the
+source-verification budget.
 
 The benchmark CLI poll timeout defaults to 1200 seconds. This timeout is not the
 main work limiter; external-call budgets are. With low-cost OpenRouter routing a

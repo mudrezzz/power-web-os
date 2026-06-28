@@ -21,10 +21,13 @@ def test_benchmark_task_context_uses_explicit_smoke_budgets() -> None:
     assert context["run_profile"] == "smoke"
     assert context["benchmark_radar_id"] == "benchmark-mining-toir"
     assert context["max_total_web_tasks_per_run"] == 18
-    assert context["max_openrouter_calls_per_run"] == 14
+    assert context["max_openrouter_calls_per_run"] == 16
     assert context["max_openrouter_web_task_calls_per_run"] == 8
-    assert context["max_recall_expansion_openrouter_calls_per_run"] == 4
+    assert context["max_recall_expansion_openrouter_calls_per_run"] == 5
+    assert context["max_openrouter_server_tool_web_searches_per_run"] == 45
     assert context["max_provider_retries_per_task"] == 2
+    assert context["budget_reserve_limits"]["official_coverage_probe"] == 5
+    assert context["budget_reserve_limits"]["open_web_coverage_probe"] == 5
     assert context["budget_reserve_limits"]["production_site_coverage_probe"] == 3
     assert context["semantic_task_reserve_limits"]["recall_expansion"] == 6
     assert context["semantic_task_reserve_limits"]["production_site_coverage_probe"] == 3

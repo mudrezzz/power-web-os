@@ -504,14 +504,15 @@ searched no-support. Protected recall expansion uses
 `openrouter_recall_expansion:run` slots, which are separate from regular
 `openrouter_web_task:run` slots and still count toward total `openrouter:run`.
 
-For `0.7.6.3.6.4+`, inspect semantic task reserves and target-lane guarantees.
-`semantic_task_budget_counters` show expansion tasks that ran after the regular
-Radar web-task budget was exhausted. `target_probe_guarantees` and
-`target_probe_guarantee_failures` show whether benchmark smoke executed the
-required holding, legal/subsidiary, and production-site/branch lanes or why a
-lane was blocked. `source_verification_cache_stats` should show duplicate URL
-checks reused from the per-run cache instead of spending repeated verification
-budget.
+For `0.7.6.3.6.5+`, inspect semantic task reserves, the expansion scheduler, and
+target-lane guarantees. `expansion_schedule` and `target_lane_allocation` show
+which holding, legal/subsidiary, and production-site/branch probes were ordered
+before optional expansion work. `semantic_task_budget_counters` show expansion
+tasks that ran after the regular Radar web-task budget was exhausted.
+`target_probe_guarantees` and `target_probe_guarantee_failures` show whether
+benchmark smoke executed the required lanes or why a lane was blocked.
+`source_verification_cache_stats` should show duplicate URL checks reused from
+the per-run cache instead of spending repeated verification budget.
 
 The benchmark CLI waits up to 1200 seconds by default because low-cost
 OpenRouter provider routing can be slow; use budget counters, not wall-clock

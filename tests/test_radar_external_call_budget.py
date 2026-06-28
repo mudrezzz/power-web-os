@@ -89,6 +89,37 @@ def test_protected_recall_expansion_uses_separate_openrouter_slot_after_web_task
     assert budget.counts["openrouter_recall_expansion:run"] == 1
 
 
+def test_recall_expansion_capacity_preflight_reports_recall_budget_blocker() -> None:
+    budget = RadarExternalCallBudget(
+        RadarExternalCallBudgetSettings(
+            max_openrouter_calls_per_run=5,
+            max_recall_expansion_openrouter_calls_per_run=0,
+            max_openrouter_server_tool_web_searches_per_run=5,
+        )
+    )
+
+    decision = budget.check_recall_expansion_openrouter_capacity(task_id="expansion-1")
+
+    assert not decision.accepted
+    assert decision.kind == "openrouter_recall_expansion"
+    assert decision.key == "openrouter_recall_expansion:run"
+
+
+def test_recall_expansion_capacity_preflight_reports_server_tool_blocker() -> None:
+    budget = RadarExternalCallBudget(
+        RadarExternalCallBudgetSettings(
+            max_openrouter_calls_per_run=5,
+            max_recall_expansion_openrouter_calls_per_run=5,
+            max_openrouter_server_tool_web_searches_per_run=0,
+        )
+    )
+
+    decision = budget.check_recall_expansion_openrouter_capacity(task_id="expansion-1")
+
+    assert not decision.accepted
+    assert decision.kind == "openrouter_server_tool_web_search"
+
+
 def test_server_tool_web_search_usage_blocks_following_web_tasks() -> None:
     budget = RadarExternalCallBudget(
         RadarExternalCallBudgetSettings(

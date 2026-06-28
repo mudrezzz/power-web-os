@@ -150,6 +150,33 @@ class RadarExternalCallBudget:
         total_decision = self.reserve("openrouter", key="run", task_id=task_id)
         return total_decision, protected_decision
 
+    def check_recall_expansion_openrouter_capacity(self, *, task_id: str = "") -> RadarExternalCallBudgetDecision:
+        """Non-mutating scheduler preflight for protected recall-expansion calls."""
+        for kind, budget_key in (
+            ("openrouter", "openrouter:run"),
+            ("openrouter_server_tool_web_search", "openrouter_server_tool_web_search:run"),
+            ("openrouter_recall_expansion", "openrouter_recall_expansion:run"),
+        ):
+            limit = self._limit_for(kind)
+            current = self.counts.get(budget_key, 0)
+            if limit is not None and current >= limit:
+                return RadarExternalCallBudgetDecision(
+                    accepted=False,
+                    kind=kind,
+                    key=budget_key,
+                    limit=limit,
+                    current=current,
+                    reason="external_call_budget_exhausted",
+                    message=f"External {kind} budget reached for run: {limit}.",
+                )
+        return RadarExternalCallBudgetDecision(
+            accepted=True,
+            kind="openrouter_recall_expansion",
+            key="openrouter_recall_expansion:run",
+            limit=self._limit_for("openrouter_recall_expansion"),
+            current=self.counts.get("openrouter_recall_expansion:run", 0),
+        )
+
     def _exhausted_decision(
         self,
         kind: ExternalCallKind,
