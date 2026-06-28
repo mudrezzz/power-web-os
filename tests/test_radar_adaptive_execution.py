@@ -10,6 +10,10 @@ from __future__ import annotations
 import socket
 
 from power_web_os.application.live_radar_contracts import RadarExecutionPlan, RadarExecutionTask
+from power_web_os.application.live_radar_checkpoints import (
+    RadarExecutionCheckpointInput,
+    RadarExecutionCheckpointService,
+)
 from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
 from support.radar_adaptive_harness import (
     ScriptedProvider,
@@ -31,6 +35,54 @@ from support.radar_adaptive_harness import (
     strong_discovery_result,
     weak_result,
 )
+
+
+def test_checkpoint_routes_weak_recall_with_target_hints_to_expansion() -> None:
+    decision = RadarExecutionCheckpointService().review(
+        RadarExecutionCheckpointInput(
+            checkpoint_id="after-discovery",
+            phase="after_discovery",
+            candidate_scope_count=1,
+            linked_source_count=0,
+            evidence_linking_issue_count=1,
+            extraction_issue_codes=["evidence_linking_failed"],
+            uncovered_target_hint_count=3,
+        )
+    )
+
+    assert decision.action == "expand_sources"
+    assert decision.reason_code == "weak_candidate_coverage"
+
+
+def test_checkpoint_revises_repeated_unlinked_evidence_after_expansion() -> None:
+    decision = RadarExecutionCheckpointService().review(
+        RadarExecutionCheckpointInput(
+            checkpoint_id="after-discovery",
+            phase="after_discovery",
+            candidate_scope_count=1,
+            linked_source_count=0,
+            evidence_linking_issue_count=1,
+            extraction_issue_codes=["evidence_linking_failed"],
+            search_expansion_result_count=1,
+        )
+    )
+
+    assert decision.action == "revise_plan"
+    assert decision.reason_code == "evidence_linking_failed"
+
+
+def test_checkpoint_keeps_schema_invalid_on_extraction_repair_path() -> None:
+    decision = RadarExecutionCheckpointService().review(
+        RadarExecutionCheckpointInput(
+            checkpoint_id="after-discovery",
+            phase="after_discovery",
+            candidate_scope_count=0,
+            extraction_issue_codes=["extraction_schema_invalid"],
+            uncovered_target_hint_count=3,
+        )
+    )
+
+    assert decision.action == "repair_extraction"
 
 
 def test_unrecovered_weak_discovery_does_not_start_signal_search() -> None:
@@ -150,6 +202,41 @@ def test_unresolved_evidence_refs_do_not_start_signal_search() -> None:
     assert_stopped_for_review(execution_results, reason="revision")
     assert "evidence_linking_failed" in str(execution_results["checkpoint_decisions"])
     assert_no_normal_negative_signal_projection(execution_results)
+
+
+def test_evidence_linking_failure_with_benchmark_hints_runs_targeted_expansion_first() -> None:
+    provider = ScriptedProvider([evidence_linking_failed_result(), strong_discovery_result(), signal_result()])
+    radar = radar_definition()
+    radar["name"] = "SIBUR benchmark"
+    radar["description"] = "Find SIBUR production assets."
+
+    _, _, execution_results = run_staged_radar_execution(
+        radar=radar,
+        execution_plan=base_plan(source_scope="global", source_ids=["sibur_site"]),
+        provider=provider,
+        task_context={
+            "benchmark_profile": "benchmark_smoke",
+            "benchmark_target_hints": [{
+                "baseline_id": "candidate-a",
+                "canonical_name": "Candidate A",
+                "entity_type": "legal_entity",
+                "aliases": ["Candidate A"],
+            }],
+        },
+        max_checkpoint_retries_per_stage=1,
+    )
+
+    assert provider.stages[:2] == ["qualification_discovery", "coverage_check"]
+    assert execution_results["expansion_target_queue"]
+    assert execution_results["search_expansion_query_variants"]
+    assert_action_executed(execution_results, "expand_sources")
+    first_blocking_action = next(
+        item["action"]
+        for item in execution_results["checkpoint_decisions"]
+        if item["action"] != "continue"
+    )
+    assert first_blocking_action == "expand_sources"
+    assert_signal_search_ran(execution_results)
 
 
 def test_high_coverage_risk_blocks_signal_search_until_recovery_improves_it() -> None:

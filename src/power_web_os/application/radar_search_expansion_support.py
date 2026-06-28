@@ -176,13 +176,23 @@ def raw_target_items(
                 })
     for item in candidate_scope:
         result.append({"label": item, "reason": "Existing low-confidence candidate scope needs coverage."})
-    for item in dict_list(provider_metadata.get("benchmark_recall_targets")):
+    task_context = radar.get("task_context") if isinstance(radar.get("task_context"), dict) else {}
+    benchmark_targets = [
+        *dict_list(provider_metadata.get("benchmark_recall_targets")),
+        *(
+            dict_list(task_context.get("benchmark_target_hints"))
+            if str(task_context.get("benchmark_profile") or "").startswith("benchmark_")
+            else []
+        ),
+    ]
+    for item in benchmark_targets:
         label = str(item.get("canonical_name") or item.get("name") or item.get("label") or "")
         if label:
             result.append({
                 "label": label,
                 "source_refs": item.get("source_refs", []),
                 "reason": "Explicit benchmark context target.",
+                "entity_type": item.get("entity_type"),
                 "target_type": "benchmark_baseline_like_target",
             })
     if not any(is_actionable_term(str(item.get("label") or "")) for item in result):
@@ -254,6 +264,8 @@ def expansion_reason(
 ) -> str:
     if _has_blocking_source_provider_outcome(provider_metadata):
         return ""
+    if dict_list(provider_metadata.get("benchmark_recall_targets")):
+        return "benchmark_targets_uncovered"
     gaps = [*unresolved_candidate_gaps, *dict_list(provider_metadata.get("candidate_universe_gaps"))]
     if gaps and any(is_actionable_term(str(item.get("legal_name") or item.get("entity_name") or "")) for item in gaps):
         return "candidate_universe_has_review_gaps"

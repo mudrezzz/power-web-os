@@ -26,6 +26,15 @@ def test_benchmark_task_context_uses_explicit_smoke_budgets() -> None:
     assert context["source"] == "radar_benchmark_cli"
 
 
+def test_sibur_benchmark_task_context_includes_curated_target_hints() -> None:
+    context = benchmark_task_context(profile="benchmark_smoke", radar_id="benchmark-sibur-holding-contour")
+
+    hints = context["benchmark_target_hints"]
+    assert len(hints) >= 10
+    assert {item["entity_type"] for item in hints} >= {"legal_entity", "production_site"}
+    assert any(item["baseline_id"] == "gubkinsky-gpp" for item in hints)
+
+
 def test_benchmark_all_expands_to_benchmark_radars_only() -> None:
     assert benchmark_radar_ids("all") == BENCHMARK_RADAR_IDS
     assert "toir-quick-live" not in benchmark_radar_ids("all")

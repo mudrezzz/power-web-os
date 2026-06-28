@@ -4,7 +4,7 @@ Status: AS IS
 
 Product area: Radar candidate and signal search
 
-Updated after slice: 0.7.6.3.6
+Updated after slice: 0.7.6.3.6.1
 
 Last updated: 2026-06-27
 
@@ -116,6 +116,7 @@ candidate state.
 | Source registry/provider orchestration | `src/power_web_os/application/radar_source_providers.py` | Execute structured company registry providers for allowed stages. | Signal evidence replacement. |
 | Registry lookup term generator | `src/power_web_os/application/radar_registry_lookup_terms.py` | Build concrete lookup terms for registry providers. | Broad web discovery. |
 | Search expansion service | `src/power_web_os/application/radar_search_expansion.py`, `radar_search_expansion_models.py`, and `radar_search_expansion_support.py` | Build prioritized expansion target queues and bounded source-profile-driven query variants when discovery/coverage is weak. | Direct provider calls. |
+| Search expansion executor | `src/power_web_os/application/live_radar_search_expansion_execution.py` | Execute checkpoint-approved expansion tasks under source policy and reserve budgets. | Choosing checkpoint decisions. |
 | Extraction contract/repair | `src/power_web_os/application/live_radar_extraction_contract.py` | Validate and repair provider payload shape when deterministic repair is safe. | Silently converting unrecoverable output into success. |
 | Checkpoint service | `src/power_web_os/application/live_radar_checkpoints.py` | Decide continue, retry, expand, repair, revise, stop, or fail. | Direct HTTP/provider calls. |
 | Checkpoint action executor | `src/power_web_os/application/live_radar_checkpoint_actions.py` | Apply approved checkpoint actions under budgets and policy. | Unbounded loops. |
@@ -286,6 +287,13 @@ When discovery or coverage is weak, `RadarSearchExpansionService` first builds
 a prioritized expansion target queue, then compiles bounded query variants for
 the highest-priority targets.
 
+Checkpoint recovery now uses the same target-aware expansion path. If the run
+has weak recall, low linked-source coverage, explicit benchmark target hints, or
+source-backed unresolved gaps, the checkpoint can choose `expand_sources`
+before asking for a plan revision. This prevents `evidence_linking_failed` from
+automatically consuming the revision cap when the real problem is that important
+targets were not retrieved yet.
+
 Target classes:
 
 - `holding_or_group_target`;
@@ -316,6 +324,10 @@ open-web variants are not generated. If an official source is disabled,
 official-domain variants are not generated. If a reserve is exhausted, the
 target/task is recorded in `targets_not_searched` with `not_searched_reason`
 instead of disappearing from diagnostics.
+
+For benchmark runs only, `task_context.benchmark_target_hints` can seed
+`benchmark_baseline_like_target` expansion targets. Production runs ignore those
+hints unless an explicit `benchmark_profile` is present.
 
 ## 12. Candidate Universe And Entity Resolution
 
@@ -369,6 +381,9 @@ Actions are bounded:
 - no unbounded retries;
 - no policy bypass;
 - no hidden broad fallback;
+- weak recall with uncovered target hints runs target-aware expansion before
+  revision;
+- repeated unlinked evidence after expansion can still route to `revise_plan`;
 - no signal search until the pre-signal checkpoint allows it;
 - all adaptive provider calls count against budgets.
 

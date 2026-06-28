@@ -94,6 +94,7 @@ def run_staged_radar_execution(
     radar: dict[str, Any],
     execution_plan: RadarExecutionPlan,
     provider: WebSearchProvider,
+    task_context: dict[str, Any] | None = None,
     max_web_tasks_per_subject: int | None = None,
     max_discovery_tasks_per_rule: int | None = None,
     max_gate_tasks_per_candidate_rule: int | None = None,
@@ -118,9 +119,17 @@ def run_staged_radar_execution(
     smoke_max_signals: int | None = None,
     source_policy_decisions: list[dict[str, Any]] | None = None,
 ) -> tuple[WebSearchProviderResult, list[LiveRadarPipelineEvent], dict[str, Any]]:
+    if task_context:
+        radar = {
+            **radar,
+            "task_context": {
+                **(radar.get("task_context") if isinstance(radar.get("task_context"), dict) else {}),
+                **task_context,
+            },
+        }
     sources: list[RadarSourceEvidence] = []
     observations: list[dict[str, Any]] = []
-    provider_metadata: dict[str, Any] = {}
+    provider_metadata: dict[str, Any] = _initial_provider_metadata(radar)
     events: list[LiveRadarPipelineEvent] = []
     executed_task_ids: list[str] = []
     completed_qualification_ids: list[str] = []
@@ -245,6 +254,8 @@ def run_staged_radar_execution(
                 checkpoint_warnings=checkpoint_warnings, events=events, executed_task_ids=executed_task_ids,
                 useful_result_retry_records=useful_result_retry_records,
                 external_budget=external_budget,
+                search_expansion_service=search_expansion_service,
+                smoke_candidate_limit=external_budget.settings.smoke_max_candidates,
             ),
         )
         sources, observations = recovery_state.sources, recovery_state.observations
@@ -413,6 +424,8 @@ def run_staged_radar_execution(
                     unresolved_candidate_gaps=unresolved_candidate_gaps,
                     useful_result_retry_records=useful_result_retry_records,
                     external_budget=external_budget,
+                    search_expansion_service=search_expansion_service,
+                    smoke_candidate_limit=external_budget.settings.smoke_max_candidates,
                 ),
             )
             sources, observations = recovery_state.sources, recovery_state.observations
@@ -711,6 +724,16 @@ def _limit_smoke_signal_tasks(tasks: list[RadarExecutionTask], limit: int | None
     if limit is None or limit <= 0:
         return tasks
     return tasks[:limit]
+
+
+def _initial_provider_metadata(radar: dict[str, Any]) -> dict[str, Any]:
+    task_context = radar.get("task_context") if isinstance(radar.get("task_context"), dict) else {}
+    if not str(task_context.get("benchmark_profile") or "").startswith("benchmark_"):
+        return {}
+    targets = dict_list(task_context.get("benchmark_target_hints"))
+    if not targets:
+        return {}
+    return {"benchmark_recall_targets": targets}
 
 
 def _apply_smoke_candidate_promotion_cap(

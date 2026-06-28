@@ -95,6 +95,40 @@ def test_search_expansion_builds_prioritized_target_queue_from_source_backed_gap
     )
 
 
+def test_search_expansion_uses_benchmark_target_hints_only_for_benchmark_profile() -> None:
+    radar = _radar_with_sources()
+    radar["task_context"] = {
+        "benchmark_profile": "benchmark_smoke",
+        "benchmark_target_hints": [{
+            "baseline_id": "gubkinsky-gpp",
+            "canonical_name": "Р“СѓР±РєРёРЅСЃРєРёР№ Р“РџР—",
+            "entity_type": "production_site",
+        }],
+    }
+
+    plan = RadarSearchExpansionService(max_variants=8).plan_expansion(
+        radar=radar,
+        candidate_scope=[],
+        provider_metadata={},
+        coverage_checks=[{"completeness_risk": "high"}],
+        unresolved_candidate_gaps=[],
+    )
+
+    assert any(target.target_label == "Р“СѓР±РєРёРЅСЃРєРёР№ Р“РџР—" for target in plan.targets)
+    assert any(target.target_type == "production_site_or_branch_target" for target in plan.targets)
+
+    radar["task_context"]["benchmark_profile"] = ""
+    non_benchmark_plan = RadarSearchExpansionService(max_variants=8).plan_expansion(
+        radar=radar,
+        candidate_scope=[],
+        provider_metadata={},
+        coverage_checks=[{"completeness_risk": "high"}],
+        unresolved_candidate_gaps=[],
+    )
+
+    assert all(target.target_label != "Р“СѓР±РєРёРЅСЃРєРёР№ Р“РџР—" for target in non_benchmark_plan.targets)
+
+
 def test_search_expansion_uses_source_profile_capabilities_not_hardcoded_dadata() -> None:
     radar = _radar_with_sources()
     radar["global_search_policy"]["sources"] = [

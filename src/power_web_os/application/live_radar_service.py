@@ -131,6 +131,7 @@ class LiveRadarRunService:
             radar=radar,
             execution_plan=execution_plan,
             provider=self._provider,
+            task_context=state.task_context,
             max_web_tasks_per_subject=_int_context_value(state.task_context, "max_web_tasks_per_subject"),
             max_discovery_tasks_per_rule=_int_context_value(state.task_context, "max_discovery_tasks_per_rule"),
             max_gate_tasks_per_candidate_rule=_int_context_value(state.task_context, "max_gate_tasks_per_candidate_rule"),

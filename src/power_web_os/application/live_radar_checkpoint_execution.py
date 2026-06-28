@@ -39,8 +39,14 @@ def record_execution_checkpoint(
         candidate_count=candidate_count,
         candidate_scope_count=len(candidate_scope),
         source_count=len(sources),
+        retrieved_source_count=_retrieved_source_count(provider_metadata),
         linked_source_count=_linked_source_count(observations, sources),
+        diagnostic_source_count=_diagnostic_source_count(provider_metadata),
         analyzed_source_count=_analyzed_source_count(provider_metadata),
+        search_expansion_target_count=len(_dict_list(provider_metadata.get("expansion_target_queue"))),
+        search_expansion_result_count=len(_dict_list(provider_metadata.get("search_expansion_results"))),
+        targets_not_searched_count=len(_dict_list(provider_metadata.get("targets_not_searched"))),
+        uncovered_target_hint_count=len(_dict_list(provider_metadata.get("benchmark_recall_targets"))),
         source_obligation_decisions=source_obligation_decisions,
         extraction_issue_codes=_extraction_issue_codes(provider_metadata),
         evidence_linking_issue_count=_extraction_issue_codes(provider_metadata).count("evidence_linking_failed"),
@@ -134,6 +140,33 @@ def _extraction_issue_codes(provider_metadata: dict[str, Any]) -> list[str]:
 def _analyzed_source_count(provider_metadata: dict[str, Any]) -> int:
     outcomes = _dict_list(provider_metadata.get("retrieval_source_outcomes")) or _dict_list(provider_metadata.get("source_outcomes"))
     return len(outcomes)
+
+
+def _retrieved_source_count(provider_metadata: dict[str, Any]) -> int:
+    value = provider_metadata.get("retrieved_source_count")
+    if isinstance(value, int):
+        return max(value, 0)
+    retrieved = _dict_list(provider_metadata.get("retrieved_sources"))
+    if retrieved:
+        refs = {str(item.get("source_ref") or item.get("evidence_ref") or item.get("url") or "") for item in retrieved}
+        return len({item for item in refs if item})
+    return len(_dict_list(provider_metadata.get("retrieval_source_outcomes")))
+
+
+def _diagnostic_source_count(provider_metadata: dict[str, Any]) -> int:
+    refs: set[str] = set()
+    for key in (
+        "retrieved_sources",
+        "analyzed_sources",
+        "retrieval_source_outcomes",
+        "source_outcomes",
+        "source_provider_outcomes",
+    ):
+        for item in _dict_list(provider_metadata.get(key)):
+            ref = str(item.get("source_ref") or item.get("evidence_ref") or item.get("url") or item.get("source_id") or "").strip()
+            if ref:
+                refs.add(ref)
+    return len(refs)
 
 
 def _string_list(value: object) -> list[str]:

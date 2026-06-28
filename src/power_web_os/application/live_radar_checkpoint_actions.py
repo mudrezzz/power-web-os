@@ -18,6 +18,8 @@ from power_web_os.application.live_radar_execution_budget import RadarExecutionB
 from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
 from power_web_os.application.live_radar_staged_helpers import eligible_candidate_names, run_task
 from power_web_os.application.live_radar_staged_merge import merge_result
+from power_web_os.application.live_radar_search_expansion_execution import execute_targeted_search_expansion
+from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
 
 
 @dataclass
@@ -48,6 +50,8 @@ class RadarCheckpointRecoveryContext:
     useful_result_retry_records: list[dict[str, Any]] = field(default_factory=list)
     source_obligation_decisions: list[dict[str, Any]] = field(default_factory=list)
     external_budget: RadarExternalCallBudget | None = None
+    search_expansion_service: RadarSearchExpansionService | None = None
+    smoke_candidate_limit: int | None = None
 
 
 class RadarExecutionPlanReviser(Protocol):
@@ -148,6 +152,50 @@ class RadarCheckpointActionExecutor:
                 state.stopped_for_review_reason = "Checkpoint revision did not produce an executable recovery task."
                 _record_terminal_stop(checkpoint_id, phase, state.stopped_for_review_reason, context, reason_code="extraction_schema_failed")
                 break
+            if decision.action == "expand_sources" and action == "expand_sources" and context.search_expansion_service is not None:
+                expansion = execute_targeted_search_expansion(
+                    base_task=base_task,
+                    checkpoint_id=checkpoint_id,
+                    phase=phase,
+                    attempt=attempt,
+                    radar=context.radar,
+                    execution_plan=context.execution_plan,
+                    provider=context.provider,
+                    service=context.search_expansion_service,
+                    sources=state.sources,
+                    observations=state.observations,
+                    provider_metadata=state.provider_metadata,
+                    candidate_scope=state.candidate_scope,
+                    completed_qualification_ids=context.completed_qualification_ids,
+                    coverage_checks=context.coverage_checks,
+                    unresolved_candidate_gaps=context.unresolved_candidate_gaps,
+                    events=context.events,
+                    executed_task_ids=context.executed_task_ids,
+                    budget=context.budget,
+                    external_budget=context.external_budget,
+                    smoke_candidate_limit=context.smoke_candidate_limit,
+                )
+                state = RadarCheckpointRecoveryState(
+                    expansion.sources,
+                    expansion.observations,
+                    expansion.provider_metadata,
+                    expansion.candidate_scope,
+                    expansion.stopped_for_review_reason,
+                )
+                context.adaptive_actions.append(expansion.adaptive_action)
+                if expansion.stopped_for_review_reason:
+                    _record_terminal_stop(
+                        checkpoint_id,
+                        phase,
+                        expansion.stopped_for_review_reason,
+                        context,
+                        reason_code=expansion.stop_reason_code or "weak_candidate_coverage",
+                        details=expansion.stop_details or {},
+                    )
+                decision = self._record(checkpoint_id=checkpoint_id, phase=phase, state=state, context=context)
+                if state.stopped_for_review_reason or decision.action == "continue":
+                    break
+                continue
             result = run_task(
                 provider=context.provider,
                 radar=context.radar,

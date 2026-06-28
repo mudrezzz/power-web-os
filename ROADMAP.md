@@ -5497,7 +5497,7 @@ Principles:
 
 ### Slice 0.7.6.3.6.1: Checkpoint-to-expansion wiring and benchmark smoke acceptance repair
 
-- Status: `Backlog`
+- Status: `Done`
 - Goal: Make the source-profile-driven recall expansion from `0.7.6.3.6`
   executable in the real Docker/API/worker smoke path, not only present in unit
   tests and DTOs.
@@ -5553,6 +5553,50 @@ Principles:
     explained by expansion results, target skips, budget limits, or projection
     gaps, not by a blank `not_retrieved_in_run` outcome with no expansion
     attempt.
+- Done:
+  - Checkpoint input now includes retrieved/diagnostic source counts,
+    expansion target/result counts, not-searched targets, and benchmark target
+    hint counts.
+  - Weak recall with explicit uncovered benchmark/source-backed targets now
+    selects `expand_sources` before `revise_plan`; repeated unlinked evidence
+    after expansion still routes to revision/stop.
+  - Checkpoint action executor now runs target-aware
+    `RadarSearchExpansionService` tasks under official/open-web budget reserves
+    and records `expansion_target_queue`, `search_expansion_query_variants`,
+    `search_expansion_results`, and `targets_not_searched`.
+  - `benchmark_task_context()` now passes curated SIBUR benchmark target hints
+    only for explicit `benchmark-sibur-holding-contour` runs.
+  - Fast coverage added in `tests/test_radar_adaptive_execution.py`,
+    `tests/test_radar_search_expansion.py`, and `tests/test_radar_benchmark.py`.
+- Validation:
+  - `python -m pytest tests/test_radar_adaptive_execution.py tests/test_radar_search_expansion.py tests/test_radar_benchmark.py -q`
+  - `python -m pytest tests/test_live_icp_radar.py tests/test_radar_benchmark.py tests/test_radar_evaluation.py -q`
+  - `python -m pytest tests/test_backend_api.py tests/test_backend_architecture_contract.py -q`
+  - `python -m pytest tests/test_radar_pipeline_documentation_contract.py -q`
+  - `python -m pytest`
+- Manual Docker acceptance:
+  - Rebuilt `api`, `worker`, and `backend-init`; restarted Docker stack.
+  - Smoke run: `radar-run-fbb1b1d3-25ba-4962-ac4e-6ffce147ed0d`.
+  - Benchmark verdict: `budget_limited`; execution outcome:
+    `stopped_for_review` because execution budget was exhausted before signal
+    search.
+  - Expansion wiring is now active in Docker:
+    `checkpoint_summary.by_action.expand_sources=1`,
+    `expansion_target_count=93`, `expansion_result_count=8`,
+    `targets_not_searched_count=3`, and budget reserve counters are non-empty.
+  - Evaluation: `strict_recall=1.0`, `review_recall=0.0`,
+    false negatives are the three production-site targets
+    `gubkinsky-gpp`, `vyngapurovsky-gpp`, and `tobolsk-site`.
+  - Coverage probe found official sources for all three remaining production
+    sites.
+- RCA after acceptance:
+  - The original wiring defect is fixed: checkpoint no longer suppresses recall
+    expansion with immediate `revise_plan`.
+  - Broader `benchmark_live` remains blocked because expansion spent budget on
+    many legal-entity/holding targets before the three production-site misses.
+    The next corrective work should prioritize expansion targets and reserve
+    allocation so production-site benchmark misses are searched earlier within
+    the same bounded smoke budget.
 
 ### Slice 0.7.6.3.7: Model-role evaluation and extraction fallback policy
 

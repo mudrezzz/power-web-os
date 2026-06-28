@@ -107,7 +107,33 @@ def benchmark_task_context(*, profile: str, radar_id: str) -> dict[str, Any]:
         "benchmark_profile": profile,
         "source": "radar_benchmark_cli",
         "benchmark_radar_id": radar_id,
+        "benchmark_target_hints": benchmark_target_hints(radar_id),
     }
+
+
+def benchmark_target_hints(radar_id: str) -> list[dict[str, Any]]:
+    if radar_id != "benchmark-sibur-holding-contour":
+        return []
+    path = Path(__file__).resolve().parents[2] / "demo" / "fixtures" / "radar_evaluation" / "sibur_contour_baseline.json"
+    if not path.exists():
+        return []
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    entities = payload.get("entities")
+    if not isinstance(entities, list):
+        return []
+    return [
+        {
+            "baseline_id": str(item.get("baseline_id") or ""),
+            "canonical_name": str(item.get("canonical_name") or ""),
+            "aliases": [str(alias) for alias in item.get("aliases", []) if str(alias).strip()] if isinstance(item.get("aliases"), list) else [],
+            "entity_type": str(item.get("entity_type") or ""),
+            "expected_source_hints": [
+                str(hint) for hint in item.get("expected_source_hints", []) if str(hint).strip()
+            ] if isinstance(item.get("expected_source_hints"), list) else [],
+        }
+        for item in entities
+        if isinstance(item, dict) and str(item.get("canonical_name") or "").strip()
+    ]
 
 
 def run_radar_benchmark(

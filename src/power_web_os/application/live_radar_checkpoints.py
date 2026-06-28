@@ -55,8 +55,14 @@ class RadarExecutionCheckpointInput(BaseModel):
     candidate_count: int = 0
     candidate_scope_count: int = 0
     source_count: int = 0
+    retrieved_source_count: int = 0
     linked_source_count: int = 0
+    diagnostic_source_count: int = 0
     analyzed_source_count: int = 0
+    search_expansion_target_count: int = 0
+    search_expansion_result_count: int = 0
+    targets_not_searched_count: int = 0
+    uncovered_target_hint_count: int = 0
     source_obligation_decisions: list[dict[str, Any]] = Field(default_factory=list)
     extraction_issue_codes: list[str] = Field(default_factory=list)
     evidence_linking_issue_count: int = 0
@@ -115,6 +121,20 @@ class RadarExecutionCheckpointService:
             )
 
         if checkpoint.evidence_linking_issue_count or "evidence_linking_failed" in checkpoint.extraction_issue_codes:
+            if _should_expand_before_revision(checkpoint, self._policy):
+                return _decision(
+                    checkpoint,
+                    action="expand_sources",
+                    reason_code="weak_candidate_coverage",
+                    severity="warning",
+                    message="Evidence linking is weak because recall coverage is incomplete; run bounded source expansion before plan revision.",
+                    details={
+                        "evidence_linking_issue_count": checkpoint.evidence_linking_issue_count,
+                        "extraction_issue_codes": sorted(set(checkpoint.extraction_issue_codes)),
+                        "search_expansion_target_count": checkpoint.search_expansion_target_count,
+                        "uncovered_target_hint_count": checkpoint.uncovered_target_hint_count,
+                    },
+                )
             return _decision(
                 checkpoint,
                 action="revise_plan",
@@ -133,24 +153,32 @@ class RadarExecutionCheckpointService:
 
         if checkpoint.phase in {"after_discovery", "after_coverage"}:
             if checkpoint.candidate_scope_count < self._policy.min_candidates_before_signals:
+                action = "expand_sources" if _recall_expansion_is_available(checkpoint) else "retry_same_source"
                 return _decision(
                     checkpoint,
-                    action="retry_same_source",
+                    action=action,
                     reason_code="weak_candidate_coverage",
                     severity="warning",
                     message="Candidate discovery is too weak; retry or source expansion is required before continuing.",
-                    details={"candidate_scope_count": checkpoint.candidate_scope_count},
+                    details={
+                        "candidate_scope_count": checkpoint.candidate_scope_count,
+                        "search_expansion_target_count": checkpoint.search_expansion_target_count,
+                        "uncovered_target_hint_count": checkpoint.uncovered_target_hint_count,
+                    },
                 )
             if checkpoint.linked_source_count < self._policy.min_linked_sources_before_signals:
+                action = "expand_sources" if _recall_expansion_is_available(checkpoint) else "retry_same_source"
                 return _decision(
                     checkpoint,
-                    action="retry_same_source",
+                    action=action,
                     reason_code="weak_candidate_coverage",
                     severity="warning",
                     message="Discovery candidates do not have enough linked source evidence.",
                     details={
                         "linked_source_count": checkpoint.linked_source_count,
                         "min_linked_sources": self._policy.min_linked_sources_before_signals,
+                        "search_expansion_target_count": checkpoint.search_expansion_target_count,
+                        "uncovered_target_hint_count": checkpoint.uncovered_target_hint_count,
                     },
                 )
 
@@ -268,8 +296,14 @@ def _decision(
             "candidate_count": checkpoint.candidate_count,
             "candidate_scope_count": checkpoint.candidate_scope_count,
             "source_count": checkpoint.source_count,
+            "retrieved_source_count": checkpoint.retrieved_source_count,
             "linked_source_count": checkpoint.linked_source_count,
+            "diagnostic_source_count": checkpoint.diagnostic_source_count,
             "unresolved_gap_count": checkpoint.unresolved_gap_count,
+            "search_expansion_target_count": checkpoint.search_expansion_target_count,
+            "search_expansion_result_count": checkpoint.search_expansion_result_count,
+            "targets_not_searched_count": checkpoint.targets_not_searched_count,
+            "uncovered_target_hint_count": checkpoint.uncovered_target_hint_count,
             **(details or {}),
         },
     )
@@ -299,3 +333,32 @@ def _high_coverage_risk(checkpoint: RadarExecutionCheckpointInput) -> bool:
         if str(item.get("completeness_risk") or "").lower() == "high":
             return True
     return False
+
+
+def _recall_expansion_is_available(checkpoint: RadarExecutionCheckpointInput) -> bool:
+    if checkpoint.budget_exhaustion_events:
+        return False
+    if checkpoint.search_expansion_result_count or checkpoint.targets_not_searched_count:
+        return False
+    return bool(
+        checkpoint.search_expansion_target_count
+        or checkpoint.uncovered_target_hint_count
+        or _high_coverage_risk(checkpoint)
+        or checkpoint.unresolved_gap_count
+    )
+
+
+def _should_expand_before_revision(
+    checkpoint: RadarExecutionCheckpointInput,
+    policy: RadarExecutionCheckpointPolicy,
+) -> bool:
+    if checkpoint.phase not in {"after_discovery", "after_coverage"}:
+        return False
+    if not _recall_expansion_is_available(checkpoint):
+        return False
+    if checkpoint.search_expansion_result_count or checkpoint.targets_not_searched_count:
+        return False
+    weak_scope = checkpoint.candidate_scope_count < policy.min_candidates_before_signals
+    weak_linkage = checkpoint.linked_source_count < policy.min_linked_sources_before_signals
+    target_gap = bool(checkpoint.search_expansion_target_count or checkpoint.uncovered_target_hint_count)
+    return weak_scope or weak_linkage or target_gap or _high_coverage_risk(checkpoint)
