@@ -488,6 +488,14 @@ counters, top candidates, and a compact verdict:
 Use `benchmark_live` only for one radar at a time after the smoke report is
 diagnosable.
 
+For SIBUR contour smoke runs, expansion diagnostics must be read by target type.
+`production_site_coverage_probe` is a dedicated reserve for branch/site/plant
+coverage so holding/legal-entity targets cannot consume every early expansion
+slot. Inspect `expansion_target_summary_by_type`,
+`search_expansion_results_by_target_type`, `targets_not_searched`, and
+`budget_reserve_counters` before treating `review_recall=0.0` as a retrieval
+quality conclusion.
+
 `0.7.6.3` adds an offline evaluation report for the SIBUR contour benchmark.
 It reads a persisted run and dossier through the API, compares the output with
 `demo/fixtures/radar_evaluation/sibur_contour_baseline.json`, and writes

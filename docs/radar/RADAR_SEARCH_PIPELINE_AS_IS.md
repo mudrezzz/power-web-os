@@ -308,6 +308,14 @@ Each target records `target_id`, `target_label`, `target_type`, `source_refs`,
 `why_target_exists`, priority, allowed source ids, expected fact kinds,
 `budget_reserve_key`, execution status, and not-searched reason.
 
+Variant selection is target-aware. The planner no longer takes a flat top-N list
+of query variants. It first deduplicates variants, then walks target-type lanes
+and target ids so one holding/legal-entity target cannot consume all early smoke
+expansion slots. Production-site and branch targets are lane-prioritized because
+they drive review recall, while product candidate projection remains strict.
+Targets that are generated but do not receive an execution slot are kept in
+`targets_not_searched` with `not_searched_reason=not_selected`.
+
 Query variants are compiled from connector source cards and policy:
 
 - official/domain-capable sources produce `site:<domain> <target>` plus relation
@@ -324,6 +332,19 @@ open-web variants are not generated. If an official source is disabled,
 official-domain variants are not generated. If a reserve is exhausted, the
 target/task is recorded in `targets_not_searched` with `not_searched_reason`
 instead of disappearing from diagnostics.
+
+Production-site, branch, asset, and project targets use the dedicated
+`production_site_coverage_probe` reserve. In smoke profile this reserve defaults
+to `2`; `benchmark_smoke` overrides it to `3` so a bounded SIBUR contour smoke
+can attempt the three curated production-site misses before broader live
+benchmarking.
+
+Expansion diagnostics include `expansion_target_summary_by_type`,
+`search_expansion_results_by_target_type`, `targets_not_searched`, and reserve
+counters. Evaluation can therefore distinguish `expansion_not_selected`,
+`expansion_budget_limited`, `expansion_searched_no_support`, and
+`present_not_projected` instead of reporting every production-site miss as a
+blank `not_retrieved_in_run`.
 
 For benchmark runs only, `task_context.benchmark_target_hints` can seed
 `benchmark_baseline_like_target` expansion targets. Production runs ignore those
@@ -441,6 +462,7 @@ Budget reserves add an intent-level layer under the same run:
 - `recall_expansion`;
 - `official_coverage_probe`;
 - `open_web_coverage_probe`;
+- `production_site_coverage_probe`;
 - `extraction_recovery`;
 - `signal_search`.
 

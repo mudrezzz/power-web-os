@@ -69,12 +69,16 @@ class RadarSearchExpansionPlan:
 
     def to_payload(self) -> dict[str, Any]:
         variants = [item.to_payload() for item in self.variants]
+        target_payloads = [item.to_payload() for item in self.targets]
         return {
             "should_expand": self.should_expand,
             "reason": self.reason,
-            "targets": [item.to_payload() for item in self.targets],
+            "targets": target_payloads,
+            "targets_by_type": targets_by_type(target_payloads),
             "variants": variants,
             "variants_by_target": variants_by_target(variants),
+            "variants_by_target_type": variants_by_target_type(variants),
+            "targets_not_selected": targets_not_selected(target_payloads, variants),
         }
 
 
@@ -96,4 +100,35 @@ def variants_by_target(variants: list[dict[str, Any]]) -> dict[str, list[dict[st
     for item in variants:
         target_id = str(item.get("target_id") or "unclassified")
         result.setdefault(target_id, []).append(item)
+    return result
+
+
+def variants_by_target_type(variants: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    result: dict[str, list[dict[str, Any]]] = {}
+    for item in variants:
+        target_type = str(item.get("target_type") or "unknown")
+        result.setdefault(target_type, []).append(item)
+    return result
+
+
+def targets_by_type(targets: list[dict[str, Any]]) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for item in targets:
+        target_type = str(item.get("target_type") or "unknown")
+        result[target_type] = result.get(target_type, 0) + 1
+    return result
+
+
+def targets_not_selected(targets: list[dict[str, Any]], variants: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    selected_ids = {str(item.get("target_id") or "") for item in variants if str(item.get("target_id") or "")}
+    result: list[dict[str, Any]] = []
+    for item in targets:
+        target_id = str(item.get("target_id") or "")
+        if not target_id or target_id in selected_ids:
+            continue
+        result.append({
+            **item,
+            "execution_status": "not_searched",
+            "not_searched_reason": "not_selected",
+        })
     return result

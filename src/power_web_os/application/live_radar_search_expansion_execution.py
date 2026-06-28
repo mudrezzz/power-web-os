@@ -217,6 +217,10 @@ def _with_expansion_plan_metadata(
     return {
         **metadata,
         "expansion_target_queue": [*dict_list(metadata.get("expansion_target_queue")), *expansion_plan.get("targets", [])],
+        "expansion_target_summary_by_type": _merge_int_dicts(
+            metadata.get("expansion_target_summary_by_type"),
+            expansion_plan.get("targets_by_type"),
+        ),
         "search_expansion_query_variants_by_target": {
             **(
                 metadata.get("search_expansion_query_variants_by_target")
@@ -225,6 +229,18 @@ def _with_expansion_plan_metadata(
             ),
             **expansion_plan.get("variants_by_target", {}),
         },
+        "search_expansion_query_variants_by_target_type": {
+            **(
+                metadata.get("search_expansion_query_variants_by_target_type")
+                if isinstance(metadata.get("search_expansion_query_variants_by_target_type"), dict)
+                else {}
+            ),
+            **expansion_plan.get("variants_by_target_type", {}),
+        },
+        "targets_not_searched": _dedupe_target_records([
+            *dict_list(metadata.get("targets_not_searched")),
+            *dict_list(expansion_plan.get("targets_not_selected")),
+        ]),
         "source_capability_strategy_summary": _source_capability_strategy_summary(radar=radar, expansion_plan=expansion_plan),
         "search_expansion_query_variants": [
             *dict_list(metadata.get("search_expansion_query_variants")),
@@ -247,8 +263,48 @@ def _source_capability_strategy_summary(*, radar: dict[str, Any], expansion_plan
         "variant_count": len(variants),
         "official_probe_count": sum(1 for item in variants if item.get("budget_reserve_key") == "official_coverage_probe"),
         "open_web_probe_count": sum(1 for item in variants if item.get("budget_reserve_key") == "open_web_coverage_probe"),
+        "production_site_probe_count": sum(1 for item in variants if item.get("budget_reserve_key") == "production_site_coverage_probe"),
+        "target_count_by_type": dict(expansion_plan.get("targets_by_type") or {}),
+        "variant_count_by_target_type": {
+            key: len(value)
+            for key, value in (
+                expansion_plan.get("variants_by_target_type")
+                if isinstance(expansion_plan.get("variants_by_target_type"), dict)
+                else {}
+            ).items()
+            if isinstance(value, list)
+        },
         "uses_profile_driven_sources": bool(configured_sources and variants),
     }
+
+
+def _merge_int_dicts(left: object, right: object) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for source in (left, right):
+        if not isinstance(source, dict):
+            continue
+        for key, value in source.items():
+            try:
+                result[str(key)] = result.get(str(key), 0) + int(value)  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                continue
+    return result
+
+
+def _dedupe_target_records(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for item in items:
+        key = (
+            str(item.get("target_id") or ""),
+            str(item.get("task_id") or ""),
+            str(item.get("not_searched_reason") or ""),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(item)
+    return result
 
 
 def _skipped_payload(task: RadarExecutionTask, variant: Any, budget_decision: dict[str, Any], checkpoint_id: str) -> dict[str, Any]:

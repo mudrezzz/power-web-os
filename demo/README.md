@@ -385,6 +385,14 @@ industrial/site queries with `завод`, `ГПЗ`, `площадка`, or `ф�
 source policy allows those sources. The expansion is bounded and still counts
 against normal web-task/external-call budgets.
 
+After `0.7.6.3.6.2`, SIBUR benchmark smoke expansion is also diversified by
+target type. Check `expansion_target_summary_by_type`,
+`search_expansion_results_by_target_type`, `targets_not_searched`, and
+`budget_reserve_counters`. Production-site/branch targets use the
+`production_site_coverage_probe` reserve, so remaining site misses should be
+explained as searched, not selected, budget-limited, source-policy-limited, or
+projection gaps instead of a blank `not_retrieved_in_run`.
+
 DaData identity lookup also became multi-term. Inspect `registry_lookup_terms`
 and `registry_lookup_attempts`: an English alias can fail with `no_match`
 without blocking the run if later Russian/legal-form terms or official/web

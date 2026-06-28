@@ -658,6 +658,8 @@ def run_staged_radar_execution(
             "search_expansion_query_variants_by_target": provider_metadata.get("search_expansion_query_variants_by_target", {}),
             "search_expansion_results": provider_metadata.get("search_expansion_results", []),
             "search_expansion_results_by_target": _results_by_target(provider_metadata.get("search_expansion_results", [])),
+            "search_expansion_results_by_target_type": _results_by_target_type(provider_metadata.get("search_expansion_results", [])),
+            "expansion_target_summary_by_type": provider_metadata.get("expansion_target_summary_by_type", {}),
             "targets_not_searched": provider_metadata.get("targets_not_searched", []),
             "benchmark_recall_target_summary": _benchmark_recall_target_summary(provider_metadata),
             "registry_ambiguity_fanout_summary": provider_metadata.get("registry_ambiguity_fanout_summary", {}),
@@ -847,27 +849,44 @@ def _run_search_expansion(
         coverage_checks=coverage_checks,
         unresolved_candidate_gaps=unresolved_candidate_gaps,
     )
+    expansion_payload = expansion_plan.to_payload()
     provider_metadata = {
         **provider_metadata,
         "expansion_target_queue": [
             *dict_list(provider_metadata.get("expansion_target_queue")),
-            *expansion_plan.to_payload().get("targets", []),
+            *expansion_payload.get("targets", []),
         ],
+        "expansion_target_summary_by_type": _merge_int_dicts(
+            provider_metadata.get("expansion_target_summary_by_type"),
+            expansion_payload.get("targets_by_type"),
+        ),
         "search_expansion_query_variants_by_target": {
             **(
                 provider_metadata.get("search_expansion_query_variants_by_target")
                 if isinstance(provider_metadata.get("search_expansion_query_variants_by_target"), dict)
                 else {}
             ),
-            **expansion_plan.to_payload().get("variants_by_target", {}),
+            **expansion_payload.get("variants_by_target", {}),
         },
+        "search_expansion_query_variants_by_target_type": {
+            **(
+                provider_metadata.get("search_expansion_query_variants_by_target_type")
+                if isinstance(provider_metadata.get("search_expansion_query_variants_by_target_type"), dict)
+                else {}
+            ),
+            **expansion_payload.get("variants_by_target_type", {}),
+        },
+        "targets_not_searched": _dedupe_target_records([
+            *dict_list(provider_metadata.get("targets_not_searched")),
+            *dict_list(expansion_payload.get("targets_not_selected")),
+        ]),
         "source_capability_strategy_summary": _source_capability_strategy_summary(
             radar=radar,
-            expansion_plan=expansion_plan.to_payload(),
+            expansion_plan=expansion_payload,
         ),
         "search_expansion_query_variants": [
             *dict_list(provider_metadata.get("search_expansion_query_variants")),
-            *expansion_plan.to_payload().get("variants", []),
+            *expansion_payload.get("variants", []),
         ],
     }
     if not expansion_plan.should_expand:
@@ -1006,6 +1025,17 @@ def _source_capability_strategy_summary(*, radar: dict[str, Any], expansion_plan
         "variant_count": len(variants),
         "official_probe_count": sum(1 for item in variants if item.get("budget_reserve_key") == "official_coverage_probe"),
         "open_web_probe_count": sum(1 for item in variants if item.get("budget_reserve_key") == "open_web_coverage_probe"),
+        "production_site_probe_count": sum(1 for item in variants if item.get("budget_reserve_key") == "production_site_coverage_probe"),
+        "target_count_by_type": dict(expansion_plan.get("targets_by_type") or {}),
+        "variant_count_by_target_type": {
+            key: len(value)
+            for key, value in (
+                expansion_plan.get("variants_by_target_type")
+                if isinstance(expansion_plan.get("variants_by_target_type"), dict)
+                else {}
+            ).items()
+            if isinstance(value, list)
+        },
         "uses_profile_driven_sources": bool(configured_sources and variants),
     }
 
@@ -1015,6 +1045,43 @@ def _results_by_target(value: object) -> dict[str, list[dict[str, Any]]]:
     for item in dict_list(value):
         target_id = str(item.get("target_id") or "unclassified")
         result.setdefault(target_id, []).append(item)
+    return result
+
+
+def _results_by_target_type(value: object) -> dict[str, list[dict[str, Any]]]:
+    result: dict[str, list[dict[str, Any]]] = {}
+    for item in dict_list(value):
+        target_type = str(item.get("target_type") or "unknown")
+        result.setdefault(target_type, []).append(item)
+    return result
+
+
+def _merge_int_dicts(left: object, right: object) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for source in (left, right):
+        if not isinstance(source, dict):
+            continue
+        for key, value in source.items():
+            try:
+                result[str(key)] = result.get(str(key), 0) + int(value)  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                continue
+    return result
+
+
+def _dedupe_target_records(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for item in items:
+        key = (
+            str(item.get("target_id") or ""),
+            str(item.get("task_id") or ""),
+            str(item.get("not_searched_reason") or ""),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(item)
     return result
 
 
@@ -1032,11 +1099,24 @@ def _benchmark_recall_target_summary(provider_metadata: dict[str, Any]) -> dict[
     for target in targets:
         target_type = str(target.get("target_type") or "unknown")
         by_type[target_type] = by_type.get(target_type, 0) + 1
+    searched_by_type: dict[str, int] = {}
+    for target in targets:
+        target_id = str(target.get("target_id") or "")
+        if not target_id or target_id not in searched_ids:
+            continue
+        target_type = str(target.get("target_type") or "unknown")
+        searched_by_type[target_type] = searched_by_type.get(target_type, 0) + 1
+    not_searched_by_type: dict[str, int] = {}
+    for item in not_searched:
+        target_type = str(item.get("target_type") or "unknown")
+        not_searched_by_type[target_type] = not_searched_by_type.get(target_type, 0) + 1
     return {
         "target_count": len(targets),
         "searched_target_count": len([target for target in targets if str(target.get("target_id") or "") in searched_ids]),
         "not_searched_target_count": len(not_searched),
         "by_target_type": by_type,
+        "searched_by_target_type": searched_by_type,
+        "not_searched_by_target_type": not_searched_by_type,
     }
 
 

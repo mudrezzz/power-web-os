@@ -381,13 +381,19 @@ def _counts_by_role(counts: dict[str, int]) -> dict[str, int]:
 
 
 def _budget_reserve_limits(context: dict[str, object], *, smoke: bool) -> dict[str, int]:
+    defaults = _default_budget_reserve_limits(smoke=smoke)
     configured = context.get("budget_reserve_limits")
     if isinstance(configured, dict):
-        return {
+        parsed = {
             str(key): parsed
             for key, value in configured.items()
             if (parsed := _parse_non_negative_int(value)) is not None
         }
+        return {**defaults, **parsed}
+    return defaults
+
+
+def _default_budget_reserve_limits(*, smoke: bool) -> dict[str, int]:
     if not smoke:
         return {}
     return {
@@ -396,6 +402,7 @@ def _budget_reserve_limits(context: dict[str, object], *, smoke: bool) -> dict[s
         "recall_expansion": 3,
         "official_coverage_probe": 2,
         "open_web_coverage_probe": 3,
+        "production_site_coverage_probe": 2,
         "extraction_recovery": 2,
         "signal_search": 1,
     }

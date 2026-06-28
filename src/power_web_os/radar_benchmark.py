@@ -43,6 +43,7 @@ BENCHMARK_PROFILES: dict[str, dict[str, Any]] = {
         "openrouter_web_max_total_results_per_call": 6,
         "smoke_max_candidates": 3,
         "smoke_max_signals": 1,
+        "budget_reserve_limits": {"production_site_coverage_probe": 3},
     },
     "benchmark_live": {
         "run_profile": "live",
@@ -215,6 +216,8 @@ def benchmark_result_summary(
     expansion_targets = _list(dossier.get("expansion_target_queue"))
     expansion_results = _list(dossier.get("search_expansion_results"))
     targets_not_searched = _list(dossier.get("targets_not_searched"))
+    expansion_results_by_type = _count_by(expansion_results, "target_type")
+    targets_not_searched_by_type = _count_by(targets_not_searched, "target_type")
     status = str(run.get("status") or "unknown")
     execution_outcome = str(summary.get("execution_outcome") or "")
     verdict = _verdict(status=status, execution_outcome=execution_outcome, budget_events=budget_events)
@@ -242,8 +245,11 @@ def benchmark_result_summary(
         "budget_reserve_exhaustion_count": len(_list(dossier.get("budget_reserve_exhaustion_events"))),
         "source_capability_strategy_summary": _dict(dossier.get("source_capability_strategy_summary")),
         "expansion_target_count": len(expansion_targets),
+        "expansion_target_summary_by_type": _dict(dossier.get("expansion_target_summary_by_type")),
         "expansion_result_count": len(expansion_results),
+        "search_expansion_results_by_target_type": expansion_results_by_type,
         "targets_not_searched_count": len(targets_not_searched),
+        "targets_not_searched_by_target_type": targets_not_searched_by_type,
         "benchmark_recall_target_summary": _dict(dossier.get("benchmark_recall_target_summary")),
         "registry_ambiguity_fanout_summary": _dict(dossier.get("registry_ambiguity_fanout_summary")),
         "budget_exhaustion_count": len(budget_events),

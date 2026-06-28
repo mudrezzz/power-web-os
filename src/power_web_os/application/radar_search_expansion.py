@@ -33,6 +33,9 @@ from power_web_os.application.radar_search_expansion_support import (
     target_type as _target_type,
     variants_for_target as _variants_for_target,
 )
+from power_web_os.application.radar_search_expansion_selection import (
+    select_diversified_variants as _select_diversified_variants,
+)
 
 
 class RadarSearchExpansionService:
@@ -70,7 +73,7 @@ class RadarSearchExpansionService:
             unresolved_candidate_gaps=unresolved_candidate_gaps,
             sources=sources,
         )
-        variants = _dedupe_variants([
+        candidate_variants = _dedupe_variants([
             variant
             for target in targets
             for variant in _variants_for_target(
@@ -78,7 +81,8 @@ class RadarSearchExpansionService:
                 sources=sources,
                 relation_terms=_relation_terms(radar),
             )
-        ])[: self._max_variants]
+        ])
+        variants = _select_diversified_variants(candidate_variants, max_variants=self._max_variants)
         return RadarSearchExpansionPlan(
             should_expand=bool(variants),
             variants=variants,

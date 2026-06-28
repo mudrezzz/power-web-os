@@ -5598,6 +5598,144 @@ Principles:
     allocation so production-site benchmark misses are searched earlier within
     the same bounded smoke budget.
 
+### Slice 0.7.6.3.6.2: Expansion target diversification and production-site budget reserve
+
+- Status: `Done`
+- Goal: Fix the next measured SIBUR benchmark blocker after
+  `0.7.6.3.6.1`: recall expansion now runs, but its first bounded variants are
+  too concentrated on the holding/legal-entity target and do not reach
+  production-site targets before smoke budgets are exhausted.
+- User value: A bounded benchmark smoke should prove that recall expansion
+  actually tries the important missed target classes, not only that it builds a
+  large target queue. Users should see whether production sites were searched,
+  skipped by policy, skipped by budget, or found as review-needed upstream
+  entities.
+- Problem statement:
+  - Smoke `radar-run-fbb1b1d3-25ba-4962-ac4e-6ffce147ed0d` showed that
+    checkpoint-to-expansion wiring works: `expand_sources=1`,
+    `expansion_target_count=93`, `expansion_result_count=8`, and non-empty
+    reserve counters.
+  - Evaluation improved legal-entity recall to `strict_recall=1.0`, but
+    `review_recall=0.0` remained because the three production-site baseline
+    misses were not retrieved in the run.
+  - Coverage probe found official sources for all three remaining production
+    sites, so the problem is not provider impossibility. The bounded expansion
+    selected repeated holding queries first:
+    `site:sibur.ru ПАО «СИБУР Холдинг»`,
+    `site:sibur.ru ПАО «СИБУР Холдинг» СИБУР`, and related variants.
+  - The target queue did contain production-site targets, but variant selection
+    and reserve allocation did not guarantee that those target types receive an
+    execution slot before holding/legal-entity targets consume the smoke budget.
+- Scope:
+  - Add diversified expansion variant selection:
+    - limit variants per target within one expansion pass;
+    - select variants round-robin across target ids and target types;
+    - prevent one holding/legal-entity target from occupying all early smoke
+      expansion slots.
+  - Add production-site/branch reserve semantics:
+    - introduce a dedicated reserve key such as
+      `production_site_coverage_probe`, or a per-target-type quota inside
+      official/open-web reserves;
+    - guarantee a small bounded number of official/open-web probes for
+      `production_site`, `branch`, `asset`, and `project` targets when such
+      targets are present and source policy allows coverage sources.
+  - Prioritize review-recall target classes in benchmark context:
+    - production-site/branch benchmark hints should be searched before repeated
+      holding aliases;
+    - aliases from benchmark/evaluation context are allowed only under explicit
+      benchmark profile;
+    - generic runtime should use entity type/capability metadata, not
+      SIBUR-specific hardcode.
+  - Generate target-specific query variants for production sites:
+    - official-domain query for canonical name;
+    - official-domain query for alias when alias is available;
+    - open-web relation query with radar relation terms;
+    - industrial/site query with plant/site/branch markers.
+  - Preserve strict downstream projection:
+    - production sites found by expansion become review-needed universe
+      entities or linked facts;
+    - unresolved sites must not become high-confidence account candidates.
+  - Improve diagnostics:
+    - report searched/not-searched target counts by target type;
+    - show reserve consumption by target type;
+    - classify production-site misses as searched/no-support, budget-limited,
+      projection gap, or not generated, not just generic `not_retrieved_in_run`.
+- Out of scope:
+  - No SIBUR hardcode in production runtime.
+  - No benchmark quality claim.
+  - No model-role evaluation; that remains `0.7.6.3.7`.
+  - No UI changes and no new provider adapter.
+  - No relaxation of product candidate scoring/projection.
+- Implementation notes:
+  - Keep source-profile/capability cards as the source of truth for allowed
+    official/open-web expansion.
+  - The selection algorithm should operate on `RadarExpansionTarget` and
+    `RadarSearchExpansionVariant`, not on raw query strings.
+  - Benchmark hints may seed target priority only when `benchmark_profile` is
+    present in `task_context`.
+  - The smoke profile should remain bounded; do not fix this by simply raising
+    global OpenRouter/task budgets.
+- Tests:
+  - Unit: variant selector distributes early variants across different target
+    ids and target types.
+  - Unit: a holding target cannot consume all first N variants when
+    production-site targets are present.
+  - Unit: production-site target gets an official-domain variant and an
+    open-web/relation variant when both source capabilities are available.
+  - Unit: disabled official/open-web sources are respected.
+  - Unit: production-site reserve is consumed only by
+    `production_site_or_branch_target` / compatible target types.
+  - Unit: reserve exhaustion records target type, target id, and exact
+    not-searched reason.
+  - Pipeline fake: SIBUR-like benchmark hints for holding + three production
+    sites execute at least one production-site expansion task before budget
+    exhaustion.
+  - Pipeline fake: production-site evidence from expansion enters
+    review-needed candidate universe and does not become a strict product
+    account candidate.
+  - Report/evaluation: remaining production-site false negatives are no longer
+    blank `not_retrieved_in_run` when expansion had enough source policy and
+    reserve to try them.
+- Docs:
+  - Update `ROADMAP.md`.
+  - Update Radar AS IS Markdown/PDF after implementation: expansion now has
+    diversified target selection and production-site reserve semantics.
+  - Update demo/benchmark docs if the benchmark smoke interpretation changes.
+- Demo impact:
+  - No UI changes.
+  - Benchmark smoke/evaluation reports should become more useful for explaining
+    review-recall gaps.
+- Acceptance criteria:
+  - Fast tests prove diversified selection and production-site reserve behavior
+    without live providers.
+  - Rebuilt Docker `benchmark-sibur-holding-contour` smoke shows at least one
+    production-site/branch expansion task searched or explicitly skipped by a
+    production-site reserve reason.
+  - Evaluation either has `review_recall > 0.0`, or each production-site false
+    negative has a concrete expansion diagnostic bucket:
+    searched-no-support, budget-limited-after-reserve, projection gap, or
+    source-policy-limited.
+  - `benchmark_live` remains blocked until this bounded smoke/evaluation
+    acceptance passes.
+- Done notes:
+  - Added diversified expansion variant selection across target types and
+    target ids, so holding/legal-entity targets cannot consume all early
+    expansion slots when production-site targets are present.
+  - Added dedicated `production_site_coverage_probe` reserve semantics with
+    smoke default `2` and `benchmark_smoke` override `3`.
+  - Added dossier/report/evaluation diagnostics for expansion target type
+    counts, target-type result buckets, not-selected targets, and production
+    site false-negative buckets.
+  - Validation run: fast expansion, budget, benchmark, evaluation, adaptive,
+    live Radar, and backend API tests passed locally.
+  - Manual Docker benchmark smoke/evaluation remains the next acceptance step
+    before unblocking `benchmark_live`.
+- Risks:
+  - More production-site recall can increase upstream false positives. Mitigate
+    by keeping review-needed flags and strict product candidate projection.
+  - More target diversity can reduce depth on legal-entity expansion. Mitigate
+    by using small per-type quotas instead of removing legal-entity targets.
+
 ### Slice 0.7.6.3.7: Model-role evaluation and extraction fallback policy
 
 - Status: `Backlog`

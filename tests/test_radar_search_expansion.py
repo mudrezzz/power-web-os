@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 
 from power_web_os.application.live_radar_contracts import (
@@ -85,7 +86,7 @@ def test_search_expansion_builds_prioritized_target_queue_from_source_backed_gap
     targets = plan.to_payload()["targets"]
     assert targets[0]["target_type"] in {"known_subsidiary_or_legal_entity_target", "production_site_or_branch_target"}
     assert {item["target_label"] for item in targets} >= {"Губкинский газоперерабатывающий завод", 'АО "ПОЛИЭФ"'}
-    assert any(item["budget_reserve_key"] == "official_coverage_probe" for item in targets)
+    assert any(item["budget_reserve_key"] == "production_site_coverage_probe" for item in targets)
     variants_by_target = plan.to_payload()["variants_by_target"]
     assert variants_by_target
     assert any(
@@ -158,6 +159,61 @@ def test_search_expansion_uses_source_profile_capabilities_not_hardcoded_dadata(
     assert plan.should_expand
     assert all("spark_registry" not in item.source_ids for item in plan.variants)
     assert any("openrouter_web" in item.source_ids for item in plan.variants)
+
+
+def test_search_expansion_diversifies_first_variants_across_target_types() -> None:
+    radar = _radar_with_sources()
+    radar["task_context"] = {
+        "benchmark_profile": "benchmark_smoke",
+        "benchmark_target_hints": [
+            {"canonical_name": "SIBUR Holding", "entity_type": "legal_entity"},
+            {"canonical_name": "Gubkinsky GPP plant", "entity_type": "production_site"},
+            {"canonical_name": "Vyngapurovsky GPP plant", "entity_type": "production_site"},
+            {"canonical_name": "ZapSibNeftekhim JSC", "entity_type": "legal_entity"},
+        ],
+    }
+
+    plan = RadarSearchExpansionService(max_variants=4).plan_expansion(
+        radar=radar,
+        candidate_scope=[],
+        provider_metadata={},
+        coverage_checks=[{"completeness_risk": "high"}],
+        unresolved_candidate_gaps=[],
+    )
+
+    target_types = [item.target_type for item in plan.variants]
+    target_counts = Counter(item.target_id for item in plan.variants)
+    assert "production_site_or_branch_target" in target_types
+    assert "holding_or_group_target" in target_types
+    assert "known_subsidiary_or_legal_entity_target" in target_types
+    assert max(target_counts.values()) <= 2
+    assert any(item.budget_reserve_key == "production_site_coverage_probe" for item in plan.variants)
+
+
+def test_search_expansion_records_not_selected_targets_when_variant_cap_is_hit() -> None:
+    radar = _radar_with_sources()
+    radar["task_context"] = {
+        "benchmark_profile": "benchmark_smoke",
+        "benchmark_target_hints": [
+            {"canonical_name": "SIBUR Holding", "entity_type": "legal_entity"},
+            {"canonical_name": "Gubkinsky GPP plant", "entity_type": "production_site"},
+            {"canonical_name": "Vyngapurovsky GPP plant", "entity_type": "production_site"},
+            {"canonical_name": "Tobolsk production site", "entity_type": "production_site"},
+            {"canonical_name": "ZapSibNeftekhim JSC", "entity_type": "legal_entity"},
+        ],
+    }
+
+    payload = RadarSearchExpansionService(max_variants=2).plan_expansion(
+        radar=radar,
+        candidate_scope=[],
+        provider_metadata={},
+        coverage_checks=[{"completeness_risk": "high"}],
+        unresolved_candidate_gaps=[],
+    ).to_payload()
+
+    assert payload["targets_not_selected"]
+    assert all(item["not_searched_reason"] == "not_selected" for item in payload["targets_not_selected"])
+    assert payload["targets_by_type"]["production_site_or_branch_target"] >= 3
 
 
 def test_registry_lookup_terms_generate_russian_variants_for_english_aliases() -> None:
@@ -387,6 +443,7 @@ def test_staged_execution_skips_expansion_when_reserve_is_exhausted() -> None:
             budget_reserve_limits={
                 "official_coverage_probe": 0,
                 "open_web_coverage_probe": 0,
+                "production_site_coverage_probe": 0,
             }
         )
     )

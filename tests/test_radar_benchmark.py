@@ -23,6 +23,7 @@ def test_benchmark_task_context_uses_explicit_smoke_budgets() -> None:
     assert context["max_total_web_tasks_per_run"] == 18
     assert context["max_openrouter_calls_per_run"] == 10
     assert context["max_provider_retries_per_task"] == 2
+    assert context["budget_reserve_limits"]["production_site_coverage_probe"] == 3
     assert context["source"] == "radar_benchmark_cli"
 
 

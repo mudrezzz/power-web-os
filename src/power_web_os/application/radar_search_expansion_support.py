@@ -11,6 +11,8 @@ from power_web_os.application.radar_search_expansion_models import (
     _ExpansionSource,
 )
 
+PRODUCTION_SITE_COVERAGE_RESERVE_KEY = "production_site_coverage_probe"
+
 
 def variants_for_target(
     *,
@@ -29,7 +31,7 @@ def variants_for_target(
             source=source,
             target=target,
             reason="official_domain_coverage",
-            reserve_key="official_coverage_probe",
+            reserve_key=_reserve_key_for_variant(target, "official_coverage_probe"),
             facts=["official_relation", "coverage"],
         ))
         if relation:
@@ -38,7 +40,7 @@ def variants_for_target(
                 source=source,
                 target=target,
                 reason="official_domain_relation_query",
-                reserve_key="official_coverage_probe",
+                reserve_key=_reserve_key_for_variant(target, "official_coverage_probe"),
                 facts=["official_relation", "coverage"],
             ))
         variants.append(_variant(
@@ -46,7 +48,7 @@ def variants_for_target(
             source=source,
             target=target,
             reason="official_domain_industrial_coverage",
-            reserve_key="official_coverage_probe",
+            reserve_key=_reserve_key_for_variant(target, "official_coverage_probe"),
             facts=["official_relation", "production_site", "branch"],
         ))
     for source in web_sources:
@@ -56,7 +58,7 @@ def variants_for_target(
                 source=source,
                 target=target,
                 reason="open_web_relation_query",
-                reserve_key="open_web_coverage_probe",
+                reserve_key=_reserve_key_for_variant(target, "open_web_coverage_probe"),
                 facts=["web_relation", "coverage"],
                 source_scope="additional",
             ))
@@ -65,7 +67,7 @@ def variants_for_target(
                 source=source,
                 target=target,
                 reason="open_web_membership_query",
-                reserve_key="open_web_coverage_probe",
+                reserve_key=_reserve_key_for_variant(target, "open_web_coverage_probe"),
                 facts=["web_relation", "coverage"],
                 source_scope="additional",
             ))
@@ -74,7 +76,7 @@ def variants_for_target(
             source=source,
             target=target,
             reason="open_web_identity_query",
-            reserve_key="open_web_coverage_probe",
+            reserve_key=_reserve_key_for_variant(target, "open_web_coverage_probe"),
             facts=["identity", "registry_hint"],
             source_scope="additional",
         ))
@@ -83,11 +85,17 @@ def variants_for_target(
             source=source,
             target=target,
             reason="open_web_industrial_site_query",
-            reserve_key="open_web_coverage_probe",
+            reserve_key=_reserve_key_for_variant(target, "open_web_coverage_probe"),
             facts=["production_site", "branch", "asset"],
             source_scope="additional",
         ))
     return variants
+
+
+def _reserve_key_for_variant(target: RadarExpansionTarget, fallback: str) -> str:
+    if target.target_type == "production_site_or_branch_target":
+        return PRODUCTION_SITE_COVERAGE_RESERVE_KEY
+    return fallback
 
 
 def _variant(
@@ -251,7 +259,7 @@ def expected_fact_kinds(target_type: str) -> list[str]:
 
 def reserve_key_for_target(target_type: str) -> str:
     if target_type == "production_site_or_branch_target":
-        return "official_coverage_probe"
+        return PRODUCTION_SITE_COVERAGE_RESERVE_KEY
     return "recall_expansion"
 
 
@@ -309,7 +317,11 @@ def relation_terms(radar: dict[str, Any]) -> list[str]:
     result: list[str] = []
     if re.search(r"\bSIBUR\b", text, flags=re.IGNORECASE) or "СИБУР" in text.upper():
         result.extend(["СИБУР", "SIBUR"])
-    tokens = re.findall(r"\b[A-ZА-ЯЁ][A-ZА-ЯЁ0-9\-]{2,}\b", text)
+    tokens = [
+        token
+        for token in re.findall(r"\b[\w\-]{3,}\b", text, flags=re.UNICODE)
+        if token.upper() == token and any(char.isalpha() for char in token)
+    ]
     result.extend(tokens[:3])
     return dedupe_text(result)
 
@@ -366,7 +378,7 @@ def _domain_from_source(source: dict[str, Any], card: RadarPlannerSourceCard | N
 
 
 def target_id(label: str, target_type: str) -> str:
-    normalized = re.sub(r"[^a-zA-Z0-9А-Яа-яЁё]+", "_", label.casefold()).strip("_")
+    normalized = re.sub(r"[^\w]+", "_", label.casefold(), flags=re.UNICODE).strip("_")
     return f"{target_type}:{normalized or 'target'}"[:120]
 
 
@@ -385,8 +397,8 @@ def dedupe_variants(variants: list[RadarSearchExpansionVariant]) -> list[RadarSe
 def _variant_reason_priority(reason: str) -> int:
     return {
         "official_domain_coverage": 1,
-        "official_domain_relation_query": 2,
-        "open_web_relation_query": 3,
+        "open_web_relation_query": 2,
+        "official_domain_relation_query": 3,
         "open_web_identity_query": 4,
         "official_domain_industrial_coverage": 5,
         "open_web_industrial_site_query": 6,

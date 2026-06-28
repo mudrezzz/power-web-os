@@ -188,6 +188,52 @@ def test_evaluation_classifies_false_negative_present_in_source_diagnostics() ->
     assert report["candidate_projection_note"]
 
 
+def test_evaluation_classifies_false_negative_generated_but_not_selected_for_expansion() -> None:
+    baseline = RadarEvaluationBaseline(
+        baseline_id="diagnostic-test",
+        version="test",
+        radar_id=SIBUR_CONTOUR_RADAR_ID,
+        description="Expansion diagnostics.",
+        entities=(
+            RadarEvaluationEntity(
+                baseline_id="gubkinsky-gpp",
+                canonical_name="Gubkinsky gas processing plant",
+                aliases=("Gubkinsky GPP",),
+                entity_type="production_site",
+            ),
+        ),
+    )
+    dossier = {
+        "summary": {"execution_outcome": "stopped_for_review"},
+        "candidates": [],
+        "candidate_universe": [],
+        "expansion_target_queue": [
+            {
+                "target_id": "production_site_or_branch_target:gubkinsky_gpp",
+                "target_label": "Gubkinsky GPP",
+                "target_type": "production_site_or_branch_target",
+            }
+        ],
+        "targets_not_searched": [
+            {
+                "target_id": "production_site_or_branch_target:gubkinsky_gpp",
+                "target_label": "Gubkinsky GPP",
+                "target_type": "production_site_or_branch_target",
+                "not_searched_reason": "not_selected",
+            }
+        ],
+    }
+
+    report = evaluate_radar_dossier(
+        run={"run_id": "radar-run-fn", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},
+        dossier=dossier,
+        baseline=baseline,
+    )
+
+    diagnostics = {item["baseline_id"]: item["bucket"] for item in report["false_negative_diagnostics"]}
+    assert diagnostics["gubkinsky-gpp"] == "expansion_not_selected"
+
+
 def test_non_sibur_run_is_rejected_for_sibur_baseline() -> None:
     with pytest.raises(ValueError, match="targets benchmark-sibur-holding-contour"):
         evaluate_radar_dossier(

@@ -14,6 +14,7 @@ from power_web_os.application.live_radar_external_budget import (
     RadarExternalCallBudget,
     RadarExternalCallBudgetSettings,
     external_call_budget_context,
+    external_budget_settings_from_context,
     record_openrouter_server_tool_usage,
     reserve_budget_slice,
     reserve_openrouter_http_call,
@@ -114,6 +115,18 @@ def test_budget_reserve_counters_are_separate_from_external_call_counters() -> N
     assert metadata["budget_reserve_counters"]["budget_reserve:recall_expansion"] == 1
     assert metadata["external_call_budget_counters"]["openrouter:run"] == 1
     assert metadata["budget_reserve_exhaustion_events"][0]["task_id"] == "expansion-2"
+
+
+def test_smoke_budget_reserves_include_production_site_probe_and_merge_overrides() -> None:
+    settings = external_budget_settings_from_context({
+        "run_profile": "smoke",
+        "budget_reserve_limits": {"production_site_coverage_probe": 3},
+    })
+
+    assert settings.budget_reserve_limits["production_site_coverage_probe"] == 3
+    assert settings.budget_reserve_limits["official_coverage_probe"] == 2
+    assert settings.budget_reserve_limits["open_web_coverage_probe"] == 3
+    assert settings.budget_reserve_limits["recall_expansion"] == 3
 
 
 def test_openrouter_request_uses_smoke_web_result_caps() -> None:
