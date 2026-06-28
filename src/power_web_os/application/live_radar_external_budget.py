@@ -17,6 +17,7 @@ class RadarExternalCallBudgetSettings:
     max_openrouter_calls_per_run: int | None = None
     max_openrouter_planner_calls_per_run: int | None = None
     max_openrouter_web_task_calls_per_run: int | None = None
+    max_recall_expansion_openrouter_calls_per_run: int | None = None
     max_openrouter_server_tool_web_searches_per_run: int | None = None
     max_dadata_lookups_per_run: int | None = None
     max_source_verification_requests_per_run: int | None = None
@@ -61,6 +62,7 @@ class RadarExternalCallBudget:
     post_call_budget_overruns: list[dict[str, object]] = field(default_factory=list)
     reserve_counts: dict[str, int] = field(default_factory=dict)
     reserve_exhaustion_events: list[dict[str, object]] = field(default_factory=list)
+    protected_recall_expansion_tasks: dict[str, str] = field(default_factory=dict)
 
     def reserve(self, kind: ExternalCallKind, *, key: str = "run", task_id: str = "") -> RadarExternalCallBudgetDecision:
         budget_key = f"{kind}:{key or 'run'}" if kind == "provider_retry" else f"{kind}:run"
@@ -94,6 +96,8 @@ class RadarExternalCallBudget:
         task_id: str = "",
     ) -> tuple[RadarExternalCallBudgetDecision, RadarExternalCallBudgetDecision]:
         role_kind = "openrouter_planner" if role == "planner" else "openrouter_web_task"
+        if role_kind == "openrouter_web_task" and task_id in self.protected_recall_expansion_tasks:
+            return self._reserve_protected_recall_expansion_openrouter_call(task_id=task_id)
         total_block = self._exhausted_decision("openrouter", budget_key="openrouter:run", key="run", task_id=task_id)
         if total_block is not None:
             return total_block, total_block
@@ -112,6 +116,39 @@ class RadarExternalCallBudget:
         role_decision = self.reserve(role_kind, key="run", task_id=task_id)
         total_decision = self.reserve("openrouter", key="run", task_id=task_id)
         return total_decision, role_decision
+
+    def protect_recall_expansion_openrouter_task(self, *, task_id: str, reserve_key: str) -> None:
+        if not task_id:
+            return
+        self.protected_recall_expansion_tasks[task_id] = reserve_key or "recall_expansion"
+
+    def _reserve_protected_recall_expansion_openrouter_call(
+        self,
+        *,
+        task_id: str,
+    ) -> tuple[RadarExternalCallBudgetDecision, RadarExternalCallBudgetDecision]:
+        total_block = self._exhausted_decision("openrouter", budget_key="openrouter:run", key="run", task_id=task_id)
+        if total_block is not None:
+            return total_block, total_block
+        server_tool_block = self._exhausted_decision(
+            "openrouter_server_tool_web_search",
+            budget_key="openrouter_server_tool_web_search:run",
+            key="run",
+            task_id=task_id,
+        )
+        if server_tool_block is not None:
+            return server_tool_block, server_tool_block
+        protected_block = self._exhausted_decision(
+            "openrouter_recall_expansion",
+            budget_key="openrouter_recall_expansion:run",
+            key="run",
+            task_id=task_id,
+        )
+        if protected_block is not None:
+            return protected_block, protected_block
+        protected_decision = self.reserve("openrouter_recall_expansion", key="run", task_id=task_id)
+        total_decision = self.reserve("openrouter", key="run", task_id=task_id)
+        return total_decision, protected_decision
 
     def _exhausted_decision(
         self,
@@ -223,6 +260,9 @@ class RadarExternalCallBudget:
                 "max_openrouter_calls_per_run": self.settings.max_openrouter_calls_per_run,
                 "max_openrouter_planner_calls_per_run": self.settings.max_openrouter_planner_calls_per_run,
                 "max_openrouter_web_task_calls_per_run": self.settings.max_openrouter_web_task_calls_per_run,
+                "max_recall_expansion_openrouter_calls_per_run": (
+                    self.settings.max_recall_expansion_openrouter_calls_per_run
+                ),
                 "max_openrouter_server_tool_web_searches_per_run": self.settings.max_openrouter_server_tool_web_searches_per_run,
                 "max_dadata_lookups_per_run": self.settings.max_dadata_lookups_per_run,
                 "max_source_verification_requests_per_run": self.settings.max_source_verification_requests_per_run,
@@ -253,6 +293,8 @@ class RadarExternalCallBudget:
             return _non_negative(self.settings.max_openrouter_planner_calls_per_run)
         if kind == "openrouter_web_task":
             return _non_negative(self.settings.max_openrouter_web_task_calls_per_run)
+        if kind == "openrouter_recall_expansion":
+            return _non_negative(self.settings.max_recall_expansion_openrouter_calls_per_run)
         if kind == "openrouter_server_tool_web_search":
             return _non_negative(self.settings.max_openrouter_server_tool_web_searches_per_run)
         if kind == "dadata":
@@ -307,6 +349,13 @@ def record_openrouter_server_tool_usage(*, count: int, task_id: str = "") -> Rad
     return budget.record_server_tool_web_search_usage(count=count, task_id=task_id)
 
 
+def protect_recall_expansion_openrouter_task(*, task_id: str, reserve_key: str) -> None:
+    budget = current_external_call_budget()
+    if budget is None:
+        return
+    budget.protect_recall_expansion_openrouter_task(task_id=task_id, reserve_key=reserve_key)
+
+
 def reserve_budget_slice(
     reserve_key: str,
     *,
@@ -333,6 +382,9 @@ def external_budget_settings_from_context(context: dict[str, object]) -> RadarEx
         ),
         max_openrouter_web_task_calls_per_run=_context_int_or_default(
             context, "max_openrouter_web_task_calls_per_run", 6 if smoke else None
+        ),
+        max_recall_expansion_openrouter_calls_per_run=_context_int_or_default(
+            context, "max_recall_expansion_openrouter_calls_per_run", 2 if smoke else None
         ),
         max_openrouter_server_tool_web_searches_per_run=_context_int_or_default(
             context, "max_openrouter_server_tool_web_searches_per_run", 24 if smoke else None

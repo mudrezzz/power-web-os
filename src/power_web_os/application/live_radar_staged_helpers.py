@@ -37,8 +37,9 @@ def run_task(
     radar_id: str,
     budget: RadarExecutionBudget,
     external_budget: RadarExternalCallBudget | None = None,
+    semantic_reserve_key: str | None = None,
 ) -> WebSearchProviderResult:
-    if not budget.reserve(task):
+    if not budget.reserve(task, semantic_reserve_key=semantic_reserve_key):
         decision = budget.last_decision
         return WebSearchProviderResult(
             sources=[],
@@ -53,6 +54,8 @@ def run_task(
                     "state": decision.state,
                     "reason": decision.reason,
                     "message": decision.message,
+                    "reserve_key": decision.reserve_key,
+                    "used_semantic_reserve": decision.used_semantic_reserve,
                 },
                 "coverage_findings": [{
                     "summary": decision.message or f"Web task budget reached for {task.subject_id}.",
@@ -62,6 +65,13 @@ def run_task(
             },
         )
     result = provider.run_search_plan(radar=radar, search_plan=execution_task_to_search_plan(task, radar_id=radar_id))
+    if budget.last_decision.used_semantic_reserve:
+        result = result.model_copy(update={
+            "provider_metadata": {
+                **result.provider_metadata,
+                "semantic_task_budget_decision": _budget_decision_payload(budget.last_decision),
+            },
+        })
     retries = 0
     while _provider_schema_invalid(result) and external_budget is not None:
         decision = external_budget.reserve("provider_retry", key=task.task_id, task_id=task.task_id)
@@ -76,6 +86,20 @@ def run_task(
         )
         result = provider.run_search_plan(radar=radar, search_plan=execution_task_to_search_plan(task, radar_id=radar_id))
     return result
+
+
+def _budget_decision_payload(decision: Any) -> dict[str, Any]:
+    return {
+        "accepted": decision.accepted,
+        "key": decision.key,
+        "limit": decision.limit,
+        "current": decision.current,
+        "state": decision.state,
+        "reason": decision.reason,
+        "message": decision.message,
+        "reserve_key": decision.reserve_key,
+        "used_semantic_reserve": decision.used_semantic_reserve,
+    }
 
 
 def combine_task_results(first: WebSearchProviderResult, second: WebSearchProviderResult) -> WebSearchProviderResult:

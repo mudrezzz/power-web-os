@@ -496,6 +496,27 @@ slot. Inspect `expansion_target_summary_by_type`,
 `budget_reserve_counters` before treating `review_recall=0.0` as a retrieval
 quality conclusion.
 
+For `0.7.6.3.6.3+`, also inspect `search_expansion_execution_summary`. A target
+is counted as searched only when an external provider call executed. Selected
+targets blocked by the OpenRouter guard must appear as
+`not_executed_global_budget_limited` or `not_executed_reserve_limited`, not as
+searched no-support. Protected recall expansion uses
+`openrouter_recall_expansion:run` slots, which are separate from regular
+`openrouter_web_task:run` slots and still count toward total `openrouter:run`.
+
+For `0.7.6.3.6.4+`, inspect semantic task reserves and target-lane guarantees.
+`semantic_task_budget_counters` show expansion tasks that ran after the regular
+Radar web-task budget was exhausted. `target_probe_guarantees` and
+`target_probe_guarantee_failures` show whether benchmark smoke executed the
+required holding, legal/subsidiary, and production-site/branch lanes or why a
+lane was blocked. `source_verification_cache_stats` should show duplicate URL
+checks reused from the per-run cache instead of spending repeated verification
+budget.
+
+The benchmark CLI waits up to 1200 seconds by default because low-cost
+OpenRouter provider routing can be slow; use budget counters, not wall-clock
+duration, to decide whether the smoke profile stayed bounded.
+
 `0.7.6.3` adds an offline evaluation report for the SIBUR contour benchmark.
 It reads a persisted run and dossier through the API, compares the output with
 `demo/fixtures/radar_evaluation/sibur_contour_baseline.json`, and writes

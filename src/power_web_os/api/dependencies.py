@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import Callable
 
 from fastapi import Request
 
@@ -31,6 +32,7 @@ class RadarApiContext:
     event_repository: SqlAlchemyRadarRunEventRepository
     technical_trace_repository: SqlAlchemyRadarRunTechnicalTraceRepository
     job_queue: JobQueue
+    commit_before_enqueue: Callable[[], None]
     radar_max_web_tasks_per_subject: int
     radar_max_discovery_tasks_per_rule: int | None
     radar_max_gate_tasks_per_candidate_rule: int | None
@@ -122,6 +124,7 @@ def get_radar_api_context(request: Request) -> Iterator[RadarApiContext]:
             event_repository=SqlAlchemyRadarRunEventRepository(session),
             technical_trace_repository=SqlAlchemyRadarRunTechnicalTraceRepository(session),
             job_queue=job_queue_factory(),
+            commit_before_enqueue=session.commit,
             radar_max_web_tasks_per_subject=radar_max_web_tasks_per_subject,
             radar_max_discovery_tasks_per_rule=radar_max_discovery_tasks_per_rule,
             radar_max_gate_tasks_per_candidate_rule=radar_max_gate_tasks_per_candidate_rule,

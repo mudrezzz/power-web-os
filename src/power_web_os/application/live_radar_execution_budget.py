@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from power_web_os.application.live_radar_contracts import RadarExecutionTask
 
@@ -14,6 +14,7 @@ class RadarExecutionBudgetSettings:
     max_gate_tasks_per_candidate_rule: int | None = None
     max_signal_tasks_per_candidate_signal: int | None = None
     compatibility_max_web_tasks_per_subject: int | None = None
+    semantic_task_reserve_limits: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +26,8 @@ class RadarBudgetDecision:
     state: str = "searched"
     reason: str = ""
     message: str = ""
+    reserve_key: str = ""
+    used_semantic_reserve: bool = False
 
 
 class RadarExecutionBudget:
@@ -34,12 +37,13 @@ class RadarExecutionBudget:
         self.settings = settings
         self.counts: dict[str, int] = {}
         self.total_count = 0
+        self.semantic_reserve_counts: dict[str, int] = {}
         self.warnings: list[str] = []
         self.exhaustion_events: list[dict[str, object]] = []
         self.last_decision = RadarBudgetDecision(accepted=True, key="run")
 
-    def reserve(self, task: RadarExecutionTask) -> bool:
-        decision = self.reserve_decision(task)
+    def reserve(self, task: RadarExecutionTask, *, semantic_reserve_key: str | None = None) -> bool:
+        decision = self.reserve_decision(task, semantic_reserve_key=semantic_reserve_key)
         self.last_decision = decision
         if not decision.accepted and decision.message not in self.warnings:
             self.warnings.append(decision.message)
@@ -47,7 +51,27 @@ class RadarExecutionBudget:
             self.exhaustion_events.append(_event_payload(task, decision))
         return decision.accepted
 
-    def reserve_decision(self, task: RadarExecutionTask) -> RadarBudgetDecision:
+    def reserve_decision(
+        self,
+        task: RadarExecutionTask,
+        *,
+        semantic_reserve_key: str | None = None,
+    ) -> RadarBudgetDecision:
+        regular_block = self._regular_blocking_decision(task)
+        if regular_block is not None:
+            reserve_decision = self._try_semantic_reserve(task, semantic_reserve_key)
+            if reserve_decision is not None:
+                return reserve_decision
+            return regular_block
+
+        key = budget_key(task)
+        limit = self._limit_for(task)
+        current = self.counts.get(key, 0)
+        self.counts[key] = current + 1
+        self.total_count += 1
+        return RadarBudgetDecision(accepted=True, key=key, limit=limit, current=current + 1)
+
+    def _regular_blocking_decision(self, task: RadarExecutionTask) -> RadarBudgetDecision | None:
         total_limit = _positive(self.settings.max_total_tasks_per_run)
         if total_limit is not None and self.total_count >= total_limit:
             return RadarBudgetDecision(
@@ -73,10 +97,49 @@ class RadarExecutionBudget:
                 reason="semantic_budget_exhausted",
                 message=f"Web task budget reached for {key}: {limit} tasks.",
             )
+        return None
 
-        self.counts[key] = current + 1
+    def _try_semantic_reserve(self, task: RadarExecutionTask, semantic_reserve_key: str | None) -> RadarBudgetDecision | None:
+        reserve_key = (semantic_reserve_key or "").strip()
+        if not reserve_key:
+            return None
+        limit = _positive(self.settings.semantic_task_reserve_limits.get(reserve_key))
+        if limit is None:
+            return None
+        key = f"semantic_reserve:{reserve_key}"
+        current = self.semantic_reserve_counts.get(key, 0)
+        if current >= limit:
+            return RadarBudgetDecision(
+                accepted=False,
+                key=key,
+                limit=limit,
+                current=current,
+                state="not_searched_budget_limited",
+                reason="semantic_task_reserve_exhausted",
+                message=f"Semantic Radar task reserve {reserve_key} reached: {current}/{limit}.",
+                reserve_key=reserve_key,
+            )
+        self.semantic_reserve_counts[key] = current + 1
         self.total_count += 1
-        return RadarBudgetDecision(accepted=True, key=key, limit=limit, current=current + 1)
+        return RadarBudgetDecision(
+            accepted=True,
+            key=key,
+            limit=limit,
+            current=current + 1,
+            reserve_key=reserve_key,
+            used_semantic_reserve=True,
+        )
+
+    def to_metadata(self) -> dict[str, object]:
+        return {
+            "semantic_task_budget_settings": {
+                "semantic_task_reserve_limits": dict(self.settings.semantic_task_reserve_limits),
+            },
+            "semantic_task_budget_counters": dict(self.semantic_reserve_counts),
+            "semantic_task_budget_exhaustion_events": [
+                event for event in self.exhaustion_events if str(event.get("reason") or "") == "semantic_task_reserve_exhausted"
+            ],
+        }
 
     def _limit_for(self, task: RadarExecutionTask) -> int | None:
         alias = _positive(self.settings.compatibility_max_web_tasks_per_subject)
@@ -115,6 +178,8 @@ def _event_payload(task: RadarExecutionTask, decision: RadarBudgetDecision) -> d
         "state": decision.state,
         "reason": decision.reason,
         "message": decision.message,
+        "reserve_key": decision.reserve_key,
+        "used_semantic_reserve": decision.used_semantic_reserve,
     }
 
 
@@ -151,6 +216,7 @@ def budget_settings_from_context(
     max_gate_tasks_per_candidate_rule: int | None = None,
     max_signal_tasks_per_candidate_signal: int | None = None,
     max_total_web_tasks_per_run: int | None = None,
+    semantic_task_reserve_limits: dict[str, int] | None = None,
 ) -> RadarExecutionBudgetSettings:
     return RadarExecutionBudgetSettings(
         max_total_tasks_per_run=_positive(max_total_web_tasks_per_run),
@@ -158,4 +224,17 @@ def budget_settings_from_context(
         max_gate_tasks_per_candidate_rule=_positive(max_gate_tasks_per_candidate_rule),
         max_signal_tasks_per_candidate_signal=_positive(max_signal_tasks_per_candidate_signal),
         compatibility_max_web_tasks_per_subject=_positive(max_web_tasks_per_subject),
+        semantic_task_reserve_limits=_positive_int_dict(semantic_task_reserve_limits),
     )
+
+
+def _positive_int_dict(value: dict[str, int] | None) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for key, raw in (value or {}).items():
+        try:
+            parsed = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if parsed > 0:
+            result[str(key)] = parsed
+    return result

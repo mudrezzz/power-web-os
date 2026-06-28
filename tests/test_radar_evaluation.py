@@ -55,6 +55,47 @@ def test_evaluation_matches_exact_alias_identifier_and_review_needed_site() -> N
     _assert_safe(report)
 
 
+def test_evaluation_matches_sibur_holding_through_source_backed_short_alias() -> None:
+    baseline = RadarEvaluationBaseline(
+        baseline_id="sibur_holding_alias",
+        version="v1",
+        radar_id=SIBUR_CONTOUR_RADAR_ID,
+        description="SIBUR holding alias fixture.",
+        entities=(
+            RadarEvaluationEntity(
+                baseline_id="sibur-holding",
+                canonical_name="ПАО СИБУР Холдинг",
+                aliases=("SIBUR", "SIBUR Holding"),
+                entity_type="legal_entity",
+            ),
+        ),
+    )
+    dossier = {
+        "summary": {"execution_outcome": "stopped_for_review"},
+        "source_lifecycle": [{"evidence_ref": "src_sibur", "url": "https://www.sibur.ru", "state": "retrieved"}],
+        "candidates": [],
+        "candidate_universe": [
+            {
+                "legal_name": "SIBUR Holding group",
+                "entity_type": "legal_entity",
+                "resolution_status": "review_needed",
+                "source_refs": ["src_sibur"],
+                "review_flags": ["requires_human_review"],
+            }
+        ],
+    }
+
+    report = evaluate_radar_dossier(
+        run={"run_id": "radar-run-sibur", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},
+        dossier=dossier,
+        baseline=baseline,
+    )
+
+    assert report["metrics"]["strict_recall"] == 1.0
+    assert report["false_negatives"] == []
+    assert report["true_positives"][0]["baseline_id"] == "sibur-holding"
+
+
 def test_evaluation_counts_review_needed_sites_from_upstream_universe() -> None:
     baseline = RadarEvaluationBaseline(
         baseline_id="sibur_sites_test",
@@ -232,6 +273,54 @@ def test_evaluation_classifies_false_negative_generated_but_not_selected_for_exp
 
     diagnostics = {item["baseline_id"]: item["bucket"] for item in report["false_negative_diagnostics"]}
     assert diagnostics["gubkinsky-gpp"] == "expansion_not_selected"
+
+
+def test_evaluation_classifies_budget_blocked_expansion_as_global_budget_limited() -> None:
+    baseline = RadarEvaluationBaseline(
+        baseline_id="diagnostic-test",
+        version="test",
+        radar_id=SIBUR_CONTOUR_RADAR_ID,
+        description="Expansion diagnostics.",
+        entities=(
+            RadarEvaluationEntity(
+                baseline_id="gubkinsky-gpp",
+                canonical_name="Gubkinsky gas processing plant",
+                aliases=("Gubkinsky GPP",),
+                entity_type="production_site",
+            ),
+        ),
+    )
+    dossier = {
+        "summary": {"execution_outcome": "stopped_for_review"},
+        "candidates": [],
+        "candidate_universe": [],
+        "search_expansion_results": [
+            {
+                "target_id": "production_site_or_branch_target:gubkinsky_gpp",
+                "query": "site:sibur.ru Gubkinsky GPP",
+                "target_type": "production_site_or_branch_target",
+                "execution_status": "not_executed",
+                "not_searched_reason": "not_executed_global_budget_limited",
+            }
+        ],
+        "targets_not_searched": [
+            {
+                "target_id": "production_site_or_branch_target:gubkinsky_gpp",
+                "target_label": "Gubkinsky GPP",
+                "target_type": "production_site_or_branch_target",
+                "not_searched_reason": "not_executed_global_budget_limited",
+            }
+        ],
+    }
+
+    report = evaluate_radar_dossier(
+        run={"run_id": "radar-run-fn", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},
+        dossier=dossier,
+        baseline=baseline,
+    )
+
+    diagnostics = {item["baseline_id"]: item["bucket"] for item in report["false_negative_diagnostics"]}
+    assert diagnostics["gubkinsky-gpp"] == "expansion_global_budget_limited"
 
 
 def test_non_sibur_run_is_rejected_for_sibur_baseline() -> None:

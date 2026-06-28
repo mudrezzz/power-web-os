@@ -4,9 +4,9 @@ Status: AS IS
 
 Product area: Radar candidate and signal search
 
-Updated after slice: 0.7.6.3.6.1
+Updated after slice: 0.7.6.3.6.4
 
-Last updated: 2026-06-27
+Last updated: 2026-06-28
 
 Canonical source: current implementation, tests, `ROADMAP.md`, and Radar run diagnostics
 
@@ -66,6 +66,7 @@ merged into this AS IS document and the PDF is regenerated.
 | Execution budget | Radar task budget for discovery, gate, signal, provider, and run-total work. |
 | External-call budget | Budget for external actions such as OpenRouter calls, DaData lookups, provider retries, and source verification requests. |
 | Budget reserve | A sub-allocation inside the run budget for registry identity, recall expansion, official coverage, open-web coverage, extraction recovery, or signal search. |
+| Semantic task reserve | Application-level protected task slot for approved recall/coverage expansion tasks after the regular web-task budget is exhausted. It does not bypass external-call budgets. |
 | Expansion target | A prioritized source-backed target that weak discovery should search next, such as a holding, legal entity, production site, branch, alias/language variant, or explicit benchmark target. |
 | `not_observed` | A searched signal with no evidence found. It must not mean "not searched". |
 | `not_searched_*` | Explicit unsearched state caused by budget, policy, missing scope, or pending output. |
@@ -339,10 +340,41 @@ to `2`; `benchmark_smoke` overrides it to `3` so a bounded SIBUR contour smoke
 can attempt the three curated production-site misses before broader live
 benchmarking.
 
+Budget reserves are not just labels. Expansion tasks registered under a
+recall-expansion reserve can use two protected layers:
+
+- an application-level semantic task reserve if the regular Radar web-task
+  budget is exhausted;
+- a protected `openrouter_recall_expansion` external-call slot if the regular
+  `openrouter_web_task` role budget is exhausted.
+
+Both layers must pass before the provider call is made. Semantic task reserves
+do not bypass total OpenRouter calls, server-tool web-search calls, source
+verification, source policy, or connector capability guards. In
+`benchmark_smoke`, regular web-task calls stay capped at `8`, protected
+recall-expansion OpenRouter calls are capped at `4`, and the total OpenRouter
+call ceiling is `14`.
+
+Benchmark smoke also carries target-lane guarantees in task context. The current
+minimums are one holding/group probe, two legal/subsidiary probes, and two
+production-site/branch probes. The guarantee is evaluated from executed
+expansion results, not from generated target queues. If the minimum is not met,
+`target_probe_guarantee_failures` names the blocker, such as
+`target_not_generated`, `target_not_selected`, `semantic_task_budget_limited`,
+`external_budget_limited`, `source_policy_limited`, or
+`executed_below_minimum`.
+
 Expansion diagnostics include `expansion_target_summary_by_type`,
-`search_expansion_results_by_target_type`, `targets_not_searched`, and reserve
-counters. Evaluation can therefore distinguish `expansion_not_selected`,
-`expansion_budget_limited`, `expansion_searched_no_support`, and
+`search_expansion_results_by_target_type`, `search_expansion_execution_summary`,
+`targets_not_searched`, semantic task reserve counters, and external reserve
+counters. The execution summary is a funnel:
+generated targets, selected variants, attempted tasks, externally executed
+provider calls, sources found, and projected entities. A target with
+`budget_decision.accepted=false` is not counted as searched. Evaluation can
+therefore distinguish `expansion_not_selected`,
+`expansion_global_budget_limited`, `expansion_reserve_limited`,
+`semantic_task_budget_limited`,
+`expansion_searched_no_support`, `expansion_source_found_not_projected`, and
 `present_not_projected` instead of reporting every production-site miss as a
 blank `not_retrieved_in_run`.
 
@@ -446,6 +478,7 @@ External-call budgets:
 - total OpenRouter HTTP calls;
 - OpenRouter planner calls;
 - OpenRouter web task calls;
+- protected OpenRouter recall-expansion calls;
 - OpenRouter server-tool web searches reported after the call;
 - DaData/company registry lookups;
 - source verification requests;
@@ -469,7 +502,32 @@ Budget reserves add an intent-level layer under the same run:
 Reserve counters are reported as `budget_reserve_counters`. Exhausted reserves
 are reported as `budget_reserve_exhaustion_events` and should produce explicit
 not-searched diagnostics for skipped expansion targets or registry identity
-attempts.
+attempts. Protected recall-expansion calls are reported in external counters as
+`openrouter_recall_expansion:run`, while still incrementing the total
+`openrouter:run` counter.
+
+Semantic task reserves are separate from external-call reserves. They live in
+`RadarExecutionBudget` and are configured through
+`task_context.semantic_task_reserve_limits`. In `benchmark_smoke`, the current
+defaults are:
+
+- `recall_expansion`: `6`;
+- `production_site_coverage_probe`: `3`;
+- `official_coverage_probe`: `3`;
+- `open_web_coverage_probe`: `3`.
+
+They allow approved expansion tasks to execute after the regular web-task budget
+is exhausted. They still increment visible total task counters and are reported
+as `semantic_task_budget_counters` and
+`semantic_task_budget_exhaustion_events`.
+
+Source verification uses a per-run URL cache. The cache key lowercases the host,
+strips URL fragments, and normalizes trailing slashes. Duplicate URL checks
+reuse the cached reachability result and do not spend another
+`source_verification` budget unit. Dossier and benchmark reports expose
+`source_verification_cache_stats`,
+`source_verification_unique_request_count`, and
+`source_verification_duplicate_skip_count`.
 
 ## 16. Source Lifecycle
 
@@ -511,6 +569,8 @@ Radar exposes several diagnostic surfaces:
 - expansion target queue;
 - search expansion query variants and results grouped by target;
 - targets not searched and budget reserve counters;
+- semantic task budget counters and target probe guarantees;
+- source verification cache statistics;
 - registry ambiguity fan-out summary;
 - technical trace for sanitized developer inspection;
 - benchmark and evaluation reports.
@@ -598,7 +658,7 @@ flowchart LR
 | Active definition and runtime wiring | `tests/test_radar_preflight.py`, `tests/test_persisted_live_radar.py` |
 | Connector profiles and source cards | `tests/test_connector_profiles.py`, `tests/test_live_icp_radar.py` |
 | Source obligations | `tests/test_live_icp_radar.py`, `tests/test_radar_preflight.py` |
-| External-call budgets | `tests/test_radar_external_call_budget.py` |
+| Execution, semantic, and external-call budgets | `tests/test_radar_external_call_budget.py` |
 | Adaptive checkpoints | `tests/test_radar_adaptive_execution.py` |
 | Search expansion and lookup terms | `tests/test_radar_search_expansion.py`, `tests/test_live_icp_radar.py` |
 | Extraction recovery | `tests/test_live_icp_radar.py`, `tests/test_radar_adaptive_execution.py` |

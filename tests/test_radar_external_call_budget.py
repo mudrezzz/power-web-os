@@ -16,6 +16,7 @@ from power_web_os.application.live_radar_external_budget import (
     external_call_budget_context,
     external_budget_settings_from_context,
     record_openrouter_server_tool_usage,
+    protect_recall_expansion_openrouter_task,
     reserve_budget_slice,
     reserve_openrouter_http_call,
 )
@@ -58,6 +59,34 @@ def test_openrouter_planner_and_web_task_calls_share_total_budget() -> None:
     assert budget.counts["openrouter:run"] == 2
     assert budget.counts["openrouter_planner:run"] == 1
     assert budget.counts["openrouter_web_task:run"] == 1
+
+
+def test_protected_recall_expansion_uses_separate_openrouter_slot_after_web_task_budget_is_exhausted() -> None:
+    budget = RadarExternalCallBudget(
+        RadarExternalCallBudgetSettings(
+            max_openrouter_calls_per_run=3,
+            max_openrouter_web_task_calls_per_run=1,
+            max_recall_expansion_openrouter_calls_per_run=1,
+        )
+    )
+
+    with external_call_budget_context(budget):
+        regular = reserve_openrouter_http_call(role="web_task", task_id="regular-web")
+        protect_recall_expansion_openrouter_task(
+            task_id="coverage:search-expansion-1",
+            reserve_key="production_site_coverage_probe",
+        )
+        protected = reserve_openrouter_http_call(role="web_task", task_id="coverage:search-expansion-1")
+        blocked = reserve_openrouter_http_call(role="web_task", task_id="coverage:search-expansion-2")
+
+    assert regular.accepted
+    assert protected.accepted
+    assert protected.kind == "openrouter_recall_expansion"
+    assert not blocked.accepted
+    assert blocked.kind == "openrouter_web_task"
+    assert budget.counts["openrouter:run"] == 2
+    assert budget.counts["openrouter_web_task:run"] == 1
+    assert budget.counts["openrouter_recall_expansion:run"] == 1
 
 
 def test_server_tool_web_search_usage_blocks_following_web_tasks() -> None:
@@ -124,6 +153,7 @@ def test_smoke_budget_reserves_include_production_site_probe_and_merge_overrides
     })
 
     assert settings.budget_reserve_limits["production_site_coverage_probe"] == 3
+    assert settings.max_recall_expansion_openrouter_calls_per_run == 2
     assert settings.budget_reserve_limits["official_coverage_probe"] == 2
     assert settings.budget_reserve_limits["open_web_coverage_probe"] == 3
     assert settings.budget_reserve_limits["recall_expansion"] == 3
@@ -176,6 +206,108 @@ def test_source_verification_budget_marks_extra_sources_not_checked() -> None:
     assert verified[0].verification_state == "reachable"
     assert [item.verification_state for item in verified[1:]] == ["not_checked", "not_checked"]
     assert "budget" in verified[1].verification_reason.lower()
+
+
+def test_source_verification_dedupes_repeated_normalized_urls() -> None:
+    sources = [
+        RadarSourceEvidence(evidence_ref="src_1", title="Source 1", url="https://Example.com/path#fragment", snippet="ok"),
+        RadarSourceEvidence(evidence_ref="src_2", title="Source 2", url="https://example.com/path/", snippet="ok"),
+    ]
+    budget = RadarExternalCallBudget(RadarExternalCallBudgetSettings(max_source_verification_requests_per_run=1))
+    calls: list[str] = []
+
+    def fake_check(url: str) -> SourceReachabilityResult:
+        calls.append(url)
+        return SourceReachabilityResult(state="reachable", reason="ok", status_code=200)
+
+    with external_call_budget_context(budget):
+        verified = verify_sources(sources, mode="soft", reachability_check=fake_check)
+
+    assert calls == ["https://Example.com/path#fragment"]
+    assert [item.verification_state for item in verified] == ["reachable", "reachable"]
+    assert "cached verification" in verified[1].verification_reason
+    assert budget.counts["source_verification:run"] == 1
+
+
+def test_semantic_task_reserve_allows_expansion_after_total_web_task_budget_is_exhausted() -> None:
+    provider = _SequencedProvider([
+        WebSearchProviderResult(),
+        WebSearchProviderResult(
+            sources=[RadarSourceEvidence(evidence_ref="src_1", title="ok", url="https://example.com", snippet="ok")],
+        ),
+    ])
+    budget = RadarExecutionBudget(
+        budget_settings_from_context(
+            max_total_web_tasks_per_run=1,
+            semantic_task_reserve_limits={"production_site_coverage_probe": 1},
+        )
+    )
+
+    regular = run_task(provider=provider, radar={"radar_id": "radar"}, task=_task(), radar_id="radar", budget=budget)
+    expansion = run_task(
+        provider=provider,
+        radar={"radar_id": "radar"},
+        task=RadarExecutionTask(
+            task_id="expansion-1",
+            stage="coverage_check",
+            subject_type="radar",
+            subject_id="gubkinsky-gpp",
+            query="site:sibur.ru Gubkinsky GPP",
+            purpose="Expansion",
+            expected_evidence=["coverage"],
+        ),
+        radar_id="radar",
+        budget=budget,
+        semantic_reserve_key="production_site_coverage_probe",
+    )
+
+    assert provider.calls == 2
+    assert regular.provider_metadata == {}
+    assert expansion.sources[0].evidence_ref == "src_1"
+    assert budget.total_count == 2
+    assert budget.semantic_reserve_counts["semantic_reserve:production_site_coverage_probe"] == 1
+    assert expansion.provider_metadata["semantic_task_budget_decision"]["used_semantic_reserve"] is True
+
+
+def test_semantic_task_reserve_exhaustion_blocks_expansion_with_specific_reason() -> None:
+    provider = _SequencedProvider([WebSearchProviderResult(), WebSearchProviderResult()])
+    budget = RadarExecutionBudget(
+        budget_settings_from_context(
+            max_total_web_tasks_per_run=1,
+            semantic_task_reserve_limits={"production_site_coverage_probe": 1},
+        )
+    )
+    expansion_task = RadarExecutionTask(
+        task_id="expansion-1",
+        stage="coverage_check",
+        subject_type="radar",
+        subject_id="gubkinsky-gpp",
+        query="site:sibur.ru Gubkinsky GPP",
+        purpose="Expansion",
+        expected_evidence=["coverage"],
+    )
+
+    run_task(provider=provider, radar={"radar_id": "radar"}, task=_task(), radar_id="radar", budget=budget)
+    run_task(
+        provider=provider,
+        radar={"radar_id": "radar"},
+        task=expansion_task,
+        radar_id="radar",
+        budget=budget,
+        semantic_reserve_key="production_site_coverage_probe",
+    )
+    blocked = run_task(
+        provider=provider,
+        radar={"radar_id": "radar"},
+        task=expansion_task.model_copy(update={"task_id": "expansion-2"}),
+        radar_id="radar",
+        budget=budget,
+        semantic_reserve_key="production_site_coverage_probe",
+    )
+
+    assert provider.calls == 2
+    assert blocked.provider_metadata["budget_decision"]["reason"] == "semantic_task_reserve_exhausted"
+    assert budget.exhaustion_events[-1]["reserve_key"] == "production_site_coverage_probe"
 
 
 def test_dadata_lookup_budget_returns_explicit_not_executed_outcome() -> None:

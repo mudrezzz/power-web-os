@@ -20,7 +20,14 @@ RadarPlannerSourceUseIntent = Literal[
     "signal_evidence",
     "official_evidence",
 ]
-RadarPlannerSourceInputShape = Literal["broad_query", "concrete_company", "candidate_scope", "domain_or_url", "unknown"]
+RadarPlannerSourceInputShape = Literal[
+    "broad_query",
+    "concrete_company",
+    "candidate_scope",
+    "domain_or_url",
+    "official_domain_query",
+    "unknown",
+]
 
 
 class RadarPlannerSourceUse(BaseModel):

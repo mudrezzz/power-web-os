@@ -67,10 +67,14 @@ def false_negative_diagnostics(*, false_negatives: list[dict[str, Any]], dossier
 def _expansion_result_bucket(*, item: dict[str, Any], dossier: dict[str, Any]) -> str:
     for result in _matching_records(item=item, records=_list(dossier.get("search_expansion_results"))):
         status = str(result.get("execution_status") or "")
-        if status == "not_searched":
+        if status in {"not_searched", "not_executed"}:
             return _reason_bucket(str(result.get("not_searched_reason") or ""))
+        if status == "executed_no_support":
+            return "expansion_searched_no_support"
         if int(result.get("source_count") or 0) == 0:
             return "expansion_searched_no_support"
+        if int(result.get("candidate_observation_count") or 0) == 0:
+            return "expansion_source_found_not_projected"
     return "expansion_searched_not_projected"
 
 
@@ -82,6 +86,10 @@ def _not_searched_bucket(*, item: dict[str, Any], dossier: dict[str, Any]) -> st
 
 def _reason_bucket(reason: str) -> str:
     lowered = reason.lower()
+    if "global_budget" in lowered:
+        return "expansion_global_budget_limited"
+    if "reserve" in lowered:
+        return "expansion_reserve_limited"
     if "budget" in lowered or "reserve" in lowered:
         return "expansion_budget_limited"
     if "policy" in lowered or "source" in lowered:

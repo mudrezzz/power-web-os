@@ -384,7 +384,7 @@ def main() -> None:
         default=root / "demo" / "output" / "radar_benchmark_report.json",
     )
     parser.add_argument("--benchmark-poll-interval-seconds", type=float, default=5.0)
-    parser.add_argument("--benchmark-timeout-seconds", type=float, default=900.0)
+    parser.add_argument("--benchmark-timeout-seconds", type=float, default=1200.0)
     parser.add_argument("--benchmark-profile", choices=("benchmark_smoke", "benchmark_live"), default="benchmark_smoke")
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--latest", action="store_true")

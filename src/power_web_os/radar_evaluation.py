@@ -404,6 +404,8 @@ def _first_string(payload: dict[str, Any], *keys: str) -> str:
 
 
 def _contains_strong_name(observed_name: str, baseline_name: str) -> bool:
+    if len(baseline_name) >= 5 and f" {baseline_name} " in f" {observed_name} ":
+        return True
     if len(observed_name) < 6 or len(baseline_name) < 6:
         return False
     return observed_name in baseline_name or baseline_name in observed_name

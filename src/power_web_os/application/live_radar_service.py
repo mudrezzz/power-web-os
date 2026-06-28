@@ -146,6 +146,9 @@ class LiveRadarRunService:
             max_openrouter_calls_per_run=_int_context_value(state.task_context, "max_openrouter_calls_per_run"),
             max_openrouter_planner_calls_per_run=_int_context_value(state.task_context, "max_openrouter_planner_calls_per_run"),
             max_openrouter_web_task_calls_per_run=_int_context_value(state.task_context, "max_openrouter_web_task_calls_per_run"),
+            max_recall_expansion_openrouter_calls_per_run=_int_context_value(
+                state.task_context, "max_recall_expansion_openrouter_calls_per_run"
+            ),
             max_openrouter_server_tool_web_searches_per_run=_int_context_value(state.task_context, "max_openrouter_server_tool_web_searches_per_run"),
             max_dadata_lookups_per_run=_int_context_value(state.task_context, "max_dadata_lookups_per_run"),
             max_source_verification_requests_per_run=_int_context_value(state.task_context, "max_source_verification_requests_per_run"),
@@ -154,6 +157,8 @@ class LiveRadarRunService:
             openrouter_web_max_total_results_per_call=_int_context_value(state.task_context, "openrouter_web_max_total_results_per_call"),
             smoke_max_candidates=_int_context_value(state.task_context, "smoke_max_candidates"),
             smoke_max_signals=_int_context_value(state.task_context, "smoke_max_signals"),
+            budget_reserve_limits=_dict_int_context_value(state.task_context, "budget_reserve_limits"),
+            semantic_task_reserve_limits=_dict_int_context_value(state.task_context, "semantic_task_reserve_limits"),
             source_policy_decisions=[dict(item) for item in (state.discovery_plan or {}).get("source_policy_decisions", []) if isinstance(item, dict)],
         )
         execution_results = _merge_external_budget_metadata(state.execution_results, execution_results)
@@ -588,6 +593,23 @@ def _int_context_value(context: dict[str, Any], key: str) -> int | None:
     except (TypeError, ValueError):
         return None
     return parsed if parsed >= 0 else None
+
+
+def _dict_int_context_value(context: dict[str, Any], key: str) -> dict[str, int] | None:
+    value = context.get(key)
+    if not isinstance(value, dict):
+        return None
+    result: dict[str, int] = {}
+    for raw_key, raw_value in value.items():
+        if not isinstance(raw_key, str) or isinstance(raw_value, bool):
+            continue
+        try:
+            parsed = int(raw_value)
+        except (TypeError, ValueError):
+            continue
+        if parsed >= 0:
+            result[raw_key] = parsed
+    return result or None
 
 
 def _str_context_value(context: dict[str, Any], key: str) -> str | None:

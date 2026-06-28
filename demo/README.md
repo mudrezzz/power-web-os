@@ -393,6 +393,27 @@ target type. Check `expansion_target_summary_by_type`,
 explained as searched, not selected, budget-limited, source-policy-limited, or
 projection gaps instead of a blank `not_retrieved_in_run`.
 
+After `0.7.6.3.6.3`, do not treat a selected expansion target as "searched"
+unless `search_expansion_execution_summary.executed_count` includes it. The
+benchmark report separates generated, selected, attempted, executed,
+source-found, and projected expansion targets. Protected recall-expansion
+OpenRouter calls are shown under `openrouter_recall_expansion:run`; they are
+bounded separately from regular `openrouter_web_task:run` but still count toward
+the total `openrouter:run` budget.
+
+After `0.7.6.3.6.4`, benchmark smoke also reports semantic task reserves and
+target-lane guarantees. Check `semantic_task_budget_counters`,
+`target_probe_guarantees`, and `target_probe_guarantee_failures` to see whether
+holding, legal/subsidiary, and production-site lanes were actually executed or
+precisely blocked. `source_verification_cache_stats` explains whether repeated
+URL checks were deduped before spending the source-verification budget.
+
+The benchmark CLI poll timeout defaults to 1200 seconds. This timeout is not the
+main work limiter; external-call budgets are. With low-cost OpenRouter routing a
+bounded smoke can still take more than 15 minutes while staying within
+`openrouter:run`, `openrouter_recall_expansion:run`, DaData, source
+verification, and retry counters.
+
 DaData identity lookup also became multi-term. Inspect `registry_lookup_terms`
 and `registry_lookup_attempts`: an English alias can fail with `no_match`
 without blocking the run if later Russian/legal-form terms or official/web

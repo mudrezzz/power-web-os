@@ -1185,7 +1185,11 @@ def test_live_radar_service_persists_planner_and_web_openrouter_budget_counters(
     }
     state = LiveICPRadarRunState(
         radar=radar,
-        task_context={"max_openrouter_calls_per_run": 3},
+        task_context={
+            "max_openrouter_calls_per_run": 3,
+            "max_recall_expansion_openrouter_calls_per_run": 2,
+            "budget_reserve_limits": {"production_site_coverage_probe": 3},
+        },
         live=False,
     )
     service = LiveRadarRunService(BudgetCountingProvider(), discovery_planner=BudgetCountingPlanner())
@@ -1197,10 +1201,18 @@ def test_live_radar_service_persists_planner_and_web_openrouter_budget_counters(
     assert counters["openrouter:run"] == counters["openrouter_planner:run"] + counters["openrouter_web_task:run"]
     assert counters["openrouter_planner:run"] >= 1
     assert execution_results["external_call_budget_counters"]["openrouter_web_task:run"] == 1
+    assert execution_results["external_call_budget_settings"]["max_recall_expansion_openrouter_calls_per_run"] == 2
+    assert execution_results["external_call_budget_settings"]["budget_reserve_limits"] == {
+        "production_site_coverage_probe": 3
+    }
 
     node_state = LiveICPRadarRunState(
         radar=radar,
-        task_context={"max_openrouter_calls_per_run": 3},
+        task_context={
+            "max_openrouter_calls_per_run": 3,
+            "max_recall_expansion_openrouter_calls_per_run": 2,
+            "budget_reserve_limits": {"production_site_coverage_probe": 3},
+        },
         live=False,
     )
     node_planned = service.build_search_plan(node_state)
@@ -1209,6 +1221,10 @@ def test_live_radar_service_persists_planner_and_web_openrouter_budget_counters(
     assert node_counters["openrouter:run"] == node_counters["openrouter_planner:run"] + node_counters["openrouter_web_task:run"]
     assert node_counters["openrouter_planner:run"] >= 1
     assert node_counters["openrouter_web_task:run"] >= 1
+    assert node_collected.execution_results["external_call_budget_settings"]["max_recall_expansion_openrouter_calls_per_run"] == 2
+    assert node_collected.execution_results["external_call_budget_settings"]["budget_reserve_limits"] == {
+        "production_site_coverage_probe": 3
+    }
 
 
 def test_live_radar_service_wires_connector_source_cards_into_planner() -> None:

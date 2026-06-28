@@ -13,7 +13,11 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProvider,
 )
 from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
-from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget, reserve_budget_slice
+from power_web_os.application.live_radar_external_budget import (
+    RadarExternalCallBudget,
+    protect_recall_expansion_openrouter_task,
+    reserve_budget_slice,
+)
 from power_web_os.application.live_radar_staged_helpers import eligible_candidate_names, run_task
 from power_web_os.application.live_radar_staged_merge import merge_result
 from power_web_os.application.live_radar_universe import gap_items, gap_observations, gap_payloads, dict_list
@@ -109,6 +113,7 @@ def execute_targeted_search_expansion(
     }
     executed_count = 0
     skipped_count = 0
+    attempted_count = 0
     for task, variant in zip(tasks, list(expansion_plan.variants)):
         reserve_decision = reserve_budget_slice(
             variant.budget_reserve_key,
@@ -121,11 +126,12 @@ def execute_targeted_search_expansion(
             provider_metadata = {
                 **provider_metadata,
                 "targets_not_searched": [*dict_list(provider_metadata.get("targets_not_searched")), skipped],
-                "search_expansion_results": [*dict_list(provider_metadata.get("search_expansion_results")), skipped],
             }
             events.append(_skipped_event(task, reserve_decision.message, skipped))
             continue
 
+        protect_recall_expansion_openrouter_task(task_id=task.task_id, reserve_key=variant.budget_reserve_key)
+        attempted_count += 1
         result = run_task(
             provider=provider,
             radar=radar,
@@ -133,7 +139,30 @@ def execute_targeted_search_expansion(
             radar_id=execution_plan.radar_id,
             budget=budget,
             external_budget=external_budget,
+            semantic_reserve_key=variant.budget_reserve_key,
         )
+        executed_payload = _executed_payload(
+            task,
+            variant,
+            result.provider_metadata.get("budget_decision", {}),
+            checkpoint_id,
+            result,
+        )
+        if executed_payload["execution_status"] == "not_executed":
+            skipped_count += 1
+            provider_metadata = {
+                **provider_metadata,
+                "targets_not_searched": [
+                    *dict_list(provider_metadata.get("targets_not_searched")),
+                    _not_executed_payload(executed_payload),
+                ],
+                "search_expansion_results": [
+                    *dict_list(provider_metadata.get("search_expansion_results")),
+                    executed_payload,
+                ],
+            }
+            events.append(_skipped_event(task, str(executed_payload.get("not_searched_reason") or ""), executed_payload))
+            continue
         gaps = gap_items(result)
         result = result.model_copy(update={
             "candidate_observations": [
@@ -151,7 +180,7 @@ def execute_targeted_search_expansion(
             **provider_metadata,
             "search_expansion_results": [
                 *dict_list(provider_metadata.get("search_expansion_results")),
-                _executed_payload(task, variant, result.provider_metadata.get("budget_decision", {}), checkpoint_id, result),
+                executed_payload,
             ],
         }
         events.append(_executed_event(task, variant, result))
@@ -167,14 +196,24 @@ def execute_targeted_search_expansion(
     stopped_reason = ""
     stop_code = ""
     if not executed_count and skipped_count:
-        stopped_reason = "Recall expansion targets were not searched because expansion reserve budget was exhausted."
+        stopped_reason = "Recall expansion targets were selected but no external search call was executed."
         stop_code = "budget_exhausted"
     return TargetedSearchExpansionExecutionResult(
         sources=sources,
         observations=observations,
         provider_metadata=provider_metadata,
         candidate_scope=candidate_scope,
-        adaptive_action=_action_payload(checkpoint_id, phase, attempt, base_task, tasks, executed_count, skipped_count, expansion_plan),
+        adaptive_action=_action_payload(
+            checkpoint_id,
+            phase,
+            attempt,
+            base_task,
+            tasks,
+            executed_count,
+            skipped_count,
+            expansion_plan,
+            attempted_count=attempted_count,
+        ),
         stopped_for_review_reason=stopped_reason,
         stop_reason_code=stop_code,
     )
@@ -189,6 +228,7 @@ def _action_payload(
     executed_count: int,
     skipped_count: int,
     expansion_plan: Any,
+    attempted_count: int = 0,
 ) -> dict[str, Any]:
     return {
         "checkpoint_id": checkpoint_id,
@@ -205,6 +245,7 @@ def _action_payload(
         "variant_count": len(expansion_plan.variants),
         "executed_task_count": executed_count,
         "skipped_task_count": skipped_count,
+        "attempted_task_count": attempted_count,
     }
 
 
@@ -323,6 +364,7 @@ def _skipped_payload(task: RadarExecutionTask, variant: Any, budget_decision: di
 
 
 def _executed_payload(task: RadarExecutionTask, variant: Any, budget_decision: dict[str, Any], checkpoint_id: str, result: Any) -> dict[str, Any]:
+    status, reason = _execution_status(result=result, budget_decision=budget_decision)
     return {
         "task_id": task.task_id,
         "query": task.query,
@@ -330,11 +372,41 @@ def _executed_payload(task: RadarExecutionTask, variant: Any, budget_decision: d
         "target_id": variant.target_id,
         "target_type": variant.target_type,
         "budget_reserve_key": variant.budget_reserve_key,
+        "execution_status": status,
+        "not_searched_reason": reason if status == "not_executed" else "",
         "source_count": len(result.sources),
         "candidate_observation_count": len(result.candidate_observations),
         "budget_decision": budget_decision,
         "checkpoint_id": checkpoint_id,
     }
+
+
+def _not_executed_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **payload,
+        "execution_status": "not_searched",
+        "not_searched_reason": payload.get("not_searched_reason") or "not_executed_global_budget_limited",
+    }
+
+
+def _execution_status(*, result: Any, budget_decision: dict[str, Any]) -> tuple[str, str]:
+    if isinstance(budget_decision, dict) and budget_decision.get("accepted") is False:
+        return "not_executed", _budget_limited_reason(budget_decision)
+    if len(result.sources) > 0:
+        return "executed_source_found", ""
+    return "executed_no_support", ""
+
+
+def _budget_limited_reason(budget_decision: dict[str, Any]) -> str:
+    kind = str(budget_decision.get("kind") or "")
+    reason = str(budget_decision.get("reason") or "")
+    if kind == "budget_reserve":
+        return "not_executed_reserve_limited"
+    if reason == "semantic_task_reserve_exhausted":
+        return "semantic_task_budget_limited"
+    if bool(budget_decision.get("used_semantic_reserve")):
+        return ""
+    return "not_executed_global_budget_limited"
 
 
 def _skipped_event(task: RadarExecutionTask, message: str, payload: dict[str, Any]) -> LiveRadarPipelineEvent:

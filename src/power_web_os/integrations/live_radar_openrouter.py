@@ -34,6 +34,7 @@ from power_web_os.integrations.openrouter_trace import (
 )
 from power_web_os.integrations.live_radar_source_verification import (
     normalize_verification_mode,
+    source_verification_cache_metadata,
     supports_product_evidence,
     verify_sources,
 )
@@ -660,6 +661,7 @@ def _apply_source_verification(result: WebSearchProviderResult, *, mode: str) ->
             "source_verification": "http_status",
             "source_verification_mode": verification_mode,
             "source_verification_results": verification_results,
+            "source_verification_cache_stats": source_verification_cache_metadata(),
             "discarded_source_count": len(verified_sources) - len(usable_sources),
         },
     )

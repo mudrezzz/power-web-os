@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -283,6 +284,7 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert queued_dossier["run_context"]["task_context"]["run_profile"] == "live"
     assert queued_dossier["run_context"]["task_context"]["max_openrouter_calls_per_run"] is None
     assert queued_dossier["run_context"]["task_context"]["max_provider_retries_per_task"] is None
+
     assert queued_dossier["runtime_config"]["component"] == "api"
     assert queued_dossier["runtime_config_warnings"] == []
     assert queued_dossier["search_plan"] == []
@@ -467,6 +469,19 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert after_reset["candidates"][0]["signals"][0]["review_decision"] is None
 
 
+def test_post_radar_run_commits_before_enqueue_so_worker_can_read_run(tmp_path: Path) -> None:
+    database_path = tmp_path / "api-seeded.db"
+    database_url = _create_seeded_database(tmp_path)
+    queue = _ReadDuringEnqueueJobQueue(database_path)
+    app = _app(tmp_path, database_url=database_url, job_queue=queue)
+    client = TestClient(app)
+
+    response = client.post("/api/radars/toir-quick-live/runs", json={"live": True, "requester": "test"})
+
+    assert response.status_code == 202
+    assert queue.visible_statuses == ["queued"]
+
+
 def test_post_radar_run_preserves_explicit_smoke_task_context(tmp_path: Path) -> None:
     database_url = _create_seeded_database(tmp_path)
     queue = _RecordingJobQueue()
@@ -544,6 +559,39 @@ def test_radar_run_dossier_explains_zero_product_sources(tmp_path: Path) -> None
         {"evidence_ref": "blocked_src", "title": "Blocked source", "url": "https://example.test/blocked", "reason": "unreachable"},
         {"evidence_ref": "unlinked_src", "title": "Unlinked source", "url": "https://example.test/unlinked", "reason": "not_used_by_candidate"},
     ]
+    artifact["run_metadata"]["execution_results"]["external_call_budget_settings"] = {
+        "max_openrouter_calls_per_run": 14,
+        "max_recall_expansion_openrouter_calls_per_run": 4,
+    }
+    artifact["run_metadata"]["execution_results"]["external_call_budget_counters"] = {
+        "openrouter:run": 14,
+        "openrouter_recall_expansion:run": 1,
+    }
+    artifact["run_metadata"]["execution_results"]["external_call_budget_counters_by_role"] = {
+        "openrouter": 14,
+        "openrouter_recall_expansion": 1,
+    }
+    artifact["run_metadata"]["execution_results"]["external_call_budget_exhaustion_events"] = [
+        {"reason": "external_call_budget_exhausted", "key": "openrouter:run"}
+    ]
+    artifact["run_metadata"]["execution_results"]["semantic_task_budget_counters"] = {
+        "semantic_reserve:production_site_coverage_probe": 2
+    }
+    artifact["run_metadata"]["execution_results"]["semantic_task_budget_exhaustion_events"] = [
+        {"reason": "semantic_task_reserve_exhausted", "reserve_key": "production_site_coverage_probe"}
+    ]
+    artifact["run_metadata"]["execution_results"]["target_probe_guarantees"] = {
+        "target_probe_minimums_satisfied": False
+    }
+    artifact["run_metadata"]["execution_results"]["target_probe_guarantee_failures"] = [
+        {"target_type": "production_site_or_branch_target", "reason": "semantic_task_budget_limited"}
+    ]
+    artifact["run_metadata"]["execution_results"]["source_verification_cache_stats"] = {
+        "source_verification_unique_request_count": 1,
+        "source_verification_duplicate_skip_count": 2,
+    }
+    artifact["run_metadata"]["execution_results"]["source_verification_unique_request_count"] = 1
+    artifact["run_metadata"]["execution_results"]["source_verification_duplicate_skip_count"] = 2
 
     execute_radar_run_once(
         run_id=run["run_id"],
@@ -562,6 +610,17 @@ def test_radar_run_dossier_explains_zero_product_sources(tmp_path: Path) -> None
     assert {item["evidence_ref"] for item in dossier["source_lifecycle"]} == {"blocked_src", "unlinked_src"}
     assert dossier["summary"]["diagnostic_source_count"] == 2
     assert dossier["summary"]["analyzed_only_source_count"] == 1
+    assert dossier["external_call_budget_settings"]["max_openrouter_calls_per_run"] == 14
+    assert dossier["external_call_budget_counters"]["openrouter:run"] == 14
+    assert dossier["external_call_budget_counters_by_role"]["openrouter_recall_expansion"] == 1
+    assert dossier["external_call_budget_exhaustion_events"][0]["key"] == "openrouter:run"
+    assert dossier["semantic_task_budget_counters"]["semantic_reserve:production_site_coverage_probe"] == 2
+    assert dossier["semantic_task_budget_exhaustion_events"][0]["reason"] == "semantic_task_reserve_exhausted"
+    assert dossier["target_probe_guarantees"]["target_probe_minimums_satisfied"] is False
+    assert dossier["target_probe_guarantee_failures"][0]["reason"] == "semantic_task_budget_limited"
+    assert dossier["source_verification_cache_stats"]["source_verification_duplicate_skip_count"] == 2
+    assert dossier["source_verification_unique_request_count"] == 1
+    assert dossier["source_verification_duplicate_skip_count"] == 2
     serialized = json.dumps(dossier)
     assert not any(marker in serialized for marker in ["chain_of_thought", "hidden_reasoning", "internal_thoughts"])
 
@@ -904,6 +963,22 @@ class _RecordingJobQueue:
 
     def enqueue_radar_run(self, run: RadarRunRecord) -> None:
         self.enqueued_run_ids.append(run.run_id)
+
+
+class _ReadDuringEnqueueJobQueue(_RecordingJobQueue):
+    def __init__(self, database_path: Path) -> None:
+        super().__init__()
+        self._database_path = database_path
+        self.visible_statuses: list[str] = []
+
+    def enqueue_radar_run(self, run: RadarRunRecord) -> None:
+        super().enqueue_radar_run(run)
+        with sqlite3.connect(self._database_path) as connection:
+            row = connection.execute(
+                "select status from radar_runs where run_id = ?",
+                (run.run_id,),
+            ).fetchone()
+        self.visible_statuses.append(str(row[0]) if row else "missing")
 
 
 class _FakeExecutor:

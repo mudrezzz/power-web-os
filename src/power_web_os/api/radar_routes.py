@@ -154,6 +154,7 @@ def queue_radar_run(radar_id: str, request: RadarRunRequest, context: RadarConte
         )
     )
     if result.should_enqueue:
+        context.commit_before_enqueue()
         context.job_queue.enqueue_radar_run(result.run)
     return run_summary_response(result.run, output=context.output_repository.get(result.run.run_id))
 

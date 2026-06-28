@@ -28,6 +28,7 @@ from power_web_os.application.live_radar_external_budget import (
     current_external_call_budget,
     external_budget_settings_from_context,
     external_call_budget_context,
+    protect_recall_expansion_openrouter_task,
     reserve_budget_slice,
 )
 from power_web_os.application.live_radar_extraction_diagnostics import (
@@ -86,6 +87,10 @@ from power_web_os.application.live_radar_universe import (
     gap_payloads,
     stable_id,
 )
+from power_web_os.integrations.live_radar_source_verification import (
+    SourceVerificationCache,
+    source_verification_cache_context,
+)
 
 MAX_DISCOVERY_ITERATIONS = 2
 MAX_CANDIDATE_UNIVERSE_SIZE = 50
@@ -109,6 +114,7 @@ def run_staged_radar_execution(
     max_openrouter_calls_per_run: int | None = None,
     max_openrouter_planner_calls_per_run: int | None = None,
     max_openrouter_web_task_calls_per_run: int | None = None,
+    max_recall_expansion_openrouter_calls_per_run: int | None = None,
     max_openrouter_server_tool_web_searches_per_run: int | None = None,
     max_dadata_lookups_per_run: int | None = None,
     max_source_verification_requests_per_run: int | None = None,
@@ -117,6 +123,8 @@ def run_staged_radar_execution(
     openrouter_web_max_total_results_per_call: int | None = None,
     smoke_max_candidates: int | None = None,
     smoke_max_signals: int | None = None,
+    budget_reserve_limits: dict[str, int] | None = None,
+    semantic_task_reserve_limits: dict[str, int] | None = None,
     source_policy_decisions: list[dict[str, Any]] | None = None,
 ) -> tuple[WebSearchProviderResult, list[LiveRadarPipelineEvent], dict[str, Any]]:
     if task_context:
@@ -151,6 +159,7 @@ def run_staged_radar_execution(
         max_gate_tasks_per_candidate_rule=max_gate_tasks_per_candidate_rule,
         max_signal_tasks_per_candidate_signal=max_signal_tasks_per_candidate_signal,
         max_total_web_tasks_per_run=max_total_web_tasks_per_run,
+        semantic_task_reserve_limits=semantic_task_reserve_limits,
     )
     task_budget = RadarExecutionBudget(budget_settings)
     external_budget = current_external_call_budget() or RadarExternalCallBudget(external_budget_settings_from_context({
@@ -158,6 +167,7 @@ def run_staged_radar_execution(
         "max_openrouter_calls_per_run": max_openrouter_calls_per_run,
         "max_openrouter_planner_calls_per_run": max_openrouter_planner_calls_per_run,
         "max_openrouter_web_task_calls_per_run": max_openrouter_web_task_calls_per_run,
+        "max_recall_expansion_openrouter_calls_per_run": max_recall_expansion_openrouter_calls_per_run,
         "max_openrouter_server_tool_web_searches_per_run": max_openrouter_server_tool_web_searches_per_run,
         "max_dadata_lookups_per_run": max_dadata_lookups_per_run,
         "max_source_verification_requests_per_run": max_source_verification_requests_per_run,
@@ -166,6 +176,7 @@ def run_staged_radar_execution(
         "openrouter_web_max_total_results_per_call": openrouter_web_max_total_results_per_call,
         "smoke_max_candidates": smoke_max_candidates,
         "smoke_max_signals": smoke_max_signals,
+        "budget_reserve_limits": budget_reserve_limits,
     }))
     useful_budget = UsefulResultBudget(
         min_sources=min_useful_sources_per_discovery_task,
@@ -181,9 +192,10 @@ def run_staged_radar_execution(
     checkpoint_executor = RadarCheckpointActionExecutor()
     search_expansion_service = RadarSearchExpansionService(max_variants=4 if run_profile == "smoke" else 6)
     retrieval_plan = retrieval_plan_from_execution_plan(execution_plan)
+    verification_cache = SourceVerificationCache(results_by_url={})
 
     discovery_tasks = _tasks_for_stage(execution_plan, "qualification_discovery")
-    with external_call_budget_context(external_budget):
+    with external_call_budget_context(external_budget), source_verification_cache_context(verification_cache):
         for task in discovery_tasks:
             result, run_ids, retry_records, retry_warnings = run_task_with_useful_retries(
                 task=task,
@@ -607,6 +619,7 @@ def run_staged_radar_execution(
     )
     events.extend(_source_obligation_events(source_obligation_decisions))
     events.extend(_external_budget_events(external_budget.exhaustion_events))
+    target_probe_guarantee_payload = _target_probe_guarantees(provider_metadata=provider_metadata, radar=radar)
     return (
         WebSearchProviderResult(
             sources=_dedupe_sources(sources), candidate_observations=_merge_candidate_observations(observations),
@@ -633,8 +646,15 @@ def run_staged_radar_execution(
                 "max_signal_tasks_per_candidate_signal": budget_settings.max_signal_tasks_per_candidate_signal,
                 "compatibility_max_web_tasks_per_subject": budget_settings.compatibility_max_web_tasks_per_subject,
             },
-            "budget_counters": {"total": task_budget.total_count, "by_key": dict(task_budget.counts)},
+            "budget_counters": {
+                "total": task_budget.total_count,
+                "by_key": dict(task_budget.counts),
+                "semantic_reserves": dict(task_budget.semantic_reserve_counts),
+            },
             "budget_exhaustion_events": list(task_budget.exhaustion_events),
+            **task_budget.to_metadata(),
+            "source_verification_cache_stats": verification_cache.to_metadata(),
+            **verification_cache.to_metadata(),
             "web_task_counts_by_subject": task_budget.counts,
             "web_task_budget_warnings": task_budget.warnings,
             "useful_result_retry_records": useful_result_retry_records,
@@ -659,6 +679,9 @@ def run_staged_radar_execution(
             "search_expansion_results": provider_metadata.get("search_expansion_results", []),
             "search_expansion_results_by_target": _results_by_target(provider_metadata.get("search_expansion_results", [])),
             "search_expansion_results_by_target_type": _results_by_target_type(provider_metadata.get("search_expansion_results", [])),
+            "search_expansion_execution_summary": _search_expansion_execution_summary(provider_metadata),
+            "target_probe_guarantees": target_probe_guarantee_payload["summary"],
+            "target_probe_guarantee_failures": target_probe_guarantee_payload["failures"],
             "expansion_target_summary_by_type": provider_metadata.get("expansion_target_summary_by_type", {}),
             "targets_not_searched": provider_metadata.get("targets_not_searched", []),
             "benchmark_recall_target_summary": _benchmark_recall_target_summary(provider_metadata),
@@ -933,10 +956,6 @@ def _run_search_expansion(
                     *dict_list(provider_metadata.get("targets_not_searched")),
                     skipped,
                 ],
-                "search_expansion_results": [
-                    *dict_list(provider_metadata.get("search_expansion_results")),
-                    skipped,
-                ],
             }
             events.append(LiveRadarPipelineEvent(
                 event_type="search_expansion_skipped_budget_reserve",
@@ -948,6 +967,7 @@ def _run_search_expansion(
                 payload=skipped,
             ))
             continue
+        protect_recall_expansion_openrouter_task(task_id=task.task_id, reserve_key=variant.budget_reserve_key)
         result = _run_task(
             provider=provider,
             radar=radar,
@@ -955,7 +975,40 @@ def _run_search_expansion(
             radar_id=execution_plan.radar_id,
             budget=budget,
             external_budget=external_budget,
+            semantic_reserve_key=variant.budget_reserve_key,
         )
+        result_payload = _expansion_result_payload(
+            task=task,
+            variant=variant,
+            result=result,
+            budget_decision=result.provider_metadata.get("budget_decision", {}),
+        )
+        if result_payload["execution_status"] == "not_executed":
+            not_executed = {
+                **result_payload,
+                "execution_status": "not_searched",
+            }
+            provider_metadata = {
+                **provider_metadata,
+                "targets_not_searched": [
+                    *dict_list(provider_metadata.get("targets_not_searched")),
+                    not_executed,
+                ],
+                "search_expansion_results": [
+                    *dict_list(provider_metadata.get("search_expansion_results")),
+                    result_payload,
+                ],
+            }
+            events.append(LiveRadarPipelineEvent(
+                event_type="search_expansion_skipped_external_budget",
+                phase="collection",
+                actor="application",
+                node_name="search_expansion",
+                visibility="operator",
+                summary=f"Skipped recall expansion task {task.task_id}: external provider budget was exhausted.",
+                payload=not_executed,
+            ))
+            continue
         gaps = gap_items(result)
         result = result.model_copy(update={
             "candidate_observations": [
@@ -971,15 +1024,7 @@ def _run_search_expansion(
             "search_expansion_results": [
                 *dict_list(provider_metadata.get("search_expansion_results")),
                 {
-                    "task_id": task.task_id,
-                    "query": task.query,
-                    "source_ids": list(task.source_ids),
-                    "target_id": variant.target_id,
-                    "target_type": variant.target_type,
-                    "budget_reserve_key": variant.budget_reserve_key,
-                    "source_count": len(result.sources),
-                    "candidate_observation_count": len(result.candidate_observations),
-                    "budget_decision": result.provider_metadata.get("budget_decision", {}),
+                    **result_payload,
                 },
             ],
         }
@@ -1040,6 +1085,43 @@ def _source_capability_strategy_summary(*, radar: dict[str, Any], expansion_plan
     }
 
 
+def _expansion_result_payload(
+    *,
+    task: RadarExecutionTask,
+    variant: Any,
+    result: WebSearchProviderResult,
+    budget_decision: dict[str, Any],
+) -> dict[str, Any]:
+    status, reason = _expansion_execution_status(result=result, budget_decision=budget_decision)
+    return {
+        "task_id": task.task_id,
+        "query": task.query,
+        "source_ids": list(task.source_ids),
+        "target_id": variant.target_id,
+        "target_type": variant.target_type,
+        "budget_reserve_key": variant.budget_reserve_key,
+        "execution_status": status,
+        "not_searched_reason": reason if status == "not_executed" else "",
+        "source_count": len(result.sources),
+        "candidate_observation_count": len(result.candidate_observations),
+        "budget_decision": budget_decision,
+    }
+
+
+def _expansion_execution_status(*, result: WebSearchProviderResult, budget_decision: dict[str, Any]) -> tuple[str, str]:
+    if isinstance(budget_decision, dict) and budget_decision.get("accepted") is False:
+        kind = str(budget_decision.get("kind") or "")
+        reason = str(budget_decision.get("reason") or "")
+        if kind == "budget_reserve":
+            return "not_executed", "not_executed_reserve_limited"
+        if reason == "semantic_task_reserve_exhausted":
+            return "not_executed", "semantic_task_budget_limited"
+        return "not_executed", "not_executed_global_budget_limited"
+    if result.sources:
+        return "executed_source_found", ""
+    return "executed_no_support", ""
+
+
 def _results_by_target(value: object) -> dict[str, list[dict[str, Any]]]:
     result: dict[str, list[dict[str, Any]]] = {}
     for item in dict_list(value):
@@ -1054,6 +1136,165 @@ def _results_by_target_type(value: object) -> dict[str, list[dict[str, Any]]]:
         target_type = str(item.get("target_type") or "unknown")
         result.setdefault(target_type, []).append(item)
     return result
+
+
+def _search_expansion_execution_summary(provider_metadata: dict[str, Any]) -> dict[str, Any]:
+    targets = dict_list(provider_metadata.get("expansion_target_queue"))
+    variants = dict_list(provider_metadata.get("search_expansion_query_variants"))
+    results = dict_list(provider_metadata.get("search_expansion_results"))
+    not_searched = dict_list(provider_metadata.get("targets_not_searched"))
+    executed = [item for item in results if _is_executed_expansion_result(item)]
+    source_found = [item for item in executed if int(item.get("source_count") or 0) > 0]
+    projected = [item for item in source_found if int(item.get("candidate_observation_count") or 0) > 0]
+    selected_ids = {str(item.get("target_id") or "") for item in variants if str(item.get("target_id") or "")}
+    attempted_ids = {str(item.get("target_id") or "") for item in results if str(item.get("target_id") or "")}
+    executed_ids = {str(item.get("target_id") or "") for item in executed if str(item.get("target_id") or "")}
+    source_found_ids = {str(item.get("target_id") or "") for item in source_found if str(item.get("target_id") or "")}
+    projected_ids = {str(item.get("target_id") or "") for item in projected if str(item.get("target_id") or "")}
+    return {
+        "generated_count": len(targets),
+        "selected_count": len(selected_ids),
+        "attempted_count": len(attempted_ids),
+        "executed_count": len(executed_ids),
+        "source_found_count": len(source_found_ids),
+        "projected_count": len(projected_ids),
+        "not_searched_count": len(not_searched),
+        "not_executed_global_budget_limited_count": sum(
+            1 for item in not_searched if str(item.get("not_searched_reason") or "") == "not_executed_global_budget_limited"
+        ),
+        "not_executed_reserve_limited_count": sum(
+            1 for item in not_searched if str(item.get("not_searched_reason") or "") == "not_executed_reserve_limited"
+        ),
+        "by_target_type": _expansion_funnel_by_target_type(targets, variants, results, not_searched),
+    }
+
+
+def _target_probe_guarantees(*, provider_metadata: dict[str, Any], radar: dict[str, Any]) -> dict[str, Any]:
+    task_context = radar.get("task_context") if isinstance(radar.get("task_context"), dict) else {}
+    minimums = task_context.get("benchmark_target_probe_minimums")
+    if not isinstance(minimums, dict) or not task_context.get("benchmark_profile"):
+        return {"summary": {}, "failures": []}
+    targets = dict_list(provider_metadata.get("expansion_target_queue"))
+    variants = dict_list(provider_metadata.get("search_expansion_query_variants"))
+    results = dict_list(provider_metadata.get("search_expansion_results"))
+    not_searched = dict_list(provider_metadata.get("targets_not_searched"))
+    executed = [item for item in results if _is_executed_expansion_result(item)]
+    summary: dict[str, Any] = {
+        "required_target_probe_minimums": _int_minimums(minimums),
+        "by_target_type": {},
+        "target_probe_minimums_satisfied": True,
+    }
+    failures: list[dict[str, Any]] = []
+    for target_type, required in _int_minimums(minimums).items():
+        generated = [item for item in targets if str(item.get("target_type") or "") == target_type]
+        selected = [item for item in variants if str(item.get("target_type") or "") == target_type]
+        executed_items = [item for item in executed if str(item.get("target_type") or "") == target_type]
+        not_searched_items = [item for item in not_searched if str(item.get("target_type") or "") == target_type]
+        satisfied = len(executed_items) >= required
+        summary["by_target_type"][target_type] = {
+            "required": required,
+            "generated_count": len(generated),
+            "selected_count": len(selected),
+            "executed_count": len(executed_items),
+            "not_searched_count": len(not_searched_items),
+            "satisfied": satisfied,
+            "not_searched_reasons": _count_by_reason(not_searched_items),
+        }
+        if not satisfied:
+            summary["target_probe_minimums_satisfied"] = False
+            failures.append({
+                "target_type": target_type,
+                "required": required,
+                "executed_count": len(executed_items),
+                "generated_count": len(generated),
+                "selected_count": len(selected),
+                "reason": _target_probe_failure_reason(generated, selected, not_searched_items),
+                "not_searched_reasons": _count_by_reason(not_searched_items),
+            })
+    return {"summary": summary, "failures": failures}
+
+
+def _int_minimums(value: dict[Any, Any]) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for key, raw in value.items():
+        try:
+            parsed = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if parsed > 0:
+            result[str(key)] = parsed
+    return result
+
+
+def _count_by_reason(items: list[dict[str, Any]]) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for item in items:
+        reason = str(item.get("not_searched_reason") or item.get("reason") or "unknown")
+        result[reason] = result.get(reason, 0) + 1
+    return result
+
+
+def _target_probe_failure_reason(
+    generated: list[dict[str, Any]],
+    selected: list[dict[str, Any]],
+    not_searched: list[dict[str, Any]],
+) -> str:
+    reasons = _count_by_reason(not_searched)
+    if not generated:
+        return "target_not_generated"
+    if not selected:
+        return "target_not_selected"
+    if any("semantic_task_reserve" in reason for reason in reasons):
+        return "semantic_task_budget_limited"
+    if any("external" in reason or "global_budget" in reason for reason in reasons):
+        return "external_budget_limited"
+    if any("policy" in reason for reason in reasons):
+        return "source_policy_limited"
+    if reasons:
+        return next(iter(reasons))
+    return "executed_below_minimum"
+
+
+def _expansion_funnel_by_target_type(
+    targets: list[dict[str, Any]],
+    variants: list[dict[str, Any]],
+    results: list[dict[str, Any]],
+    not_searched: list[dict[str, Any]],
+) -> dict[str, dict[str, int]]:
+    target_types = sorted({
+        str(item.get("target_type") or "unknown")
+        for item in [*targets, *variants, *results, *not_searched]
+    })
+    summary: dict[str, dict[str, int]] = {}
+    for target_type in target_types:
+        type_targets = [item for item in targets if str(item.get("target_type") or "unknown") == target_type]
+        type_variants = [item for item in variants if str(item.get("target_type") or "unknown") == target_type]
+        type_results = [item for item in results if str(item.get("target_type") or "unknown") == target_type]
+        type_not_searched = [item for item in not_searched if str(item.get("target_type") or "unknown") == target_type]
+        type_executed = [item for item in type_results if _is_executed_expansion_result(item)]
+        summary[target_type] = {
+            "generated": len({str(item.get("target_id") or "") for item in type_targets if str(item.get("target_id") or "")}),
+            "selected": len({str(item.get("target_id") or "") for item in type_variants if str(item.get("target_id") or "")}),
+            "attempted": len({str(item.get("target_id") or "") for item in type_results if str(item.get("target_id") or "")}),
+            "executed": len({str(item.get("target_id") or "") for item in type_executed if str(item.get("target_id") or "")}),
+            "source_found": len({
+                str(item.get("target_id") or "")
+                for item in type_executed
+                if str(item.get("target_id") or "") and int(item.get("source_count") or 0) > 0
+            }),
+            "projected": len({
+                str(item.get("target_id") or "")
+                for item in type_executed
+                if str(item.get("target_id") or "") and int(item.get("candidate_observation_count") or 0) > 0
+            }),
+            "not_searched": len(type_not_searched),
+        }
+    return summary
+
+
+def _is_executed_expansion_result(item: dict[str, Any]) -> bool:
+    status = str(item.get("execution_status") or "executed_source_found")
+    return status.startswith("executed")
 
 
 def _merge_int_dicts(left: object, right: object) -> dict[str, int]:
@@ -1092,7 +1333,7 @@ def _benchmark_recall_target_summary(provider_metadata: dict[str, Any]) -> dict[
     searched_ids = {
         str(item.get("target_id") or "")
         for item in dict_list(provider_metadata.get("search_expansion_results"))
-        if str(item.get("execution_status") or "executed") != "not_searched"
+        if _is_executed_expansion_result(item)
     }
     not_searched = dict_list(provider_metadata.get("targets_not_searched"))
     by_type: dict[str, int] = {}

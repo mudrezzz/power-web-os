@@ -5736,6 +5736,356 @@ Principles:
   - More target diversity can reduce depth on legal-entity expansion. Mitigate
     by using small per-type quotas instead of removing legal-entity targets.
 
+### Slice 0.7.6.3.6.3: Protected expansion execution budgets and honest searched/attempted accounting
+
+- Status: `Done`
+- Goal: Fix the budget-mechanics defect found by Docker smoke
+  `radar-run-b17222b5-4ee5-44f3-8389-9b6138689ffa`: production-site reserve
+  was selected and counted, but OpenRouter provider calls could still be
+  blocked by the already exhausted global `openrouter_web_task` budget.
+- User value: Benchmark diagnostics should say plainly whether an expansion
+  target was merely generated, selected, attempted, actually searched through a
+  provider call, produced a source, or was projected into the candidate
+  universe. A user should not read "searched" for a target that never reached
+  OpenRouter.
+- Problem statement:
+  - `0.7.6.3.6.2` improved `review_recall` to `0.3333`, proving that
+    production-site retention works.
+  - The same smoke still stopped as `budget_limited`: expansion tasks for
+    production-site and official targets reached the expansion result list with
+    `budget_decision.accepted=false` because `openrouter_web_task:run` was
+    already `8/8`.
+  - `production_site_coverage_probe` reserve was therefore useful
+    diagnostically but not yet a protected execution slot.
+  - Benchmark/evaluation reports could blur selected-but-not-executed targets
+    with genuinely searched targets.
+- Scope:
+  - Add protected recall-expansion OpenRouter slots below the normal
+    `openrouter_web_task` role budget:
+    - regular web-task budget stays bounded;
+    - checkpoint/search expansion tasks registered under a recall-expansion
+      reserve can spend `openrouter_recall_expansion` slots;
+    - all protected calls still count against total `openrouter:run` and
+      server-tool web-search budgets.
+  - Add `max_recall_expansion_openrouter_calls_per_run` to external budget
+    settings and benchmark profiles.
+  - Update `benchmark_smoke`:
+    - regular web-task calls remain `8`;
+    - protected recall-expansion OpenRouter calls are capped at `4`;
+    - total OpenRouter calls become `14` so planner + regular web + protected
+      expansion are all bounded and visible.
+  - Make expansion execution accounting explicit:
+    - generated target;
+    - selected variant;
+    - attempted expansion task;
+    - externally executed provider call;
+    - source found;
+    - candidate/universe projection;
+    - not executed because reserve budget was exhausted;
+    - not executed because global/total external budget was exhausted.
+  - Keep `targets_not_searched` as the canonical place for selected/generated
+    targets that did not execute.
+  - Add `search_expansion_execution_summary` to dossier/API and benchmark
+    report.
+  - Update false-negative diagnostics so selected-but-budget-blocked expansion
+    becomes `expansion_global_budget_limited` or
+    `expansion_reserve_limited`, not `expansion_searched_no_support`.
+  - Fix the API/worker Docker acceptance race discovered during manual smoke:
+    API must commit the queued run before enqueueing the Celery task, otherwise
+    the worker can read SQLite before the run row is visible and fail with
+    `Radar run not found`.
+- Out of scope:
+  - No new provider adapter.
+  - No scoring or product-candidate relaxation.
+  - No model-role evaluation; that remains `0.7.6.3.7`.
+  - No SIBUR-specific production hardcode.
+  - No broad `benchmark_live` acceptance claim.
+- Implementation notes:
+  - `RadarExternalCallBudget` now supports protected recall-expansion task ids.
+  - Provider integration still calls the same OpenRouter budget guard; the guard
+    recognizes protected expansion task ids and charges
+    `openrouter_recall_expansion:run` instead of regular
+    `openrouter_web_task:run`.
+  - Protected expansion calls still count in `openrouter:run`, so smoke remains
+    bounded and cost-visible.
+  - Search-expansion records now carry `execution_status` values such as
+    `executed_source_found`, `executed_no_support`, and `not_executed`.
+- Tests:
+  - Unit: protected recall-expansion task can execute after regular
+    `openrouter_web_task` budget is exhausted while still counting against
+    total OpenRouter budget.
+  - Unit: benchmark smoke context exposes `max_recall_expansion_openrouter_calls_per_run`.
+  - Report: benchmark summary counts only externally executed expansion results
+    as `expansion_result_count`.
+  - Evaluation: budget-blocked expansion target becomes
+    `expansion_global_budget_limited`.
+  - Regression: expansion, benchmark, evaluation, adaptive execution, live Radar
+    and backend API tests pass.
+- Docs:
+  - Update `ROADMAP.md`.
+  - Update Developer Guide and demo README with protected expansion slots and
+    searched/attempted distinction.
+  - Sync Radar AS IS Markdown/PDF.
+- Demo impact:
+  - No UI changes.
+  - Benchmark JSON reports now contain a clearer expansion execution funnel.
+- Acceptance criteria:
+  - A target with `budget_decision.accepted=false` is not counted as an
+    externally searched/executed expansion result.
+  - Production-site expansion can use protected recall-expansion OpenRouter
+    slots without increasing the regular web-task budget.
+  - Dossier/report expose generated/selected/attempted/executed/source-found/
+    projected counts.
+  - Remaining production-site misses explain whether the target was not
+    selected, reserve-limited, globally budget-limited, searched with no
+    support, or found but not projected.
+  - `benchmark_live` remains blocked until a fresh bounded Docker smoke and
+    evaluation prove the protected slots behave as expected.
+- Done notes:
+  - Implemented protected `openrouter_recall_expansion` budget slots.
+  - Added expansion execution summary to dossier/API and benchmark reports.
+  - Fixed evaluation diagnostics for selected-but-not-executed expansion
+    targets.
+  - Added an API regression test proving the queued run is committed before
+    job enqueue so Docker worker can see it immediately.
+  - Fixed benchmark task-context plumbing so staged execution receives
+    `max_recall_expansion_openrouter_calls_per_run` and
+    `budget_reserve_limits`, not only the `.env` smoke defaults.
+  - Exposed external-call budget settings, counters, role counters and
+    exhaustion events through `/api/radar-runs/{run_id}/dossier` and benchmark
+    reports.
+  - Increased the default benchmark CLI poll timeout from `900` to `1200`
+    seconds. This does not relax Radar work budgets; it only prevents a slow
+    low-cost OpenRouter provider from being mislabeled as runtime failure after
+    the bounded run is still progressing.
+  - Validation run: targeted external-budget, search-expansion, benchmark,
+    evaluation, adaptive, live Radar, and backend API tests passed locally.
+  - Full validation after the final plumbing fix: `python -m pytest` -> `324
+    passed, 1 skipped`.
+  - Docker acceptance run:
+    `radar-run-3da6a406-c918-47f1-b29e-216c689ad129` completed in `918.351s`
+    with `execution_outcome=stopped_for_review` and benchmark verdict
+    `budget_limited`.
+  - Docker smoke budget evidence:
+    `openrouter:run=14`, `openrouter_web_task:run=8`,
+    `openrouter_recall_expansion:run=4`,
+    `openrouter_server_tool_web_search:run=29`,
+    `source_verification:run=30`, `dadata:run=3`.
+  - Docker smoke expansion evidence:
+    `search_expansion_execution_summary.generated_count=65`,
+    `selected_count=5`, `attempted_count=3`, `executed_count=1`,
+    `source_found_count=1`.
+  - Evaluation after the bounded Docker smoke:
+    `strict_recall=0.6667`, `review_recall=0.3333`, `false_negative_count=5`.
+    Remaining false negatives are no longer blank retrieval failures:
+    `sibur-holding=present_not_matched`, `zapsibneftekhim/poliom/gubkinsky-gpp/
+    tobolsk-site=expansion_not_selected`.
+- Risks:
+  - Protected expansion slots increase total benchmark smoke OpenRouter call
+    ceiling from `10` to `14`. This is intentional and bounded; the regular web
+    task budget remains unchanged at `8`.
+  - A provider can still spend server-tool web-search requests inside one
+    OpenRouter call; server-tool budget remains the backstop.
+  - `benchmark_live` remains blocked. The next corrective bucket should address
+    allocation inside the bounded smoke profile: source verification consumes
+    its full request budget, only one expansion provider call executes, and
+    selected legal/site targets still remain unsearched before stop.
+
+### Slice 0.7.6.3.6.4: Semantic task-budget reserves, verification dedupe, and benchmark target execution guarantees
+
+- Status: `Done`
+- Goal: Fix the remaining budget-allocation blocker from
+  `radar-run-3da6a406-c918-47f1-b29e-216c689ad129`. Protected
+  `openrouter_recall_expansion` slots now work, but the run still spends the
+  shared semantic web-task budget and source-verification budget before enough
+  high-value benchmark expansion targets are executed.
+- User value: A user should see that bounded `benchmark_smoke` actually probes
+  the important missed targets before stopping. If `Губкинский ГПЗ`,
+  `Тобольская площадка`, `ЗапСибНефтехим`, or `Полиом` remain missed, the
+  report must say whether they were searched, skipped by policy, blocked by a
+  specific reserve, or found but not projected.
+- Problem statement:
+  - Latest Docker smoke completed, but stopped as `budget_limited`.
+  - Runtime wiring is healthy: API/worker config matched, source cards loaded,
+    DaData live and OpenRouter Perplexity were used, and protected
+    `openrouter_recall_expansion:run=4` was consumed.
+  - Recall improved but is still incomplete:
+    - `strict_recall=0.6667`;
+    - `review_recall=0.3333`;
+    - false negatives: `sibur-holding`, `zapsibneftekhim`, `poliom`,
+      `gubkinsky-gpp`, `tobolsk-site`.
+  - Expansion generated `65` targets and selected `5`, but only `1` provider
+    call actually executed and only one production-site source was found.
+  - The semantic web-task budget reached `18/18`, so later expansion and repair
+    tasks were blocked by `total_run_budget_exhausted`.
+  - `source_verification:run=30/30` was fully consumed and repeatedly produced
+    verification budget exhaustion events, creating noise before key target
+    probes completed.
+  - `sibur-holding` is classified as `present_not_matched`, which is a matcher
+    / projection normalization issue rather than retrieval absence.
+- Scope:
+  - Add semantic task-budget reserves below `RadarExecutionBudget`, mirroring
+    the external-call reserves:
+    - `recall_expansion_task_budget`;
+    - `production_site_expansion_task_budget`;
+    - `official_coverage_probe_task_budget`;
+    - optional `registry_identity_task_budget` if needed for DaData-backed
+      identity confirmation.
+  - Ensure recall-expansion and production-site expansion tasks can execute
+    through their reserved semantic task slots even when the general
+    qualification/gate/coverage web-task budget is exhausted.
+  - Keep all tasks bounded: reserved semantic task slots still count in a
+    visible total diagnostic counter and must never become an unbounded
+    fallback.
+  - Add source-verification dedupe/cache per run:
+    - normalize URL/domain/evidence refs before spending a verification slot;
+    - do not re-verify the same URL/citation repeatedly;
+    - record `verification_cache_hit` instead of spending another request.
+  - Split verification caps by purpose where useful:
+    - discovery/source-list verification;
+    - expansion-result verification;
+    - product-source verification.
+  - Add benchmark target execution guarantees for `benchmark_smoke`:
+    - at least one holding/group probe;
+    - at least two legal/subsidiary probes;
+    - at least two production-site/branch probes;
+    - unless blocked by explicit policy/provider/external-call budget.
+  - Limit noisy gate fan-out in smoke:
+    - weak/unknown candidates can remain diagnostic;
+    - they must not consume all gate/coverage task slots before benchmark
+      target probes execute.
+  - Improve matcher/projection normalization for benchmark evaluation so
+    `SIBUR Holding`, `PJSC SIBUR Holding`, `ПАО СИБУР Холдинг`, and `СИБУР`
+    variants do not end as `present_not_matched` when source-backed.
+- Out of scope:
+  - No new source provider.
+  - No UI changes.
+  - No `benchmark_live` quality claim.
+  - No SIBUR-specific production runtime branch. SIBUR names may remain in
+    benchmark fixtures/evaluation context only.
+  - No model-role leaderboard; keep `0.7.6.3.7` for model evaluation.
+- Implementation notes:
+  - Implemented in this slice:
+    - `RadarExecutionBudget` now supports `semantic_task_reserve_limits` and
+      reports `semantic_task_budget_counters` /
+      `semantic_task_budget_exhaustion_events`.
+    - Search expansion execution passes each variant's reserve key into the
+      semantic task-budget guard, so approved expansion can use a small
+      protected task slot after the regular web-task budget is exhausted.
+    - `benchmark_smoke` now defines semantic reserves for
+      `recall_expansion`, `production_site_coverage_probe`,
+      `official_coverage_probe`, and `open_web_coverage_probe`.
+    - `benchmark_smoke` now defines target-lane minimums for holding/group,
+      legal/subsidiary, and production-site/branch probes.
+    - Source verification now has per-run URL dedupe/cache and exposes cache
+      stats in execution results, dossier, and benchmark report.
+    - Dossier and benchmark report now expose target probe guarantees,
+      guarantee failures, semantic task counters, and verification cache stats.
+    - Evaluation-only matching now handles source-backed short aliases such as
+      `SIBUR` -> `SIBUR Holding` without adding SIBUR-specific production
+      runtime logic.
+  - Treat semantic task reserves as a separate application-level concern from
+    OpenRouter HTTP-call budgets. Both must pass before a provider call is made.
+  - The expansion execution summary should distinguish:
+    - blocked by semantic task budget;
+    - blocked by external OpenRouter budget;
+    - blocked by source verification budget;
+    - selected but not executed because target-lane quota was exhausted;
+    - executed and source found;
+    - executed and no support found.
+  - Verification dedupe must be deterministic and product-safe; do not store
+    secrets, headers, or raw provider payloads.
+  - The benchmark report should make the target-lane guarantee visible, e.g.
+    `required_target_probe_minimums`, `target_probe_minimums_satisfied`,
+    `target_probe_minimum_failures`.
+- Tests:
+  - Unit: semantic recall-expansion task reserve allows an expansion task after
+    the general web-task budget is exhausted, while still incrementing bounded
+    reserve counters.
+  - Unit: production-site expansion consumes
+    `production_site_expansion_task_budget`, not generic gate/coverage slots.
+  - Unit: source verification dedupes repeated normalized URLs and records
+    `verification_cache_hit` without spending a new verification request.
+  - Unit: benchmark target selector satisfies minimum target-lane guarantees
+    when budget and source policy allow it.
+  - Unit: noisy weak candidates are retained diagnostically but do not consume
+    smoke gate slots ahead of guaranteed target probes.
+  - Evaluation: SIBUR holding aliases match the curated baseline when
+    source-backed.
+  - Fake pipeline: weak discovery with benchmark hints executes at least the
+    required holding/legal/site probe counts before `stop_review_needed`.
+  - Fake pipeline: if a required probe cannot execute, report the exact blocker
+    (`semantic_task_budget_limited`, `external_call_budget_limited`,
+    `verification_budget_limited`, or `source_policy_limited`).
+  - API/report: dossier and benchmark report expose semantic reserve counters,
+    verification cache stats, target-lane guarantee status, and no secrets or
+    hidden reasoning markers.
+  - Regression commands:
+    - `python -m pytest tests/test_radar_search_expansion.py tests/test_radar_adaptive_execution.py -q`
+    - `python -m pytest tests/test_radar_external_call_budget.py tests/test_radar_benchmark.py tests/test_radar_evaluation.py -q`
+    - `python -m pytest tests/test_live_icp_radar.py tests/test_backend_api.py -q`
+    - `python -m pytest tests/test_backend_architecture_contract.py tests/test_radar_pipeline_documentation_contract.py -q`
+    - `python -m pytest`
+- Docs:
+  - Updated `ROADMAP.md`.
+  - Updated Developer Guide and demo README with semantic task reserves,
+    verification dedupe, and target-lane guarantee interpretation.
+  - Added TO BE Markdown/PDF for `0.7.6.3.6.4`.
+  - Synced Radar AS IS Markdown/PDF after implementation.
+- Demo impact:
+  - No UI change.
+  - `demo/output/radar_benchmark_report.json` should become easier to read:
+    remaining misses should be explained by target-lane execution status rather
+    than requiring manual trace inspection.
+- Acceptance criteria:
+  - In fake/recorded tests, guaranteed benchmark target probes execute before
+    weak/noisy gate fan-out can exhaust the run.
+  - In Docker `benchmark_smoke`, at least the configured minimum target-lane
+    probes are executed, or each non-executed lane has a narrow blocker reason.
+  - `source_verification:run` no longer reaches its limit mostly because of
+    duplicate URL/citation checks.
+  - `sibur-holding` no longer remains `present_not_matched` when source-backed
+    aliases are present.
+  - `review_recall` does not regress below `0.3333`; ideally it improves, but a
+    non-improvement is acceptable only if misses have precise searched/skipped
+    diagnostics.
+  - `benchmark_live` remains blocked until this bounded smoke is interpretable.
+- Validation:
+  - Passed: `python -m pytest tests/test_radar_external_call_budget.py tests/test_radar_benchmark.py tests/test_radar_evaluation.py tests/test_backend_api.py -q`.
+  - Passed: `python -m pytest tests/test_radar_search_expansion.py tests/test_radar_adaptive_execution.py tests/test_live_icp_radar.py tests/test_backend_architecture_contract.py -q`.
+  - Docker acceptance rerun completed on 2026-06-28:
+    `radar-run-44abf1c6-5070-4b2a-84cd-9d37df6cb429`.
+    - Status: terminal `completed`, execution outcome `stopped_for_review`,
+      benchmark verdict `budget_limited`.
+    - Runtime/path health: Docker API/worker path executed, source cards were
+      present (`source_cards_count=3`), capability decisions were present
+      (`source_capability_decision_count=5`).
+    - Retrieval/projection evidence: `retrieved_source_count=9`,
+      `diagnostic_source_count=30`, `candidate_count=3`.
+    - Target-lane guarantees were not satisfied:
+      holding/group `0/1`, legal/subsidiary `0/2`,
+      production-site/branch `1/2`.
+    - Main blocker: external budget exhausted before guaranteed target lanes
+      could execute enough probes; this is now visible as
+      `external_budget_limited`, not as a blank retrieval miss.
+    - Source verification dedupe worked: `30` unique verification requests and
+      `51` duplicate skips/cache hits.
+    - Evaluation result: `strict_recall=0.8889`, `review_recall=0.3333`,
+      `false_negatives=poliom,gubkinsky-gpp,tobolsk-site`.
+    - False-negative diagnostics: all three misses are now
+      `expansion_not_selected`, not generic `not_retrieved_in_run`.
+    - Coverage probe found official sources for all three remaining misses:
+      `poliom`, `gubkinsky-gpp`, and `tobolsk-site`.
+  - `benchmark_live` remains blocked. The next correction should focus on
+    external budget allocation and guaranteed expansion lane execution, not on
+    connector/profile wiring or source availability.
+- Risks:
+  - Too many reserves can hide runaway execution. Mitigate by keeping every
+    reserve small, visible, and included in the report.
+  - Verification dedupe may under-check if URL normalization is too aggressive.
+    Mitigate by preserving original refs and recording the normalized key used
+    for cache decisions.
+
 ### Slice 0.7.6.3.7: Model-role evaluation and extraction fallback policy
 
 - Status: `Backlog`

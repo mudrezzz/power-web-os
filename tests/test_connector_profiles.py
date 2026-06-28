@@ -12,6 +12,7 @@ from power_web_os.application.connector_profiles import (
 )
 from power_web_os.application.live_radar_discovery_planning import build_discovery_planning_input
 from power_web_os.application.live_radar_contracts import RadarExecutionTask
+from power_web_os.application.live_radar_source_cards import RadarPlannerSourceUse
 from power_web_os.application.radar_source_providers import RadarSourceRegistry
 
 
@@ -173,6 +174,19 @@ def test_planner_source_cards_are_compiled_without_credentials() -> None:
     assert "DADATA_API_KEY" not in serialized
     assert "DADATA_SECRET_KEY" not in serialized
     assert "OPENROUTER_API_KEY" not in serialized
+
+
+def test_planner_source_use_accepts_official_domain_query_shape() -> None:
+    source_use = RadarPlannerSourceUse(
+        source_id="sibur_site",
+        connector_profile_id="sibur_site",
+        intended_use="official_evidence",
+        input_shape="official_domain_query",
+        expected_fact_kinds=["web_source"],
+        rationale="Search the configured official domain for source-backed coverage.",
+    )
+
+    assert source_use.input_shape == "official_domain_query"
 
 
 def test_lookup_only_profile_blocks_broad_registry_lookup_without_provider_call() -> None:

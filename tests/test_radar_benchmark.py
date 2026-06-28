@@ -21,9 +21,16 @@ def test_benchmark_task_context_uses_explicit_smoke_budgets() -> None:
     assert context["run_profile"] == "smoke"
     assert context["benchmark_radar_id"] == "benchmark-mining-toir"
     assert context["max_total_web_tasks_per_run"] == 18
-    assert context["max_openrouter_calls_per_run"] == 10
+    assert context["max_openrouter_calls_per_run"] == 14
+    assert context["max_openrouter_web_task_calls_per_run"] == 8
+    assert context["max_recall_expansion_openrouter_calls_per_run"] == 4
     assert context["max_provider_retries_per_task"] == 2
     assert context["budget_reserve_limits"]["production_site_coverage_probe"] == 3
+    assert context["semantic_task_reserve_limits"]["recall_expansion"] == 6
+    assert context["semantic_task_reserve_limits"]["production_site_coverage_probe"] == 3
+    assert context["benchmark_target_probe_minimums"]["holding_or_group_target"] == 1
+    assert context["benchmark_target_probe_minimums"]["known_subsidiary_or_legal_entity_target"] == 2
+    assert context["benchmark_target_probe_minimums"]["production_site_or_branch_target"] == 2
     assert context["source"] == "radar_benchmark_cli"
 
 
@@ -78,6 +85,122 @@ def test_benchmark_result_summary_reports_budget_limited_run() -> None:
     assert result["cross_source_outcomes"] == {"skipped_budget_limited": 1}
     assert result["elapsed_seconds"] == 5.0
     _assert_safe(result)
+
+
+def test_benchmark_result_summary_counts_only_executed_expansion_results() -> None:
+    result = benchmark_result_summary(
+        radar_id="benchmark-sibur-holding-contour",
+        profile="benchmark_smoke",
+        run={"run_id": "radar-run-1", "status": "completed"},
+        dossier={
+            "summary": {"execution_outcome": "stopped_for_review"},
+            "search_expansion_results": [
+                {
+                    "target_id": "site-1",
+                    "target_type": "production_site_or_branch_target",
+                    "execution_status": "not_executed",
+                    "not_searched_reason": "not_executed_global_budget_limited",
+                },
+                {
+                    "target_id": "site-2",
+                    "target_type": "production_site_or_branch_target",
+                    "execution_status": "executed_source_found",
+                    "source_count": 1,
+                    "candidate_observation_count": 1,
+                },
+            ],
+            "targets_not_searched": [
+                {
+                    "target_id": "site-1",
+                    "target_type": "production_site_or_branch_target",
+                    "not_searched_reason": "not_executed_global_budget_limited",
+                }
+            ],
+            "search_expansion_execution_summary": {
+                "generated_count": 2,
+                "selected_count": 2,
+                "attempted_count": 2,
+                "executed_count": 1,
+                "not_executed_global_budget_limited_count": 1,
+            },
+            "budget_exhaustion_events": [{"reason": "external_call_budget_exhausted"}],
+        },
+    )
+
+    assert result["expansion_result_count"] == 1
+    assert result["search_expansion_results_by_target_type"] == {"production_site_or_branch_target": 1}
+    assert result["targets_not_searched_by_target_type"] == {"production_site_or_branch_target": 1}
+    assert result["search_expansion_execution_summary"]["executed_count"] == 1
+
+
+def test_benchmark_result_summary_exposes_semantic_budget_guarantees_and_verification_cache() -> None:
+    result = benchmark_result_summary(
+        radar_id="benchmark-sibur-holding-contour",
+        profile="benchmark_smoke",
+        run={"run_id": "radar-run-1", "status": "completed"},
+        dossier={
+            "summary": {"execution_outcome": "stopped_for_review"},
+            "semantic_task_budget_counters": {"semantic_reserve:production_site_coverage_probe": 2},
+            "semantic_task_budget_exhaustion_events": [{"reason": "semantic_task_reserve_exhausted"}],
+            "target_probe_guarantees": {
+                "target_probe_minimums_satisfied": False,
+                "by_target_type": {
+                    "production_site_or_branch_target": {"required": 2, "executed_count": 1, "satisfied": False}
+                },
+            },
+            "target_probe_guarantee_failures": [
+                {"target_type": "production_site_or_branch_target", "reason": "semantic_task_budget_limited"}
+            ],
+            "source_verification_cache_stats": {
+                "source_verification_unique_request_count": 1,
+                "source_verification_cache_hit_count": 2,
+                "source_verification_duplicate_skip_count": 2,
+            },
+            "source_verification_unique_request_count": 1,
+            "source_verification_duplicate_skip_count": 2,
+        },
+    )
+
+    assert result["semantic_task_budget_counters"] == {"semantic_reserve:production_site_coverage_probe": 2}
+    assert result["semantic_task_budget_exhaustion_count"] == 1
+    assert result["target_probe_guarantees"]["target_probe_minimums_satisfied"] is False
+    assert result["target_probe_guarantee_failures"][0]["reason"] == "semantic_task_budget_limited"
+    assert result["source_verification_unique_request_count"] == 1
+    assert result["source_verification_duplicate_skip_count"] == 2
+
+
+def test_benchmark_result_summary_treats_external_budget_exhaustion_as_budget_limited() -> None:
+    result = benchmark_result_summary(
+        radar_id="benchmark-sibur-holding-contour",
+        profile="benchmark_smoke",
+        run={"run_id": "radar-run-1", "status": "completed"},
+        dossier={
+            "summary": {"execution_outcome": "stopped_for_review"},
+            "external_call_budget_settings": {
+                "max_openrouter_calls_per_run": 14,
+                "max_recall_expansion_openrouter_calls_per_run": 4,
+            },
+            "external_call_budget_counters": {
+                "openrouter:run": 14,
+                "openrouter_recall_expansion:run": 0,
+            },
+            "external_call_budget_counters_by_role": {
+                "openrouter": 14,
+                "openrouter_recall_expansion": 0,
+            },
+            "external_call_budget_exhaustion_events": [
+                {
+                    "reason": "external_call_budget_exhausted",
+                    "key": "openrouter:run",
+                }
+            ],
+        },
+    )
+
+    assert result["verdict"] == "budget_limited"
+    assert result["external_call_budget_settings"]["max_openrouter_calls_per_run"] == 14
+    assert result["external_call_budget_counters"]["openrouter:run"] == 14
+    assert result["external_call_budget_exhaustion_count"] == 1
 
 
 def test_benchmark_runner_queues_runs_and_writes_report_shape() -> None:

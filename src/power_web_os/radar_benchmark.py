@@ -32,9 +32,10 @@ BENCHMARK_PROFILES: dict[str, dict[str, Any]] = {
         "max_discovery_retries_per_task": 0,
         "max_checkpoint_revisions_per_run": 1,
         "max_checkpoint_retries_per_stage": 1,
-        "max_openrouter_calls_per_run": 10,
+        "max_openrouter_calls_per_run": 14,
         "max_openrouter_planner_calls_per_run": 2,
         "max_openrouter_web_task_calls_per_run": 8,
+        "max_recall_expansion_openrouter_calls_per_run": 4,
         "max_openrouter_server_tool_web_searches_per_run": 30,
         "max_dadata_lookups_per_run": 4,
         "max_source_verification_requests_per_run": 30,
@@ -44,6 +45,17 @@ BENCHMARK_PROFILES: dict[str, dict[str, Any]] = {
         "smoke_max_candidates": 3,
         "smoke_max_signals": 1,
         "budget_reserve_limits": {"production_site_coverage_probe": 3},
+        "semantic_task_reserve_limits": {
+            "recall_expansion": 6,
+            "production_site_coverage_probe": 3,
+            "official_coverage_probe": 3,
+            "open_web_coverage_probe": 3,
+        },
+        "benchmark_target_probe_minimums": {
+            "holding_or_group_target": 1,
+            "known_subsidiary_or_legal_entity_target": 2,
+            "production_site_or_branch_target": 2,
+        },
     },
     "benchmark_live": {
         "run_profile": "live",
@@ -143,7 +155,7 @@ def run_radar_benchmark(
     radar_ids: tuple[str, ...],
     profile: str,
     poll_interval_seconds: float = 5.0,
-    timeout_seconds: float = 900.0,
+    timeout_seconds: float = 1200.0,
 ) -> dict[str, Any]:
     started_at = _utc_now()
     results: list[dict[str, Any]] = []
@@ -210,17 +222,23 @@ def benchmark_result_summary(
     checkpoint_summary = _dict(dossier.get("checkpoint_summary"))
     external_counters = _dict(dossier.get("external_call_budget_counters"))
     budget_events = _list(dossier.get("budget_exhaustion_events"))
+    external_budget_events = _list(dossier.get("external_call_budget_exhaustion_events"))
     cross_execution = _list(dossier.get("cross_source_disambiguation_execution"))
     extraction_records = _list(dossier.get("extraction_recovery_records"))
     candidates = _list(dossier.get("candidates"))
     expansion_targets = _list(dossier.get("expansion_target_queue"))
     expansion_results = _list(dossier.get("search_expansion_results"))
     targets_not_searched = _list(dossier.get("targets_not_searched"))
-    expansion_results_by_type = _count_by(expansion_results, "target_type")
+    executed_expansion_results = [item for item in expansion_results if _is_executed_expansion_result(item)]
+    expansion_results_by_type = _count_by(executed_expansion_results, "target_type")
     targets_not_searched_by_type = _count_by(targets_not_searched, "target_type")
     status = str(run.get("status") or "unknown")
     execution_outcome = str(summary.get("execution_outcome") or "")
-    verdict = _verdict(status=status, execution_outcome=execution_outcome, budget_events=budget_events)
+    verdict = _verdict(
+        status=status,
+        execution_outcome=execution_outcome,
+        budget_events=[*budget_events, *external_budget_events],
+    )
     return {
         "radar_id": radar_id,
         "profile": profile,
@@ -240,13 +258,24 @@ def benchmark_result_summary(
         "source_cards_count": summary.get("source_cards_count", 0),
         "source_capability_decision_count": summary.get("source_capability_decision_count", 0),
         "checkpoint_summary": checkpoint_summary,
+        "external_call_budget_settings": _dict(dossier.get("external_call_budget_settings")),
         "external_call_budget_counters": external_counters,
+        "external_call_budget_counters_by_role": _dict(dossier.get("external_call_budget_counters_by_role")),
+        "external_call_budget_exhaustion_count": len(external_budget_events),
         "budget_reserve_counters": _dict(dossier.get("budget_reserve_counters")),
         "budget_reserve_exhaustion_count": len(_list(dossier.get("budget_reserve_exhaustion_events"))),
+        "semantic_task_budget_counters": _dict(dossier.get("semantic_task_budget_counters")),
+        "semantic_task_budget_exhaustion_count": len(_list(dossier.get("semantic_task_budget_exhaustion_events"))),
+        "target_probe_guarantees": _dict(dossier.get("target_probe_guarantees")),
+        "target_probe_guarantee_failures": _list(dossier.get("target_probe_guarantee_failures")),
+        "source_verification_cache_stats": _dict(dossier.get("source_verification_cache_stats")),
+        "source_verification_unique_request_count": dossier.get("source_verification_unique_request_count", 0),
+        "source_verification_duplicate_skip_count": dossier.get("source_verification_duplicate_skip_count", 0),
         "source_capability_strategy_summary": _dict(dossier.get("source_capability_strategy_summary")),
         "expansion_target_count": len(expansion_targets),
         "expansion_target_summary_by_type": _dict(dossier.get("expansion_target_summary_by_type")),
-        "expansion_result_count": len(expansion_results),
+        "expansion_result_count": len(executed_expansion_results),
+        "search_expansion_execution_summary": _dict(dossier.get("search_expansion_execution_summary")),
         "search_expansion_results_by_target_type": expansion_results_by_type,
         "targets_not_searched_count": len(targets_not_searched),
         "targets_not_searched_by_target_type": targets_not_searched_by_type,
@@ -328,6 +357,11 @@ def _count_by(items: list[Any], key: str) -> dict[str, int]:
         value = str(item.get(key) or "unknown")
         counts[value] = counts.get(value, 0) + 1
     return counts
+
+
+def _is_executed_expansion_result(item: dict[str, Any]) -> bool:
+    status = str(item.get("execution_status") or "executed_source_found")
+    return status.startswith("executed")
 
 
 def _dict(value: object) -> dict[str, Any]:
