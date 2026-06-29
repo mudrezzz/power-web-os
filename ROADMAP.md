@@ -6719,6 +6719,102 @@ Principles:
     blocker than plain `completion_not_selected`.
   - `benchmark_live` remains blocked until the bounded smoke is interpretable.
 
+### Slice 0.7.6.3.6.12: Review-needed entity projection and evaluation matcher parity
+
+- Status: `Done`
+- Goal: Fix the post-`0.7.6.3.6.11` gap where live smoke found source-backed
+  Tobolsk production-site evidence, but evaluation still reported
+  `tobolsk-site` as a false negative because review-needed entity type and
+  source-backed name semantics were not preserved consistently across
+  candidate-universe projection and evaluation.
+- User value:
+  - A user can trust the benchmark RCA: if Radar found a production site as a
+    review-needed upstream entity, the evaluation report should count it as
+    review recall instead of pretending it was missed.
+  - Developers stop tuning budgets/search for a target that was already found;
+    the next blocker becomes visible at the correct layer.
+- Problem statement:
+  - Docker `benchmark_smoke_plus`
+    `radar-run-12727934-8686-4cc6-bb04-6ee450173775` completed with
+    `strict_recall=0.8889`, `review_recall=0.6667`, and `tobolsk-site` as
+    `expansion_source_found_not_projected`.
+  - Dossier showed `Тобольская промышленная площадка` as a source-backed
+    review-needed / linked upstream entity, but `candidate_universe` could hold
+    the same name as `unknown_entity`.
+  - Root cause: projection can degrade known review-needed entity metadata to
+    `unknown_entity`, and evaluation matching was too strict for source-backed
+    production-site name variants such as suffixes in parentheses.
+- Scope:
+  - Preserve `entity_type`, `resolution_status`, `resolved_legal_name`,
+    `not_candidate_reason`, `review_flags`, and `source_refs` when
+    review-needed upstream entities enter or upgrade `candidate_universe`.
+  - Let typed upstream entities upgrade duplicate unknown universe rows instead
+    of being skipped as duplicates.
+  - Make evaluation match non-legal review baseline entities against
+    source-backed review-needed universe/upstream entities with tolerant,
+    generic token-based name matching.
+  - Add diagnostic bucket `projection_type_lost` when an entity-like row exists
+    but was projected as `unknown_entity`.
+- Out of scope:
+  - Scheduler, budget, provider, model, scoring, UI, and source-policy changes.
+  - SIBUR-specific runtime hardcode.
+- Implementation notes:
+  - Product `/candidates` remains strict; this slice affects review-needed
+    universe projection and offline evaluation only.
+  - Matching remains baseline-driven and provider-free.
+- Tests:
+  - Unit tests for preserving review-needed entity type without observation
+    metadata.
+  - Unit tests for upgrading existing duplicate `unknown_entity` universe rows
+    from typed upstream disambiguation metadata.
+  - Evaluation tests for Tobolsk-style production-site aliases with relation
+    suffixes.
+  - Evaluation diagnostics tests for `projection_type_lost`.
+- Docs:
+  - Added TO BE Markdown/PDF:
+    `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_0.7.6.3.6.12.md` and `.pdf`.
+  - Synced AS IS Markdown/PDF after implementation.
+- Acceptance:
+  - Bounded Docker `benchmark_smoke_plus` should no longer report
+    `tobolsk-site` as false negative if source-backed Tobolsk production-site
+    evidence is present.
+  - `review_recall` should reach `1.0` when all production-site baseline
+    entities are present as review-needed or linked upstream entities.
+  - If `tobolsk-site` remains a false negative, the bucket must be narrower:
+    `not_retrieved_in_run`, `present_not_projected`, `present_not_matched`, or
+    `projection_type_lost`.
+  - `benchmark_live` remains blocked until bounded smoke is fully
+    interpretable.
+- Validation:
+  - Fast tests: `python -m pytest tests/test_radar_evaluation.py tests/test_live_icp_radar.py -q`.
+  - API/report regression: `python -m pytest tests/test_radar_benchmark.py tests/test_backend_api.py -q`.
+  - Documentation/architecture contract:
+    `python -m pytest tests/test_radar_pipeline_documentation_contract.py tests/test_backend_architecture_contract.py -q`.
+  - Full regression: `python -m pytest` -> `356 passed, 1 skipped`.
+- Docker acceptance:
+  - Run: `radar-run-136ecd8f-63a8-43a5-8542-e3016187d14f`.
+  - Profile: Docker API/worker `benchmark_smoke_plus` with live DaData and
+    OpenRouter Perplexity retrieval.
+  - Result: `completed`, projected outcome `stopped_for_review` because
+    execution budget was exhausted before signal search.
+  - Evaluation: `strict_recall=0.7778`, `review_recall=1.0`,
+    `false_negative_count=2`, `false_positive_count=0`.
+  - Fixed acceptance target: `tobolsk-site` moved from false negative to
+    `review_matches` as source-backed production-site evidence.
+  - Remaining misses:
+    - `nizhnekamskneftekhim`: `completion_not_selected`.
+    - `kazanorgsintez`: `expansion_global_budget_limited`.
+  - Probe caveat: local `probe-radar-coverage` failed with OpenRouter `401
+    User not found`, while Docker API/worker OpenRouter calls succeeded. Treat
+    this as CLI/probe environment parity, not as evidence that the targets are
+    unavailable.
+- Next correction:
+  - Do not tune production-site projection further; that path now works for the
+    bounded smoke.
+  - Next small slice should address legal/subsidiary completion fairness and
+    CLI coverage-probe environment parity, so `nizhnekamskneftekhim` and
+    `kazanorgsintez` are either executed or receive a more actionable blocker.
+
 ### Slice 0.7.6.3.7: Model-role evaluation and extraction fallback policy
 
 - Status: `Backlog`
@@ -7378,9 +7474,13 @@ None.
 
 ## Next Recommended Task
 
-Implement `Slice 0.7.6.3.6.1: Checkpoint-to-expansion wiring and benchmark smoke
-acceptance repair`. The latest bounded Docker smoke proved source cards and
-capability validation are present, but runtime recovery still loops through
-`revise_plan` and never materializes recall expansion targets or budget
-reserves. `benchmark_live` and `0.7.6.3.7` model-role evaluation remain blocked
-until this acceptance gap is closed.
+Plan the next corrective slice for legal/subsidiary completion fairness and
+coverage-probe environment parity. The latest Docker `benchmark_smoke_plus`
+proved review-needed production-site projection works (`review_recall=1.0`),
+but two legal baseline entities remain missed: `nizhnekamskneftekhim`
+(`completion_not_selected`) and `kazanorgsintez`
+(`expansion_global_budget_limited`). Also fix or document why local
+`probe-radar-coverage` can fail with OpenRouter `401 User not found` while the
+Docker API/worker path succeeds. `benchmark_live` and `0.7.6.3.7` remain
+blocked until the bounded smoke is interpretable for these legal/subsidiary
+misses too.

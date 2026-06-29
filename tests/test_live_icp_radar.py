@@ -43,7 +43,12 @@ from power_web_os.application.live_radar_extraction_contract import validate_and
 from power_web_os.application.live_radar_retrieved_candidates import candidates_from_retrieved_sources
 from power_web_os.application.live_radar_product_sources import product_sources_for_candidates
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan, retrieval_plan_to_search_plan
-from power_web_os.application.live_radar_staged_execution import _target_probe_guarantees, run_staged_radar_execution
+from power_web_os.application.live_radar_staged_execution import (
+    _append_review_needed_universe_entities,
+    _target_probe_guarantees,
+    run_staged_radar_execution,
+)
+from power_web_os.application.live_radar_staged_merge import candidate_universe_with_entity_metadata
 from power_web_os.application.live_radar_staged_helpers import run_gate_pass
 from power_web_os.application.live_radar_web_retrieval import (
     RadarWebRetrievalResult,
@@ -1572,6 +1577,64 @@ def test_staged_execution_projects_ambiguous_registry_entities_into_review_neede
     assert execution_results["source_obligation_summary"]["blocking_count"] == 0
     assert "upstream_entity_retained_for_review" in [event.event_type for event in events]
     assert "cross_source_disambiguation_requested" in [event.event_type for event in events]
+
+
+def test_candidate_universe_projection_preserves_review_needed_entity_type_without_observation_metadata() -> None:
+    universe = [
+        {
+            "candidate_id": "tobolsk-site",
+            "legal_name": "Тобольская промышленная площадка",
+            "status": "unknown_review_needed",
+            "entity_type": "production_site",
+            "resolution_status": "linked_to_legal_entity",
+            "not_candidate_reason": "not_standalone_legal_entity",
+            "review_flags": ["requires_human_review", "not_standalone_legal_entity"],
+            "source_refs": ["sibur_press_2016_tobolsk"],
+        }
+    ]
+
+    projected = candidate_universe_with_entity_metadata(universe, observations=[])
+
+    assert projected[0]["entity_type"] == "production_site"
+    assert projected[0]["resolution_status"] == "linked_to_legal_entity"
+    assert projected[0]["not_candidate_reason"] == "not_standalone_legal_entity"
+    assert projected[0]["review_flags"] == ["requires_human_review", "not_standalone_legal_entity"]
+
+
+def test_review_needed_projection_upgrades_existing_unknown_universe_entity() -> None:
+    universe = [
+        {
+            "candidate_id": "tobolsk-site",
+            "legal_name": "Тобольская промышленная площадка",
+            "status": "unknown_review_needed",
+            "entity_type": "unknown_entity",
+            "resolution_status": "review_needed",
+            "source_refs": ["retrieved_10"],
+        }
+    ]
+
+    projected = _append_review_needed_universe_entities(
+        universe,
+        provider_metadata={
+            "upstream_disambiguation_results": [
+                {
+                    "entity_name": "Тобольская промышленная площадка",
+                    "entity_type": "production_site",
+                    "resolution_status": "linked_to_legal_entity",
+                    "resolved_legal_name": "ООО «СИБУР Тобольск»",
+                    "not_candidate_reason": "not_standalone_legal_entity",
+                    "source_refs": ["sibur_press_2016_tobolsk"],
+                    "review_flags": ["requires_human_review", "not_standalone_legal_entity"],
+                }
+            ]
+        },
+    )
+
+    assert len(projected) == 1
+    assert projected[0]["entity_type"] == "production_site"
+    assert projected[0]["resolution_status"] == "linked_to_legal_entity"
+    assert projected[0]["resolved_legal_name"] == "ООО «СИБУР Тобольск»"
+    assert projected[0]["source_refs"] == ["retrieved_10", "sibur_press_2016_tobolsk"]
 
 
 def test_smoke_profile_caps_promoted_candidates_not_only_signal_scope() -> None:

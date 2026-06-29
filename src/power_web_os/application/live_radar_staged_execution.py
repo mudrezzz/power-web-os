@@ -1540,8 +1540,8 @@ def _append_review_needed_universe_entities(
     *,
     provider_metadata: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    known = {str(item.get("legal_name") or "").casefold() for item in candidate_universe}
     result = list(candidate_universe)
+    known = {str(item.get("legal_name") or "").casefold(): item for item in result}
     review_sources = [
         *dict_list(provider_metadata.get("upstream_disambiguation_results")),
         *[
@@ -1553,11 +1553,14 @@ def _append_review_needed_universe_entities(
     ]
     for item in review_sources:
         name = str(item.get("legal_name") or item.get("entity_name") or "").strip()
-        if not name or name.casefold() in known:
+        if not name:
             continue
-        known.add(name.casefold())
+        existing = known.get(name.casefold())
+        if existing is not None:
+            _merge_review_needed_metadata(existing, item)
+            continue
         entity_type = str(item.get("entity_type") or "unknown_entity")
-        result.append({
+        payload = {
             "candidate_id": stable_id(name),
             "legal_name": name,
             "status": "unknown_review_needed",
@@ -1572,8 +1575,32 @@ def _append_review_needed_universe_entities(
             "review_flags": _string_list(item.get("review_flags")),
             "linked_fact_count": 0,
             "signal_searches": [],
-        })
+        }
+        result.append(payload)
+        known[name.casefold()] = payload
     return result
+
+
+def _merge_review_needed_metadata(target: dict[str, Any], incoming: dict[str, Any]) -> None:
+    incoming_type = str(incoming.get("entity_type") or "")
+    current_type = str(target.get("entity_type") or "")
+    if incoming_type and incoming_type != "unknown_entity" and current_type in {"", "unknown_entity"}:
+        target["entity_type"] = incoming_type
+    incoming_status = str(incoming.get("resolution_status") or incoming.get("entity_resolution_status") or "")
+    if incoming_status and str(target.get("resolution_status") or "") in {"", "review_needed", "unresolved"}:
+        target["resolution_status"] = incoming_status
+    for field_name in ("resolved_legal_name", "linked_legal_name", "not_candidate_reason"):
+        value = str(incoming.get(field_name) or "").strip()
+        if value and not str(target.get(field_name) or "").strip():
+            target[field_name] = value
+    source_refs = sorted({*_string_list(target.get("source_refs")), *_string_list(incoming.get("source_refs"))})
+    if source_refs:
+        target["source_refs"] = source_refs
+    review_flags = sorted({*_string_list(target.get("review_flags")), *_string_list(incoming.get("review_flags"))})
+    if review_flags:
+        target["review_flags"] = review_flags
+    if str(target.get("entity_type") or "") in {"branch", "production_site", "asset", "project"} and not target.get("not_candidate_reason"):
+        target["not_candidate_reason"] = "not_standalone_legal_entity"
 
 
 def _review_needed_universe_count(candidate_universe: list[dict[str, Any]]) -> int:

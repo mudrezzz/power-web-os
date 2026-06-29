@@ -89,12 +89,14 @@ def candidate_universe_with_entity_metadata(
     for item in candidate_universe:
         payload = dict(item)
         metadata = metadata_by_name.get(str(payload.get("legal_name", "")).lower(), {})
-        payload["entity_type"] = str(metadata.get("entity_type") or "unknown_entity")
-        payload["resolution_status"] = str(metadata.get("entity_resolution_status") or "review_needed")
+        payload["entity_type"] = str(metadata.get("entity_type") or payload.get("entity_type") or "unknown_entity")
+        payload["resolution_status"] = str(
+            metadata.get("entity_resolution_status") or payload.get("resolution_status") or "review_needed"
+        )
         linked_facts = _dict_list(metadata.get("linked_entity_facts"))
         payload["linked_fact_count"] = len(linked_facts)
-        if metadata.get("not_candidate_reason"):
-            payload["not_candidate_reason"] = str(metadata["not_candidate_reason"])
+        if metadata.get("not_candidate_reason") or payload.get("not_candidate_reason"):
+            payload["not_candidate_reason"] = str(metadata.get("not_candidate_reason") or payload["not_candidate_reason"])
         result.append(payload)
     return result
 

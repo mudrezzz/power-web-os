@@ -4,7 +4,7 @@ Status: AS IS
 
 Product area: Radar candidate and signal search
 
-Updated after slice: 0.7.6.3.6.11
+Updated after slice: 0.7.6.3.6.12
 
 Last updated: 2026-06-29
 
@@ -70,6 +70,7 @@ merged into this AS IS document and the PDF is regenerated.
 | Expansion target | A prioritized source-backed target that weak discovery should search next, such as a holding, legal entity, production site, branch, alias/language variant, or explicit benchmark target. |
 | Expansion scheduler | Application-layer selector that orders guaranteed target-lane expansion probes, origin-aware completion probes, and optional expansion variants while recording scheduled/not-scheduled states. |
 | Work scheduler | Central application-layer admission controller that decides which approved work items can consume shared budget and which must be rejected before provider execution. |
+| Projection type loss | Diagnostic state where a source-backed review-needed entity is present, but its entity type was downgraded to `unknown_entity` during projection. |
 | `not_observed` | A searched signal with no evidence found. It must not mean "not searched". |
 | `not_searched_*` | Explicit unsearched state caused by budget, policy, missing scope, or pending output. |
 
@@ -493,7 +494,9 @@ Current rules:
   as review-needed upstream entities or linked facts;
 - unresolved sites, projects, or assets must not become high-confidence product
   account candidates;
-- review flags explain why an entity needs human attention.
+- review flags explain why an entity needs human attention;
+- typed upstream entities can upgrade duplicate `unknown_entity` universe rows
+  instead of being skipped as duplicates.
 
 Common review flags include:
 
@@ -505,6 +508,20 @@ Common review flags include:
 
 Product candidate projection remains precision-first. Upstream universe
 retention is allowed to be broader than product account output.
+
+Projection must preserve review-needed metadata across handoffs:
+
+- `entity_type`;
+- `resolution_status`;
+- `resolved_legal_name`;
+- `not_candidate_reason`;
+- `review_flags`;
+- `source_refs`.
+
+If a candidate-universe gap enters first without type metadata and a typed
+upstream disambiguation record arrives later with the same name, the existing
+universe row is upgraded in place. This prevents source-backed production sites
+from degrading to `unknown_entity` before evaluation.
 
 ## 13. Checkpoints And Adaptive Actions
 
@@ -710,6 +727,21 @@ Current SIBUR evaluation channels:
 - evidence quality buckets;
 - optional coverage probe output that is diagnostic only and does not change the
   original metrics.
+
+Review recall can match non-legal baseline entities through product-safe
+diagnostic channels:
+
+- `candidate_universe`;
+- `upstream_disambiguation_results`;
+- `linked_entity_facts`;
+- `unresolved_candidate_gaps`.
+
+The matcher is source-backed and baseline-driven. Exact normalized names remain
+strongest, while production-site/branch review matches can tolerate generic
+relation suffixes such as parenthesized department names when the meaningful
+baseline tokens are present. `unknown_entity` rows do not count as review hits;
+they become `projection_type_lost` when the entity text is present but the
+review entity type was lost.
 
 Evaluation is a measurement layer. If it exposes poor quality, the fix should be
 planned as a follow-up slice rather than hidden inside the evaluation code.

@@ -168,6 +168,94 @@ def test_evaluation_counts_review_needed_sites_from_upstream_universe() -> None:
     assert report["false_positives"] == []
 
 
+def test_evaluation_matches_tobolsk_review_site_with_relation_suffix() -> None:
+    baseline = RadarEvaluationBaseline(
+        baseline_id="tobolsk-review-test",
+        version="v1",
+        radar_id=SIBUR_CONTOUR_RADAR_ID,
+        description="Tobolsk review recall fixture.",
+        entities=(
+            RadarEvaluationEntity(
+                baseline_id="tobolsk-site",
+                canonical_name="Тобольская промышленная площадка СИБУР",
+                aliases=("Тобольск СИБУР", "Тобольская площадка"),
+                entity_type="production_site",
+            ),
+        ),
+    )
+    dossier = {
+        "summary": {"execution_outcome": "stopped_for_review"},
+        "source_lifecycle": [
+            {
+                "evidence_ref": "sibur_press_2016_tobolsk",
+                "url": "https://www.sibur.ru/ru/press-center/news-and-press/SIBURobedinyaettobolskiepredpriyatiyavotdelnuyubiznesedinitsuTobolskuyupromyshlennuyuploshchadku/",
+                "state": "retrieved",
+                "verification_state": "reachable",
+            }
+        ],
+        "candidates": [],
+        "candidate_universe": [
+            {
+                "legal_name": "Тобольская промышленная площадка (Дирекция компании)",
+                "entity_type": "production_site",
+                "resolution_status": "linked_to_legal_entity",
+                "resolved_legal_name": "ООО «СИБУР Тобольск»",
+                "not_candidate_reason": "not_standalone_legal_entity",
+                "source_refs": ["sibur_press_2016_tobolsk"],
+                "review_flags": ["requires_human_review", "not_standalone_legal_entity"],
+            }
+        ],
+    }
+
+    report = evaluate_radar_dossier(
+        run={"run_id": "radar-run-tobolsk", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},
+        dossier=dossier,
+        baseline=baseline,
+    )
+
+    assert report["metrics"]["review_recall"] == 1.0
+    assert report["false_negatives"] == []
+    assert report["review_matches"][0]["baseline_id"] == "tobolsk-site"
+
+
+def test_evaluation_diagnoses_projection_type_lost_for_review_site() -> None:
+    baseline = RadarEvaluationBaseline(
+        baseline_id="projection-type-test",
+        version="v1",
+        radar_id=SIBUR_CONTOUR_RADAR_ID,
+        description="Projection loss fixture.",
+        entities=(
+            RadarEvaluationEntity(
+                baseline_id="tobolsk-site",
+                canonical_name="Тобольская промышленная площадка СИБУР",
+                aliases=("Тобольская площадка",),
+                entity_type="production_site",
+            ),
+        ),
+    )
+    dossier = {
+        "summary": {"execution_outcome": "stopped_for_review"},
+        "candidates": [],
+        "candidate_universe": [
+            {
+                "legal_name": "Тобольская промышленная площадка",
+                "entity_type": "unknown_entity",
+                "resolution_status": "review_needed",
+                "source_refs": ["sibur_press_2016_tobolsk"],
+            }
+        ],
+    }
+
+    report = evaluate_radar_dossier(
+        run={"run_id": "radar-run-type-lost", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},
+        dossier=dossier,
+        baseline=baseline,
+    )
+
+    assert report["metrics"]["review_recall"] == 0.0
+    assert report["false_negative_diagnostics"][0]["bucket"] == "projection_type_lost"
+
+
 def test_budget_limited_run_still_produces_diagnostic_followups() -> None:
     dossier = _sample_dossier()
     dossier["summary"]["execution_outcome"] = "stopped_for_review"

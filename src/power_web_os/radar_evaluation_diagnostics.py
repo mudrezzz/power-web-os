@@ -36,7 +36,10 @@ def false_negative_diagnostics(*, false_negatives: list[dict[str, Any]], dossier
             *[str(value) for value in item.get("aliases", []) if isinstance(value, str)],
         ]
         normalized_names = [_normalize_name(value) for value in names if value]
-        if any(name and name in observed_text for name in normalized_names):
+        if _projection_type_lost(item=item, dossier=dossier):
+            bucket = "projection_type_lost"
+            message = "Entity is present in observed universe diagnostics, but its review entity type was projected as unknown."
+        elif any(name and name in observed_text for name in normalized_names):
             bucket = "present_not_matched"
             message = "Entity-like text is present in observed candidate/universe diagnostics but did not match the baseline."
         elif any(name and name in source_text for name in normalized_names):
@@ -62,6 +65,31 @@ def false_negative_diagnostics(*, false_negatives: list[dict[str, Any]], dossier
             "message": message,
         })
     return diagnostics
+
+
+def _projection_type_lost(*, item: dict[str, Any], dossier: dict[str, Any]) -> bool:
+    expected_type = str(item.get("entity_type") or "")
+    if expected_type == "legal_entity":
+        return False
+    names = [
+        str(item.get("canonical_name") or ""),
+        *[str(value) for value in item.get("aliases", []) if isinstance(value, str)],
+    ]
+    normalized_names = [_normalize_name(value) for value in names if value]
+    observed_records = [
+        *_list(dossier.get("candidate_universe")),
+        *_list(dossier.get("entity_resolution_results")),
+        *_list(dossier.get("upstream_disambiguation_results")),
+        *_list(dossier.get("linked_entity_facts")),
+        *_list(dossier.get("unresolved_candidate_gaps")),
+    ]
+    for record in observed_records:
+        if str(record.get("entity_type") or "") != "unknown_entity":
+            continue
+        text = _normalized_blob(_iter_text_values([record]))
+        if _any_name_matches_text(normalized_names, text):
+            return True
+    return False
 
 
 def _expansion_result_bucket(*, item: dict[str, Any], dossier: dict[str, Any]) -> str:
@@ -115,6 +143,19 @@ def _matching_records(*, item: dict[str, Any], records: list[dict[str, Any]]) ->
     return result
 
 
+def _any_name_matches_text(normalized_names: list[str], text: str) -> bool:
+    text_tokens = set(text.split())
+    for name in normalized_names:
+        if not name:
+            continue
+        if name in text:
+            return True
+        name_tokens = {token for token in name.split() if len(token) >= 4 and token not in {"сибур", "sibur"}}
+        if len(name_tokens) >= 2 and name_tokens.issubset(text_tokens):
+            return True
+    return False
+
+
 def _iter_text_values(values: list[Any]) -> list[str]:
     result: list[str] = []
 
@@ -140,10 +181,23 @@ def _normalized_blob(values: list[str]) -> str:
 
 
 def _normalize_name(value: str) -> str:
-    cleaned = value.lower().replace("ё", "е")
+    cyrillic_range = "\u0430-\u044f"
+    legal_forms = "|".join((
+        "\u043e\u043e\u043e",
+        "\u043e\u0430\u043e",
+        "\u0430\u043e",
+        "\u043f\u0430\u043e",
+        "\u0437\u0430\u043e",
+        "llc",
+        "pjsc",
+        "jsc",
+        "inc",
+        "ltd",
+    ))
+    cleaned = value.lower().replace("\u0451", "\u0435")
     cleaned = re.sub(r"[\"'«»“”„]", "", cleaned)
-    cleaned = re.sub(r"\b(ооо|оао|ао|пао|зао|llc|pjsc|jsc|inc|ltd)\b", "", cleaned)
-    cleaned = re.sub(r"[^a-zа-я0-9]+", " ", cleaned)
+    cleaned = re.sub(rf"\b({legal_forms})\b", "", cleaned)
+    cleaned = re.sub(rf"[^a-z{cyrillic_range}0-9]+", " ", cleaned)
     return " ".join(cleaned.split())
 
 

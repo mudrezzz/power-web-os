@@ -97,6 +97,12 @@ def gap_payloads(gaps: list[dict[str, Any]], *, origin_task_id: str) -> list[dic
             "origin_task_id": origin_task_id,
             "source_refs": source_refs(item),
             "reason": str(item.get("reason") or item.get("summary") or "Candidate universe gap."),
+            "entity_type": str(item.get("entity_type") or "unknown_entity"),
+            "resolution_status": str(item.get("resolution_status") or item.get("entity_resolution_status") or "review_needed"),
+            "not_candidate_reason": str(item.get("not_candidate_reason") or ""),
+            "review_flags": [str(flag) for flag in item.get("review_flags", []) if str(flag).strip()]
+            if isinstance(item.get("review_flags"), list)
+            else [],
         })
     return payloads
 

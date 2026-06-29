@@ -9,6 +9,13 @@ from pathlib import Path
 from typing import Any
 
 from power_web_os.radar_evaluation_diagnostics import false_negative_diagnostics
+from power_web_os.radar_evaluation_matching import (
+    contains_strong_name,
+    entity_type_compatible,
+    match_rank,
+    normalize_name,
+    review_entity_name_match,
+)
 
 
 SIBUR_CONTOUR_RADAR_ID = "benchmark-sibur-holding-contour"
@@ -29,7 +36,7 @@ class RadarEvaluationEntity:
 
     @property
     def normalized_names(self) -> set[str]:
-        return {_normalize_name(name) for name in (self.canonical_name, *self.aliases) if name}
+        return {normalized for name in (self.canonical_name, *self.aliases) if (normalized := normalize_name(name))}
 
 
 @dataclass(slots=True)
@@ -54,7 +61,7 @@ class RadarObservedEntity:
 
     @property
     def normalized_name(self) -> str:
-        return _normalize_name(self.name)
+        return normalize_name(self.name)
 
 
 @dataclass(slots=True)
@@ -200,7 +207,7 @@ def _match_entities(
         candidates = [item for item in candidates if item is not None]
         if not candidates:
             continue
-        candidates.sort(key=lambda item: _match_rank(item.match_type, item.confidence), reverse=True)
+        candidates.sort(key=lambda item: match_rank(item.match_type, item.confidence), reverse=True)
         selected = candidates[0]
         used_observed.add(id(selected.observed))
         if selected.confidence == "ambiguous":
@@ -215,13 +222,17 @@ def _candidate_match(
     observed: RadarObservedEntity,
     source_index: dict[str, dict[str, Any]],
 ) -> RadarEvaluationMatch | None:
+    if not entity_type_compatible(baseline_entity_type=baseline.entity_type, observed_entity_type=observed.entity_type):
+        return None
     if baseline.inn and observed.inn and baseline.inn == observed.inn:
         return _match(baseline, observed, "inn", "high", source_index)
     if baseline.ogrn and observed.ogrn and baseline.ogrn == observed.ogrn:
         return _match(baseline, observed, "ogrn", "high", source_index)
     if observed.normalized_name in baseline.normalized_names:
         return _match(baseline, observed, "normalized_name", "high", source_index)
-    if any(_contains_strong_name(observed.normalized_name, name) for name in baseline.normalized_names):
+    if baseline.entity_type != "legal_entity" and observed.source_refs and review_entity_name_match(baseline_names=baseline.normalized_names, observed_name=observed.normalized_name):
+        return _match(baseline, observed, "source_backed_partial", "medium", source_index)
+    if any(contains_strong_name(observed.normalized_name, name) for name in baseline.normalized_names):
         confidence = "medium" if observed.source != "product_candidate" else "ambiguous"
         return _match(baseline, observed, "source_backed_partial", confidence, source_index)
     return None
@@ -401,28 +412,6 @@ def _first_string(payload: dict[str, Any], *keys: str) -> str:
         if isinstance(value, str) and value.strip():
             return value.strip()
     return ""
-
-
-def _contains_strong_name(observed_name: str, baseline_name: str) -> bool:
-    if len(baseline_name) >= 5 and f" {baseline_name} " in f" {observed_name} ":
-        return True
-    if len(observed_name) < 6 or len(baseline_name) < 6:
-        return False
-    return observed_name in baseline_name or baseline_name in observed_name
-
-
-def _match_rank(match_type: str, confidence: str) -> int:
-    type_rank = {"inn": 40, "ogrn": 40, "normalized_name": 30, "source_backed_partial": 20}
-    confidence_rank = {"high": 3, "medium": 2, "ambiguous": 1}
-    return type_rank.get(match_type, 0) + confidence_rank.get(confidence, 0)
-
-
-def _normalize_name(value: str) -> str:
-    value = value.lower().replace("ё", "е")
-    value = re.sub(r"[\"'«»“”()]", " ", value)
-    value = re.sub(r"\b(ооо|ао|пао|зао|оао|нко|llc|jsc|pjsc|ltd|public joint stock company|joint stock company)\b", " ", value)
-    value = re.sub(r"[^a-zа-я0-9]+", " ", value)
-    return re.sub(r"\s+", " ", value).strip()
 
 
 def _optional_digits(value: Any) -> str | None:
