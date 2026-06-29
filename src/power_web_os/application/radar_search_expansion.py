@@ -34,7 +34,7 @@ from power_web_os.application.radar_search_expansion_support import (
     variants_for_target as _variants_for_target,
 )
 from power_web_os.application.radar_search_expansion_selection import (
-    select_diversified_variants as _select_diversified_variants,
+    select_guaranteed_variants as _select_guaranteed_variants,
 )
 
 
@@ -82,12 +82,19 @@ class RadarSearchExpansionService:
                 relation_terms=_relation_terms(radar),
             )
         ])
-        variants = _select_diversified_variants(candidate_variants, max_variants=self._max_variants)
+        selection = _select_guaranteed_variants(
+            candidate_variants,
+            max_variants=self._max_variants,
+            minimums=_benchmark_target_probe_minimums(radar),
+            targets=[target.to_payload() for target in targets],
+        )
         return RadarSearchExpansionPlan(
-            should_expand=bool(variants),
-            variants=variants,
+            should_expand=bool(selection.variants),
+            variants=selection.variants,
             targets=targets,
             reason=reason,
+            selection_summary=selection.to_summary(),
+            selection_diagnostics=selection.diagnostics,
         )
 
     def tasks_from_plan(
@@ -153,3 +160,19 @@ class RadarSearchExpansionService:
                     budget_reserve_key=_reserve_key_for_target(target_type),
                 ))
         return sorted(_dedupe_targets(targets), key=lambda item: (item.priority, item.target_label.casefold()))
+
+
+def _benchmark_target_probe_minimums(radar: dict[str, Any]) -> dict[str, int]:
+    task_context = radar.get("task_context") if isinstance(radar.get("task_context"), dict) else {}
+    raw = task_context.get("benchmark_target_probe_minimums")
+    if not isinstance(raw, dict) or not task_context.get("benchmark_profile"):
+        return {}
+    result: dict[str, int] = {}
+    for key, value in raw.items():
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            continue
+        if parsed > 0:
+            result[str(key)] = parsed
+    return result

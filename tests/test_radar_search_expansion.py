@@ -19,6 +19,7 @@ from power_web_os.application.radar_registry_lookup_terms import RegistryLookupT
 from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
 from power_web_os.application.radar_search_expansion_models import RadarSearchExpansionVariant
 from power_web_os.application.radar_search_expansion_scheduler import schedule_guaranteed_expansion_variants
+from power_web_os.application.radar_search_expansion_selection import select_guaranteed_variants
 from power_web_os.application.radar_source_obligations import obligation_decisions_from_plan, source_obligation_summary
 from power_web_os.application.radar_source_providers import CompanyLookupRequest, RadarSourceRegistry
 from power_web_os.integrations.dadata_provider import RecordedDaDataCompanyRegistryProvider
@@ -266,6 +267,102 @@ def test_expansion_scheduler_reports_unscheduled_targets() -> None:
     assert schedule.lane_allocation["production_site_or_branch_target"]["scheduled_minimum_satisfied"] is False
     assert schedule.unscheduled_targets[0]["target_id"] == "site-1"
     assert schedule.unscheduled_targets[0]["not_searched_reason"] == "selected_but_not_scheduled"
+
+
+def test_selector_picks_lane_minimums_before_optional_variants() -> None:
+    variants = [
+        _variant("holding-1", "holding_or_group_target", "holding query"),
+        *[
+            _variant(f"legal-{index}", "known_subsidiary_or_legal_entity_target", f"legal query {index}")
+            for index in range(1, 11)
+        ],
+        *[
+            _variant(f"site-{index}", "production_site_or_branch_target", f"site query {index}")
+            for index in range(1, 11)
+        ],
+        *[
+            _variant(f"optional-{index}", "source_backed_universe_gap_target", f"optional query {index}")
+            for index in range(1, 4)
+        ],
+    ]
+
+    selection = select_guaranteed_variants(
+        variants,
+        max_variants=3,
+        minimums={
+            "holding_or_group_target": 1,
+            "known_subsidiary_or_legal_entity_target": 2,
+            "production_site_or_branch_target": 2,
+        },
+        targets=[_target(item) for item in variants],
+    )
+
+    selected_by_type = Counter(item.target_type for item in selection.variants)
+    first_five = selection.variants[:5]
+    assert selection.effective_max_variants == 5
+    assert selected_by_type["holding_or_group_target"] == 1
+    assert selected_by_type["known_subsidiary_or_legal_entity_target"] == 2
+    assert selected_by_type["production_site_or_branch_target"] == 2
+    assert all(item.target_type != "source_backed_universe_gap_target" for item in first_five)
+    assert selection.selected_guaranteed_count == 5
+    assert selection.selected_optional_count == 0
+    assert selection.diagnostics == []
+
+
+def test_selector_reports_no_executable_variant_for_generated_lane_target() -> None:
+    site_target = {
+        "target_id": "site-1",
+        "target_label": "Site 1",
+        "target_type": "production_site_or_branch_target",
+    }
+
+    selection = select_guaranteed_variants(
+        [_variant("holding-1", "holding_or_group_target", "holding query")],
+        max_variants=5,
+        minimums={"production_site_or_branch_target": 1},
+        targets=[site_target],
+    )
+
+    reasons = {item["reason"] for item in selection.diagnostics}
+    assert "no_executable_variant_for_target" in reasons
+    assert selection.selected_guaranteed_count == 0
+
+
+def test_benchmark_expansion_plan_raises_cap_to_lane_minimums() -> None:
+    radar = _radar_with_sources()
+    radar["task_context"] = {
+        "benchmark_profile": "benchmark_smoke",
+        "benchmark_target_probe_minimums": {
+            "holding_or_group_target": 1,
+            "known_subsidiary_or_legal_entity_target": 2,
+            "production_site_or_branch_target": 2,
+        },
+        "benchmark_target_hints": [
+            {"canonical_name": "SIBUR Holding", "entity_type": "legal_entity"},
+            {"canonical_name": "ZapSibNeftekhim LLC", "entity_type": "legal_entity"},
+            {"canonical_name": "POLIOM LLC", "entity_type": "legal_entity"},
+            {"canonical_name": "Gubkinsky GPP plant", "entity_type": "production_site"},
+            {"canonical_name": "Tobolsk production site", "entity_type": "production_site"},
+        ],
+    }
+
+    payload = RadarSearchExpansionService(max_variants=3).plan_expansion(
+        radar=radar,
+        candidate_scope=[],
+        provider_metadata={},
+        coverage_checks=[{"completeness_risk": "high"}],
+        unresolved_candidate_gaps=[],
+    ).to_payload()
+
+    selected_by_type = {
+        key: len(value)
+        for key, value in payload["variants_by_target_type"].items()
+    }
+    assert payload["selection_summary"]["effective_max_variants"] == 5
+    assert payload["selection_summary"]["selected_guaranteed_count"] == 5
+    assert selected_by_type["holding_or_group_target"] >= 1
+    assert selected_by_type["known_subsidiary_or_legal_entity_target"] >= 2
+    assert selected_by_type["production_site_or_branch_target"] >= 2
 
 
 def test_registry_lookup_terms_generate_russian_variants_for_english_aliases() -> None:

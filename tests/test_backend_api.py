@@ -588,6 +588,14 @@ def test_radar_run_dossier_explains_zero_product_sources(tmp_path: Path) -> None
     ]
     artifact["run_metadata"]["execution_results"]["work_scheduler_plan"] = {"work_item_count": 2}
     artifact["run_metadata"]["execution_results"]["work_scheduler_ledger"] = {"accepted_count": 1, "rejected_count": 1}
+    artifact["run_metadata"]["execution_results"]["search_expansion_selection_summary"] = {
+        "selected_guaranteed_count": 1,
+        "selected_optional_count": 0,
+        "effective_max_variants": 5,
+    }
+    artifact["run_metadata"]["execution_results"]["search_expansion_selection_diagnostics"] = [
+        {"target_type": "production_site_or_branch_target", "reason": "selection_below_minimum"}
+    ]
     artifact["run_metadata"]["execution_results"]["work_admission_decisions"] = [
         {"work_id": "work-1", "accepted": True},
         {"work_id": "work-2", "accepted": False, "reason": "budget_reserve_exhausted"},
@@ -632,6 +640,8 @@ def test_radar_run_dossier_explains_zero_product_sources(tmp_path: Path) -> None
     assert dossier["semantic_task_budget_exhaustion_events"][0]["reason"] == "semantic_task_reserve_exhausted"
     assert dossier["target_probe_guarantees"]["target_probe_minimums_satisfied"] is False
     assert dossier["target_probe_guarantee_failures"][0]["reason"] == "semantic_task_budget_limited"
+    assert dossier["search_expansion_selection_summary"]["selected_guaranteed_count"] == 1
+    assert dossier["search_expansion_selection_diagnostics"][0]["reason"] == "selection_below_minimum"
     assert dossier["work_scheduler_ledger"]["rejected_count"] == 1
     assert dossier["work_admission_decisions"][1]["reason"] == "budget_reserve_exhausted"
     assert dossier["work_lane_summary"]["recall_expansion_production_site_branch"]["accepted"] == 1

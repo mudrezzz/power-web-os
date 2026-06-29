@@ -22,6 +22,7 @@ def test_benchmark_task_context_uses_explicit_smoke_budgets() -> None:
     assert context["benchmark_radar_id"] == "benchmark-mining-toir"
     assert context["max_total_web_tasks_per_run"] == 18
     assert context["max_openrouter_calls_per_run"] == 16
+    assert context["max_openrouter_planner_calls_per_run"] == 3
     assert context["max_openrouter_web_task_calls_per_run"] == 8
     assert context["max_recall_expansion_openrouter_calls_per_run"] == 5
     assert context["max_openrouter_server_tool_web_searches_per_run"] == 45
@@ -156,6 +157,14 @@ def test_benchmark_result_summary_exposes_semantic_budget_guarantees_and_verific
             ],
             "work_scheduler_plan": {"work_item_count": 2},
             "work_scheduler_ledger": {"accepted_count": 1, "rejected_count": 1},
+            "search_expansion_selection_summary": {
+                "selected_guaranteed_count": 1,
+                "selected_optional_count": 0,
+                "effective_max_variants": 5,
+            },
+            "search_expansion_selection_diagnostics": [
+                {"target_type": "production_site_or_branch_target", "reason": "selection_below_minimum"}
+            ],
             "work_lane_summary": {"recall_expansion_production_site_branch": {"planned": 2, "accepted": 1, "rejected": 1}},
             "work_guarantee_failures": [
                 {"target_type": "production_site_or_branch_target", "reason": "budget_reserve_exhausted"}
@@ -180,6 +189,8 @@ def test_benchmark_result_summary_exposes_semantic_budget_guarantees_and_verific
     assert result["target_probe_guarantees"]["target_probe_minimums_satisfied"] is False
     assert result["target_probe_guarantee_failures"][0]["reason"] == "semantic_task_budget_limited"
     assert result["work_scheduler_ledger"]["rejected_count"] == 1
+    assert result["search_expansion_selection_summary"]["selected_guaranteed_count"] == 1
+    assert result["search_expansion_selection_diagnostics"][0]["reason"] == "selection_below_minimum"
     assert result["work_admission_decision_count"] == 2
     assert result["rejected_work_item_count"] == 1
     assert result["source_verification_unique_request_count"] == 1

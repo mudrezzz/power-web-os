@@ -414,6 +414,8 @@ class RadarRunDossierResponse(BaseModel):
     expansion_target_summary_by_type: dict[str, int] = Field(default_factory=dict)
     search_expansion_query_variants: list[dict[str, Any]] = Field(default_factory=list)
     search_expansion_query_variants_by_target: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
+    search_expansion_selection_summary: dict[str, Any] = Field(default_factory=dict)
+    search_expansion_selection_diagnostics: list[dict[str, Any]] = Field(default_factory=list)
     search_expansion_results: list[dict[str, Any]] = Field(default_factory=list)
     search_expansion_results_by_target: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
     search_expansion_results_by_target_type: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)

@@ -75,6 +75,10 @@ provider SDK details.
   capacity for application-approved lanes such as benchmark recall expansion.
   It orders and admits work, but does not call providers or mutate source
   policy.
+- `radar_search_expansion_selection.py` owns guaranteed target selection before
+  work admission. It must choose benchmark lane minimums before optional
+  variants and report selection-level blockers before any provider budget is
+  spent.
 
 ## Dependency Rules
 

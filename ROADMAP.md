@@ -6452,6 +6452,77 @@ Principles:
     smoke proves the central scheduler makes target-lane failures
     interpretable.
 
+### Slice 0.7.6.3.6.8: Guaranteed target selection before scheduler admission
+
+- Status: `Done`
+- Goal: Fix the remaining pre-admission blocker from `0.7.6.3.6.7`: the work
+  scheduler can admit protected recall-expansion work, but the selector must
+  first pass enough guaranteed lane work into the scheduler.
+- User value:
+  - The benchmark smoke no longer says "minimum failed" after the fact while
+    hiding that the required tasks were never selected.
+  - A user can see whether Radar generated too few targets, generated targets
+    without executable queries, selected too few tasks, or hit a real budget
+    blocker.
+- Problem statement:
+  - Docker smoke `radar-run-904cf50f-5551-40e8-9510-462f8383ca17` showed
+    `work_scheduler_ledger.accepted_count=5`, so scheduler admission worked.
+  - The same run still failed target minimums because only one
+    legal/subsidiary and one production-site/branch variant were selected,
+    while `benchmark_smoke` requires two of each.
+  - Root cause: generic variant clipping happened before guaranteed lane
+    selection, so required lanes could be clipped before scheduler admission.
+- Scope completed:
+  - Added TO BE Markdown/PDF:
+    `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_0.7.6.3.6.8.md` and `.pdf`.
+  - Added guarantee-aware variant selection before scheduler admission.
+  - Effective expansion variant cap is now raised to at least the sum of
+    benchmark target-lane minimums.
+  - Selector chooses required lane targets first and fills optional variants
+    only after those minimums.
+  - Added selection diagnostics:
+    `search_expansion_selection_summary` and
+    `search_expansion_selection_diagnostics`.
+  - Target probe failures now distinguish selection blockers such as
+    `target_not_generated`, `no_executable_variant_for_target`, and
+    `selection_below_minimum` from scheduler/budget blockers.
+  - AS IS Markdown/PDF updated to describe guaranteed target selection before
+    scheduler admission.
+- Tests:
+  - Added selector tests proving:
+    - 1 holding, 2 legal/subsidiary, and 2 production-site/branch variants are
+      selected before optional variants;
+    - `max_variants` is raised when benchmark minimums require more slots;
+    - generated targets without executable variants produce
+      `no_executable_variant_for_target`.
+  - Updated backend API and benchmark report tests for selection diagnostics.
+- Docker acceptance:
+  - Rebuilt Docker API/worker/backend-init and ran `benchmark_smoke` for
+    `benchmark-sibur-holding-contour`.
+  - First rerun after implementation exposed a local runtime defect:
+    `name 'selection_diagnostics' is not defined`; fixed and covered by a
+    targeted regression test.
+  - Final smoke run: `radar-run-e8936402-b242-4d63-a076-7d563441b7b0`.
+  - Result: `completed` / `stopped_for_review`, reason
+    `Execution budget was exhausted before signal search`.
+  - Selector acceptance passed: selected counts before scheduler/admission were
+    holding/group `2` (minimum `1`), legal/subsidiary `4` (minimum `2`),
+    production-site/branch `4` (minimum `2`).
+  - Scheduler/admission accepted the required lane portfolio: holding/group
+    `1`, legal/subsidiary `2`, production-site/branch `2`.
+  - Execution acceptance did not fully pass: production-site/branch executed
+    only `1` of required `2` because `openrouter_recall_expansion` budget was
+    exhausted at `5`.
+  - Evaluation for the same run: `strict_recall=1.0`, `review_recall=0.3333`.
+    False negatives: `gubkinsky-gpp` with
+    `expansion_global_budget_limited`, and `tobolsk-site` with
+    `expansion_not_selected`.
+  - Verdict: this slice fixed the pre-scheduler selection defect. The next
+    blocker is execution-budget allocation for guaranteed recall-expansion
+    work, not target selection.
+  - `benchmark_live` remains blocked until the bounded smoke can execute the
+    selected production-site lane minimum or explain a non-budget blocker.
+
 ### Slice 0.7.6.3.7: Model-role evaluation and extraction fallback policy
 
 - Status: `Backlog`

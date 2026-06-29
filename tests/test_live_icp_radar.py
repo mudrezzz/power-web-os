@@ -43,7 +43,7 @@ from power_web_os.application.live_radar_extraction_contract import validate_and
 from power_web_os.application.live_radar_retrieved_candidates import candidates_from_retrieved_sources
 from power_web_os.application.live_radar_product_sources import product_sources_for_candidates
 from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan, retrieval_plan_to_search_plan
-from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
+from power_web_os.application.live_radar_staged_execution import _target_probe_guarantees, run_staged_radar_execution
 from power_web_os.application.live_radar_staged_helpers import run_gate_pass
 from power_web_os.application.live_radar_web_retrieval import (
     RadarWebRetrievalResult,
@@ -2374,6 +2374,51 @@ def test_product_sources_for_candidates_keeps_diagnostic_metadata_for_unused_sou
             "verification_status_code": 504,
         }
     ]
+
+
+def test_target_probe_guarantees_uses_selection_diagnostics_without_runtime_name_error() -> None:
+    guarantees = _target_probe_guarantees(
+        provider_metadata={
+            "expansion_target_queue": [
+                {"target_id": "site-1", "target_type": "production_site_or_branch_target"},
+                {"target_id": "site-2", "target_type": "production_site_or_branch_target"},
+            ],
+            "search_expansion_query_variants": [
+                {"target_id": "site-1", "target_type": "production_site_or_branch_target"}
+            ],
+            "search_expansion_results": [
+                {
+                    "target_id": "site-1",
+                    "target_type": "production_site_or_branch_target",
+                    "outcome": "executed",
+                }
+            ],
+            "targets_not_searched": [
+                {
+                    "target_id": "site-2",
+                    "target_type": "production_site_or_branch_target",
+                    "not_searched_reason": "not_selected",
+                }
+            ],
+            "search_expansion_selection_diagnostics": [
+                {
+                    "target_type": "production_site_or_branch_target",
+                    "reason": "selection_below_minimum",
+                }
+            ],
+        },
+        radar={
+            "task_context": {
+                "benchmark_profile": "benchmark_smoke",
+                "benchmark_target_probe_minimums": {
+                    "production_site_or_branch_target": 2,
+                },
+            }
+        },
+    )
+
+    assert guarantees["summary"]["target_probe_minimums_satisfied"] is False
+    assert guarantees["failures"][0]["reason"] == "selection_below_minimum"
 
 
 def test_openrouter_discovery_planner_request_uses_planning_scope_only() -> None:

@@ -4,7 +4,7 @@ Status: AS IS
 
 Product area: Radar candidate and signal search
 
-Updated after slice: 0.7.6.3.6.7
+Updated after slice: 0.7.6.3.6.8
 
 Last updated: 2026-06-29
 
@@ -339,16 +339,24 @@ Each target records `target_id`, `target_label`, `target_type`, `source_refs`,
 `why_target_exists`, priority, allowed source ids, expected fact kinds,
 `budget_reserve_key`, execution status, and not-searched reason.
 
-Variant selection is target-aware and scheduler-backed. The planner no longer
+Variant selection is target-aware and guarantee-aware. The planner no longer
 takes a flat top-N list of query variants. It first deduplicates variants, then
-walks target-type lanes and target ids so one holding/legal-entity target cannot
-consume all early smoke expansion slots. When benchmark target minimums are
-present, `RadarSearchExpansionScheduler` orders the guaranteed lane variants
-before optional variants. Production-site and branch targets are lane-prioritized
-because they drive review recall, while product candidate projection remains
-strict. Targets that are generated but do not receive an execution slot are kept
-in `targets_not_searched` with a specific reason such as `not_selected` or
-`selected_but_not_scheduled`.
+selects benchmark target-lane minimums before optional variants. In
+`benchmark_smoke`, the effective variant cap is raised to at least the sum of
+required target lanes, so a low generic cap cannot make the guarantee impossible
+before scheduler admission.
+
+When benchmark target minimums are present, selection first tries to choose one
+holding/group target, two legal/subsidiary targets, and two
+production-site/branch targets. Optional alias, source-gap, or extra target
+variants are added only after those minimums are selected. Production-site and
+branch targets remain lane-prioritized because they drive review recall, while
+product candidate projection remains strict.
+
+Targets that are generated but do not receive an execution slot are kept in
+`targets_not_searched` with a specific reason. Selection-level reasons include
+`target_not_generated`, `no_executable_variant_for_target`, and
+`selection_below_minimum`; scheduler/admission reasons remain budget-specific.
 
 After target-lane ordering, `RadarWorkScheduler` performs central admission.
 This is the boundary between "selected" and "allowed to spend provider budget".
@@ -405,16 +413,16 @@ calls are capped at `16`, and server-tool web-search calls are capped at `45`.
 
 Benchmark smoke also carries target-lane guarantees in task context. The current
 minimums are one holding/group probe, two legal/subsidiary probes, and two
-production-site/branch probes. The expansion variant cap is raised to at least
-the sum of these minimums, so a `benchmark_smoke` target-lane guarantee is not
-impossible by configuration. The guarantee is evaluated from executed expansion
+production-site/branch probes. The guarantee is evaluated from executed expansion
 results, not from generated target queues. If the minimum is not met,
 `target_probe_guarantee_failures` names the blocker, such as
-`target_not_generated`, `target_not_selected`, `scheduled_below_minimum`,
+`target_not_generated`, `no_executable_variant_for_target`,
+`selection_below_minimum`, `target_not_selected`, `scheduled_below_minimum`,
 `semantic_task_budget_limited`, `external_budget_limited`,
 `source_policy_limited`, or `executed_below_minimum`.
 
 Expansion diagnostics include `expansion_target_summary_by_type`,
+`search_expansion_selection_summary`, `search_expansion_selection_diagnostics`,
 `expansion_schedule`, `target_lane_allocation`,
 `search_expansion_results_by_target_type`, `search_expansion_execution_summary`,
 `targets_not_searched`, semantic task reserve counters, and external reserve

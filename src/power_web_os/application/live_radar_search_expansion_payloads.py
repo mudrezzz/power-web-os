@@ -58,6 +58,14 @@ def with_expansion_plan_metadata(metadata: dict[str, Any], *, radar: dict[str, A
             *dict_list(metadata.get("targets_not_searched")),
             *dict_list(expansion_plan.get("targets_not_selected")),
         ]),
+        "search_expansion_selection_summary": merge_selection_summary(
+            metadata.get("search_expansion_selection_summary"),
+            expansion_plan.get("selection_summary"),
+        ),
+        "search_expansion_selection_diagnostics": [
+            *dict_list(metadata.get("search_expansion_selection_diagnostics")),
+            *dict_list(expansion_plan.get("selection_diagnostics")),
+        ],
         "source_capability_strategy_summary": source_capability_strategy_summary(radar=radar, expansion_plan=expansion_plan),
         "search_expansion_query_variants": [
             *dict_list(metadata.get("search_expansion_query_variants")),
@@ -105,6 +113,25 @@ def merge_int_dicts(left: object, right: object) -> dict[str, int]:
                 result[str(key)] = result.get(str(key), 0) + int(value)  # type: ignore[arg-type]
             except (TypeError, ValueError):
                 continue
+    return result
+
+
+def merge_selection_summary(left: object, right: object) -> dict[str, Any]:
+    result: dict[str, Any] = dict(left) if isinstance(left, dict) else {}
+    if not isinstance(right, dict):
+        return result
+    for key in ("selected_guaranteed_count", "selected_optional_count", "diagnostic_count"):
+        try:
+            result[key] = int(result.get(key) or 0) + int(right.get(key) or 0)
+        except (TypeError, ValueError):
+            continue
+    effective = right.get("effective_max_variants")
+    if effective is not None:
+        result["effective_max_variants"] = max(int(result.get("effective_max_variants") or 0), int(effective))
+    result["missing_minimums"] = [
+        *dict_list(result.get("missing_minimums")),
+        *dict_list(right.get("missing_minimums")),
+    ]
     return result
 
 

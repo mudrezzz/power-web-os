@@ -42,7 +42,7 @@ from power_web_os.application.radar_source_obligations import (
     source_obligation_summary,
 )
 from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
-from power_web_os.application.live_radar_search_expansion_payloads import benchmark_target_probe_minimums
+from power_web_os.application.live_radar_search_expansion_payloads import benchmark_target_probe_minimums, merge_selection_summary
 from power_web_os.application.radar_search_expansion_models import RadarSearchExpansionPlan
 from power_web_os.application.radar_search_expansion_scheduler import schedule_guaranteed_expansion_variants
 from power_web_os.application.radar_work_scheduler import RadarWorkScheduler, merge_work_scheduler_metadata
@@ -685,6 +685,8 @@ def run_staged_radar_execution(
             "search_expansion_tasks": provider_metadata.get("search_expansion_tasks", []),
             "search_expansion_query_variants": provider_metadata.get("search_expansion_query_variants", []),
             "search_expansion_query_variants_by_target": provider_metadata.get("search_expansion_query_variants_by_target", {}),
+            "search_expansion_selection_summary": provider_metadata.get("search_expansion_selection_summary", {}),
+            "search_expansion_selection_diagnostics": provider_metadata.get("search_expansion_selection_diagnostics", []),
             "search_expansion_results": provider_metadata.get("search_expansion_results", []),
             "search_expansion_results_by_target": _results_by_target(provider_metadata.get("search_expansion_results", [])),
             "search_expansion_results_by_target_type": _results_by_target_type(provider_metadata.get("search_expansion_results", [])),
@@ -921,6 +923,14 @@ def _run_search_expansion(
             *dict_list(provider_metadata.get("targets_not_searched")),
             *dict_list(expansion_payload.get("targets_not_selected")),
         ]),
+        "search_expansion_selection_summary": merge_selection_summary(
+            provider_metadata.get("search_expansion_selection_summary"),
+            expansion_payload.get("selection_summary"),
+        ),
+        "search_expansion_selection_diagnostics": [
+            *dict_list(provider_metadata.get("search_expansion_selection_diagnostics")),
+            *dict_list(expansion_payload.get("selection_diagnostics")),
+        ],
         "source_capability_strategy_summary": _source_capability_strategy_summary(
             radar=radar,
             expansion_plan=expansion_payload,
@@ -1188,6 +1198,7 @@ def _search_expansion_execution_summary(provider_metadata: dict[str, Any]) -> di
     variants = dict_list(provider_metadata.get("search_expansion_query_variants"))
     results = dict_list(provider_metadata.get("search_expansion_results"))
     not_searched = dict_list(provider_metadata.get("targets_not_searched"))
+    selection_diagnostics = dict_list(provider_metadata.get("search_expansion_selection_diagnostics"))
     executed = [item for item in results if _is_executed_expansion_result(item)]
     source_found = [item for item in executed if int(item.get("source_count") or 0) > 0]
     projected = [item for item in source_found if int(item.get("candidate_observation_count") or 0) > 0]
@@ -1223,6 +1234,7 @@ def _target_probe_guarantees(*, provider_metadata: dict[str, Any], radar: dict[s
     variants = dict_list(provider_metadata.get("search_expansion_query_variants"))
     results = dict_list(provider_metadata.get("search_expansion_results"))
     not_searched = dict_list(provider_metadata.get("targets_not_searched"))
+    selection_diagnostics = dict_list(provider_metadata.get("search_expansion_selection_diagnostics"))
     executed = [item for item in results if _is_executed_expansion_result(item)]
     summary: dict[str, Any] = {
         "required_target_probe_minimums": _int_minimums(minimums),
@@ -1253,7 +1265,14 @@ def _target_probe_guarantees(*, provider_metadata: dict[str, Any], radar: dict[s
                 "executed_count": len(executed_items),
                 "generated_count": len(generated),
                 "selected_count": len(selected),
-                "reason": _target_probe_failure_reason(generated, selected, not_searched_items),
+                "reason": _target_probe_failure_reason(
+                    generated,
+                    selected,
+                    not_searched_items,
+                    selection_diagnostics=[
+                        item for item in selection_diagnostics if str(item.get("target_type") or "") == target_type
+                    ],
+                ),
                 "not_searched_reasons": _count_by_reason(not_searched_items),
             })
     return {"summary": summary, "failures": failures}
@@ -1300,7 +1319,13 @@ def _target_probe_failure_reason(
     generated: list[dict[str, Any]],
     selected: list[dict[str, Any]],
     not_searched: list[dict[str, Any]],
+    *,
+    selection_diagnostics: list[dict[str, Any]] | None = None,
 ) -> str:
+    for item in selection_diagnostics or []:
+        reason = str(item.get("reason") or "")
+        if reason:
+            return reason
     reasons = _count_by_reason(not_searched)
     if not generated:
         return "target_not_generated"

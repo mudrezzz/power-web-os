@@ -144,6 +144,8 @@ def dossier_response(
         expansion_target_summary_by_type=_int_dict(execution_results.get("expansion_target_summary_by_type")),
         search_expansion_query_variants=_list(execution_results.get("search_expansion_query_variants")),
         search_expansion_query_variants_by_target=_dict(execution_results.get("search_expansion_query_variants_by_target")),
+        search_expansion_selection_summary=_dict(execution_results.get("search_expansion_selection_summary")),
+        search_expansion_selection_diagnostics=_list(execution_results.get("search_expansion_selection_diagnostics")),
         search_expansion_results=_list(execution_results.get("search_expansion_results")),
         search_expansion_results_by_target=_dict(execution_results.get("search_expansion_results_by_target")),
         search_expansion_results_by_target_type=_dict(execution_results.get("search_expansion_results_by_target_type")),
