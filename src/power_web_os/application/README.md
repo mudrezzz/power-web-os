@@ -86,8 +86,10 @@ provider SDK details.
   policy.
 - `radar_search_expansion_selection.py` owns guaranteed target selection before
   work admission. It must choose benchmark lane minimums before optional
-  variants, add bounded coverage-completion targets when configured, and report
-  selection-level blockers before any provider budget is spent.
+  variants, prioritize explicit benchmark completion targets over incidental
+  source-backed targets, add bounded coverage-completion targets when
+  configured, and report selection-level blockers before any provider budget is
+  spent.
 
 ## Dependency Rules
 

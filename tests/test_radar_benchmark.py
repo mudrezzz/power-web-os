@@ -152,6 +152,44 @@ def test_benchmark_result_summary_counts_only_executed_expansion_results() -> No
     assert result["search_expansion_execution_summary"]["executed_count"] == 1
 
 
+def test_benchmark_result_summary_preserves_completion_ranking_metadata() -> None:
+    result = benchmark_result_summary(
+        radar_id="benchmark-sibur-holding-contour",
+        profile="benchmark_smoke",
+        run={"run_id": "radar-run-1", "status": "completed"},
+        dossier={
+            "summary": {"execution_outcome": "stopped_for_review"},
+            "search_expansion_selection_diagnostics": [
+                {
+                    "target_id": "production_site_or_branch_target:tobolsk",
+                    "target_type": "production_site_or_branch_target",
+                    "reason": "completion_limit_reached",
+                    "target_origin": "benchmark_context",
+                    "completion_rank_reason": "explicit_benchmark_target:clean_named_target",
+                    "uncovered_baseline_target": True,
+                }
+            ],
+            "search_expansion_target_coverage": [
+                {
+                    "target_id": "production_site_or_branch_target:tobolsk",
+                    "target_type": "production_site_or_branch_target",
+                    "coverage_state": "not_selected",
+                    "target_origin": "benchmark_context",
+                    "completion_rank_reason": "explicit_benchmark_target:clean_named_target",
+                    "uncovered_baseline_target": True,
+                }
+            ],
+        },
+    )
+
+    diagnostic = result["search_expansion_selection_diagnostics"][0]
+    coverage = result["search_expansion_target_coverage"][0]
+    assert diagnostic["target_origin"] == "benchmark_context"
+    assert diagnostic["completion_rank_reason"] == "explicit_benchmark_target:clean_named_target"
+    assert coverage["target_origin"] == "benchmark_context"
+    assert coverage["uncovered_baseline_target"] is True
+
+
 def test_benchmark_result_summary_exposes_semantic_budget_guarantees_and_verification_cache() -> None:
     result = benchmark_result_summary(
         radar_id="benchmark-sibur-holding-contour",

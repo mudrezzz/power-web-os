@@ -118,6 +118,10 @@ def _variant(
         target_type=target.target_type,
         budget_reserve_key=reserve_key,
         priority=target.priority,
+        target_origin=target.target_origin,
+        completion_rank_reason=target.completion_rank_reason,
+        deprioritized_reason=target.deprioritized_reason,
+        uncovered_baseline_target=target.uncovered_baseline_target,
     )
 
 
@@ -181,9 +185,14 @@ def raw_target_items(
                     "reason": item.get("reason") or "Source-backed unresolved universe gap.",
                     "entity_type": item.get("entity_type"),
                     "target_type": "source_backed_universe_gap_target",
+                    "target_origin": "retrieved_source" if string_list(item.get("source_refs")) else "candidate_gap",
                 })
     for item in candidate_scope:
-        result.append({"label": item, "reason": "Existing low-confidence candidate scope needs coverage."})
+        result.append({
+            "label": item,
+            "reason": "Existing low-confidence candidate scope needs coverage.",
+            "target_origin": "candidate_gap",
+        })
     task_context = radar.get("task_context") if isinstance(radar.get("task_context"), dict) else {}
     benchmark_targets = [
         *dict_list(provider_metadata.get("benchmark_recall_targets")),
@@ -202,10 +211,16 @@ def raw_target_items(
                 "reason": "Explicit benchmark context target.",
                 "entity_type": item.get("entity_type"),
                 "target_type": "benchmark_baseline_like_target",
+                "target_origin": "benchmark_context",
+                "uncovered_baseline_target": True,
             })
     if not any(is_actionable_term(str(item.get("label") or "")) for item in result):
         for item in radar_seed_terms(radar):
-            result.append({"label": item, "reason": "Radar definition seed target."})
+            result.append({
+                "label": item,
+                "reason": "Radar definition seed target.",
+                "target_origin": "radar_seed",
+            })
     return result
 
 

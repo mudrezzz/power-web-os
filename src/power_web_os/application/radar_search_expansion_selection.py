@@ -60,13 +60,13 @@ def select_guaranteed_variants(
         grouped.setdefault(item.target_id or "unclassified", []).append(item)
     for target_id, items in list(grouped.items()):
         grouped[target_id] = sorted(items, key=lambda item: (_variant_reason_priority(item.reason), item.query.casefold()))
+    target_metadata = _target_metadata_by_id(targets or [])
 
     target_order = sorted(
         grouped,
         key=lambda target_id: (
             _target_type_lane_priority(grouped[target_id][0].target_type),
-            grouped[target_id][0].priority,
-            grouped[target_id][0].query.casefold(),
+            *_target_rank_key(target_id=target_id, grouped=grouped, target_metadata=target_metadata),
         ),
     )
     lanes: dict[str, list[str]] = {}
@@ -104,7 +104,11 @@ def select_guaranteed_variants(
     completion_count = 0
     completion_target_ids: set[str] = set()
     if completion_limit > 0:
-        for target_id in _completion_target_order(grouped=grouped, selected_target_ids=selected_target_ids):
+        for target_id in _completion_target_order(
+            grouped=grouped,
+            selected_target_ids=selected_target_ids,
+            target_metadata=target_metadata,
+        ):
             if completion_count >= completion_limit or len(result) >= effective_max:
                 break
             variants_for_target = grouped.get(target_id, [])
@@ -246,14 +250,14 @@ def _completion_target_order(
     *,
     grouped: dict[str, list[RadarSearchExpansionVariant]],
     selected_target_ids: set[str],
+    target_metadata: dict[str, dict[str, Any]] | None = None,
 ) -> list[str]:
     candidates = [target_id for target_id in grouped if target_id not in selected_target_ids]
+    metadata = target_metadata or {}
     return sorted(
         candidates,
         key=lambda target_id: (
-            _target_type_lane_priority(grouped[target_id][0].target_type),
-            grouped[target_id][0].priority,
-            grouped[target_id][0].query.casefold(),
+            *_target_rank_key(target_id=target_id, grouped=grouped, target_metadata=metadata),
         ),
     )
 
@@ -279,9 +283,68 @@ def _completion_not_selected_diagnostics(
             "target_type": str(target.get("target_type") or ""),
             "reason": reason,
             "completion_target_limit": completion_limit,
+            "target_origin": str(target.get("target_origin") or "unknown"),
+            "completion_rank_reason": str(target.get("completion_rank_reason") or ""),
+            "deprioritized_reason": str(target.get("deprioritized_reason") or ""),
+            "uncovered_baseline_target": bool(target.get("uncovered_baseline_target")),
             "message": "Target was generated and executable, but was not selected by the bounded completion pass.",
         })
     return diagnostics
+
+
+def _target_metadata_by_id(targets: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    return {
+        str(item.get("target_id") or ""): item
+        for item in targets
+        if str(item.get("target_id") or "")
+    }
+
+
+def _target_rank_key(
+    *,
+    target_id: str,
+    grouped: dict[str, list[RadarSearchExpansionVariant]],
+    target_metadata: dict[str, dict[str, Any]],
+) -> tuple[int, int, int, int, str]:
+    first = grouped[target_id][0]
+    metadata = target_metadata.get(target_id, {})
+    label = str(metadata.get("target_label") or first.query)
+    origin = str(metadata.get("target_origin") or first.target_origin or "")
+    return (
+        _target_origin_priority(origin, metadata),
+        _label_quality_penalty(label),
+        int(first.priority),
+        _variant_reason_priority(first.reason),
+        first.query.casefold(),
+    )
+
+
+def _target_origin_priority(origin: str, metadata: dict[str, Any]) -> int:
+    if bool(metadata.get("uncovered_baseline_target")):
+        return 0
+    return {
+        "benchmark_context": 0,
+        "retrieved_source": 10,
+        "candidate_gap": 20,
+        "generated_alias": 30,
+        "radar_seed": 35,
+        "unknown": 40,
+    }.get(origin, 40)
+
+
+def _label_quality_penalty(value: str) -> int:
+    text = " ".join(str(value).split()).casefold()
+    if not text:
+        return 50
+    if text.isdigit():
+        return 40
+    if text.startswith(("pdf ", "doc ", "xls ", "xlsx ", "csv ")):
+        return 30
+    if text in {"production site", "industrial site", "plant", "site"}:
+        return 20
+    if text in {"производственная площадка", "промышленная площадка", "завод", "филиал"}:
+        return 20
+    return 0
 
 
 def _target_type_lane_priority(target_type: str) -> int:

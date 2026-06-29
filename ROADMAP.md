@@ -6669,6 +6669,56 @@ Principles:
     production-site baseline targets, or whether benchmark smoke needs a
     separate completion-lane minimum.
 
+### Slice 0.7.6.3.6.11: Completion target prioritization for uncovered benchmark targets
+
+- Status: `Done`
+- Goal: Fix the remaining `benchmark_smoke_plus` failure where an explicit
+  uncovered benchmark target can be generated and executable, but still lose
+  completion slots to incidental production-site targets.
+- User value:
+  - Radar searches the important known benchmark gaps before spending bounded
+    completion slots on lower-value incidental targets.
+  - If a target remains missed, the dossier/report explains whether it was
+    deprioritized, not executable, not admitted, budget-limited, searched
+    without support, or lost in projection.
+- Problem statement:
+  - Budget sensitivity run `radar-run-eda7b48e-ac7c-4eae-ab5e-1c7e2db2889a`
+    proved that broader bounded smoke budget materially improves recall:
+    `strict_recall=1.0`, `review_recall=0.6667`, and only `tobolsk-site`
+    remained false negative.
+  - `tobolsk-site` was generated as an executable production-site target but
+    stayed `completion_not_selected`.
+  - Root cause: completion selection ranked targets mostly by lane, numeric
+    priority, and query text. It did not distinguish explicit benchmark targets
+    from incidental retrieved targets such as document-like labels or unrelated
+    branch/site mentions.
+- Scope completed:
+  - Added TO BE Markdown/PDF:
+    `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_0.7.6.3.6.11.md` and `.pdf`.
+  - Added additive target/variant metadata:
+    `target_origin`, `completion_rank_reason`, `deprioritized_reason`, and
+    `uncovered_baseline_target`.
+  - Updated selection ranking so explicit benchmark/baseline targets outrank
+    incidental source-backed targets, and clean named targets outrank generic,
+    document-like, or numeric-only labels.
+  - Preserved the scheduler/admission boundary: selector only orders work; the
+    central work scheduler and external-call budgets still decide whether work
+    may execute.
+  - Exposed ranking metadata through expansion payloads, target coverage,
+    dossier, and benchmark report projection.
+  - Updated AS IS Markdown/PDF.
+- Tests:
+  - Added selector test proving explicit benchmark completion target outranks
+    incidental production-site targets.
+  - Added expansion payload test proving target origin/rank metadata is visible.
+  - Added benchmark report test proving ranking metadata is preserved.
+- Acceptance:
+  - Fast tests prove the ranking change without live providers.
+  - Next practical acceptance: run bounded `benchmark_smoke_plus` again and
+    verify that `tobolsk-site` is selected/executed or receives a more precise
+    blocker than plain `completion_not_selected`.
+  - `benchmark_live` remains blocked until the bounded smoke is interpretable.
+
 ### Slice 0.7.6.3.7: Model-role evaluation and extraction fallback policy
 
 - Status: `Backlog`

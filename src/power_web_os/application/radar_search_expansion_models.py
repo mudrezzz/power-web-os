@@ -15,6 +15,10 @@ class RadarExpansionTarget:
     allowed_source_ids: list[str]
     expected_fact_kinds: list[str]
     budget_reserve_key: str
+    target_origin: str = "unknown"
+    completion_rank_reason: str = ""
+    deprioritized_reason: str = ""
+    uncovered_baseline_target: bool = False
     execution_status: str = "planned"
     not_searched_reason: str = ""
 
@@ -29,6 +33,10 @@ class RadarExpansionTarget:
             "allowed_source_ids": list(self.allowed_source_ids),
             "expected_fact_kinds": list(self.expected_fact_kinds),
             "budget_reserve_key": self.budget_reserve_key,
+            "target_origin": self.target_origin,
+            "completion_rank_reason": self.completion_rank_reason,
+            "deprioritized_reason": self.deprioritized_reason,
+            "uncovered_baseline_target": self.uncovered_baseline_target,
             "execution_status": self.execution_status,
             "not_searched_reason": self.not_searched_reason,
         }
@@ -45,6 +53,10 @@ class RadarSearchExpansionVariant:
     target_type: str = ""
     budget_reserve_key: str = "recall_expansion"
     priority: int = 100
+    target_origin: str = "unknown"
+    completion_rank_reason: str = ""
+    deprioritized_reason: str = ""
+    uncovered_baseline_target: bool = False
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -57,6 +69,10 @@ class RadarSearchExpansionVariant:
             "target_type": self.target_type,
             "budget_reserve_key": self.budget_reserve_key,
             "priority": self.priority,
+            "target_origin": self.target_origin,
+            "completion_rank_reason": self.completion_rank_reason,
+            "deprioritized_reason": self.deprioritized_reason,
+            "uncovered_baseline_target": self.uncovered_baseline_target,
         }
 
 

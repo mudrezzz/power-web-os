@@ -149,6 +149,8 @@ class RadarSearchExpansionService:
             labels = _dedupe_text([label, *_search_safe_terms(term_plan.values)])
             for index, target_label in enumerate(labels):
                 target_type = _target_type(target_label, raw)
+                target_origin = str(raw.get("target_origin") or _target_origin(raw))
+                rank_reason = _completion_rank_reason(target_origin=target_origin, target_label=target_label)
                 targets.append(RadarExpansionTarget(
                     target_id=_target_id(target_label, target_type),
                     target_label=target_label,
@@ -159,6 +161,10 @@ class RadarSearchExpansionService:
                     allowed_source_ids=[source.source_id for source in sources],
                     expected_fact_kinds=_expected_fact_kinds(target_type),
                     budget_reserve_key=_reserve_key_for_target(target_type),
+                    target_origin=target_origin,
+                    completion_rank_reason=rank_reason,
+                    deprioritized_reason=_deprioritized_reason(target_label),
+                    uncovered_baseline_target=bool(raw.get("uncovered_baseline_target")),
                 ))
         return sorted(_dedupe_targets(targets), key=lambda item: (item.priority, item.target_label.casefold()))
 
@@ -188,3 +194,53 @@ def _coverage_completion_target_limit(radar: dict[str, Any]) -> int:
     except (TypeError, ValueError):
         return 0
     return max(parsed, 0)
+
+
+def _target_origin(raw: dict[str, Any]) -> str:
+    reason = str(raw.get("reason") or "")
+    if reason == "Explicit benchmark context target.":
+        return "benchmark_context"
+    if _string_list(raw.get("source_refs")):
+        return "retrieved_source"
+    if reason == "Existing low-confidence candidate scope needs coverage.":
+        return "candidate_gap"
+    if reason == "Radar definition seed target.":
+        return "radar_seed"
+    return "unknown"
+
+
+def _completion_rank_reason(*, target_origin: str, target_label: str) -> str:
+    quality = _label_quality_reason(target_label)
+    if target_origin == "benchmark_context":
+        return f"explicit_benchmark_target:{quality}"
+    if target_origin == "retrieved_source":
+        return f"source_backed_target:{quality}"
+    if target_origin == "candidate_gap":
+        return f"candidate_gap_target:{quality}"
+    return f"{target_origin or 'unknown'}:{quality}"
+
+
+def _deprioritized_reason(target_label: str) -> str:
+    quality = _label_quality_reason(target_label)
+    if quality == "numeric_only":
+        return "numeric_only_label"
+    if quality == "document_like":
+        return "document_like_label"
+    if quality == "generic_industrial":
+        return "generic_industrial_label"
+    return ""
+
+
+def _label_quality_reason(value: str) -> str:
+    text = " ".join(str(value).split()).casefold()
+    if not text:
+        return "empty"
+    if text.isdigit():
+        return "numeric_only"
+    if text.startswith(("pdf ", "doc ", "xls ", "xlsx ", "csv ")):
+        return "document_like"
+    if text in {"production site", "industrial site", "plant", "site"}:
+        return "generic_industrial"
+    if text in {"производственная площадка", "промышленная площадка", "завод", "филиал"}:
+        return "generic_industrial"
+    return "clean_named_target"

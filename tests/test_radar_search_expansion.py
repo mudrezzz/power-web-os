@@ -347,6 +347,56 @@ def test_selector_adds_completion_targets_after_lane_minimums() -> None:
     }
 
 
+def test_selector_prioritizes_explicit_benchmark_completion_target_over_incidental_sites() -> None:
+    variants = [
+        _variant("holding-1", "holding_or_group_target", "holding query"),
+        _variant("legal-1", "known_subsidiary_or_legal_entity_target", "legal query 1"),
+        _variant("legal-2", "known_subsidiary_or_legal_entity_target", "legal query 2"),
+        _variant("site-guaranteed-1", "production_site_or_branch_target", "site guaranteed 1"),
+        _variant("site-guaranteed-2", "production_site_or_branch_target", "site guaranteed 2"),
+        _variant("site-pdf", "production_site_or_branch_target", "pdf incidental site"),
+        _variant("site-numeric", "production_site_or_branch_target", "7727344230"),
+        _variant("site-tobolsk", "production_site_or_branch_target", "Tobolsk production site"),
+    ]
+    targets = [_target(item) for item in variants]
+    for target in targets:
+        if target["target_id"] == "site-tobolsk":
+            target.update({
+                "target_origin": "benchmark_context",
+                "uncovered_baseline_target": True,
+                "completion_rank_reason": "explicit_benchmark_target:clean_named_target",
+            })
+        elif target["target_id"] in {"site-pdf", "site-numeric"}:
+            target.update({
+                "target_origin": "retrieved_source",
+                "completion_rank_reason": "source_backed_target:document_or_numeric",
+                "deprioritized_reason": "noisy_label",
+            })
+        elif target["target_id"].startswith("site-"):
+            target.update({
+                "target_origin": "retrieved_source",
+                "completion_rank_reason": "source_backed_target:clean_named_target",
+            })
+
+    selection = select_guaranteed_variants(
+        variants,
+        max_variants=5,
+        minimums={
+            "holding_or_group_target": 1,
+            "known_subsidiary_or_legal_entity_target": 2,
+            "production_site_or_branch_target": 2,
+        },
+        completion_target_limit=1,
+        targets=targets,
+    )
+
+    selected_ids = [item.target_id for item in selection.variants]
+    assert "site-tobolsk" in selected_ids
+    assert "site-pdf" not in selected_ids
+    assert "site-numeric" not in selected_ids
+    assert selection.selected_completion_count == 1
+
+
 def test_benchmark_expansion_plan_selects_completion_site_target() -> None:
     radar = _radar_with_sources()
     radar["task_context"] = {
@@ -383,6 +433,40 @@ def test_benchmark_expansion_plan_selects_completion_site_target() -> None:
     assert payload["selection_summary"]["selected_completion_count"] == 1
     assert len(selected_site_targets) >= 3
     assert any("tobolsk" in target_id for target_id in selected_site_targets)
+
+
+def test_benchmark_target_metadata_is_visible_in_expansion_payload() -> None:
+    radar = _radar_with_sources()
+    radar["task_context"] = {
+        "benchmark_profile": "benchmark_smoke",
+        "coverage_completion_target_limit": 1,
+        "benchmark_target_probe_minimums": {
+            "holding_or_group_target": 1,
+            "known_subsidiary_or_legal_entity_target": 1,
+            "production_site_or_branch_target": 1,
+        },
+        "benchmark_target_hints": [
+            {"canonical_name": "SIBUR Holding", "entity_type": "legal_entity"},
+            {"canonical_name": "ZapSibNeftekhim LLC", "entity_type": "legal_entity"},
+            {"canonical_name": "Gubkinsky GPP plant", "entity_type": "production_site"},
+            {"canonical_name": "Tobolsk production site", "entity_type": "production_site"},
+        ],
+    }
+
+    payload = RadarSearchExpansionService(max_variants=3).plan_expansion(
+        radar=radar,
+        candidate_scope=[],
+        provider_metadata={},
+        coverage_checks=[{"completeness_risk": "high"}],
+        unresolved_candidate_gaps=[],
+    ).to_payload()
+
+    tobolsk_target = next(item for item in payload["targets"] if "tobolsk" in item["target_id"])
+    tobolsk_variant = next(item for item in payload["variants"] if "tobolsk" in item["target_id"])
+    assert tobolsk_target["target_origin"] == "benchmark_context"
+    assert tobolsk_target["uncovered_baseline_target"] is True
+    assert tobolsk_target["completion_rank_reason"].startswith("explicit_benchmark_target")
+    assert tobolsk_variant["target_origin"] == "benchmark_context"
 
 
 def test_selector_reports_no_executable_variant_for_generated_lane_target() -> None:

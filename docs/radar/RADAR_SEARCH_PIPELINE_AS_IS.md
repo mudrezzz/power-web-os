@@ -4,7 +4,7 @@ Status: AS IS
 
 Product area: Radar candidate and signal search
 
-Updated after slice: 0.7.6.3.6.10
+Updated after slice: 0.7.6.3.6.11
 
 Last updated: 2026-06-29
 
@@ -68,7 +68,7 @@ merged into this AS IS document and the PDF is regenerated.
 | Budget reserve | A sub-allocation inside the run budget for registry identity, recall expansion, official coverage, open-web coverage, extraction recovery, or signal search. |
 | Semantic task reserve | Application-level protected task slot for approved recall/coverage expansion tasks after the regular web-task budget is exhausted. It does not bypass external-call budgets. |
 | Expansion target | A prioritized source-backed target that weak discovery should search next, such as a holding, legal entity, production site, branch, alias/language variant, or explicit benchmark target. |
-| Expansion scheduler | Application-layer selector that orders guaranteed target-lane expansion probes before optional expansion variants and records scheduled/not-scheduled states. |
+| Expansion scheduler | Application-layer selector that orders guaranteed target-lane expansion probes, origin-aware completion probes, and optional expansion variants while recording scheduled/not-scheduled states. |
 | Work scheduler | Central application-layer admission controller that decides which approved work items can consume shared budget and which must be rejected before provider execution. |
 | `not_observed` | A searched signal with no evidence found. It must not mean "not searched". |
 | `not_searched_*` | Explicit unsearched state caused by budget, policy, missing scope, or pending output. |
@@ -119,7 +119,7 @@ candidate state.
 | Source registry/provider orchestration | `src/power_web_os/application/radar_source_providers.py` | Execute structured company registry providers for allowed stages. | Signal evidence replacement. |
 | Registry lookup term generator | `src/power_web_os/application/radar_registry_lookup_terms.py` | Build concrete lookup terms for registry providers. | Broad web discovery. |
 | Search expansion service | `src/power_web_os/application/radar_search_expansion.py`, `radar_search_expansion_models.py`, and `radar_search_expansion_support.py` | Build prioritized expansion target queues and bounded source-profile-driven query variants when discovery/coverage is weak. | Direct provider calls. |
-| Search expansion scheduler | `src/power_web_os/application/radar_search_expansion_scheduler.py` | Select guaranteed target-lane variants, include bounded coverage-completion targets, and order them before optional expansion work. | Provider calls or changing source policy. |
+| Search expansion scheduler | `src/power_web_os/application/radar_search_expansion_scheduler.py` and `radar_search_expansion_selection.py` | Select guaranteed target-lane variants, prioritize explicit benchmark completion targets over incidental targets, and order selected work before optional expansion. | Provider calls or changing source policy. |
 | Central work scheduler | `src/power_web_os/application/radar_work_scheduler.py` | Admit application-approved work lanes, protect shared OpenRouter capacity for guaranteed recall expansion, and record accepted/rejected work. | Provider calls, source policy mutation, or checkpoint decision policy. |
 | Search expansion executor | `src/power_web_os/application/live_radar_search_expansion_execution.py` | Execute only scheduler-admitted checkpoint expansion tasks under source policy and budget guards. | Choosing checkpoint decisions or admitting work locally. |
 | Extraction contract/repair | `src/power_web_os/application/live_radar_extraction_contract.py` | Validate and repair provider payload shape when deterministic repair is safe. | Silently converting unrecoverable output into success. |
@@ -337,7 +337,11 @@ Target classes:
 
 Each target records `target_id`, `target_label`, `target_type`, `source_refs`,
 `why_target_exists`, priority, allowed source ids, expected fact kinds,
-`budget_reserve_key`, execution status, and not-searched reason.
+`budget_reserve_key`, execution status, and not-searched reason. It also records
+selection context such as `target_origin`, `completion_rank_reason`,
+`deprioritized_reason`, and `uncovered_baseline_target`. These fields explain
+whether the target came from explicit benchmark context, retrieved evidence,
+candidate gaps, aliases, or a generic seed.
 
 Variant selection is target-aware and guarantee-aware. The planner no longer
 takes a flat top-N list of query variants. It first deduplicates variants, then
@@ -435,11 +439,15 @@ coverage-completion selection pass. This pass does not call providers and does
 not bypass the scheduler. It simply adds a small number of still-uncovered
 generated targets to the selected variant set before work admission. The current
 `benchmark_smoke` completion limit is `coverage_completion_target_limit=2`.
-Completion targets are chosen by target coverage novelty and target type, so a
-generated production-site/branch target that was not part of the minimum set can
-receive a chance before generic optional variants. If the completion pass still
-cannot select a target, diagnostics use completion-specific reasons such as
-`completion_limit_reached` rather than a blank `not_retrieved_in_run`.
+Completion targets are chosen by target origin, label quality, coverage novelty,
+and target type. Explicit benchmark/baseline targets are ranked before
+incidental source-backed targets; clean named targets are ranked before generic,
+document-like, or numeric-only labels. This prevents a remaining benchmark target
+such as an uncovered production site from losing completion slots to noisy
+retrieved labels. If the completion pass still cannot select a target,
+diagnostics use completion-specific reasons such as `completion_limit_reached`
+rather than a blank `not_retrieved_in_run`, and include the rank reason that
+explains why the target lost.
 
 Expansion diagnostics include `expansion_target_summary_by_type`,
 `search_expansion_selection_summary`, `search_expansion_selection_diagnostics`,
