@@ -60,6 +60,7 @@ BENCHMARK_PROFILES: dict[str, dict[str, Any]] = {
             "known_subsidiary_or_legal_entity_target": 2,
             "production_site_or_branch_target": 2,
         },
+        "coverage_completion_target_limit": 2,
     },
     "benchmark_live": {
         "run_profile": "live",
@@ -289,6 +290,7 @@ def benchmark_result_summary(
         "search_expansion_selection_diagnostics": _list(dossier.get("search_expansion_selection_diagnostics")),
         "expansion_result_count": len(executed_expansion_results),
         "search_expansion_execution_summary": _dict(dossier.get("search_expansion_execution_summary")),
+        "search_expansion_target_coverage": _list(dossier.get("search_expansion_target_coverage")),
         "search_expansion_results_by_target_type": expansion_results_by_type,
         "targets_not_searched_count": len(targets_not_searched),
         "targets_not_searched_by_target_type": targets_not_searched_by_type,

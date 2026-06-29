@@ -36,6 +36,7 @@ def test_benchmark_task_context_uses_explicit_smoke_budgets() -> None:
     assert context["benchmark_target_probe_minimums"]["holding_or_group_target"] == 1
     assert context["benchmark_target_probe_minimums"]["known_subsidiary_or_legal_entity_target"] == 2
     assert context["benchmark_target_probe_minimums"]["production_site_or_branch_target"] == 2
+    assert context["coverage_completion_target_limit"] == 2
     assert context["source"] == "radar_benchmark_cli"
 
 
@@ -128,12 +129,25 @@ def test_benchmark_result_summary_counts_only_executed_expansion_results() -> No
                 "executed_count": 1,
                 "not_executed_global_budget_limited_count": 1,
             },
+            "search_expansion_target_coverage": [
+                {
+                    "target_id": "site-1",
+                    "target_type": "production_site_or_branch_target",
+                    "coverage_state": "not_executed",
+                },
+                {
+                    "target_id": "site-2",
+                    "target_type": "production_site_or_branch_target",
+                    "coverage_state": "projected",
+                },
+            ],
             "budget_exhaustion_events": [{"reason": "external_call_budget_exhausted"}],
         },
     )
 
     assert result["expansion_result_count"] == 1
     assert result["search_expansion_results_by_target_type"] == {"production_site_or_branch_target": 1}
+    assert len(result["search_expansion_target_coverage"]) == 2
     assert result["targets_not_searched_by_target_type"] == {"production_site_or_branch_target": 1}
     assert result["search_expansion_execution_summary"]["executed_count"] == 1
 

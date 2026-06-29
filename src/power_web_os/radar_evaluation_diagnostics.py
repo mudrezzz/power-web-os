@@ -86,6 +86,8 @@ def _not_searched_bucket(*, item: dict[str, Any], dossier: dict[str, Any]) -> st
 
 def _reason_bucket(reason: str) -> str:
     lowered = reason.lower()
+    if "completion_limit" in lowered or "completion_not_selected" in lowered:
+        return "completion_not_selected"
     if "global_budget" in lowered:
         return "expansion_global_budget_limited"
     if "reserve" in lowered:

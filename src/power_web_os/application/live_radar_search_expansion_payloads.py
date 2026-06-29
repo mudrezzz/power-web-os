@@ -120,11 +120,18 @@ def merge_selection_summary(left: object, right: object) -> dict[str, Any]:
     result: dict[str, Any] = dict(left) if isinstance(left, dict) else {}
     if not isinstance(right, dict):
         return result
-    for key in ("selected_guaranteed_count", "selected_optional_count", "diagnostic_count"):
+    for key in ("selected_guaranteed_count", "selected_completion_count", "selected_optional_count", "diagnostic_count"):
         try:
             result[key] = int(result.get(key) or 0) + int(right.get(key) or 0)
         except (TypeError, ValueError):
             continue
+    try:
+        result["completion_target_limit"] = max(
+            int(result.get("completion_target_limit") or 0),
+            int(right.get("completion_target_limit") or 0),
+        )
+    except (TypeError, ValueError):
+        pass
     effective = right.get("effective_max_variants")
     if effective is not None:
         result["effective_max_variants"] = max(int(result.get("effective_max_variants") or 0), int(effective))

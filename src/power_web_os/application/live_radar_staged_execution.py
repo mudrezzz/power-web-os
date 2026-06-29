@@ -692,6 +692,7 @@ def run_staged_radar_execution(
             "search_expansion_results_by_target": _results_by_target(provider_metadata.get("search_expansion_results", [])),
             "search_expansion_results_by_target_type": _results_by_target_type(provider_metadata.get("search_expansion_results", [])),
             "search_expansion_execution_summary": _search_expansion_execution_summary(provider_metadata),
+            "search_expansion_target_coverage": _search_expansion_target_coverage(provider_metadata),
             "target_probe_guarantees": target_probe_guarantee_payload["summary"],
             "target_probe_guarantee_failures": target_probe_guarantee_payload["failures"],
             "work_scheduler_plan": provider_metadata.get("work_scheduler_plan", {}),
@@ -1224,6 +1225,64 @@ def _search_expansion_execution_summary(provider_metadata: dict[str, Any]) -> di
         ),
         "by_target_type": _expansion_funnel_by_target_type(targets, variants, results, not_searched),
     }
+
+
+def _search_expansion_target_coverage(provider_metadata: dict[str, Any]) -> list[dict[str, Any]]:
+    targets = dict_list(provider_metadata.get("expansion_target_queue"))
+    variants = dict_list(provider_metadata.get("search_expansion_query_variants"))
+    results = dict_list(provider_metadata.get("search_expansion_results"))
+    not_searched = dict_list(provider_metadata.get("targets_not_searched"))
+    selected_ids = {str(item.get("target_id") or "") for item in variants if str(item.get("target_id") or "")}
+    result_by_target: dict[str, list[dict[str, Any]]] = {}
+    for item in results:
+        target_id = str(item.get("target_id") or "")
+        if target_id:
+            result_by_target.setdefault(target_id, []).append(item)
+    not_searched_by_target: dict[str, list[dict[str, Any]]] = {}
+    for item in not_searched:
+        target_id = str(item.get("target_id") or "")
+        if target_id:
+            not_searched_by_target.setdefault(target_id, []).append(item)
+    coverage: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for target in targets:
+        target_id = str(target.get("target_id") or "")
+        if not target_id or target_id in seen:
+            continue
+        seen.add(target_id)
+        target_results = result_by_target.get(target_id, [])
+        executed = [item for item in target_results if _is_executed_expansion_result(item)]
+        source_found = [item for item in executed if int(item.get("source_count") or 0) > 0]
+        projected = [item for item in executed if int(item.get("candidate_observation_count") or 0) > 0]
+        skipped = not_searched_by_target.get(target_id, [])
+        state = "generated"
+        reason = ""
+        if projected:
+            state = "projected"
+        elif source_found:
+            state = "source_found"
+        elif executed:
+            state = "executed_no_support"
+        elif target_results:
+            state = "not_executed"
+            reason = str(target_results[-1].get("not_searched_reason") or "")
+        elif skipped:
+            state = "not_selected" if target_id not in selected_ids else "not_admitted"
+            reason = str(skipped[-1].get("not_searched_reason") or skipped[-1].get("reason") or "")
+        elif target_id in selected_ids:
+            state = "selected"
+        coverage.append({
+            "target_id": target_id,
+            "target_label": target.get("target_label"),
+            "target_type": target.get("target_type"),
+            "coverage_state": state,
+            "not_searched_reason": reason,
+            "selected": target_id in selected_ids,
+            "executed": bool(executed),
+            "source_found": bool(source_found),
+            "projected": bool(projected),
+        })
+    return coverage
 
 
 def _target_probe_guarantees(*, provider_metadata: dict[str, Any], radar: dict[str, Any]) -> dict[str, Any]:

@@ -275,6 +275,52 @@ def test_evaluation_classifies_false_negative_generated_but_not_selected_for_exp
     assert diagnostics["gubkinsky-gpp"] == "expansion_not_selected"
 
 
+def test_evaluation_classifies_completion_not_selected_separately() -> None:
+    baseline = RadarEvaluationBaseline(
+        baseline_id="diagnostic-test",
+        version="test",
+        radar_id=SIBUR_CONTOUR_RADAR_ID,
+        description="Expansion completion diagnostics.",
+        entities=(
+            RadarEvaluationEntity(
+                baseline_id="tobolsk-site",
+                canonical_name="Tobolsk production site",
+                aliases=("Tobolsk site",),
+                entity_type="production_site",
+            ),
+        ),
+    )
+    dossier = {
+        "summary": {"execution_outcome": "stopped_for_review"},
+        "candidates": [],
+        "candidate_universe": [],
+        "expansion_target_queue": [
+            {
+                "target_id": "production_site_or_branch_target:tobolsk_site",
+                "target_label": "Tobolsk site",
+                "target_type": "production_site_or_branch_target",
+            }
+        ],
+        "targets_not_searched": [
+            {
+                "target_id": "production_site_or_branch_target:tobolsk_site",
+                "target_label": "Tobolsk site",
+                "target_type": "production_site_or_branch_target",
+                "not_searched_reason": "completion_limit_reached",
+            }
+        ],
+    }
+
+    report = evaluate_radar_dossier(
+        run={"run_id": "radar-run-fn", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},
+        dossier=dossier,
+        baseline=baseline,
+    )
+
+    diagnostics = {item["baseline_id"]: item["bucket"] for item in report["false_negative_diagnostics"]}
+    assert diagnostics["tobolsk-site"] == "completion_not_selected"
+
+
 def test_evaluation_classifies_budget_blocked_expansion_as_global_budget_limited() -> None:
     baseline = RadarEvaluationBaseline(
         baseline_id="diagnostic-test",

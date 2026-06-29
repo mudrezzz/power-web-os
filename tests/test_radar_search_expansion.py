@@ -311,6 +311,80 @@ def test_selector_picks_lane_minimums_before_optional_variants() -> None:
     assert selection.diagnostics == []
 
 
+def test_selector_adds_completion_targets_after_lane_minimums() -> None:
+    variants = [
+        _variant("holding-1", "holding_or_group_target", "holding query"),
+        _variant("legal-1", "known_subsidiary_or_legal_entity_target", "legal query 1"),
+        _variant("legal-2", "known_subsidiary_or_legal_entity_target", "legal query 2"),
+        _variant("site-1", "production_site_or_branch_target", "site query 1"),
+        _variant("site-2", "production_site_or_branch_target", "site query 2"),
+        _variant("site-3", "production_site_or_branch_target", "site query 3"),
+    ]
+
+    selection = select_guaranteed_variants(
+        variants,
+        max_variants=5,
+        minimums={
+            "holding_or_group_target": 1,
+            "known_subsidiary_or_legal_entity_target": 2,
+            "production_site_or_branch_target": 2,
+        },
+        completion_target_limit=1,
+        targets=[_target(item) for item in variants],
+    )
+
+    assert selection.effective_max_variants == 6
+    assert selection.selected_guaranteed_count == 5
+    assert selection.selected_completion_count == 1
+    assert selection.selected_optional_count == 0
+    assert {item.target_id for item in selection.variants} == {
+        "holding-1",
+        "legal-1",
+        "legal-2",
+        "site-1",
+        "site-2",
+        "site-3",
+    }
+
+
+def test_benchmark_expansion_plan_selects_completion_site_target() -> None:
+    radar = _radar_with_sources()
+    radar["task_context"] = {
+        "benchmark_profile": "benchmark_smoke",
+        "coverage_completion_target_limit": 1,
+        "benchmark_target_probe_minimums": {
+            "holding_or_group_target": 1,
+            "known_subsidiary_or_legal_entity_target": 2,
+            "production_site_or_branch_target": 2,
+        },
+        "benchmark_target_hints": [
+            {"canonical_name": "SIBUR Holding", "entity_type": "legal_entity"},
+            {"canonical_name": "ZapSibNeftekhim LLC", "entity_type": "legal_entity"},
+            {"canonical_name": "POLIOM LLC", "entity_type": "legal_entity"},
+            {"canonical_name": "Gubkinsky GPP plant", "entity_type": "production_site"},
+            {"canonical_name": "Vyngapurovsky GPP plant", "entity_type": "production_site"},
+            {"canonical_name": "Tobolsk production site", "entity_type": "production_site"},
+        ],
+    }
+
+    payload = RadarSearchExpansionService(max_variants=5).plan_expansion(
+        radar=radar,
+        candidate_scope=[],
+        provider_metadata={},
+        coverage_checks=[{"completeness_risk": "high"}],
+        unresolved_candidate_gaps=[],
+    ).to_payload()
+
+    selected_site_targets = {
+        item["target_id"]
+        for item in payload["variants"]
+        if item["target_type"] == "production_site_or_branch_target"
+    }
+    assert payload["selection_summary"]["selected_completion_count"] == 1
+    assert len(selected_site_targets) >= 3
+    assert any("tobolsk" in target_id for target_id in selected_site_targets)
+
+
 def test_selector_reports_no_executable_variant_for_generated_lane_target() -> None:
     site_target = {
         "target_id": "site-1",

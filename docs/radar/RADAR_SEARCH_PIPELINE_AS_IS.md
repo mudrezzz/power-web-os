@@ -4,7 +4,7 @@ Status: AS IS
 
 Product area: Radar candidate and signal search
 
-Updated after slice: 0.7.6.3.6.9
+Updated after slice: 0.7.6.3.6.10
 
 Last updated: 2026-06-29
 
@@ -119,7 +119,7 @@ candidate state.
 | Source registry/provider orchestration | `src/power_web_os/application/radar_source_providers.py` | Execute structured company registry providers for allowed stages. | Signal evidence replacement. |
 | Registry lookup term generator | `src/power_web_os/application/radar_registry_lookup_terms.py` | Build concrete lookup terms for registry providers. | Broad web discovery. |
 | Search expansion service | `src/power_web_os/application/radar_search_expansion.py`, `radar_search_expansion_models.py`, and `radar_search_expansion_support.py` | Build prioritized expansion target queues and bounded source-profile-driven query variants when discovery/coverage is weak. | Direct provider calls. |
-| Search expansion scheduler | `src/power_web_os/application/radar_search_expansion_scheduler.py` | Select guaranteed target-lane variants and order them before optional expansion work. | Provider calls or changing source policy. |
+| Search expansion scheduler | `src/power_web_os/application/radar_search_expansion_scheduler.py` | Select guaranteed target-lane variants, include bounded coverage-completion targets, and order them before optional expansion work. | Provider calls or changing source policy. |
 | Central work scheduler | `src/power_web_os/application/radar_work_scheduler.py` | Admit application-approved work lanes, protect shared OpenRouter capacity for guaranteed recall expansion, and record accepted/rejected work. | Provider calls, source policy mutation, or checkpoint decision policy. |
 | Search expansion executor | `src/power_web_os/application/live_radar_search_expansion_execution.py` | Execute only scheduler-admitted checkpoint expansion tasks under source policy and budget guards. | Choosing checkpoint decisions or admitting work locally. |
 | Extraction contract/repair | `src/power_web_os/application/live_radar_extraction_contract.py` | Validate and repair provider payload shape when deterministic repair is safe. | Silently converting unrecoverable output into success. |
@@ -430,12 +430,24 @@ results, not from generated target queues. If the minimum is not met,
 `semantic_task_budget_limited`, `external_budget_limited`,
 `source_policy_limited`, or `executed_below_minimum`.
 
+After the lane minimums are selected, `benchmark_smoke` can run a bounded
+coverage-completion selection pass. This pass does not call providers and does
+not bypass the scheduler. It simply adds a small number of still-uncovered
+generated targets to the selected variant set before work admission. The current
+`benchmark_smoke` completion limit is `coverage_completion_target_limit=2`.
+Completion targets are chosen by target coverage novelty and target type, so a
+generated production-site/branch target that was not part of the minimum set can
+receive a chance before generic optional variants. If the completion pass still
+cannot select a target, diagnostics use completion-specific reasons such as
+`completion_limit_reached` rather than a blank `not_retrieved_in_run`.
+
 Expansion diagnostics include `expansion_target_summary_by_type`,
 `search_expansion_selection_summary`, `search_expansion_selection_diagnostics`,
 `expansion_schedule`, `target_lane_allocation`,
 `search_expansion_results_by_target_type`, `search_expansion_execution_summary`,
-`targets_not_searched`, semantic task reserve counters, and external reserve
-counters. After `0.7.6.3.6.7`, diagnostics also include
+`search_expansion_target_coverage`, `targets_not_searched`, semantic task
+reserve counters, and external reserve counters. After `0.7.6.3.6.7`,
+diagnostics also include
 `work_scheduler_plan`, `work_scheduler_ledger`, `work_admission_decisions`,
 `work_lane_summary`, `work_guarantee_failures`, `work_execution_order`,
 `deferred_work_items`, and `rejected_work_items`. Scheduler diagnostics are
@@ -448,6 +460,7 @@ attempted tasks, externally executed provider calls, sources found, and
 projected entities. A target with
 `budget_decision.accepted=false` is not counted as searched. Evaluation can
 therefore distinguish `expansion_not_selected`,
+`completion_not_selected`,
 `expansion_global_budget_limited`, `expansion_reserve_limited`,
 `semantic_task_budget_limited`,
 `expansion_searched_no_support`, `expansion_source_found_not_projected`, and

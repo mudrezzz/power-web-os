@@ -151,6 +151,7 @@ def dossier_response(
         search_expansion_results_by_target=_dict(execution_results.get("search_expansion_results_by_target")),
         search_expansion_results_by_target_type=_dict(execution_results.get("search_expansion_results_by_target_type")),
         search_expansion_execution_summary=_dict(execution_results.get("search_expansion_execution_summary")),
+        search_expansion_target_coverage=_list(execution_results.get("search_expansion_target_coverage")),
         targets_not_searched=_list(execution_results.get("targets_not_searched")),
         budget_reserve_counters=_int_dict(execution_results.get("budget_reserve_counters")),
         budget_reserve_exhaustion_events=_list(execution_results.get("budget_reserve_exhaustion_events")),

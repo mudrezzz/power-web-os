@@ -86,6 +86,7 @@ class RadarSearchExpansionService:
             candidate_variants,
             max_variants=self._max_variants,
             minimums=_benchmark_target_probe_minimums(radar),
+            completion_target_limit=_coverage_completion_target_limit(radar),
             targets=[target.to_payload() for target in targets],
         )
         return RadarSearchExpansionPlan(
@@ -176,3 +177,14 @@ def _benchmark_target_probe_minimums(radar: dict[str, Any]) -> dict[str, int]:
         if parsed > 0:
             result[str(key)] = parsed
     return result
+
+
+def _coverage_completion_target_limit(radar: dict[str, Any]) -> int:
+    task_context = radar.get("task_context") if isinstance(radar.get("task_context"), dict) else {}
+    if not task_context.get("benchmark_profile"):
+        return 0
+    try:
+        parsed = int(task_context.get("coverage_completion_target_limit") or 0)
+    except (TypeError, ValueError):
+        return 0
+    return max(parsed, 0)

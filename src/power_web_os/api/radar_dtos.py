@@ -421,6 +421,7 @@ class RadarRunDossierResponse(BaseModel):
     search_expansion_results_by_target: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
     search_expansion_results_by_target_type: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
     search_expansion_execution_summary: dict[str, Any] = Field(default_factory=dict)
+    search_expansion_target_coverage: list[dict[str, Any]] = Field(default_factory=list)
     targets_not_searched: list[dict[str, Any]] = Field(default_factory=list)
     budget_reserve_counters: dict[str, int] = Field(default_factory=dict)
     budget_reserve_exhaustion_events: list[dict[str, Any]] = Field(default_factory=list)

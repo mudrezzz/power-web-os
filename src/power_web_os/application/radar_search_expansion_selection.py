@@ -12,16 +12,23 @@ class RadarVariantSelection:
     effective_max_variants: int
     selected_guaranteed_count: int
     selected_optional_count: int
+    selected_completion_count: int = 0
+    completion_target_limit: int = 0
     diagnostics: list[dict[str, Any]] = field(default_factory=list)
 
     def to_summary(self) -> dict[str, Any]:
         return {
             "effective_max_variants": self.effective_max_variants,
             "selected_guaranteed_count": self.selected_guaranteed_count,
+            "selected_completion_count": self.selected_completion_count,
             "selected_optional_count": self.selected_optional_count,
+            "completion_target_limit": self.completion_target_limit,
             "diagnostic_count": len(self.diagnostics),
             "missing_minimums": [
                 item for item in self.diagnostics if item.get("reason") in {"target_not_generated", "no_executable_variant_for_target", "selection_below_minimum"}
+            ],
+            "completion_diagnostics": [
+                item for item in self.diagnostics if str(item.get("reason") or "").startswith("completion_")
             ],
         }
 
@@ -40,12 +47,14 @@ def select_guaranteed_variants(
     *,
     max_variants: int,
     minimums: dict[str, int],
+    completion_target_limit: int = 0,
     targets: list[dict[str, Any]] | None = None,
 ) -> RadarVariantSelection:
     """Select required target-lane variants before optional variants."""
     deduped = _dedupe_variants(variants)
     parsed_minimums = _positive_minimums(minimums)
-    effective_max = max(max_variants, sum(parsed_minimums.values()), 1)
+    completion_limit = max(int(completion_target_limit or 0), 0)
+    effective_max = max(max_variants, sum(parsed_minimums.values()) + completion_limit, 1)
     grouped: dict[str, list[RadarSearchExpansionVariant]] = {}
     for item in deduped:
         grouped.setdefault(item.target_id or "unclassified", []).append(item)
@@ -66,6 +75,7 @@ def select_guaranteed_variants(
 
     result: list[RadarSearchExpansionVariant] = []
     selected_target_ids: set[str] = set()
+    guaranteed_target_ids: set[str] = set()
     diagnostics: list[dict[str, Any]] = _no_executable_variant_diagnostics(targets or [], grouped)
     for lane in sorted(parsed_minimums, key=_target_type_lane_priority):
         required = parsed_minimums[lane]
@@ -80,6 +90,7 @@ def select_guaranteed_variants(
                 continue
             result.append(variants_for_target[0])
             selected_target_ids.add(target_id)
+            guaranteed_target_ids.add(target_id)
             selected_for_lane += 1
         if selected_for_lane < required:
             diagnostics.append(_lane_diagnostic(
@@ -89,6 +100,27 @@ def select_guaranteed_variants(
                 generated=_generated_count(targets or [], lane),
                 executable=_executable_target_count(grouped, lane),
             ))
+
+    completion_count = 0
+    completion_target_ids: set[str] = set()
+    if completion_limit > 0:
+        for target_id in _completion_target_order(grouped=grouped, selected_target_ids=selected_target_ids):
+            if completion_count >= completion_limit or len(result) >= effective_max:
+                break
+            variants_for_target = grouped.get(target_id, [])
+            if not variants_for_target:
+                continue
+            result.append(variants_for_target[0])
+            selected_target_ids.add(target_id)
+            completion_target_ids.add(target_id)
+            completion_count += 1
+    diagnostics.extend(_completion_not_selected_diagnostics(
+        targets=targets or [],
+        grouped=grouped,
+        selected_target_ids=selected_target_ids,
+        completion_limit=completion_limit,
+        completion_count=completion_count,
+    ))
 
     used_indexes = {target_id: 0 for target_id in grouped}
     for item in result:
@@ -122,8 +154,10 @@ def select_guaranteed_variants(
     return RadarVariantSelection(
         variants=result,
         effective_max_variants=effective_max,
-        selected_guaranteed_count=len(selected_target_ids),
-        selected_optional_count=max(len(result) - len(selected_target_ids), 0),
+        selected_guaranteed_count=len(guaranteed_target_ids),
+        selected_completion_count=completion_count,
+        selected_optional_count=max(len(result) - len(guaranteed_target_ids) - completion_count, 0),
+        completion_target_limit=completion_limit,
         diagnostics=diagnostics,
     )
 
@@ -206,6 +240,48 @@ def _generated_count(targets: list[dict[str, Any]], target_type: str) -> int:
 
 def _executable_target_count(grouped: dict[str, list[RadarSearchExpansionVariant]], target_type: str) -> int:
     return sum(1 for items in grouped.values() if items and items[0].target_type == target_type)
+
+
+def _completion_target_order(
+    *,
+    grouped: dict[str, list[RadarSearchExpansionVariant]],
+    selected_target_ids: set[str],
+) -> list[str]:
+    candidates = [target_id for target_id in grouped if target_id not in selected_target_ids]
+    return sorted(
+        candidates,
+        key=lambda target_id: (
+            _target_type_lane_priority(grouped[target_id][0].target_type),
+            grouped[target_id][0].priority,
+            grouped[target_id][0].query.casefold(),
+        ),
+    )
+
+
+def _completion_not_selected_diagnostics(
+    *,
+    targets: list[dict[str, Any]],
+    grouped: dict[str, list[RadarSearchExpansionVariant]],
+    selected_target_ids: set[str],
+    completion_limit: int,
+    completion_count: int,
+) -> list[dict[str, Any]]:
+    if completion_limit <= 0:
+        return []
+    diagnostics: list[dict[str, Any]] = []
+    for target in targets:
+        target_id = str(target.get("target_id") or "")
+        if not target_id or target_id in selected_target_ids or target_id not in grouped:
+            continue
+        reason = "completion_limit_reached" if completion_count >= completion_limit else "completion_not_selected"
+        diagnostics.append({
+            "target_id": target_id,
+            "target_type": str(target.get("target_type") or ""),
+            "reason": reason,
+            "completion_target_limit": completion_limit,
+            "message": "Target was generated and executable, but was not selected by the bounded completion pass.",
+        })
+    return diagnostics
 
 
 def _target_type_lane_priority(target_type: str) -> int:
