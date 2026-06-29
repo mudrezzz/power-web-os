@@ -4,7 +4,8 @@ from power_web_os.application.live_radar_contracts import RadarExecutionTask
 from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget, RadarExternalCallBudgetSettings
 from power_web_os.application.radar_search_expansion_models import RadarSearchExpansionVariant
 from power_web_os.application.radar_search_expansion_scheduler import schedule_guaranteed_expansion_variants
-from power_web_os.application.radar_work_scheduler import RadarWorkScheduler, merge_work_scheduler_metadata
+from power_web_os.application.radar_work_scheduler import RadarWorkScheduler
+from power_web_os.application.radar_work_scheduler_metadata import merge_work_scheduler_metadata
 
 
 def test_scheduler_reserves_openrouter_total_capacity_for_recall_expansion() -> None:
@@ -42,6 +43,47 @@ def test_scheduler_reserves_openrouter_total_capacity_for_recall_expansion() -> 
     assert protected.accepted
     assert protected_role.kind == "openrouter_recall_expansion"
     assert budget.counts["openrouter:run"] == 2
+
+
+def test_guaranteed_recall_retry_cannot_steal_another_guaranteed_first_call() -> None:
+    budget = RadarExternalCallBudget(
+        RadarExternalCallBudgetSettings(
+            max_openrouter_calls_per_run=4,
+            max_openrouter_web_task_calls_per_run=4,
+            max_recall_expansion_openrouter_calls_per_run=2,
+        )
+    )
+    budget.protect_recall_expansion_openrouter_task(
+        task_id="site-1",
+        reserve_key="production_site_coverage_probe",
+        guaranteed=True,
+        lane="recall_expansion_production_site_branch",
+        target_id="site-1",
+        target_type="production_site_or_branch_target",
+    )
+    budget.protect_recall_expansion_openrouter_task(
+        task_id="site-2",
+        reserve_key="production_site_coverage_probe",
+        guaranteed=True,
+        lane="recall_expansion_production_site_branch",
+        target_id="site-2",
+        target_type="production_site_or_branch_target",
+    )
+
+    first_site_call, first_site_role = budget.reserve_openrouter_http_call(role="web_task", task_id="site-1")
+    retry_call, retry_role = budget.reserve_openrouter_http_call(role="web_task", task_id="site-1")
+    second_site_call, second_site_role = budget.reserve_openrouter_http_call(role="web_task", task_id="site-2")
+
+    assert first_site_call.accepted
+    assert first_site_role.kind == "openrouter_recall_expansion"
+    assert not retry_call.accepted
+    assert retry_role.reason == "guaranteed_external_reservation_protected"
+    assert second_site_call.accepted
+    assert second_site_role.kind == "openrouter_recall_expansion"
+    metadata = budget.guaranteed_recall_expansion_reservation_metadata()
+    assert metadata["reserved_task_count"] == 2
+    assert metadata["first_call_used_count"] == 2
+    assert metadata["first_call_remaining_count"] == 0
 
 
 def test_scheduler_admits_guaranteed_lanes_before_optional_expansion_work() -> None:
@@ -86,6 +128,9 @@ def test_scheduler_admits_guaranteed_lanes_before_optional_expansion_work() -> N
     ]
     assert portfolio.to_metadata()["work_lane_summary"]["recall_expansion_production_site_branch"]["accepted"] == 1
     assert budget.reserve_counts["budget_reserve:production_site_coverage_probe"] == 1
+    reservation = budget.guaranteed_recall_expansion_reservation_metadata()
+    assert reservation["reserved_task_count"] == 3
+    assert reservation["first_call_remaining_count"] == 3
 
 
 def test_scheduler_rejects_work_before_provider_execution_when_lane_reserve_is_exhausted() -> None:
@@ -116,6 +161,37 @@ def test_scheduler_rejects_work_before_provider_execution_when_lane_reserve_is_e
     assert decision.reason == "budget_reserve_exhausted"
     assert decision.schedule_role == "guaranteed"
     assert portfolio.to_metadata()["work_guarantee_failures"][0]["target_type"] == "production_site_or_branch_target"
+
+
+def test_scheduler_rejects_guaranteed_work_when_external_recall_reservation_is_insufficient() -> None:
+    budget = RadarExternalCallBudget(
+        RadarExternalCallBudgetSettings(
+            max_openrouter_calls_per_run=5,
+            max_openrouter_web_task_calls_per_run=5,
+            max_recall_expansion_openrouter_calls_per_run=1,
+            budget_reserve_limits={"production_site_coverage_probe": 3},
+        )
+    )
+    variants = [
+        _variant("site-1", "production_site_or_branch_target", "production_site_coverage_probe"),
+        _variant("site-2", "production_site_or_branch_target", "production_site_coverage_probe"),
+    ]
+    schedule = schedule_guaranteed_expansion_variants(
+        variants=variants,
+        targets=[_target(item) for item in variants],
+        minimums={"production_site_or_branch_target": 2},
+    )
+
+    portfolio = RadarWorkScheduler().build_recall_expansion_portfolio(
+        tasks=[_task(index) for index, _ in enumerate(schedule.scheduled_variants, start=1)],
+        scheduled_variants=list(schedule.scheduled_variants),
+        external_budget=budget,
+    )
+
+    assert portfolio.ledger.accepted_count == 1
+    assert portfolio.ledger.rejected_count == 1
+    assert portfolio.ledger.decisions[1].reason == "guaranteed_external_reservation_insufficient"
+    assert portfolio.to_metadata()["work_guarantee_failures"][0]["reason"] == "guaranteed_external_reservation_insufficient"
 
 
 def test_scheduler_metadata_merges_multiple_portfolios() -> None:

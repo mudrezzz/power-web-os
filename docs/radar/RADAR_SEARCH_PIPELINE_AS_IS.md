@@ -4,7 +4,7 @@ Status: AS IS
 
 Product area: Radar candidate and signal search
 
-Updated after slice: 0.7.6.3.6.8
+Updated after slice: 0.7.6.3.6.9
 
 Last updated: 2026-06-29
 
@@ -404,12 +404,21 @@ gone, the target is recorded as a rejected work item with a reason such as
 `external_total_budget_limited`, `openrouter_recall_expansion_budget_limited`,
 `server_tool_budget_limited`, or `budget_reserve_exhausted`.
 
+Guaranteed recall-expansion work has one additional protection: every accepted
+guaranteed expansion task receives a reserved first OpenRouter recall-expansion
+call. Retries and optional work may use only headroom after those first calls
+are protected. If a retry would spend the last call needed by another accepted
+guaranteed task, it is blocked with
+`guaranteed_external_reservation_protected`. If the scheduler cannot reserve
+enough external capacity for guaranteed work before provider execution, the
+admission reason is `guaranteed_external_reservation_insufficient`.
+
 Both semantic and external layers must pass before the provider call is made.
 Semantic task reserves do not bypass total OpenRouter calls, server-tool
 web-search calls, source verification, source policy, or connector capability
-guards. In `benchmark_smoke`, regular web-task calls stay capped at `8`,
-protected recall-expansion OpenRouter calls are capped at `5`, total OpenRouter
-calls are capped at `16`, and server-tool web-search calls are capped at `45`.
+guards. In `benchmark_smoke`, regular web-task calls are capped at `10`,
+protected recall-expansion OpenRouter calls are capped at `7`, total OpenRouter
+calls are capped at `20`, and server-tool web-search calls are capped at `60`.
 
 Benchmark smoke also carries target-lane guarantees in task context. The current
 minimums are one holding/group probe, two legal/subsidiary probes, and two
@@ -579,6 +588,11 @@ rejected with `work_admission_reserved_capacity` when accepting them would
 consume the shared capacity needed for admitted recall expansion. Protected
 recall-expansion calls still count against `openrouter:run`; the reservation
 only prevents earlier optional work from spending the last shared slots.
+
+For guaranteed recall-expansion work, the reservation is tracked per accepted
+task. Dossier and benchmark reports expose
+`work_admission_reserved_capacity.guaranteed_recall_expansion`, including
+reserved task count, first calls used, and first calls still remaining.
 
 Semantic task reserves are separate from external-call reserves. They live in
 `RadarExecutionBudget` and are configured through

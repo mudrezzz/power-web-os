@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from urllib.parse import urlsplit, urlunsplit
 from typing import Callable
 
-from power_web_os.application.live_radar_external_budget import reserve_external_call
+from power_web_os.application.live_radar_external_budget_context import reserve_external_call
 from power_web_os.application.live_radar_contracts import RadarSourceEvidence, SourceVerificationMode, SourceVerificationState
 
 

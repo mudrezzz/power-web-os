@@ -11,7 +11,7 @@ from typing import Any
 from urllib import request as urllib_request
 from urllib.error import HTTPError, URLError
 
-from power_web_os.application.live_radar_external_budget import reserve_external_call
+from power_web_os.application.live_radar_external_budget_context import reserve_external_call
 from power_web_os.application.radar_source_providers import (
     CompanyLookupRequest,
     CompanyLookupResult,

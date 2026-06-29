@@ -14,7 +14,7 @@ from power_web_os.application.live_radar_contracts import (
     RadarDiscoveryPlan,
     RadarDiscoveryPlanValidationResult,
 )
-from power_web_os.application.live_radar_external_budget import (
+from power_web_os.application.live_radar_external_budget_context import (
     current_external_call_budget,
     reserve_external_call,
     reserve_openrouter_http_call,

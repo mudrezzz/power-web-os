@@ -23,8 +23,8 @@ from power_web_os.application.live_radar_checkpoints import RadarExecutionCheckp
 from power_web_os.application.live_radar_cross_disambiguation import execute_cross_source_disambiguation
 from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget, budget_settings_from_context
 from power_web_os.application.live_radar_execution_plan import scoped_execution_task
-from power_web_os.application.live_radar_external_budget import (
-    RadarExternalCallBudget,
+from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
+from power_web_os.application.live_radar_external_budget_context import (
     current_external_call_budget,
     external_budget_settings_from_context,
     external_call_budget_context,
@@ -45,7 +45,8 @@ from power_web_os.application.radar_search_expansion import RadarSearchExpansion
 from power_web_os.application.live_radar_search_expansion_payloads import benchmark_target_probe_minimums, merge_selection_summary
 from power_web_os.application.radar_search_expansion_models import RadarSearchExpansionPlan
 from power_web_os.application.radar_search_expansion_scheduler import schedule_guaranteed_expansion_variants
-from power_web_os.application.radar_work_scheduler import RadarWorkScheduler, merge_work_scheduler_metadata
+from power_web_os.application.radar_work_scheduler import RadarWorkScheduler
+from power_web_os.application.radar_work_scheduler_metadata import merge_work_scheduler_metadata
 from power_web_os.application.live_radar_staged_helpers import (
     candidate_names_matching as _candidate_names_matching,
     combine_task_results as _combine_task_results,

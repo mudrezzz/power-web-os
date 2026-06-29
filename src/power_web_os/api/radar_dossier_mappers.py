@@ -120,6 +120,7 @@ def dossier_response(
         external_call_budget_counters=_int_dict(execution_results.get("external_call_budget_counters")),
         external_call_budget_counters_by_role=_int_dict(execution_results.get("external_call_budget_counters_by_role")),
         external_call_budget_exhaustion_events=_list(execution_results.get("external_call_budget_exhaustion_events")),
+        work_admission_reserved_capacity=_dict(execution_results.get("work_admission_reserved_capacity")),
         provider_retry_records=_list(execution_results.get("provider_retry_records")),
         openrouter_server_tool_usage=_dict(execution_results.get("openrouter_server_tool_usage")),
         post_call_budget_overruns=_list(execution_results.get("post_call_budget_overruns")),

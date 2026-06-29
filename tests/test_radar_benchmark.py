@@ -21,11 +21,12 @@ def test_benchmark_task_context_uses_explicit_smoke_budgets() -> None:
     assert context["run_profile"] == "smoke"
     assert context["benchmark_radar_id"] == "benchmark-mining-toir"
     assert context["max_total_web_tasks_per_run"] == 18
-    assert context["max_openrouter_calls_per_run"] == 16
+    assert context["max_openrouter_calls_per_run"] == 20
     assert context["max_openrouter_planner_calls_per_run"] == 3
-    assert context["max_openrouter_web_task_calls_per_run"] == 8
-    assert context["max_recall_expansion_openrouter_calls_per_run"] == 5
-    assert context["max_openrouter_server_tool_web_searches_per_run"] == 45
+    assert context["max_openrouter_web_task_calls_per_run"] == 10
+    assert context["max_recall_expansion_openrouter_calls_per_run"] == 7
+    assert context["max_openrouter_server_tool_web_searches_per_run"] == 60
+    assert context["max_source_verification_requests_per_run"] == 40
     assert context["max_provider_retries_per_task"] == 2
     assert context["budget_reserve_limits"]["official_coverage_probe"] == 5
     assert context["budget_reserve_limits"]["open_web_coverage_probe"] == 5
@@ -222,6 +223,13 @@ def test_benchmark_result_summary_treats_external_budget_exhaustion_as_budget_li
                     "key": "openrouter:run",
                 }
             ],
+            "work_admission_reserved_capacity": {
+                "guaranteed_recall_expansion": {
+                    "reserved_task_count": 5,
+                    "first_call_used_count": 4,
+                    "first_call_remaining_count": 1,
+                }
+            },
         },
     )
 
@@ -229,6 +237,7 @@ def test_benchmark_result_summary_treats_external_budget_exhaustion_as_budget_li
     assert result["external_call_budget_settings"]["max_openrouter_calls_per_run"] == 14
     assert result["external_call_budget_counters"]["openrouter:run"] == 14
     assert result["external_call_budget_exhaustion_count"] == 1
+    assert result["work_admission_reserved_capacity"]["guaranteed_recall_expansion"]["reserved_task_count"] == 5
 
 
 def test_benchmark_runner_queues_runs_and_writes_report_shape() -> None:

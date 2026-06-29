@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Iterator
+
+from power_web_os.application.live_radar_external_budget_reservations import (
+    guaranteed_recall_expansion_reservation_metadata as guaranteed_reservation_metadata,
+    openrouter_reserved_remaining_by_lane,
+)
 
 
 ExternalCallKind = str
@@ -63,6 +65,8 @@ class RadarExternalCallBudget:
     reserve_counts: dict[str, int] = field(default_factory=dict)
     reserve_exhaustion_events: list[dict[str, object]] = field(default_factory=list)
     protected_recall_expansion_tasks: dict[str, str] = field(default_factory=dict)
+    guaranteed_recall_expansion_tasks: dict[str, dict[str, object]] = field(default_factory=dict)
+    guaranteed_recall_expansion_first_calls_used: set[str] = field(default_factory=set)
     openrouter_total_reservations: dict[str, dict[str, object]] = field(default_factory=dict)
 
     def reserve(self, kind: ExternalCallKind, *, key: str = "run", task_id: str = "") -> RadarExternalCallBudgetDecision:
@@ -121,10 +125,27 @@ class RadarExternalCallBudget:
         total_decision = self.reserve("openrouter", key="run", task_id=task_id)
         return total_decision, role_decision
 
-    def protect_recall_expansion_openrouter_task(self, *, task_id: str, reserve_key: str) -> None:
+    def protect_recall_expansion_openrouter_task(
+        self,
+        *,
+        task_id: str,
+        reserve_key: str,
+        guaranteed: bool = False,
+        lane: str = "",
+        target_id: str = "",
+        target_type: str = "",
+    ) -> None:
         if not task_id:
             return
         self.protected_recall_expansion_tasks[task_id] = reserve_key or "recall_expansion"
+        if guaranteed:
+            self.guaranteed_recall_expansion_tasks[task_id] = {
+                "task_id": task_id,
+                "reserve_key": reserve_key or "recall_expansion",
+                "lane": lane,
+                "target_id": target_id,
+                "target_type": target_type,
+            }
 
     def configure_openrouter_total_reserve(self, *, lane: str, units: int, reason: str = "") -> None:
         if units <= 0:
@@ -139,13 +160,23 @@ class RadarExternalCallBudget:
         return {
             "reservations": {key: dict(value) for key, value in self.openrouter_total_reservations.items()},
             "reserved_remaining": self._openrouter_reserved_remaining_by_lane(),
+            "guaranteed_recall_expansion": self.guaranteed_recall_expansion_reservation_metadata(),
         }
+
+    def guaranteed_recall_expansion_reservation_metadata(self) -> dict[str, object]:
+        return guaranteed_reservation_metadata(
+            tasks=self.guaranteed_recall_expansion_tasks,
+            used_task_ids=self.guaranteed_recall_expansion_first_calls_used,
+        )
 
     def _reserve_protected_recall_expansion_openrouter_call(
         self,
         *,
         task_id: str,
     ) -> tuple[RadarExternalCallBudgetDecision, RadarExternalCallBudgetDecision]:
+        reservation_block = self._protected_recall_expansion_reservation_decision(task_id=task_id)
+        if reservation_block is not None:
+            return reservation_block, reservation_block
         total_block = self._exhausted_decision("openrouter", budget_key="openrouter:run", key="run", task_id=task_id)
         if total_block is not None:
             return total_block, total_block
@@ -166,8 +197,46 @@ class RadarExternalCallBudget:
         if protected_block is not None:
             return protected_block, protected_block
         protected_decision = self.reserve("openrouter_recall_expansion", key="run", task_id=task_id)
+        if protected_decision.accepted and task_id in self.guaranteed_recall_expansion_tasks:
+            self.guaranteed_recall_expansion_first_calls_used.add(task_id)
         total_decision = self.reserve("openrouter", key="run", task_id=task_id)
         return total_decision, protected_decision
+
+    def _protected_recall_expansion_reservation_decision(
+        self,
+        *,
+        task_id: str,
+    ) -> RadarExternalCallBudgetDecision | None:
+        """Prevent retries or optional work from spending guaranteed first-call slots."""
+
+        if task_id in self.guaranteed_recall_expansion_tasks and task_id not in self.guaranteed_recall_expansion_first_calls_used:
+            return None
+        recall_limit = self._limit_for("openrouter_recall_expansion")
+        if recall_limit is None:
+            return None
+        remaining_first_calls = int(
+            self.guaranteed_recall_expansion_reservation_metadata().get("first_call_remaining_count", 0) or 0
+        )
+        if remaining_first_calls <= 0:
+            return None
+        current = self.counts.get("openrouter_recall_expansion:run", 0)
+        allowed_before_reserved_slots = max(recall_limit - remaining_first_calls, 0)
+        if current < allowed_before_reserved_slots:
+            return None
+        decision = RadarExternalCallBudgetDecision(
+            accepted=False,
+            kind="openrouter_recall_expansion",
+            key="openrouter_recall_expansion:run",
+            limit=recall_limit,
+            current=current,
+            reason="guaranteed_external_reservation_protected",
+            message=(
+                "Recall-expansion OpenRouter capacity is reserved for "
+                f"{remaining_first_calls} guaranteed first calls."
+            ),
+        )
+        self.exhaustion_events.append({"task_id": task_id, **decision.to_payload()})
+        return decision
 
     def check_recall_expansion_openrouter_capacity(self, *, task_id: str = "") -> RadarExternalCallBudgetDecision:
         """Non-mutating scheduler preflight for protected recall-expansion calls."""
@@ -254,18 +323,12 @@ class RadarExternalCallBudget:
         return decision
 
     def _openrouter_reserved_remaining_by_lane(self) -> dict[str, int]:
-        protected_used = self.counts.get("openrouter_recall_expansion:run", 0)
-        result: dict[str, int] = {}
-        for lane, payload in self.openrouter_total_reservations.items():
-            try:
-                units = int(payload.get("units", 0))  # type: ignore[union-attr]
-            except (TypeError, ValueError, AttributeError):
-                units = 0
-            if lane == "recall_expansion":
-                result[lane] = max(units - protected_used, 0)
-            else:
-                result[lane] = max(units, 0)
-        return result
+        return openrouter_reserved_remaining_by_lane(
+            reservations=self.openrouter_total_reservations,
+            guaranteed_tasks=self.guaranteed_recall_expansion_tasks,
+            used_task_ids=self.guaranteed_recall_expansion_first_calls_used,
+            protected_used=self.counts.get("openrouter_recall_expansion:run", 0),
+        )
 
     def record_server_tool_web_search_usage(
         self,
@@ -398,78 +461,6 @@ class RadarExternalCallBudget:
         if kind == "provider_retry":
             return _non_negative(self.settings.max_provider_retries_per_task)
         return None
-
-
-_current_budget: ContextVar[RadarExternalCallBudget | None] = ContextVar("radar_external_call_budget", default=None)
-
-
-@contextmanager
-def external_call_budget_context(budget: RadarExternalCallBudget | None) -> Iterator[None]:
-    token = _current_budget.set(budget)
-    try:
-        yield
-    finally:
-        _current_budget.reset(token)
-
-
-def current_external_call_budget() -> RadarExternalCallBudget | None:
-    return _current_budget.get()
-
-
-def reserve_external_call(kind: ExternalCallKind, *, key: str = "run", task_id: str = "") -> RadarExternalCallBudgetDecision:
-    budget = current_external_call_budget()
-    if budget is None:
-        return RadarExternalCallBudgetDecision(accepted=True, kind=kind, key=f"{kind}:{key or 'run'}")
-    return budget.reserve(kind, key=key, task_id=task_id)
-
-
-def reserve_openrouter_http_call(*, role: str, task_id: str = "") -> RadarExternalCallBudgetDecision:
-    budget = current_external_call_budget()
-    if budget is None:
-        return RadarExternalCallBudgetDecision(accepted=True, kind=f"openrouter_{role}", key=f"openrouter_{role}:run")
-    _, role_decision = budget.reserve_openrouter_http_call(role=role, task_id=task_id)
-    return role_decision
-
-
-def record_openrouter_server_tool_usage(*, count: int, task_id: str = "") -> RadarExternalCallBudgetDecision:
-    budget = current_external_call_budget()
-    if budget is None:
-        return RadarExternalCallBudgetDecision(
-            accepted=True,
-            kind="openrouter_server_tool_web_search",
-            key="openrouter_server_tool_web_search:run",
-            current=count,
-        )
-    return budget.record_server_tool_web_search_usage(count=count, task_id=task_id)
-
-
-def protect_recall_expansion_openrouter_task(*, task_id: str, reserve_key: str) -> None:
-    budget = current_external_call_budget()
-    if budget is None:
-        return
-    budget.protect_recall_expansion_openrouter_task(task_id=task_id, reserve_key=reserve_key)
-
-
-def reserve_budget_slice(
-    reserve_key: str,
-    *,
-    units: int = 1,
-    task_id: str = "",
-    reason: str = "",
-) -> RadarExternalCallBudgetDecision:
-    budget = current_external_call_budget()
-    if budget is None:
-        return RadarExternalCallBudgetDecision(accepted=True, kind="budget_reserve", key=f"budget_reserve:{reserve_key}")
-    return budget.reserve_budget_slice(reserve_key, units=units, task_id=task_id, reason=reason)
-
-
-def external_budget_settings_from_context(context: dict[str, object]) -> RadarExternalCallBudgetSettings:
-    from power_web_os.application.live_radar_external_budget_settings import (
-        external_budget_settings_from_context as build_settings,
-    )
-
-    return build_settings(context)
-
 
 def _non_negative(value: int | None) -> int | None:
     return value if value is not None and value >= 0 else None

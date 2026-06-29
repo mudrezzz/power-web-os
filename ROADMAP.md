@@ -6523,6 +6523,89 @@ Principles:
   - `benchmark_live` remains blocked until the bounded smoke can execute the
     selected production-site lane minimum or explain a non-budget blocker.
 
+### Slice 0.7.6.3.6.9: External recall-budget lane reservation and guaranteed expansion execution
+
+- Status: `Done`
+- Goal: Fix the blocker from `radar-run-e8936402-b242-4d63-a076-7d563441b7b0`:
+  target selection and scheduler admission were sufficient, but the second
+  production-site/branch probe was not executed because shared
+  `openrouter_recall_expansion` budget was exhausted during execution.
+- User value:
+  - A user can trust that guaranteed benchmark probes are not merely selected
+    and admitted, but have a protected first provider call.
+  - If a guaranteed probe cannot execute, the report says whether external
+    capacity was insufficient before provider spending or whether only optional
+    retry/headroom was exhausted.
+- Problem statement:
+  - `0.7.6.3.6.8` fixed the pre-scheduler defect: final smoke selected
+    holding/group `2`, legal/subsidiary `4`, production-site/branch `4`.
+  - Scheduler admitted the required lane portfolio, but execution still ran
+    only one production-site/branch probe out of the required two.
+  - Root cause: retries and earlier protected recall-expansion work used the
+    same flat `openrouter_recall_expansion` counter as the first call of later
+    guaranteed tasks.
+- Scope completed:
+  - Added TO BE Markdown/PDF:
+    `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_0.7.6.3.6.9.md` and `.pdf`.
+  - `RadarExternalCallBudget` now tracks guaranteed recall-expansion tasks and
+    first-call usage.
+  - Accepted guaranteed recall-expansion work receives a protected first
+    OpenRouter call. Retries and optional work cannot consume capacity reserved
+    for another guaranteed task's first call.
+  - Scheduler now rejects guaranteed work before provider execution with
+    `guaranteed_external_reservation_insufficient` when the external
+    recall-expansion or total OpenRouter budget cannot cover admitted work.
+  - Runtime can report `guaranteed_external_reservation_protected` when a retry
+    or optional task would steal a reserved guaranteed first call.
+  - `benchmark_smoke` gets limited headroom: total OpenRouter calls `20`,
+    web-task calls `10`, recall-expansion calls `7`, server-tool web searches
+    `60`, source verification requests `40`.
+  - Dossier and benchmark report expose
+    `work_admission_reserved_capacity.guaranteed_recall_expansion`.
+  - AS IS Markdown/PDF updated.
+- Tests:
+  - Added scheduler/budget tests proving a retry cannot steal the first call
+    reserved for another guaranteed production-site task.
+  - Added scheduler test for pre-provider
+    `guaranteed_external_reservation_insufficient`.
+  - Updated benchmark profile tests for the bounded smoke headroom.
+  - Updated API and benchmark report tests for reservation metadata.
+- Docker acceptance:
+  - Rebuilt Docker API/worker/backend-init and ran
+    `benchmark-sibur-holding-contour` with `benchmark_smoke`.
+  - Smoke run: `radar-run-6e08ae16-87f5-4ef3-a313-1417d432ce3f`.
+  - Result: `completed` / `stopped_for_review`, reason
+    `Execution budget was exhausted before signal search`.
+  - External settings applied as intended: total OpenRouter calls `20`,
+    web-task calls `10`, recall-expansion calls `7`, server-tool searches `60`,
+    DaData lookups `4`, source verification requests `40`.
+  - Guaranteed first-call reservation worked:
+    `reserved_task_count=6`, `first_call_used_count=6`,
+    `first_call_remaining_count=0`.
+  - Target-lane minimums were satisfied:
+    holding/group selected `2`, executed `2`; legal/subsidiary selected `4`,
+    executed `2`; production-site/branch selected `4`, executed `2`.
+  - Scheduler ledger: accepted `6`, rejected `4`; rejected work is now
+    explained before execution as `guaranteed_external_reservation_insufficient`
+    for extra coverage-step expansion tasks, not as hidden budget loss.
+  - Evaluation for the same run: `strict_recall=1.0`, `review_recall=0.6667`,
+    false negatives: only `tobolsk-site`.
+  - Remaining false negative diagnostic: `tobolsk-site` was generated but not
+    selected/executed before the run stopped (`expansion_not_selected`).
+  - Coverage probe for `tobolsk-site` from host CLI failed with OpenRouter
+    `401 User not found`; Docker benchmark OpenRouter calls worked, so treat
+    this as a host diagnostic credentials/runtime mismatch, not a Radar
+    pipeline blocker.
+- Verdict:
+  - This slice fixed the hidden shared-budget loss for guaranteed expansion
+    first calls.
+  - Bounded `benchmark_smoke` is now interpretable and materially better than
+    the previous run (`review_recall` improved from `0.3333` to `0.6667`,
+    `strict_recall` stayed `1.0`).
+  - `benchmark_live` should still wait for one small follow-up: either include
+    the remaining `tobolsk-site` lane in the guaranteed site slots or explain
+    why it is lower priority than already selected production-site targets.
+
 ### Slice 0.7.6.3.7: Model-role evaluation and extraction fallback policy
 
 - Status: `Backlog`

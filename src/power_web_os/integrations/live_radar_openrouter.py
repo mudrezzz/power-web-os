@@ -16,7 +16,7 @@ from power_web_os.application.live_radar_contracts import (
 )
 from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.live_radar_extraction_contract import extraction_validation_state, validate_and_repair_extraction_payload
-from power_web_os.application.live_radar_external_budget import (
+from power_web_os.application.live_radar_external_budget_context import (
     current_external_call_budget,
     record_openrouter_server_tool_usage,
     reserve_external_call,

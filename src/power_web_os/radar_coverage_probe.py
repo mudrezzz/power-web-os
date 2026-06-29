@@ -11,6 +11,8 @@ from power_web_os.application.live_radar_contracts import RadarSearchPlan, Radar
 from power_web_os.application.live_radar_external_budget import (
     RadarExternalCallBudget,
     RadarExternalCallBudgetSettings,
+)
+from power_web_os.application.live_radar_external_budget_context import (
     external_call_budget_context,
 )
 from power_web_os.integrations.live_radar_openrouter import OpenRouterWebSearchProvider

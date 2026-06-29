@@ -26,8 +26,8 @@ from power_web_os.application.live_radar_extraction_contract import qualificatio
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition, build_live_mini_radar_search_plan
 from power_web_os.application.live_radar_discovery_planning import DeterministicRadarDiscoveryPlanner
 from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_plan_to_search_plan
-from power_web_os.application.live_radar_external_budget import (
-    RadarExternalCallBudget,
+from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
+from power_web_os.application.live_radar_external_budget_context import (
     current_external_call_budget,
     external_budget_settings_from_context,
     external_call_budget_context,

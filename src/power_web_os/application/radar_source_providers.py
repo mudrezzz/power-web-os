@@ -25,7 +25,7 @@ from power_web_os.application.live_radar_contracts import (
     WebSearchProvider,
     WebSearchProviderResult,
 )
-from power_web_os.application.live_radar_external_budget import reserve_budget_slice
+from power_web_os.application.live_radar_external_budget_context import reserve_budget_slice
 from power_web_os.application.live_radar_universe import merge_provider_metadata
 from power_web_os.application.radar_lookup_terms import (
     concrete_candidate_scope_terms as _concrete_candidate_scope_terms,

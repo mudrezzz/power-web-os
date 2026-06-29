@@ -35,7 +35,8 @@ from power_web_os.application.live_radar_search_expansion_payloads import (
     without_extraction_issues,
 )
 from power_web_os.application.radar_search_expansion_scheduler import schedule_guaranteed_expansion_variants
-from power_web_os.application.radar_work_scheduler import RadarWorkScheduler, merge_work_scheduler_metadata
+from power_web_os.application.radar_work_scheduler import RadarWorkScheduler
+from power_web_os.application.radar_work_scheduler_metadata import merge_work_scheduler_metadata
 
 
 @dataclass(slots=True)

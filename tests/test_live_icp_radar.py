@@ -36,7 +36,7 @@ from power_web_os.application.live_radar_execution_budget import (
     RadarExecutionBudgetSettings,
     budget_key,
 )
-from power_web_os.application.live_radar_external_budget import reserve_openrouter_http_call
+from power_web_os.application.live_radar_external_budget_context import reserve_openrouter_http_call
 from power_web_os.application.live_radar_entity_resolution import RadarEntityResolutionService
 from power_web_os.application.live_radar_normalization import normalize_live_candidate
 from power_web_os.application.live_radar_extraction_contract import validate_and_repair_extraction_payload

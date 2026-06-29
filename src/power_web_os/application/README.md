@@ -73,6 +73,15 @@ provider SDK details.
   handling details.
 - `radar_work_scheduler.py` owns Radar work admission and protected budget
   capacity for application-approved lanes such as benchmark recall expansion.
+  For guaranteed recall expansion, it registers a protected first external
+  OpenRouter call so retries and optional work cannot consume another
+  guaranteed lane's execution slot.
+- `live_radar_external_budget_reservations.py` owns pure reservation summary
+  helpers for external-call budget diagnostics.
+- `live_radar_external_budget_context.py` owns context-local accessors for
+  external-call budgets used by provider adapters.
+- `radar_work_scheduler_metadata.py` owns pure report/merge helpers for work
+  scheduler metadata.
   It orders and admits work, but does not call providers or mutate source
   policy.
 - `radar_search_expansion_selection.py` owns guaranteed target selection before

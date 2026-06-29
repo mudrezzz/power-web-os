@@ -574,6 +574,13 @@ def test_radar_run_dossier_explains_zero_product_sources(tmp_path: Path) -> None
     artifact["run_metadata"]["execution_results"]["external_call_budget_exhaustion_events"] = [
         {"reason": "external_call_budget_exhausted", "key": "openrouter:run"}
     ]
+    artifact["run_metadata"]["execution_results"]["work_admission_reserved_capacity"] = {
+        "guaranteed_recall_expansion": {
+            "reserved_task_count": 2,
+            "first_call_used_count": 1,
+            "first_call_remaining_count": 1,
+        }
+    }
     artifact["run_metadata"]["execution_results"]["semantic_task_budget_counters"] = {
         "semantic_reserve:production_site_coverage_probe": 2
     }
@@ -636,6 +643,7 @@ def test_radar_run_dossier_explains_zero_product_sources(tmp_path: Path) -> None
     assert dossier["external_call_budget_counters"]["openrouter:run"] == 14
     assert dossier["external_call_budget_counters_by_role"]["openrouter_recall_expansion"] == 1
     assert dossier["external_call_budget_exhaustion_events"][0]["key"] == "openrouter:run"
+    assert dossier["work_admission_reserved_capacity"]["guaranteed_recall_expansion"]["reserved_task_count"] == 2
     assert dossier["semantic_task_budget_counters"]["semantic_reserve:production_site_coverage_probe"] == 2
     assert dossier["semantic_task_budget_exhaustion_events"][0]["reason"] == "semantic_task_reserve_exhausted"
     assert dossier["target_probe_guarantees"]["target_probe_minimums_satisfied"] is False

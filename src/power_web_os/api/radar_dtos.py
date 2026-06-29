@@ -390,6 +390,7 @@ class RadarRunDossierResponse(BaseModel):
     external_call_budget_counters: dict[str, int] = Field(default_factory=dict)
     external_call_budget_counters_by_role: dict[str, int] = Field(default_factory=dict)
     external_call_budget_exhaustion_events: list[dict[str, Any]] = Field(default_factory=list)
+    work_admission_reserved_capacity: dict[str, Any] = Field(default_factory=dict)
     provider_retry_records: list[dict[str, Any]] = Field(default_factory=list)
     openrouter_server_tool_usage: dict[str, Any] = Field(default_factory=dict)
     post_call_budget_overruns: list[dict[str, Any]] = Field(default_factory=list)
