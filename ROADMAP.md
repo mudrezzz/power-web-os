@@ -7070,6 +7070,506 @@ Principles:
   - Too many model candidates can expand test cost. Mitigate with a small
     configured candidate list and call caps.
 
+### Slice 0.7.6.4.0: Radar pipeline split, model-profile separation, and documentation registry
+
+- Status: `Done`
+- Goal: Fix the architectural framing before implementing signal monitoring:
+  Radar is not one search engine anymore. It is a family of separate search
+  pipelines with different cadence, budgets, model roles, source use, tests, and
+  documentation.
+- User value:
+  - A user can understand why candidate discovery is a heavier upstream process
+    and why signal monitoring should be a frequent candidate-first process.
+  - A developer can tune candidate discovery without accidentally changing
+    signal monitoring behavior, and vice versa.
+  - Future Power Web discovery can be added as its own pipeline instead of being
+    hidden inside ICP Radar candidate search.
+- Problem statement:
+  - Recent corrective slices made candidate discovery mature and budget-heavy:
+    source profiles, capability cards, search expansion, scheduler admission,
+    recall evaluation, and AS IS/TO BE docs.
+  - Signal monitoring has a different job: start from known candidates, look at
+    a recent time window, find new intent signals, dedupe them, and notify sales
+    when something changed.
+  - Keeping both behaviors inside one implicit run kind makes budgets,
+    scheduling, model tuning, and benchmark interpretation confusing.
+- Scope completed:
+  - Added ADR:
+    `docs/adr/2026-06-30-radar-search-pipelines-are-separate.md`.
+  - Added pipeline documentation registry:
+    `docs/radar/pipelines/README.md`.
+  - Declared pipeline ids:
+    - `candidate-discovery`;
+    - `signal-monitoring`;
+    - `power-web-discovery`.
+  - Updated system architecture with the split between candidate discovery,
+    signal monitoring, and future Power Web discovery.
+  - Updated current Radar AS IS Markdown/PDF to state that it describes the
+    current candidate-discovery pipeline, not the final signal-monitoring
+    architecture.
+- Architecture decision:
+  - `candidate-discovery` is a recall-first upstream pipeline. It can be broad,
+    slower, and budgeted for source expansion, registry enrichment, and
+    candidate-universe construction.
+  - `signal-monitoring` is a frequent monitoring pipeline. It should start from
+    known product or review-needed candidates, reuse existing sources where
+    useful, search recent signal evidence, and keep signal-specific budgets.
+  - `power-web-discovery` is a future pipeline for people, roles, relationships,
+    partner routes, influence paths, and buying-committee structure.
+  - Combined discovery-plus-signal runs remain useful for smoke/debug
+    compatibility, but should not be the production architecture.
+- Model-profile decision:
+  - Each pipeline must own its own model-role profile.
+  - Candidate-discovery model tuning must not silently change signal
+    monitoring.
+  - Signal-monitoring model tuning must not silently change candidate
+    discovery.
+  - Non-secret model-role defaults should move toward:
+    - `config/radar/model_profiles/candidate_discovery.json`;
+    - `config/radar/model_profiles/signal_monitoring.json`;
+    - `config/radar/model_profiles/power_web_discovery.json`.
+  - `.env` remains for credentials and deployment/runtime overrides.
+- Documentation decision:
+  - Serious Radar pipelines must have separate AS IS Markdown/PDF documents.
+  - Substantial changes must start with a pipeline-specific TO BE Markdown/PDF.
+  - Existing pipeline documentation skills should become pipeline-aware instead
+    of being duplicated per pipeline.
+- Out of scope:
+  - No runtime signal-monitoring implementation yet.
+  - No UI buttons or scheduling UI yet.
+  - No DB migration.
+  - No new provider adapter.
+  - No benchmark-live claim.
+- Docs updated:
+  - `docs/adr/2026-06-30-radar-search-pipelines-are-separate.md`.
+  - `docs/radar/pipelines/README.md`.
+  - `docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md`.
+  - `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md`.
+  - `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.pdf`.
+- Validation:
+  - Documentation-only architecture slice. Runtime behavior is unchanged.
+  - Fast validation should cover architecture/doc contracts after the PDF is
+    regenerated.
+- Acceptance:
+  - Roadmap and architecture now clearly say that candidate discovery and signal
+    monitoring are separate pipelines.
+  - The current AS IS document is explicitly scoped to candidate discovery.
+  - The next signal-monitoring implementation must start with a TO BE document,
+    not with ad hoc runtime code.
+
+### Slice 0.7.6.4.0.1: SQLite slice tracker and generated Roadmap report
+
+- Status: `Ready`
+- Goal: Stop using the 8k+ line `ROADMAP.md` as the primary editing interface.
+  Keep it as a generated human-readable report, while the source of truth for
+  slices becomes a small local SQLite-backed tracker with a CLI and text export
+  for git review.
+- User value:
+  - The user and contributors still read `ROADMAP.md` as the project report.
+  - The agent works through structured queries instead of scanning and patching
+    a huge flat Markdown file.
+  - Slice changes become less error-prone: missing ranges like
+    `0.7.6.4.2-0.7.6.4.6` should be caught by structured data and tests.
+- Problem statement:
+  - `ROADMAP.md` has grown beyond 8,000 lines and now mixes current planning,
+    historical delivery report, next actions, old decisions, and active slice
+    details.
+  - Manual Markdown patching creates risk: slices can be dropped, reordered, or
+    reformulated without obvious validation.
+  - Splitting the file into many hand-maintained Markdown files would add more
+    navigation overhead. A small tracker is a cleaner working interface.
+- Scope:
+  - Add a local SQLite schema for roadmap tracking:
+    - `slices`;
+    - `slice_events`;
+    - `slice_links`;
+    - `roadmap_meta`.
+  - Add a small CLI/application boundary, for example:
+    - `python -m power_web_os.roadmap list --status next`;
+    - `python -m power_web_os.roadmap show 0.7.6.4.1`;
+    - `python -m power_web_os.roadmap add-slice ...`;
+    - `python -m power_web_os.roadmap update-status 0.7.6.4.1 Done`;
+    - `python -m power_web_os.roadmap render`.
+  - Generate `ROADMAP.md` from SQLite using a deterministic renderer.
+  - Generate a git-diff-friendly text export, for example
+    `docs/roadmap/slices.export.jsonl`, so reviews do not depend on a binary
+    SQLite diff.
+  - Add an importer for the current active/future slice range first. Historical
+    completed sections can remain in the existing ROADMAP/report until a later
+    migration if full import is too risky.
+  - Add validation that generated `ROADMAP.md` is up to date with the SQLite
+    tracker and export.
+- Out of scope:
+  - No web UI.
+  - No Jira-like workflow.
+  - No multi-user server.
+  - No production database dependency.
+  - No complete manual cleanup of all old historical roadmap text unless it is
+    mechanically safe.
+- Implementation notes:
+  - SQLite is the working database, but git review must use generated text
+    artifacts. Do not rely on binary SQLite diffs for code review.
+  - Keep the first schema deliberately small and boring. This is project
+    tooling, not a product feature.
+  - `ROADMAP.md` should clearly say it is generated and identify the generator
+    command.
+  - The CLI should use application/repository boundaries rather than ad hoc
+    string manipulation.
+  - The renderer should preserve the current slice format:
+    Goal, User value, Scope, Out of scope, Implementation notes, Tests, Docs,
+    Demo impact, Acceptance criteria, Risks.
+  - Current `ROADMAP.md` content should be treated carefully: do not drop
+    historical information during the first migration.
+- Tests:
+  - Schema/repository tests:
+    - create slice;
+    - update status;
+    - add event;
+    - add links to ADR/docs/runs/commits;
+    - read next recommended task.
+  - CLI tests:
+    - `list`;
+    - `show`;
+    - `update-status`;
+    - `render`;
+    - invalid slice id returns actionable error.
+  - Renderer tests:
+    - deterministic Markdown output;
+    - deterministic JSONL export;
+    - generated ROADMAP contains all active/backlog slices in order;
+    - generated report includes next recommended task, blocked items, and open
+      questions.
+  - Migration/import tests:
+    - current `0.7.6.4.0-0.7.6.4.6` chain imports without dropping a slice;
+    - historical text is preserved or explicitly marked as legacy report
+      content.
+  - Contract tests:
+    - fail if `ROADMAP.md` differs from generated output after tracker changes;
+    - fail if `slices.export.jsonl` is stale;
+    - fail if a slice misses required fields.
+- Docs:
+  - Update `README.md` or Developer Guide with the new roadmap workflow.
+  - Add `docs/roadmap/README.md` explaining:
+    - SQLite is the editing source of truth;
+    - `ROADMAP.md` is generated for humans;
+    - `slices.export.jsonl` is the reviewable text export;
+    - exact commands for adding/updating/rendering slices.
+  - Update agent guidance if needed so agents query the tracker before editing
+    roadmap data.
+- Demo impact:
+  - None. This is project tooling.
+- Acceptance criteria:
+  - A new slice can be added through the CLI and appears in generated
+    `ROADMAP.md`.
+  - Updating a slice status through the CLI updates SQLite, JSONL export, and
+    generated ROADMAP deterministically.
+  - `0.7.6.4.0-0.7.6.4.6` are present after import/render.
+  - Tests catch stale generated ROADMAP/export artifacts.
+  - Contributors can still read `ROADMAP.md` without knowing SQLite.
+- Risks:
+  - The migration can accidentally rewrite too much history. Mitigate by first
+    importing only the active/future slice range and preserving old history as
+    legacy generated/report text.
+  - Binary SQLite in git can be awkward. Mitigate with JSONL/SQL text export as
+    the review surface.
+  - Tooling can become overbuilt. Keep the first version CLI-only and focused
+    on slice tracking.
+
+### Slice 0.7.6.4.1: Pipeline documentation registry and signal-monitoring TO BE
+
+- Status: `Backlog`
+- Goal: Create the documentation system for multiple Radar search pipelines and
+  prepare the first reviewed TO BE design for signal monitoring.
+- User value: A user and a developer can understand the signal-monitoring
+  algorithm before implementation, instead of mixing it into the already large
+  candidate-discovery AS IS document.
+- Scope:
+  - Keep `docs/radar/pipelines/README.md` as the registry for serious Radar
+    pipelines.
+  - Treat `candidate-discovery` as the current mature pipeline and keep the
+    current `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` as its legacy/current
+    entrypoint until a later migration slice.
+  - Create `docs/radar/pipelines/signal-monitoring/to-be/` and the first
+    `RADAR_SIGNAL_MONITORING_TO_BE_<slice>.md` plus PDF.
+  - Update existing Radar pipeline skills so they accept pipeline id:
+    - `pipeline=candidate-discovery`;
+    - `pipeline=signal-monitoring`;
+    - `pipeline=power-web-discovery`.
+  - Document the rule: each serious pipeline has its own AS IS and TO BE
+    Markdown/PDF.
+- Out of scope:
+  - No runtime signal monitoring.
+  - No new providers.
+  - No broad benchmark.
+- Implementation notes:
+  - Do not create separate skill families for every pipeline. Extend the
+    current generic skills.
+  - The user should be able to say: "Сделай TO BE для signal-monitoring по
+    слайсу 0.7.6.4.1".
+- Tests:
+  - Documentation contract tests for pipeline registry and required PDF/MD
+    files.
+  - Skill/path tests proving pipeline id maps to the right output folder.
+- Docs:
+  - Update `docs/radar/pipelines/README.md`, Developer Guide, and ROADMAP.
+- Demo impact:
+  - None.
+- Acceptance criteria:
+  - Signal-monitoring TO BE exists as Markdown and PDF.
+  - The documentation skills are pipeline-aware.
+  - Candidate-discovery AS IS is not overwritten.
+- Risks:
+  - Documentation can drift from implementation. Mitigate by requiring AS IS
+    sync after every signal-monitoring runtime slice.
+
+### Slice 0.7.6.4.2: Signal monitoring application contract and recorded harness
+
+- Status: `Backlog`
+- Goal: Create a fast no-live-provider test harness for signal monitoring
+  before any OpenRouter/DaData/live source work.
+- User value: The team can prove signal-monitoring behavior in seconds and
+  catch JSON/schema/evidence-linking failures without paying for long live runs.
+- Scope:
+  - Add application contracts:
+    - `SignalMonitoringRun`;
+    - `SignalMonitoringPlan`;
+    - `SignalSearchTask`;
+    - `SignalObservation`;
+    - `SignalEvidence`;
+    - `SignalMonitoringOutcome`.
+  - Define inputs:
+    - candidate universe or accepted candidates from latest discovery;
+    - signal rules;
+    - lookback window;
+    - known candidate sources;
+    - signal-specific source policy.
+  - Add fake/recorded tests for:
+    - candidate exists and signal is found;
+    - candidate exists and signal is searched-negative;
+    - source is found but evidence is not linked;
+    - budget exhausted;
+    - duplicate old signal;
+    - malformed JSON -> retry -> backup model.
+- Out of scope:
+  - No live OpenRouter by default.
+  - No UI controls.
+  - No production scheduler.
+- Implementation notes:
+  - This is the red/green contract layer for signal monitoring, similar to the
+    adaptive candidate-discovery harness.
+  - `not_observed` must mean "searched and no signal", not "not searched".
+- Tests:
+  - Unit tests for every contract mapper and state transition.
+  - Recorded/fake provider tests for schema invalid, retry, backup, evidence
+    ref linking, duplicate signal, budget-limited, and searched-negative states.
+  - Secret/hidden-reasoning redaction tests.
+- Docs:
+  - Update signal-monitoring TO BE or AS IS draft with contracts and states.
+- Demo impact:
+  - None yet.
+- Acceptance criteria:
+  - The harness runs without network, Redis, Celery, DB server, or local API.
+  - Every terminal state is explicit and diagnostic.
+- Risks:
+  - The contract may overfit to TOIR. Keep signal definitions generic and put
+    TOIR examples in fixtures only.
+
+### Slice 0.7.6.4.3: Signal source strategy and warm-start from known sources
+
+- Status: `Backlog`
+- Goal: Define and test the source strategy for signal monitoring: first reuse
+  known useful candidate sources, then search official/company sources,
+  signal-specific sources, and only then broader open web.
+- User value: Signal monitoring becomes cheaper and more focused because it
+  does not rediscover identity and does not ignore already collected evidence.
+- Scope:
+  - Add warm-start source selection from candidate-discovery results:
+    - used sources;
+    - retrieved/analyzed sources;
+    - official/company sources;
+    - candidate-specific source refs.
+  - Add source strategy order:
+    - known useful sources from discovery;
+    - official/company sources;
+    - signal-specific sources;
+    - open web.
+  - Use connector capabilities to decide whether a source can provide signal
+    evidence.
+  - Identity-only connectors must not be used as signal evidence unless their
+    profile explicitly supports signal evidence.
+- Out of scope:
+  - No provider-specific hardcode such as "DaData cannot be used".
+  - No UI.
+  - No new connector marketplace.
+- Implementation notes:
+  - The rule is capability-based: current DaData profile is not signal-capable,
+    but another registry/source plugin may be signal-capable later.
+  - Source strategy should produce diagnostics when a configured required
+    signal source is skipped or not executable.
+- Tests:
+  - Unit tests for source ordering and capability filtering.
+  - Fake pipeline tests proving known sources are checked before new open-web
+    search.
+  - Tests proving identity-only connector is skipped for signal evidence by
+    capability, not by provider id.
+  - Dossier/report tests for source strategy decisions.
+- Docs:
+  - Update signal-monitoring TO BE/AS IS and connector-profile ADR notes.
+- Demo impact:
+  - None until runtime smoke.
+- Acceptance criteria:
+  - Signal monitoring can explain which sources it reused, searched, skipped,
+    or rejected by capability.
+- Risks:
+  - Reusing old sources can miss fresh signals. Mitigate with lookback-aware
+    new search after warm-start.
+
+### Slice 0.7.6.4.4: Signal monitoring budgets and model profile isolation
+
+- Status: `Backlog`
+- Goal: Give signal monitoring its own budgets and model row so candidate
+  discovery tuning cannot starve or break signal search.
+- User value: A user can run frequent signal checks with predictable cost and
+  without depending on candidate-discovery budget leftovers.
+- Scope:
+  - Add separate signal external-call budgets:
+    - signal OpenRouter calls;
+    - signal source verification;
+    - signal extraction retries;
+    - signal lookback queries.
+  - Add signal model role settings:
+    - signal planner;
+    - signal extractor;
+    - signal backup extractor;
+    - signal evidence judge;
+    - optional dedupe model.
+  - Add role-specific temperature/default settings:
+    - strict extraction;
+    - slightly flexible monitoring query expansion;
+    - strict evidence judge/dedupe.
+  - Ensure changing candidate-discovery model profile does not change
+    signal-monitoring profile.
+- Out of scope:
+  - No automatic model selection.
+  - No price optimizer.
+  - No broad model benchmark.
+- Implementation notes:
+  - Non-secret model profiles belong in config, not `.env`.
+  - `.env` remains for credentials, endpoints, and emergency overrides.
+- Tests:
+  - Config tests proving candidate and signal profiles are independent.
+  - Budget tests proving signal calls do not consume candidate-discovery
+    expansion reserves.
+  - Retry/backup tests for malformed signal JSON.
+  - Runtime config redaction tests.
+- Docs:
+  - Update Developer Guide, `.env.example`, pipeline registry, and
+    signal-monitoring docs.
+- Demo impact:
+  - None until signal smoke.
+- Acceptance criteria:
+  - Signal monitoring has independent budget counters and model-role
+    configuration.
+  - Candidate-discovery model/budget edits cannot silently change signal
+    monitoring.
+- Risks:
+  - Too many model settings can confuse setup. Mitigate with named profile
+    defaults and clear override precedence.
+
+### Slice 0.7.6.4.5: First recorded TOIR signal monitoring loop
+
+- Status: `Backlog`
+- Goal: Build the first working signal-monitoring loop for TOIR using
+  fake/recorded providers, without making a live benchmark claim.
+- User value: The product can show the core signal-monitoring idea: known
+  candidates are checked for new tenders, vacancies, implementation news, or
+  other TOIR-relevant activity.
+- Scope:
+  - Use 3-5 found candidates from the SIBUR benchmark fixture/output.
+  - Use TOIR signal rules.
+  - Recorded/fake provider returns:
+    - tender signal;
+    - vacancy signal;
+    - article about 1C/TOIR/EAM implementation;
+    - empty search;
+    - duplicate old signal.
+  - Output shows:
+    - new signals;
+    - repeated signals;
+    - no new signal;
+    - not searched because budget-limited;
+    - evidence refs.
+- Out of scope:
+  - No live quality claim.
+  - No sales notification.
+  - No CRM handoff.
+  - No Power Web route update.
+- Implementation notes:
+  - This is a recorded product loop, not a benchmark.
+  - Keep candidate-discovery output as input; do not rediscover candidates.
+- Tests:
+  - Recorded end-to-end signal-monitoring test.
+  - Dedupe tests for repeated old signal.
+  - Evidence-linking tests for every observed signal.
+  - Product projection tests for new/repeated/no-signal/not-searched states.
+- Docs:
+  - Sync signal-monitoring AS IS Markdown/PDF after implementation.
+  - Update demo README with the recorded TOIR signal loop.
+- Demo impact:
+  - Demo can show a separate technical command/API path for signal monitoring.
+- Acceptance criteria:
+  - Recorded signal-monitoring loop reaches terminal state.
+  - At least one new signal, one repeated signal, one searched-negative, and
+    one budget/not-searched state are represented.
+- Risks:
+  - Recorded examples may look too synthetic. Keep fixtures realistic and mark
+    them as recorded/fake.
+
+### Slice 0.7.6.4.6: UI controls for candidate discovery vs signal monitoring
+
+- Status: `Backlog`
+- Goal: Make the pipeline split visible to users in the Radar UI.
+- User value: A user understands whether they are launching candidate search or
+  signal monitoring, and can see separate cadence/status for both.
+- Scope:
+  - Add UI action for candidate discovery, for example "Запустить поиск
+    кандидатов".
+  - Add UI action for signal monitoring, for example "Проверить сигналы".
+  - Add settings/display for:
+    - candidate discovery schedule;
+    - signal monitoring schedule;
+    - last candidate discovery run;
+    - last signal monitoring run;
+    - next scheduled checks;
+    - signal run status.
+  - Keep old combined run only as compatibility/debug if still needed.
+- Out of scope:
+  - No production scheduler daemon unless already implemented by backend
+    slices.
+  - No notification center.
+  - No CRM task generation.
+- Implementation notes:
+  - Use the existing Power Web OS design system.
+  - UI copy must make clear that candidate discovery answers "кого
+    мониторить", while signal monitoring answers "что нового произошло".
+- Tests:
+  - Frontend component/contract tests for two actions and two status areas.
+  - API adapter tests for run kind.
+  - Visual/smoke test for dense layout and no text overlap.
+- Docs:
+  - Update User Guide and demo docs.
+- Demo impact:
+  - User-facing Radar workflow becomes more honest: two separate searches are
+    visible.
+- Acceptance criteria:
+  - User can launch or inspect candidate discovery and signal monitoring
+    separately.
+  - UI does not imply that signal monitoring was executed during a
+    candidate-discovery-only run.
+- Risks:
+  - UI may get ahead of backend runtime. Only expose actions backed by real API
+    behavior or clearly disabled/planned state.
+
 ### Slice 0.7: Human review queue loop
 
 - Status: `Backlog`
@@ -7617,17 +8117,27 @@ None.
 
 ## Next Recommended Task
 
-Do not add another legal/subsidiary completion slice right now. Docker
+Do not add another candidate-discovery budget/selector slice right now. Docker
 `benchmark_smoke` run `radar-run-12c8d936-4370-4187-b1cc-27fdcb511e76`
-validated the `0.7.6.3.6.13` fix: `strict_recall=1.0`, `review_recall=1.0`,
-and both previous legal misses are no longer false negatives.
+validated the `0.7.6.3.6.13` candidate-discovery fix:
+`strict_recall=1.0`, `review_recall=1.0`, and both previous legal misses are no
+longer false negatives.
 
-The next decision is whether to proceed to `Slice 0.7.6.3.7: Model-role
-evaluation and extraction fallback policy` or insert one small benchmark-readiness
-slice for budget/evidence quality before `benchmark_live`. Current blocker is
-not recall selection anymore: the bounded smoke still stops before signal search
-because OpenRouter/source-verification budgets are exhausted, and
-`kazanorgsintez` is matched with weak evidence and no source refs. Keep
-`benchmark_live` blocked until we either accept this as sufficient for broader
-diagnostic benchmarking or add a targeted slice to improve signal-stage budget
-headroom and evidence-source linking for weak legal hits.
+The next recommended task is `Slice 0.7.6.4.0.1: SQLite slice tracker and
+generated Roadmap report`.
+
+Reason: the next product problem is not another candidate-discovery recall
+repair, but the current 8k+ line `ROADMAP.md` is becoming a weak source of
+truth. Before starting the signal-monitoring sequence, add a tiny SQLite slice
+tracker, deterministic `ROADMAP.md` renderer, and git-reviewable JSONL export.
+After that, continue with `Slice 0.7.6.4.1: Pipeline documentation registry and
+signal-monitoring TO BE`.
+
+`Slice 0.7.6.3.7: Model-role evaluation and extraction fallback policy` remains
+useful, but its implementation should be pipeline-aware instead of tuning one
+shared model row for every Radar behavior.
+
+Keep `benchmark_live` blocked until the team explicitly decides whether it is a
+candidate-discovery benchmark, a signal-monitoring benchmark, or a combined
+debug smoke. Do not let signal-search budget questions reopen the already
+validated candidate-discovery selector loop.

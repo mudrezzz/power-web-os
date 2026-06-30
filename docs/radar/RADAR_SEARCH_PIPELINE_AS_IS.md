@@ -2,7 +2,7 @@
 
 Status: AS IS
 
-Product area: Radar candidate and signal search
+Product area: Radar candidate discovery pipeline
 
 Updated after slice: 0.7.6.3.6.13
 
@@ -14,9 +14,16 @@ Generated PDF: `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.pdf`
 
 ## 1. Purpose
 
-This document explains the current Radar search pipeline as it is implemented
-today. It is the operational map for candidate discovery, source handling,
-identity enrichment, signal search, diagnostic states, and benchmark evaluation.
+This document explains the current Radar candidate-discovery pipeline as it is
+implemented today. It is the operational map for upstream candidate discovery,
+source handling, identity enrichment, diagnostic states, and benchmark
+evaluation.
+
+Radar is moving from one combined "search everything" pipeline to separate
+pipelines. This AS IS document remains the canonical candidate-discovery AS IS
+until it is migrated into `docs/radar/pipelines/candidate-discovery/`. Future
+signal monitoring and Power Web discovery pipelines must have their own AS IS
+and TO BE Markdown/PDF documents under `docs/radar/pipelines/`.
 
 The document has two jobs:
 

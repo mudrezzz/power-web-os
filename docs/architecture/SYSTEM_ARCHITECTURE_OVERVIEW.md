@@ -109,7 +109,29 @@ slices should continue in this order before broad live quality claims:
 10. planner source cards plus capability-based source validation;
 11. multi-radar discovery benchmark over the repaired workflow pipeline;
 12. normalized candidate/evidence query tables when API usage needs them;
-13. production schedule/cadence controls.
+13. separate Radar search pipelines for candidate discovery, signal monitoring,
+    and future Power Web discovery;
+14. production schedule/cadence controls.
+
+Radar is no longer treated as one monolithic search pipeline. The accepted
+architecture decision in
+`docs/adr/2026-06-30-radar-search-pipelines-are-separate.md` splits it into:
+
+- `candidate-discovery`: a heavier, less frequent upstream process that finds
+  and qualifies legal entities, sites, branches, assets, and other
+  review-needed entities;
+- `signal-monitoring`: a frequent candidate-first process that checks known
+  candidates for recent configured intent signals;
+- `power-web-discovery`: a future account-access process for people, roles,
+  relationships, partner paths, and buying-committee structure.
+
+The registry for per-pipeline AS IS/TO BE documents lives in
+`docs/radar/pipelines/README.md`. The current
+`docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` remains the canonical
+candidate-discovery AS IS document until it is migrated into that registry.
+Each serious pipeline must own its run kind, schedule/cadence, budgets,
+model-role profile, source-capability rules, fast recorded tests, and AS
+IS/TO BE Markdown/PDF documentation.
 
 JSON artifacts remain useful as demo exports and offline fallback, but they are
 not the long-term source of truth. The frontend now prefers the Radar API for
@@ -194,8 +216,9 @@ only a legacy/offline demo fallback. This keeps planner input, retrieval plan,
 artifact radar payload, dossier, and trace aligned to the same active source
 policy.
 
-Live Radar execution is structure-first, qualification-first, and
-pipeline-shaped. The application service owns explicit provider-neutral phases:
+Current live Radar execution is structure-first, qualification-first, and
+candidate-discovery shaped. The application service owns explicit
+provider-neutral phases:
 planning, provider collection, source normalization, candidate extraction,
 candidate evaluation, validation, and artifact shaping. Planning compiles a
 generic `RadarExecutionPlan` from the Radar definition. It discovers the initial
@@ -209,6 +232,15 @@ prompts include only one signal and the current candidate scope. Pipeline phases
 emit structured event summaries that are persisted through `RadarRunJournal`;
 older artifact-derived journal mapping remains only a compatibility fallback
 for existing snapshots.
+
+That combined discovery-plus-signal shape is now compatibility behavior, not the
+target production architecture. Candidate discovery should be allowed to spend
+more work on source expansion, identity enrichment, and recall-first universe
+building. Signal monitoring should start from an accepted or review-needed
+candidate set, use its own cadence and lookback window, and keep protected
+budget/model settings for signal evidence. Tuning discovery model roles or
+budgets must not silently change signal monitoring, and tuning signal monitoring
+must not silently change candidate discovery.
 
 Discovery strategy itself is now a bounded planning loop. The application layer
 builds `RadarDiscoveryPlanningInput` from the active definition, qualification
@@ -611,6 +643,18 @@ Older conceptual names such as account discovery rules and signal criteria map i
 - `RadarCandidate`: a scored account candidate before it is accepted into Power Web work.
 
 Radar configuration is a first-class product boundary. There can be many ICP Radars running in parallel for different products, markets, holdings, or source scopes. Each radar owns its definition and can produce its own candidate shortlist; only approved candidates should flow into the shared `Accounts` portfolio and then into Power Web work. The current implementation exposes this through an `icp_radar_catalog` artifact and a block-editable selected-radar settings editor backed by browser-local demo state. The settings editor exposes business-language rules, source entities, generated codes, and scoring presets; it does not require users to edit internal IDs or field/operator/value triples. Production persistence, scheduling, live connector execution, and run history are planned as later concentric slices.
+
+Radar settings must distinguish at least two operational cadences:
+
+- candidate-discovery cadence: manual, scheduled, or settings-change triggered
+  upstream search for the candidate universe;
+- signal-monitoring cadence: frequent recurring checks for configured intent
+  signals on already known candidates.
+
+The same `RadarDefinition` can still contain qualification rules, source
+policies, and signal definitions, but runtime execution should use an explicit
+pipeline/run kind instead of assuming that every run must rediscover candidates
+and then search signals in one budget pool.
 
 The first realistic demo ICP profile uses `demo/fixtures/icp_radar/sibur_icp_pass1.xlsx` as a fixture. It discovers Russian legal entities inside a holding, scores them against ТОиР criteria, and shows a ranked candidate shortlist for the active `ТОиР / SIBUR` radar. The catalog also includes configured/planned radar examples without generated candidates yet. Numeric C1-C20 scores come from the XLSX. `radar.definition.intent_signals` is the canonical C1-C20 dictionary; top-level `criteria` is generated from it only as a backward-compatible alias. Criterion-level evidence is added by a separate curated synthetic fixture, `demo/fixtures/icp_radar/toir_sibur_criterion_evidence.json`, so the demo can exercise evidence-backed score explanation before production source extraction exists.
 
