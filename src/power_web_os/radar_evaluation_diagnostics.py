@@ -114,10 +114,22 @@ def _not_searched_bucket(*, item: dict[str, Any], dossier: dict[str, Any]) -> st
 
 def _reason_bucket(reason: str) -> str:
     lowered = reason.lower()
-    if "completion_limit" in lowered or "completion_not_selected" in lowered:
+    if "completion_cap" in lowered or "completion_limit" in lowered:
+        return "completion_cap_exhausted"
+    if "completion_lane_quota" in lowered:
+        return "completion_lane_quota_exhausted"
+    if "selector_priority" in lowered:
+        return "selector_priority_lost"
+    if "completion_not_selected" in lowered:
         return "completion_not_selected"
+    if "scheduler" in lowered or "admission" in lowered:
+        return "scheduler_rejected"
+    if "external_budget" in lowered or "openrouter" in lowered or "server_tool" in lowered:
+        return "external_budget_limited"
     if "global_budget" in lowered:
         return "expansion_global_budget_limited"
+    if "source_found_not_projected" in lowered or "projection" in lowered:
+        return "source_found_not_projected"
     if "reserve" in lowered:
         return "expansion_reserve_limited"
     if "budget" in lowered or "reserve" in lowered:

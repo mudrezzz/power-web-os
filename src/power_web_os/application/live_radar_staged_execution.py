@@ -706,6 +706,7 @@ def run_staged_radar_execution(
             "expansion_target_summary_by_type": provider_metadata.get("expansion_target_summary_by_type", {}),
             "targets_not_searched": provider_metadata.get("targets_not_searched", []),
             "benchmark_recall_target_summary": _benchmark_recall_target_summary(provider_metadata),
+            "legal_subsidiary_completion_summary": _legal_subsidiary_completion_summary(provider_metadata),
             "registry_ambiguity_fanout_summary": provider_metadata.get("registry_ambiguity_fanout_summary", {}),
             "registry_lookup_terms": provider_metadata.get("registry_lookup_terms", []),
             "registry_lookup_attempts": provider_metadata.get("registry_lookup_attempts", []),
@@ -1518,6 +1519,51 @@ def _benchmark_recall_target_summary(provider_metadata: dict[str, Any]) -> dict[
         "searched_by_target_type": searched_by_type,
         "not_searched_by_target_type": not_searched_by_type,
     }
+
+
+def _legal_subsidiary_completion_summary(provider_metadata: dict[str, Any]) -> dict[str, Any]:
+    target_type = "known_subsidiary_or_legal_entity_target"
+    targets = [
+        item for item in dict_list(provider_metadata.get("expansion_target_queue"))
+        if str(item.get("target_type") or "") == target_type
+    ]
+    variants = [
+        item for item in dict_list(provider_metadata.get("search_expansion_query_variants"))
+        if str(item.get("target_type") or "") == target_type
+    ]
+    results = [
+        item for item in dict_list(provider_metadata.get("search_expansion_results"))
+        if str(item.get("target_type") or "") == target_type
+    ]
+    not_searched = [
+        item for item in dict_list(provider_metadata.get("targets_not_searched"))
+        if str(item.get("target_type") or "") == target_type
+    ]
+    diagnostics = [
+        item for item in dict_list(provider_metadata.get("search_expansion_selection_diagnostics"))
+        if str(item.get("target_type") or "") == target_type
+    ]
+    if not (targets or variants or results or not_searched or diagnostics):
+        return {}
+    executed = [item for item in results if _is_executed_expansion_result(item)]
+    return {
+        "target_type": target_type,
+        "generated_count": len(targets),
+        "selected_variant_count": len({str(item.get("target_id") or "") for item in variants if str(item.get("target_id") or "")}),
+        "executed_count": len({str(item.get("target_id") or "") for item in executed if str(item.get("target_id") or "")}),
+        "not_searched_count": len({str(item.get("target_id") or "") for item in not_searched if str(item.get("target_id") or "")}),
+        "selection_diagnostic_count": len(diagnostics),
+        "not_searched_by_reason": _count_by_reason(not_searched),
+        "selection_diagnostics_by_reason": _count_by_reason(diagnostics),
+    }
+
+
+def _count_by_reason(items: list[dict[str, Any]]) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for item in items:
+        reason = str(item.get("not_searched_reason") or item.get("reason") or "unknown")
+        result[reason] = result.get(reason, 0) + 1
+    return result
 
 
 def _external_budget_events(exhaustion_events: list[dict[str, object]]) -> list[LiveRadarPipelineEvent]:

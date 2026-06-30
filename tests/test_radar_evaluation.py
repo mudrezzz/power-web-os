@@ -394,7 +394,7 @@ def test_evaluation_classifies_completion_not_selected_separately() -> None:
                 "target_id": "production_site_or_branch_target:tobolsk_site",
                 "target_label": "Tobolsk site",
                 "target_type": "production_site_or_branch_target",
-                "not_searched_reason": "completion_limit_reached",
+                "not_searched_reason": "completion_cap_exhausted",
             }
         ],
     }
@@ -406,7 +406,7 @@ def test_evaluation_classifies_completion_not_selected_separately() -> None:
     )
 
     diagnostics = {item["baseline_id"]: item["bucket"] for item in report["false_negative_diagnostics"]}
-    assert diagnostics["tobolsk-site"] == "completion_not_selected"
+    assert diagnostics["tobolsk-site"] == "completion_cap_exhausted"
 
 
 def test_evaluation_classifies_budget_blocked_expansion_as_global_budget_limited() -> None:

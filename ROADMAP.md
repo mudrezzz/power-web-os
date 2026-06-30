@@ -6738,7 +6738,7 @@ Principles:
     `radar-run-12727934-8686-4cc6-bb04-6ee450173775` completed with
     `strict_recall=0.8889`, `review_recall=0.6667`, and `tobolsk-site` as
     `expansion_source_found_not_projected`.
-  - Dossier showed `Тобольская промышленная площадка` as a source-backed
+  - Dossier showed the Tobolsk industrial site as a source-backed
     review-needed / linked upstream entity, but `candidate_universe` could hold
     the same name as `unknown_entity`.
   - Root cause: projection can degrade known review-needed entity metadata to
@@ -6814,6 +6814,149 @@ Principles:
   - Next small slice should address legal/subsidiary completion fairness and
     CLI coverage-probe environment parity, so `nizhnekamskneftekhim` and
     `kazanorgsintez` are either executed or receive a more actionable blocker.
+
+
+### Slice 0.7.6.3.6.13: Legal/subsidiary completion fairness and coverage-probe runtime parity
+
+- Status: `Done`
+- Goal: Fix the remaining bounded SIBUR smoke gap after `0.7.6.3.6.12`: production-site review recall now works, but two legal/subsidiary targets still remain false negatives because the completion stage either does not select them or runs out of expansion budget before they receive a fair execution slot. Also make the diagnostic coverage probe use the same runtime/credential path as Docker API/worker or explicitly report an environment mismatch.
+- User value:
+  - A user can trust the benchmark report when it says a legal company was missed: the report should explain whether the target was generated, selected, admitted, executed, source-found, projected, or blocked by a specific budget/source-policy reason.
+  - Developers stop guessing whether the miss is a search-quality issue, a completion selector issue, a budget issue, or a diagnostic-tool configuration issue.
+- Current evidence:
+  - Docker `benchmark_smoke_plus` run `radar-run-136ecd8f-63a8-43a5-8542-e3016187d14f` produced `review_recall=1.0`, so production-site projection and evaluation are no longer the blocker.
+  - Remaining false negatives:
+    - `nizhnekamskneftekhim`: `completion_not_selected`.
+    - `kazanorgsintez`: `expansion_global_budget_limited`.
+  - `probe-radar-coverage` failed locally with OpenRouter `401 User not found`, while the Docker API/worker path successfully used OpenRouter in the same acceptance run.
+- Problem statement:
+  - Completion currently treats many legal/subsidiary targets as a broad pool. After guaranteed production-site lanes are satisfied, legal/subsidiary targets can still lose selection to other legal variants or hit the global expansion budget without a clear per-target execution story.
+  - The report says `completion_not_selected` or `expansion_global_budget_limited`, but it is not yet obvious which exact decision prevented a target from being executed: selector cap, completion cap, scheduler admission, OpenRouter budget, recall reserve, source policy, or projection.
+  - The standalone coverage probe can run outside the Docker API/worker runtime and therefore may fail due to local credential/runtime mismatch. That makes RCA confusing because the main run can succeed with provider calls while the probe says provider failed.
+- Scope:
+  - Add legal/subsidiary completion fairness after mandatory target lanes are satisfied.
+  - Reserve or fairly allocate completion slots for remaining high-priority legal/subsidiary benchmark-like targets before optional duplicate/alias variants.
+  - Track every legal/subsidiary target through explicit states: `generated`, `selected`, `scheduled`, `admitted`, `executed`, `source_found`, `projected`, `not_selected`, `not_admitted`, `budget_limited`, `policy_limited`, `projection_gap`.
+  - Add per-target completion reason fields so `completion_not_selected` becomes more specific: `completion_cap_exhausted`, `selector_priority_lost`, `completion_lane_quota_exhausted`, `scheduler_rejected`, `external_budget_limited`, `source_policy_limited`, or `source_found_not_projected`.
+  - Make `probe-radar-coverage` runtime-safe by either:
+    - executing provider probes through the API/worker path; or
+    - loading and reporting the same runtime config/credentials path as Docker worker; or
+    - failing early with `probe_environment_mismatch` when it cannot prove credential parity.
+  - Update benchmark report and dossier with legal/subsidiary completion summaries.
+- Out of scope:
+  - No new provider adapter.
+  - No UI changes.
+  - No scoring relaxation.
+  - No production hardcode for SIBUR names outside benchmark/evaluation fixtures/context.
+  - No broad `benchmark_live` claim.
+  - No model-role changes; those remain `0.7.6.3.7`.
+- Implementation notes:
+  - Keep the scheduler as the owner of budget admission. This slice should not move budget ownership back into the selector.
+  - The selector/completion layer owns target ordering and fairness before scheduler admission.
+  - Once production-site/branch minimums are satisfied, remaining production-site variants should not keep priority over uncovered legal/subsidiary baseline-like targets unless source policy or benchmark context says otherwise.
+  - Legal/subsidiary fairness should use generic target metadata: target type, source profile/capability, benchmark/evaluation context, and source-backed hints. Do not special-case `nizhnekamskneftekhim` or `kazanorgsintez` in production runtime.
+  - CLI coverage probe must not silently read a different credential source than Docker worker. If parity cannot be guaranteed, the report must say so explicitly.
+- Tests:
+  - Unit tests for completion selector fairness:
+    - after production-site minimums are satisfied, at least two uncovered legal/subsidiary targets are selected before optional aliases;
+    - one noisy legal target cannot consume all legal completion slots;
+    - completion cap exhaustion records the target id, target type, lane, and exact reason;
+    - uncovered legal/subsidiary benchmark-like targets outrank optional duplicate/source-backed-gap variants.
+  - Scheduler/admission integration tests:
+    - selected legal/subsidiary completion work is admitted when external budget exists;
+    - insufficient OpenRouter budget is reported as `external_budget_limited`, not `completion_not_selected`;
+    - scheduler rejection is reflected as `not_admitted`, not as selector failure.
+  - Fake pipeline tests:
+    - weak SIBUR contour fixture with legal misses selects and executes `nizhnekamskneftekhim`-like and `kazanorgsintez`-like targets without hardcoding those names in runtime logic;
+    - if provider returns source evidence, the legal entity appears in candidate universe or receives `source_found_not_projected`;
+    - if source evidence is absent, the target receives `searched_no_support`.
+  - Coverage-probe tests:
+    - probe using API/worker path succeeds with fake provider config;
+    - local probe without matching credentials returns `probe_environment_mismatch` before provider call;
+    - probe report never treats credential mismatch as evidence that the target is unavailable;
+    - probe report contains no secrets, headers, raw prompts, or hidden reasoning.
+  - Evaluation/report tests:
+    - false negative diagnostics distinguish `completion_cap_exhausted`, `scheduler_rejected`, `external_budget_limited`, `source_found_not_projected`, and `searched_no_support`;
+    - benchmark report exposes legal/subsidiary generated/selected/executed/projected counts;
+    - existing production-site `review_recall=1.0` behavior does not regress in recorded fixtures.
+- Docs:
+  - Create TO BE Markdown/PDF before implementation because this changes the central Radar search pipeline.
+  - Sync AS IS Markdown/PDF after implementation.
+  - Update demo docs for coverage-probe runtime modes and how to interpret `probe_environment_mismatch`.
+  - Update Roadmap with Docker acceptance run id and before/after metrics.
+- Demo impact:
+  - Demo benchmark report becomes easier to read: remaining legal misses should have a precise path-level explanation instead of generic budget/selection wording.
+  - No UI demo change required.
+- Validation commands:
+  - `python -m pytest tests/test_radar_search_expansion.py tests/test_radar_adaptive_execution.py -q`
+  - `python -m pytest tests/test_radar_benchmark.py tests/test_radar_evaluation.py -q`
+  - `python -m pytest tests/test_live_icp_radar.py tests/test_backend_api.py -q`
+  - `python -m pytest tests/test_radar_pipeline_documentation_contract.py tests/test_backend_architecture_contract.py -q`
+  - `python -m pytest`
+- Manual acceptance:
+  - Rebuild Docker API/worker/backend-init.
+  - Run `benchmark-sibur-holding-contour` with `benchmark_smoke_plus`.
+  - Run evaluation.
+  - Run coverage probe only through the corrected/parity-safe path.
+- Acceptance criteria:
+  - `review_recall` remains `1.0` or any regression is explained by provider-output drift.
+  - `nizhnekamskneftekhim` and `kazanorgsintez` are either found/projected or receive precise non-generic blocker reasons.
+  - No remaining legal/subsidiary false negative is reported only as broad `completion_not_selected` without selector/scheduler/budget details.
+  - Coverage probe no longer reports OpenRouter `401 User not found` as a normal provider search failure; it either uses the same runtime path as Docker worker or returns `probe_environment_mismatch`.
+  - `benchmark_live` remains blocked until bounded smoke is interpretable for legal/subsidiary misses.
+- Risks:
+  - Increasing fairness for legal/subsidiary targets could reduce optional exploration breadth in smoke. This is acceptable for bounded benchmark diagnostics, but should be explicit in the report.
+  - If live provider output drifts, the acceptance should focus on diagnostic specificity, not on forcing a perfect recall score.
+- Implementation completed:
+  - Added TO BE Markdown/PDF for `0.7.6.3.6.13`.
+  - Updated target selection so mandatory holding/legal/site lane minimums are selected first, then completion slots prefer uncovered benchmark/baseline targets. This preserves production-site completion behavior while giving legal/subsidiary misses a fair post-minimum slot.
+  - Replaced vague completion diagnostics with more precise reasons such as `completion_cap_exhausted` and `selector_priority_lost`.
+  - Added `legal_subsidiary_completion_summary` to execution metadata, dossier/API projection, and benchmark report.
+  - Coverage probe now classifies OpenRouter auth/runtime mismatch as `probe_environment_mismatch` instead of a normal provider search failure.
+  - Evaluation diagnostics now distinguish completion cap exhaustion, scheduler rejection, external budget limits, and source-found projection gaps.
+  - Synced AS IS Markdown/PDF and demo documentation.
+- Validation completed:
+  - `python -m pytest tests/test_radar_search_expansion.py tests/test_radar_benchmark.py tests/test_radar_evaluation.py -q`
+  - `python -m pytest tests/test_backend_api.py -q`
+  - `python -m pytest tests/test_radar_pipeline_documentation_contract.py tests/test_backend_architecture_contract.py -q`
+  - `python -m pytest` -> `358 passed, 1 skipped`.
+- Docker acceptance:
+  - Rebuilt Docker `api`, `worker`, and `backend-init`; restarted `redis`,
+    `backend-init`, `api`, and `worker`.
+  - CLI note: the current supported CLI profile name is `benchmark_smoke`.
+    Its task-context budgets already include the expanded smoke-plus settings
+    used by recent corrective slices (`max_openrouter_calls_per_run=20`,
+    `max_recall_expansion_openrouter_calls_per_run=7`,
+    `coverage_completion_target_limit=2`).
+  - Run: `radar-run-12c8d936-4370-4187-b1cc-27fdcb511e76`.
+  - Profile: Docker API/worker `benchmark_smoke` with live DaData and
+    OpenRouter Perplexity retrieval.
+  - Runtime: API healthy, OpenRouter key present, DaData live credentials
+    present, retrieval provider `openrouter_perplexity`.
+  - Result: `completed`, projected outcome `stopped_for_review`; benchmark
+    verdict `budget_limited` because execution budget was exhausted before
+    signal search.
+  - Evaluation: `strict_recall=1.0`, `review_recall=1.0`,
+    `false_negative_count=0`, `false_positive_count=0`.
+  - `nizhnekamskneftekhim` became a true positive: observed as
+    `Nizhnekamskneftekhim`, entity type `legal_entity`, source ref
+    `retrieved_4`, evidence quality `strong`.
+  - `kazanorgsintez` became a true positive: observed as `Казаньоргсинтез`,
+    entity type `unknown_entity`, evidence quality `weak`, source refs empty.
+    This is no longer a recall miss, but it remains an evidence-quality issue.
+  - Legal/subsidiary completion summary: generated `44` legal/subsidiary
+    targets, selected `3`, executed `2`; legal/subsidiary target-lane minimum
+    was satisfied. Remaining skipped legal/subsidiary targets now have precise
+    reasons such as `completion_cap_exhausted`,
+    `guaranteed_external_reservation_insufficient`, and
+    `optional_work_budget_limited`.
+  - Budget counters: OpenRouter total `19/20`, OpenRouter web task `10/10`,
+    recall-expansion OpenRouter `7/7`, server-tool web searches `61/60`,
+    source verification `40/40`, DaData `2/4`.
+  - Verdict: the old `completion_not_selected` blocker for the two legal
+    baseline misses is fixed. The remaining blocker is different: bounded
+    smoke still exhausts budgets before signal search, and one legal hit
+    (`kazanorgsintez`) has weak/no-source-ref evidence.
 
 ### Slice 0.7.6.3.7: Model-role evaluation and extraction fallback policy
 
@@ -7474,13 +7617,17 @@ None.
 
 ## Next Recommended Task
 
-Plan the next corrective slice for legal/subsidiary completion fairness and
-coverage-probe environment parity. The latest Docker `benchmark_smoke_plus`
-proved review-needed production-site projection works (`review_recall=1.0`),
-but two legal baseline entities remain missed: `nizhnekamskneftekhim`
-(`completion_not_selected`) and `kazanorgsintez`
-(`expansion_global_budget_limited`). Also fix or document why local
-`probe-radar-coverage` can fail with OpenRouter `401 User not found` while the
-Docker API/worker path succeeds. `benchmark_live` and `0.7.6.3.7` remain
-blocked until the bounded smoke is interpretable for these legal/subsidiary
-misses too.
+Do not add another legal/subsidiary completion slice right now. Docker
+`benchmark_smoke` run `radar-run-12c8d936-4370-4187-b1cc-27fdcb511e76`
+validated the `0.7.6.3.6.13` fix: `strict_recall=1.0`, `review_recall=1.0`,
+and both previous legal misses are no longer false negatives.
+
+The next decision is whether to proceed to `Slice 0.7.6.3.7: Model-role
+evaluation and extraction fallback policy` or insert one small benchmark-readiness
+slice for budget/evidence quality before `benchmark_live`. Current blocker is
+not recall selection anymore: the bounded smoke still stops before signal search
+because OpenRouter/source-verification budgets are exhausted, and
+`kazanorgsintez` is matched with weak evidence and no source refs. Keep
+`benchmark_live` blocked until we either accept this as sufficient for broader
+diagnostic benchmarking or add a targeted slice to improve signal-stage budget
+headroom and evidence-source linking for weak legal hits.

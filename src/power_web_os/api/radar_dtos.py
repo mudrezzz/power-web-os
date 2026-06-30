@@ -442,6 +442,7 @@ class RadarRunDossierResponse(BaseModel):
     source_verification_duplicate_skip_count: int = 0
     registry_ambiguity_fanout_summary: dict[str, Any] = Field(default_factory=dict)
     benchmark_recall_target_summary: dict[str, Any] = Field(default_factory=dict)
+    legal_subsidiary_completion_summary: dict[str, Any] = Field(default_factory=dict)
     discovery_iteration_count: int = 0
     search_plan: list[RadarRunDossierQueryResponse] = Field(default_factory=list)
     sources: list[RadarRunDossierSourceResponse] = Field(default_factory=list)

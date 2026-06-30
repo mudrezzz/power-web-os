@@ -611,6 +611,14 @@ def test_radar_run_dossier_explains_zero_product_sources(tmp_path: Path) -> None
             "not_searched_reason": "budget_reserve_exhausted",
         }
     ]
+    artifact["run_metadata"]["execution_results"]["legal_subsidiary_completion_summary"] = {
+        "target_type": "known_subsidiary_or_legal_entity_target",
+        "generated_count": 3,
+        "selected_variant_count": 2,
+        "executed_count": 1,
+        "not_searched_count": 1,
+        "not_searched_by_reason": {"completion_cap_exhausted": 1},
+    }
     artifact["run_metadata"]["execution_results"]["work_admission_decisions"] = [
         {"work_id": "work-1", "accepted": True},
         {"work_id": "work-2", "accepted": False, "reason": "budget_reserve_exhausted"},
@@ -659,6 +667,8 @@ def test_radar_run_dossier_explains_zero_product_sources(tmp_path: Path) -> None
     assert dossier["search_expansion_selection_summary"]["selected_guaranteed_count"] == 1
     assert dossier["search_expansion_selection_diagnostics"][0]["reason"] == "selection_below_minimum"
     assert dossier["search_expansion_target_coverage"][0]["coverage_state"] == "not_admitted"
+    assert dossier["legal_subsidiary_completion_summary"]["generated_count"] == 3
+    assert dossier["legal_subsidiary_completion_summary"]["not_searched_by_reason"] == {"completion_cap_exhausted": 1}
     assert dossier["work_scheduler_ledger"]["rejected_count"] == 1
     assert dossier["work_admission_decisions"][1]["reason"] == "budget_reserve_exhausted"
     assert dossier["work_lane_summary"]["recall_expansion_production_site_branch"]["accepted"] == 1

@@ -4,9 +4,9 @@ Status: AS IS
 
 Product area: Radar candidate and signal search
 
-Updated after slice: 0.7.6.3.6.12
+Updated after slice: 0.7.6.3.6.13
 
-Last updated: 2026-06-29
+Last updated: 2026-06-30
 
 Canonical source: current implementation, tests, `ROADMAP.md`, and Radar run diagnostics
 
@@ -440,15 +440,16 @@ coverage-completion selection pass. This pass does not call providers and does
 not bypass the scheduler. It simply adds a small number of still-uncovered
 generated targets to the selected variant set before work admission. The current
 `benchmark_smoke` completion limit is `coverage_completion_target_limit=2`.
-Completion targets are chosen by target origin, label quality, coverage novelty,
-and target type. Explicit benchmark/baseline targets are ranked before
-incidental source-backed targets; clean named targets are ranked before generic,
-document-like, or numeric-only labels. This prevents a remaining benchmark target
-such as an uncovered production site from losing completion slots to noisy
-retrieved labels. If the completion pass still cannot select a target,
-diagnostics use completion-specific reasons such as `completion_limit_reached`
-rather than a blank `not_retrieved_in_run`, and include the rank reason that
-explains why the target lost.
+Completion targets are chosen after mandatory lane minimums, so uncovered
+targets do not steal the base holding/legal/site minimums. Inside the completion
+pass, uncovered benchmark/baseline targets are ranked before ordinary targets;
+then target type, target origin, label quality, coverage novelty, and variant
+reason break ties. This preserves the previous production-site completion
+behavior while giving remaining legal/subsidiary misses a fair slot after the
+mandatory lanes are satisfied. If the completion pass still cannot select a
+target, diagnostics use specific reasons such as `completion_cap_exhausted` or
+`selector_priority_lost` rather than a blank `not_retrieved_in_run`, and include
+the rank reason that explains why the target lost.
 
 Expansion diagnostics include `expansion_target_summary_by_type`,
 `search_expansion_selection_summary`, `search_expansion_selection_diagnostics`,
@@ -464,13 +465,23 @@ aggregated across all expansion portfolios in a run. Later checkpoints must not
 overwrite earlier admissions, because that would hide which guaranteed lanes
 were actually admitted before provider spending.
 
+After `0.7.6.3.6.13`, dossier and benchmark reports also include
+`legal_subsidiary_completion_summary`. It is a compact funnel for
+`known_subsidiary_or_legal_entity_target`: generated targets, selected variants,
+executed targets, not-searched targets, and reason buckets. It exists so a
+SIBUR-like benchmark can tell whether a legal/subsidiary miss was never
+generated, lost the completion cap, was rejected by scheduler admission, hit
+external budget, or found a source that was not projected.
+
 The execution summary is a funnel: generated targets, selected variants,
 attempted tasks, externally executed provider calls, sources found, and
 projected entities. A target with
 `budget_decision.accepted=false` is not counted as searched. Evaluation can
 therefore distinguish `expansion_not_selected`,
+`completion_cap_exhausted`, `selector_priority_lost`,
 `completion_not_selected`,
 `expansion_global_budget_limited`, `expansion_reserve_limited`,
+`external_budget_limited`, `scheduler_rejected`,
 `semantic_task_budget_limited`,
 `expansion_searched_no_support`, `expansion_source_found_not_projected`, and
 `present_not_projected` instead of reporting every production-site miss as a

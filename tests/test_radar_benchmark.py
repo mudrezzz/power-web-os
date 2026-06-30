@@ -163,7 +163,7 @@ def test_benchmark_result_summary_preserves_completion_ranking_metadata() -> Non
                 {
                     "target_id": "production_site_or_branch_target:tobolsk",
                     "target_type": "production_site_or_branch_target",
-                    "reason": "completion_limit_reached",
+                    "reason": "completion_cap_exhausted",
                     "target_origin": "benchmark_context",
                     "completion_rank_reason": "explicit_benchmark_target:clean_named_target",
                     "uncovered_baseline_target": True,
@@ -179,6 +179,14 @@ def test_benchmark_result_summary_preserves_completion_ranking_metadata() -> Non
                     "uncovered_baseline_target": True,
                 }
             ],
+            "legal_subsidiary_completion_summary": {
+                "target_type": "known_subsidiary_or_legal_entity_target",
+                "generated_count": 4,
+                "selected_variant_count": 2,
+                "executed_count": 1,
+                "not_searched_count": 1,
+                "not_searched_by_reason": {"completion_cap_exhausted": 1},
+            },
         },
     )
 
@@ -188,6 +196,8 @@ def test_benchmark_result_summary_preserves_completion_ranking_metadata() -> Non
     assert diagnostic["completion_rank_reason"] == "explicit_benchmark_target:clean_named_target"
     assert coverage["target_origin"] == "benchmark_context"
     assert coverage["uncovered_baseline_target"] is True
+    assert result["legal_subsidiary_completion_summary"]["generated_count"] == 4
+    assert result["legal_subsidiary_completion_summary"]["not_searched_by_reason"] == {"completion_cap_exhausted": 1}
 
 
 def test_benchmark_result_summary_exposes_semantic_budget_guarantees_and_verification_cache() -> None:
@@ -358,6 +368,32 @@ def test_coverage_probe_prefers_found_official_source_over_retry_budget_marker()
 
     assert report["summary"] == {"probe_found_official_source": 1}
     assert report["results"][0]["status"] == "probe_found_official_source"
+    _assert_safe(report)
+
+
+def test_coverage_probe_reports_environment_mismatch_for_openrouter_auth_error() -> None:
+    class AuthErrorProvider:
+        def run_search_plan(self, *, radar, search_plan):
+            raise RuntimeError('OpenRouter web search request failed with 401: {"error":{"message":"User not found"}}')
+
+    report = run_coverage_probe(
+        run={"run_id": "radar-run-1"},
+        radar_id="benchmark-sibur-holding-contour",
+        targets=[
+            CoverageProbeTarget(
+                baseline_id="kazanorgsintez",
+                canonical_name="Kazanorgsintez",
+                aliases=("KOS",),
+                entity_type="legal_entity",
+            )
+        ],
+        provider=AuthErrorProvider(),
+        probe_limit=1,
+    )
+
+    assert report["summary"] == {"probe_environment_mismatch": 1}
+    assert report["results"][0]["status"] == "probe_environment_mismatch"
+    assert "credential" in report["results"][0]["message"].lower()
     _assert_safe(report)
 
 

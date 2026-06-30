@@ -172,6 +172,7 @@ def dossier_response(
         source_verification_duplicate_skip_count=_int(execution_results.get("source_verification_duplicate_skip_count"), default=0),
         registry_ambiguity_fanout_summary=_dict(execution_results.get("registry_ambiguity_fanout_summary")),
         benchmark_recall_target_summary=_dict(execution_results.get("benchmark_recall_target_summary")),
+        legal_subsidiary_completion_summary=_dict(execution_results.get("legal_subsidiary_completion_summary")),
         discovery_iteration_count=_int(execution_results.get("discovery_iteration_count"), default=0),
         search_plan=queries,
         sources=source_responses,

@@ -375,6 +375,10 @@ python -m power_web_os.demo probe-radar-coverage --api-url http://127.0.0.1:8001
 
 This writes `demo/output/radar_coverage_probe_report.json`. It is an RCA tool:
 probe hits do not change the original benchmark recall/precision metrics.
+If the standalone probe cannot prove that it uses the same provider credentials
+and runtime path as the Docker API/worker, it reports
+`probe_environment_mismatch`. Treat that as a local diagnostic setup problem,
+not as evidence that the missed target is unavailable on the web.
 
 After `0.7.6.3.4`, weak upstream discovery should expand the search pool before
 the run returns an empty diagnostic result. In the dossier, check
@@ -409,6 +413,12 @@ holding, legal/subsidiary, and production-site lanes were scheduled first,
 actually executed, or precisely blocked. `source_verification_cache_stats`
 explains whether repeated URL checks were deduped before spending the
 source-verification budget.
+
+After `0.7.6.3.6.13`, also inspect
+`legal_subsidiary_completion_summary`. It shows whether remaining legal or
+subsidiary targets were generated, selected, executed, skipped by the completion
+cap, rejected by scheduler admission, blocked by external budget, or found but
+not projected.
 
 After `0.7.6.3.6.7`, also inspect `work_scheduler_plan`,
 `work_scheduler_ledger`, `work_admission_decisions`, `work_lane_summary`,

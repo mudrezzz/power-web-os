@@ -257,6 +257,8 @@ def _completion_target_order(
     return sorted(
         candidates,
         key=lambda target_id: (
+            _completion_target_uncovered_priority(target_metadata=metadata.get(target_id, {})),
+            _completion_target_type_priority(grouped[target_id][0].target_type),
             *_target_rank_key(target_id=target_id, grouped=grouped, target_metadata=metadata),
         ),
     )
@@ -277,12 +279,13 @@ def _completion_not_selected_diagnostics(
         target_id = str(target.get("target_id") or "")
         if not target_id or target_id in selected_target_ids or target_id not in grouped:
             continue
-        reason = "completion_limit_reached" if completion_count >= completion_limit else "completion_not_selected"
+        reason = "completion_cap_exhausted" if completion_count >= completion_limit else "selector_priority_lost"
         diagnostics.append({
             "target_id": target_id,
             "target_type": str(target.get("target_type") or ""),
             "reason": reason,
             "completion_target_limit": completion_limit,
+            "selected_completion_count": completion_count,
             "target_origin": str(target.get("target_origin") or "unknown"),
             "completion_rank_reason": str(target.get("completion_rank_reason") or ""),
             "deprioritized_reason": str(target.get("deprioritized_reason") or ""),
@@ -320,8 +323,6 @@ def _target_rank_key(
 
 
 def _target_origin_priority(origin: str, metadata: dict[str, Any]) -> int:
-    if bool(metadata.get("uncovered_baseline_target")):
-        return 0
     return {
         "benchmark_context": 0,
         "retrieved_source": 10,
@@ -357,6 +358,24 @@ def _target_type_lane_priority(target_type: str) -> int:
         "alias_or_language_variant_target": 5,
         "low_confidence_registry_suggestion_target": 6,
     }.get(target_type, 20)
+
+
+def _completion_target_type_priority(target_type: str) -> int:
+    return {
+        "production_site_or_branch_target": 0,
+        "known_subsidiary_or_legal_entity_target": 1,
+        "holding_or_group_target": 2,
+        "benchmark_baseline_like_target": 3,
+        "source_backed_universe_gap_target": 4,
+        "alias_or_language_variant_target": 5,
+        "low_confidence_registry_suggestion_target": 6,
+    }.get(target_type, 20)
+
+
+def _completion_target_uncovered_priority(*, target_metadata: dict[str, Any]) -> int:
+    if bool(target_metadata.get("uncovered_baseline_target")):
+        return 0
+    return 10
 
 
 def _variant_reason_priority(reason: str) -> int:

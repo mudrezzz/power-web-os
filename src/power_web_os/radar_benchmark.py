@@ -295,6 +295,7 @@ def benchmark_result_summary(
         "targets_not_searched_count": len(targets_not_searched),
         "targets_not_searched_by_target_type": targets_not_searched_by_type,
         "benchmark_recall_target_summary": _dict(dossier.get("benchmark_recall_target_summary")),
+        "legal_subsidiary_completion_summary": _dict(dossier.get("legal_subsidiary_completion_summary")),
         "registry_ambiguity_fanout_summary": _dict(dossier.get("registry_ambiguity_fanout_summary")),
         "budget_exhaustion_count": len(budget_events),
         "extraction_recovery_count": len(extraction_records),

@@ -435,6 +435,49 @@ def test_benchmark_expansion_plan_selects_completion_site_target() -> None:
     assert any("tobolsk" in target_id for target_id in selected_site_targets)
 
 
+def test_completion_selection_prioritizes_uncovered_legal_targets_after_site_minimum() -> None:
+    variants = [
+        _variant("holding-1", "holding_or_group_target", "SIBUR Holding"),
+        _variant("legal-1", "known_subsidiary_or_legal_entity_target", "ZapSibNeftekhim"),
+        _variant("legal-2", "known_subsidiary_or_legal_entity_target", "POLIOM"),
+        _variant("site-1", "production_site_or_branch_target", "Gubkinsky GPP"),
+        _variant("site-2", "production_site_or_branch_target", "Vyngapurovsky GPP"),
+        _variant("site-extra-1", "production_site_or_branch_target", "Zeta extra site"),
+        _variant("site-extra-2", "production_site_or_branch_target", "Zeta beta extra site"),
+        _variant("legal-miss-1", "known_subsidiary_or_legal_entity_target", "Zeta Nizhnekamskneftekhim"),
+        _variant("legal-miss-2", "known_subsidiary_or_legal_entity_target", "Zeta Kazanorgsintez"),
+    ]
+    targets = [
+        {
+            "target_id": item.target_id,
+            "target_label": item.query,
+            "target_type": item.target_type,
+            "target_origin": "benchmark_context",
+            "uncovered_baseline_target": item.target_id in {"legal-miss-1", "legal-miss-2"},
+        }
+        for item in variants
+    ]
+
+    selection = select_guaranteed_variants(
+        variants,
+        max_variants=7,
+        minimums={
+            "holding_or_group_target": 1,
+            "known_subsidiary_or_legal_entity_target": 2,
+            "production_site_or_branch_target": 2,
+        },
+        completion_target_limit=2,
+        targets=targets,
+    )
+
+    selected_ids = [item.target_id for item in selection.variants]
+    assert "legal-miss-1" in selected_ids
+    assert "legal-miss-2" in selected_ids
+    assert "site-extra-1" not in selected_ids
+    assert "site-extra-2" not in selected_ids
+    assert selection.selected_completion_count == 2
+
+
 def test_benchmark_target_metadata_is_visible_in_expansion_payload() -> None:
     radar = _radar_with_sources()
     radar["task_context"] = {

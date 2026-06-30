@@ -88,7 +88,7 @@ def run_coverage_probe(
                     search_plan=_target_search_plan(radar_id=radar_id, target=target),
                 )
             except Exception as error:  # pragma: no cover - defensive for live CLI probes.
-                results.append(_probe_result(target, "probe_provider_failed", message=str(error)))
+                results.append(_probe_result(target, _probe_error_status(error), message=_probe_error_message(error)))
                 continue
             urls = [source.url for source in result.sources]
             if any("sibur.ru" in url.lower() for url in urls):
@@ -171,6 +171,27 @@ def _probe_result(
         "urls": urls or [],
         "message": message,
     }
+
+
+def _probe_error_status(error: Exception) -> str:
+    message = str(error).lower()
+    if (
+        "401" in message
+        or "403" in message
+        or "unauthorized" in message
+        or "forbidden" in message
+        or "user not found" in message
+        or "api key" in message
+        or "credential" in message
+    ):
+        return "probe_environment_mismatch"
+    return "probe_provider_failed"
+
+
+def _probe_error_message(error: Exception) -> str:
+    if _probe_error_status(error) == "probe_environment_mismatch":
+        return "Coverage probe could not prove runtime credential parity with Docker worker; provider auth failed."
+    return str(error)
 
 
 def _count_by(items: list[dict[str, Any]], key: str) -> dict[str, int]:
