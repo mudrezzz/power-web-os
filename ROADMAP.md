@@ -1,5 +1,14 @@
 # ROADMAP.md
 
+<!--
+Generated Roadmap section.
+Source database: docs/roadmap/roadmap.sqlite
+Review export: docs/roadmap/slices.export.jsonl
+Render command: python -m power_web_os.roadmap render --output ROADMAP.md
+Manual edits to generated slice sections should be temporary; update the tracker and render again.
+-->
+
+
 ## Product Vision
 
 Power Web OS helps B2B sales and ABM teams stop working target accounts blindly. It runs ICP Radars to find and qualify accounts, gathers account signals, builds a dynamic Power Web around accepted accounts, applies the customer's sales playbook, and produces explainable Access Plans with human review before execution.
@@ -7072,7 +7081,7 @@ Principles:
 
 ### Slice 0.7.6.4.0: Radar pipeline split, model-profile separation, and documentation registry
 
-- Status: `Done`
+- Status: Done
 - Goal: Fix the architectural framing before implementing signal monitoring:
   Radar is not one search engine anymore. It is a family of separate search
   pipelines with different cadence, budgets, model roles, source use, tests, and
@@ -7093,6 +7102,51 @@ Principles:
     when something changed.
   - Keeping both behaviors inside one implicit run kind makes budgets,
     scheduling, model tuning, and benchmark interpretation confusing.
+- Out of scope:
+  - No runtime signal-monitoring implementation yet.
+  - No UI buttons or scheduling UI yet.
+  - No DB migration.
+  - No new provider adapter.
+  - No benchmark-live claim.
+- Acceptance:
+  - Roadmap and architecture now clearly say that candidate discovery and signal
+    monitoring are separate pipelines.
+  - The current AS IS document is explicitly scoped to candidate discovery.
+  - The next signal-monitoring implementation must start with a TO BE document,
+    not with ad hoc runtime code.
+- Architecture decision:
+  - `candidate-discovery` is a recall-first upstream pipeline. It can be broad,
+    slower, and budgeted for source expansion, registry enrichment, and
+    candidate-universe construction.
+  - `signal-monitoring` is a frequent monitoring pipeline. It should start from
+    known product or review-needed candidates, reuse existing sources where
+    useful, search recent signal evidence, and keep signal-specific budgets.
+  - `power-web-discovery` is a future pipeline for people, roles, relationships,
+    partner routes, influence paths, and buying-committee structure.
+  - Combined discovery-plus-signal runs remain useful for smoke/debug
+    compatibility, but should not be the production architecture.
+  - Model-profile decision:
+  - Each pipeline must own its own model-role profile.
+  - Candidate-discovery model tuning must not silently change signal
+    monitoring.
+  - Signal-monitoring model tuning must not silently change candidate
+    discovery.
+  - Non-secret model-role defaults should move toward:
+    - `config/radar/model_profiles/candidate_discovery.json`;
+    - `config/radar/model_profiles/signal_monitoring.json`;
+    - `config/radar/model_profiles/power_web_discovery.json`.
+  - `.env` remains for credentials and deployment/runtime overrides.
+- Docs updated:
+  - `docs/adr/2026-06-30-radar-search-pipelines-are-separate.md`.
+  - `docs/radar/pipelines/README.md`.
+  - `docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md`.
+  - `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md`.
+  - `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.pdf`.
+- Documentation decision:
+  - Serious Radar pipelines must have separate AS IS Markdown/PDF documents.
+  - Substantial changes must start with a pipeline-specific TO BE Markdown/PDF.
+  - Existing pipeline documentation skills should become pipeline-aware instead
+    of being duplicated per pipeline.
 - Scope completed:
   - Added ADR:
     `docs/adr/2026-06-30-radar-search-pipelines-are-separate.md`.
@@ -7107,59 +7161,14 @@ Principles:
   - Updated current Radar AS IS Markdown/PDF to state that it describes the
     current candidate-discovery pipeline, not the final signal-monitoring
     architecture.
-- Architecture decision:
-  - `candidate-discovery` is a recall-first upstream pipeline. It can be broad,
-    slower, and budgeted for source expansion, registry enrichment, and
-    candidate-universe construction.
-  - `signal-monitoring` is a frequent monitoring pipeline. It should start from
-    known product or review-needed candidates, reuse existing sources where
-    useful, search recent signal evidence, and keep signal-specific budgets.
-  - `power-web-discovery` is a future pipeline for people, roles, relationships,
-    partner routes, influence paths, and buying-committee structure.
-  - Combined discovery-plus-signal runs remain useful for smoke/debug
-    compatibility, but should not be the production architecture.
-- Model-profile decision:
-  - Each pipeline must own its own model-role profile.
-  - Candidate-discovery model tuning must not silently change signal
-    monitoring.
-  - Signal-monitoring model tuning must not silently change candidate
-    discovery.
-  - Non-secret model-role defaults should move toward:
-    - `config/radar/model_profiles/candidate_discovery.json`;
-    - `config/radar/model_profiles/signal_monitoring.json`;
-    - `config/radar/model_profiles/power_web_discovery.json`.
-  - `.env` remains for credentials and deployment/runtime overrides.
-- Documentation decision:
-  - Serious Radar pipelines must have separate AS IS Markdown/PDF documents.
-  - Substantial changes must start with a pipeline-specific TO BE Markdown/PDF.
-  - Existing pipeline documentation skills should become pipeline-aware instead
-    of being duplicated per pipeline.
-- Out of scope:
-  - No runtime signal-monitoring implementation yet.
-  - No UI buttons or scheduling UI yet.
-  - No DB migration.
-  - No new provider adapter.
-  - No benchmark-live claim.
-- Docs updated:
-  - `docs/adr/2026-06-30-radar-search-pipelines-are-separate.md`.
-  - `docs/radar/pipelines/README.md`.
-  - `docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md`.
-  - `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md`.
-  - `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.pdf`.
 - Validation:
   - Documentation-only architecture slice. Runtime behavior is unchanged.
   - Fast validation should cover architecture/doc contracts after the PDF is
     regenerated.
-- Acceptance:
-  - Roadmap and architecture now clearly say that candidate discovery and signal
-    monitoring are separate pipelines.
-  - The current AS IS document is explicitly scoped to candidate discovery.
-  - The next signal-monitoring implementation must start with a TO BE document,
-    not with ad hoc runtime code.
 
 ### Slice 0.7.6.4.0.1: SQLite slice tracker and generated Roadmap report
 
-- Status: `Ready`
+- Status: Done
 - Goal: Stop using the 8k+ line `ROADMAP.md` as the primary editing interface.
   Keep it as a generated human-readable report, while the source of truth for
   slices becomes a small local SQLite-backed tracker with a CLI and text export
@@ -7179,26 +7188,89 @@ Principles:
   - Splitting the file into many hand-maintained Markdown files would add more
     navigation overhead. A small tracker is a cleaner working interface.
 - Scope:
-  - Add a local SQLite schema for roadmap tracking:
-    - `slices`;
-    - `slice_events`;
-    - `slice_links`;
-    - `roadmap_meta`.
-  - Add a small CLI/application boundary, for example:
-    - `python -m power_web_os.roadmap list --status next`;
+  - Add local project-tooling package boundaries:
+    - `src/power_web_os/roadmap/__init__.py`;
+    - `src/power_web_os/roadmap/models.py`;
+    - `src/power_web_os/roadmap/repository.py`;
+    - `src/power_web_os/roadmap/sqlite_repository.py`;
+    - `src/power_web_os/roadmap/renderer.py`;
+    - `src/power_web_os/roadmap/exporter.py`;
+    - `src/power_web_os/roadmap/importer.py`;
+    - `src/power_web_os/roadmap/cli.py`;
+    - `src/power_web_os/roadmap/__main__.py`.
+  - Add local SQLite database at `docs/roadmap/roadmap.sqlite`.
+  - Add git-reviewable text export at `docs/roadmap/slices.export.jsonl`.
+  - Add generated report metadata to `ROADMAP.md` header:
+    - source database path;
+    - export path;
+    - render command;
+    - warning that direct manual edits should be temporary.
+  - Add SQLite schema:
+    - `slices`:
+      - `id`;
+      - `title`;
+      - `status`;
+      - `sort_key`;
+      - `parent_id`;
+      - `track`;
+      - `goal`;
+      - `user_value`;
+      - `problem_statement`;
+      - `scope`;
+      - `out_of_scope`;
+      - `implementation_notes`;
+      - `tests`;
+      - `docs`;
+      - `demo_impact`;
+      - `acceptance_criteria`;
+      - `risks`;
+      - `created_at`;
+      - `updated_at`.
+    - `slice_events`:
+      - `id`;
+      - `slice_id`;
+      - `event_type`;
+      - `event_time`;
+      - `note`.
+    - `slice_links`:
+      - `id`;
+      - `slice_id`;
+      - `link_type`;
+      - `target`;
+      - `label`.
+    - `roadmap_meta`:
+      - `key`;
+      - `value`.
+  - Add initial CLI:
+    - `python -m power_web_os.roadmap init`;
+    - `python -m power_web_os.roadmap import-current --from ROADMAP.md`;
+    - `python -m power_web_os.roadmap list --status Ready`;
+    - `python -m power_web_os.roadmap list --track radar`;
     - `python -m power_web_os.roadmap show 0.7.6.4.1`;
-    - `python -m power_web_os.roadmap add-slice ...`;
+    - `python -m power_web_os.roadmap add-slice --id ... --title ...`;
     - `python -m power_web_os.roadmap update-status 0.7.6.4.1 Done`;
-    - `python -m power_web_os.roadmap render`.
-  - Generate `ROADMAP.md` from SQLite using a deterministic renderer.
-  - Generate a git-diff-friendly text export, for example
-    `docs/roadmap/slices.export.jsonl`, so reviews do not depend on a binary
-    SQLite diff.
-  - Add an importer for the current active/future slice range first. Historical
-    completed sections can remain in the existing ROADMAP/report until a later
-    migration if full import is too risky.
-  - Add validation that generated `ROADMAP.md` is up to date with the SQLite
-    tracker and export.
+    - `python -m power_web_os.roadmap link 0.7.6.4.1 --type doc --target ...`;
+    - `python -m power_web_os.roadmap export`;
+    - `python -m power_web_os.roadmap render --output ROADMAP.md`;
+    - `python -m power_web_os.roadmap check`.
+  - Add deterministic renderer:
+    - generated active/current roadmap section;
+    - generated next recommended task section;
+    - generated blocked items/open questions section;
+    - preserved legacy historical report section for older completed content.
+  - Add deterministic exporter:
+    - one JSON object per line;
+    - stable field ordering;
+    - stable slice ordering by `sort_key`;
+    - no timestamps changing unless data changes.
+  - Add importer for the current active/future range first:
+    - must import `0.7.6.4.0`;
+    - must import `0.7.6.4.0.1`;
+    - must import `0.7.6.4.1-0.7.6.4.6`;
+    - may preserve older completed roadmap text as legacy report text without
+      fully normalizing it in the first slice.
+  - Add validation that generated `ROADMAP.md` and
+    `docs/roadmap/slices.export.jsonl` are up to date with SQLite tracker.
 - Out of scope:
   - No web UI.
   - No Jira-like workflow.
@@ -7206,6 +7278,9 @@ Principles:
   - No production database dependency.
   - No complete manual cleanup of all old historical roadmap text unless it is
     mechanically safe.
+  - No migration of every old completed slice into fully structured rows in
+    this first slice.
+  - No replacement of GitHub issues, PRs, or commit history.
 - Implementation notes:
   - SQLite is the working database, but git review must use generated text
     artifacts. Do not rely on binary SQLite diffs for code review.
@@ -7220,6 +7295,21 @@ Principles:
     Demo impact, Acceptance criteria, Risks.
   - Current `ROADMAP.md` content should be treated carefully: do not drop
     historical information during the first migration.
+  - Keep repository boundaries simple:
+    - `models.py` owns dataclasses/value objects;
+    - `repository.py` owns the port/interface;
+    - `sqlite_repository.py` owns SQL and migrations;
+    - `renderer.py` owns Markdown output only;
+    - `exporter.py` owns JSONL output only;
+    - `importer.py` owns best-effort parsing of current Markdown;
+    - `cli.py` owns argument parsing and calls application functions.
+  - Use standard-library `sqlite3`; do not add a new dependency.
+  - Treat the SQLite file as local project state that can be regenerated from
+    JSONL export if needed. If both SQLite and JSONL are committed, JSONL is the
+    review surface.
+  - Do not silently overwrite manual `ROADMAP.md` changes. `render` should make
+    this explicit and `check` should report drift.
+  - Keep command output plain and human-readable for agents and contributors.
 - Tests:
   - Schema/repository tests:
     - create slice;
@@ -7227,11 +7317,20 @@ Principles:
     - add event;
     - add links to ADR/docs/runs/commits;
     - read next recommended task.
+    - reject duplicate slice id;
+    - reject invalid status;
+    - preserve stable sort order.
   - CLI tests:
+    - `init`;
+    - `import-current`;
     - `list`;
     - `show`;
+    - `add-slice`;
     - `update-status`;
+    - `link`;
+    - `export`;
     - `render`;
+    - `check`;
     - invalid slice id returns actionable error.
   - Renderer tests:
     - deterministic Markdown output;
@@ -7243,10 +7342,18 @@ Principles:
     - current `0.7.6.4.0-0.7.6.4.6` chain imports without dropping a slice;
     - historical text is preserved or explicitly marked as legacy report
       content.
+    - imported `Next Recommended Task` points to `0.7.6.4.0.1`;
+    - mojibake or non-ASCII text is preserved as UTF-8 in exported JSONL and
+      generated Markdown.
   - Contract tests:
     - fail if `ROADMAP.md` differs from generated output after tracker changes;
     - fail if `slices.export.jsonl` is stale;
     - fail if a slice misses required fields.
+    - fail if `0.7.6.4.0-0.7.6.4.6` are not all present.
+  - Suggested validation commands:
+    - `python -m pytest tests/test_roadmap_tracker.py -q`;
+    - `python -m pytest tests/test_backend_architecture_contract.py -q`;
+    - `python -m pytest`.
 - Docs:
   - Update `README.md` or Developer Guide with the new roadmap workflow.
   - Add `docs/roadmap/README.md` explaining:
@@ -7256,6 +7363,8 @@ Principles:
     - exact commands for adding/updating/rendering slices.
   - Update agent guidance if needed so agents query the tracker before editing
     roadmap data.
+  - Update `AGENTS.md` only if project workflow instructions need to change
+    from "edit ROADMAP directly" to "use roadmap tracker first".
 - Demo impact:
   - None. This is project tooling.
 - Acceptance criteria:
@@ -7266,6 +7375,8 @@ Principles:
   - `0.7.6.4.0-0.7.6.4.6` are present after import/render.
   - Tests catch stale generated ROADMAP/export artifacts.
   - Contributors can still read `ROADMAP.md` without knowing SQLite.
+  - Agent workflow is clear: inspect/query tracker first, then render report.
+  - Direct manual ROADMAP edits are no longer the normal path after this slice.
 - Risks:
   - The migration can accidentally rewrite too much history. Mitigate by first
     importing only the active/future slice range and preserving old history as
@@ -7274,10 +7385,13 @@ Principles:
     the review surface.
   - Tooling can become overbuilt. Keep the first version CLI-only and focused
     on slice tracking.
+  - Generated report can hide useful editorial context if the renderer is too
+    rigid. Mitigate by preserving a legacy report section and allowing structured
+    free-text fields.
 
 ### Slice 0.7.6.4.1: Pipeline documentation registry and signal-monitoring TO BE
 
-- Status: `Backlog`
+- Status: Ready
 - Goal: Create the documentation system for multiple Radar search pipelines and
   prepare the first reviewed TO BE design for signal monitoring.
 - User value: A user and a developer can understand the signal-monitoring
@@ -7324,7 +7438,7 @@ Principles:
 
 ### Slice 0.7.6.4.2: Signal monitoring application contract and recorded harness
 
-- Status: `Backlog`
+- Status: Backlog
 - Goal: Create a fast no-live-provider test harness for signal monitoring
   before any OpenRouter/DaData/live source work.
 - User value: The team can prove signal-monitoring behavior in seconds and
@@ -7376,7 +7490,7 @@ Principles:
 
 ### Slice 0.7.6.4.3: Signal source strategy and warm-start from known sources
 
-- Status: `Backlog`
+- Status: Backlog
 - Goal: Define and test the source strategy for signal monitoring: first reuse
   known useful candidate sources, then search official/company sources,
   signal-specific sources, and only then broader open web.
@@ -7426,7 +7540,7 @@ Principles:
 
 ### Slice 0.7.6.4.4: Signal monitoring budgets and model profile isolation
 
-- Status: `Backlog`
+- Status: Backlog
 - Goal: Give signal monitoring its own budgets and model row so candidate
   discovery tuning cannot starve or break signal search.
 - User value: A user can run frequent signal checks with predictable cost and
@@ -7478,7 +7592,7 @@ Principles:
 
 ### Slice 0.7.6.4.5: First recorded TOIR signal monitoring loop
 
-- Status: `Backlog`
+- Status: Backlog
 - Goal: Build the first working signal-monitoring loop for TOIR using
   fake/recorded providers, without making a live benchmark claim.
 - User value: The product can show the core signal-monitoring idea: known
@@ -7527,7 +7641,7 @@ Principles:
 
 ### Slice 0.7.6.4.6: UI controls for candidate discovery vs signal monitoring
 
-- Status: `Backlog`
+- Status: Backlog
 - Goal: Make the pipeline split visible to users in the Radar UI.
 - User value: A user understands whether they are launching candidate search or
   signal monitoring, and can see separate cadence/status for both.
@@ -8117,27 +8231,4 @@ None.
 
 ## Next Recommended Task
 
-Do not add another candidate-discovery budget/selector slice right now. Docker
-`benchmark_smoke` run `radar-run-12c8d936-4370-4187-b1cc-27fdcb511e76`
-validated the `0.7.6.3.6.13` candidate-discovery fix:
-`strict_recall=1.0`, `review_recall=1.0`, and both previous legal misses are no
-longer false negatives.
-
-The next recommended task is `Slice 0.7.6.4.0.1: SQLite slice tracker and
-generated Roadmap report`.
-
-Reason: the next product problem is not another candidate-discovery recall
-repair, but the current 8k+ line `ROADMAP.md` is becoming a weak source of
-truth. Before starting the signal-monitoring sequence, add a tiny SQLite slice
-tracker, deterministic `ROADMAP.md` renderer, and git-reviewable JSONL export.
-After that, continue with `Slice 0.7.6.4.1: Pipeline documentation registry and
-signal-monitoring TO BE`.
-
-`Slice 0.7.6.3.7: Model-role evaluation and extraction fallback policy` remains
-useful, but its implementation should be pipeline-aware instead of tuning one
-shared model row for every Radar behavior.
-
-Keep `benchmark_live` blocked until the team explicitly decides whether it is a
-candidate-discovery benchmark, a signal-monitoring benchmark, or a combined
-debug smoke. Do not let signal-search budget questions reopen the already
-validated candidate-discovery selector loop.
+The next recommended task is Slice 0.7.6.4.1: Pipeline documentation registry and signal-monitoring TO BE. Use the roadmap tracker first, then regenerate ROADMAP.md and docs/roadmap/slices.export.jsonl before committing.

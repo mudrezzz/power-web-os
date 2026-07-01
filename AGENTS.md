@@ -40,18 +40,31 @@ Do not work in a waterfall style where one large module is fully built before th
 
 ## Source of truth
 
-The project backlog is maintained in `ROADMAP.md`.
+The project backlog is maintained through the local roadmap tracker. `ROADMAP.md`
+is the generated human-readable report.
 
 Always keep `ROADMAP.md` current:
 
-- Add new tasks there.
-- Take work from there.
-- Update task status during and after work.
+- Add new tasks through the roadmap tracker when it is available.
+- Take work from the tracker or generated `ROADMAP.md` report.
+- Update task status through the tracker during and after work.
 - Record completed slices.
 - Record blocked items and assumptions.
 - Keep the next actionable task easy to identify.
 
-Before starting implementation, inspect `ROADMAP.md`.
+Tracker commands:
+
+```bash
+python -m power_web_os.roadmap list --status Ready
+python -m power_web_os.roadmap show <slice-id>
+python -m power_web_os.roadmap update-status <slice-id> Done --note "validated"
+python -m power_web_os.roadmap export
+python -m power_web_os.roadmap render --output ROADMAP.md
+python -m power_web_os.roadmap check
+```
+
+Before starting implementation, inspect the tracker when available; otherwise
+inspect `ROADMAP.md`.
 
 If the user asks to “take the next task”, “continue the project”, “work on the next slice”, or gives a vague continuation request, use `$project-onboarding` first.
 

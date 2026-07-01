@@ -116,6 +116,25 @@ so the repository can be tested without a running database service. Set
 `POWER_WEB_OS_DATABASE_URL=postgresql+psycopg://user:password@host:5432/power_web_os`
 for PostgreSQL-backed development.
 
+## Roadmap Tracker Workflow
+
+`ROADMAP.md` is the human-readable roadmap report. For slice edits, use the
+local tracker first and then regenerate the report:
+
+```bash
+python -m power_web_os.roadmap list --status Ready
+python -m power_web_os.roadmap show 0.7.6.4.1
+python -m power_web_os.roadmap update-status 0.7.6.4.1 Done --note "validated"
+python -m power_web_os.roadmap export
+python -m power_web_os.roadmap render --output ROADMAP.md
+python -m power_web_os.roadmap check
+```
+
+The working SQLite database is `docs/roadmap/roadmap.sqlite`. The reviewable
+text export is `docs/roadmap/slices.export.jsonl`; review that file in Git
+diffs instead of relying on binary SQLite diffs. See
+`docs/roadmap/README.md` for the full workflow.
+
 ## Radar Search Pipeline Documentation
 
 The current Radar candidate and signal search algorithm is documented in:
