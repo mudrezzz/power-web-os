@@ -135,9 +135,17 @@ text export is `docs/roadmap/slices.export.jsonl`; review that file in Git
 diffs instead of relying on binary SQLite diffs. See
 `docs/roadmap/README.md` for the full workflow.
 
-## Radar Search Pipeline Documentation
+## Radar Pipeline Documentation
 
-The current Radar candidate and signal search algorithm is documented in:
+Radar is documented as a family of serious search pipelines, not one
+monolithic algorithm. The registry lives at:
+
+```text
+docs/radar/pipelines/README.md
+```
+
+The current candidate-discovery implementation is still documented in the
+legacy/current AS IS entrypoint:
 
 ```text
 docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md
@@ -154,14 +162,25 @@ python scripts/render_radar_pipeline_doc.py
 python -m pytest tests/test_radar_pipeline_documentation_contract.py -q
 ```
 
-Before implementing a substantial change to Radar planning, retrieval,
-extraction, source routing, registry lookup, candidate universe retention,
-checkpoint behavior, budgets, signal search, dossier projection, or evaluation,
-create a TO BE document:
+Before implementing a substantial change to a Radar pipeline, create a TO BE
+Markdown/PDF for the target pipeline id. Supported ids are:
+
+- `candidate-discovery`;
+- `signal-monitoring`;
+- `power-web-discovery`.
+
+Use the project skills with the pipeline id:
 
 ```text
-docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.md
+Сделай TO BE для signal-monitoring по слайсу 0.7.6.4.1
+Синхронизируй AS IS для candidate-discovery после слайса 0.7.6.3.6.13
 ```
+
+`candidate-discovery` keeps using `docs/radar/to-be/` until its migration
+slice. `signal-monitoring` TO BE documents live under
+`docs/radar/pipelines/signal-monitoring/to-be/`. Signal monitoring has its own
+future model-role profile and budget rules so tuning the frequent monitoring
+loop does not silently change candidate discovery.
 
 Use the project skills for the documentation loop:
 

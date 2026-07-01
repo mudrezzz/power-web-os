@@ -4,6 +4,10 @@ This folder is the registry for serious Radar search pipelines. Each pipeline
 must have its own AS IS document and generated PDF. Substantial changes must
 start with a TO BE Markdown/PDF pair and finish by syncing the AS IS document.
 
+The registry is also the path contract for the Radar pipeline documentation
+skills. Use `pipeline=<pipeline_id>` in requests when the target pipeline is not
+the current candidate-discovery default.
+
 ## Pipeline ids
 
 | Pipeline id | Purpose | Cadence | Current state |
@@ -43,6 +47,29 @@ docs/radar/pipelines/
 The current `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` remains the canonical
 candidate-discovery AS IS document until a later migration slice moves it into
 the per-pipeline folder.
+
+`signal-monitoring` and `power-web-discovery` do not get AS IS documents until
+their first runtime implementation exists. Before that, their TO BE documents
+are reviewed design inputs, not claims about implemented behavior.
+
+## Skill invocation examples
+
+Use the existing generic skills with a pipeline id instead of creating separate
+skill families:
+
+```text
+Сделай TO BE для signal-monitoring по слайсу 0.7.6.4.1
+Синхронизируй AS IS для candidate-discovery после слайса 0.7.6.3.6.13
+Финализируй TO BE в AS IS для signal-monitoring после реализации 0.7.6.4.2
+```
+
+Path mapping:
+
+| Pipeline id | Current AS IS path | TO BE path |
+|---|---|---|
+| `candidate-discovery` | `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` | `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.md` |
+| `signal-monitoring` | planned: `docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md` | `docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_<slice>.md` |
+| `power-web-discovery` | planned: `docs/radar/pipelines/power-web-discovery/RADAR_POWER_WEB_DISCOVERY_AS_IS.md` | `docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_<slice>.md` |
 
 ## Documentation rule
 

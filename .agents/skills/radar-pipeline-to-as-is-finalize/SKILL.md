@@ -8,17 +8,25 @@ description: Use after implementing a Radar pipeline TO BE slice to compare plan
 ## Goal
 
 Finalize a Radar pipeline slice by reconciling the reviewed TO BE design with
-the implemented AS IS behavior.
+the implemented AS IS behavior. The skill is pipeline-aware; the caller may
+specify `pipeline=<pipeline_id>`.
+
+Supported pipeline ids:
+
+- `candidate-discovery`
+- `signal-monitoring`
+- `power-web-discovery`
 
 ## Inputs
 
 Read these sources in order:
 
 1. Target slice and user instructions.
-2. `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.md`.
-3. `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md`.
-4. Changed implementation and tests.
-5. Validation output, benchmark/evaluation reports, or RCA notes when relevant.
+2. `docs/radar/pipelines/README.md`.
+3. The matching TO BE document for the selected pipeline.
+4. The selected pipeline AS IS document.
+5. Changed implementation and tests.
+6. Validation output, benchmark/evaluation reports, or RCA notes when relevant.
 
 ## Process
 
@@ -29,6 +37,15 @@ Read these sources in order:
    them in prose.
 5. Regenerate PDF.
 6. Run documentation contract tests.
+
+Path rules:
+
+- `candidate-discovery` keeps the legacy AS IS path
+  `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` until the migration slice.
+- `signal-monitoring` AS IS belongs under
+  `docs/radar/pipelines/signal-monitoring/` after runtime exists.
+- `power-web-discovery` AS IS belongs under
+  `docs/radar/pipelines/power-web-discovery/` after runtime exists.
 
 ## Rules
 

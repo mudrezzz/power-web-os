@@ -90,6 +90,15 @@ provider SDK details.
   source-backed targets, add bounded coverage-completion targets when
   configured, and report selection-level blockers before any provider budget is
   spent.
+- `signal_monitoring_contracts.py` defines the standalone signal-monitoring
+  application contracts used before live runtime integration. It separates
+  product signal status from search execution status so `not_observed` can only
+  mean "searched and no signal found."
+- `signal_monitoring_executor.py` owns the no-network recorded harness for
+  signal monitoring. It calls scripted provider ports, validates signal
+  extraction payloads, applies deterministic repair plus bounded primary/backup
+  retries, and emits explicit diagnostic states without touching HTTP,
+  persistence, Redis, Celery, or API routes.
 
 ## Dependency Rules
 

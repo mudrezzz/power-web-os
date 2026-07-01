@@ -8,7 +8,14 @@ description: Use before substantial Radar search pipeline changes to create a TO
 ## Goal
 
 Create a reviewable TO BE design before implementing a substantial Radar search
-pipeline change.
+pipeline change. The skill is pipeline-aware; the caller may specify
+`pipeline=<pipeline_id>`.
+
+Supported pipeline ids:
+
+- `candidate-discovery`
+- `signal-monitoring`
+- `power-web-discovery`
 
 ## Inputs
 
@@ -16,24 +23,47 @@ Read these sources in order:
 
 1. User instructions and target slice.
 2. `ROADMAP.md`.
-3. `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md`.
-4. Relevant architecture docs and ADRs.
-5. Relevant tests and implementation modules for the changed pipeline area.
+3. `docs/radar/pipelines/README.md`.
+4. The pipeline AS IS document, when it exists.
+5. Relevant architecture docs and ADRs.
+6. Relevant tests and implementation modules for the changed pipeline area.
 
 ## Output
 
-Create both:
+Choose output paths from the requested pipeline id.
 
-`docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.md`
-`docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.pdf`
+For `candidate-discovery`, keep the current legacy paths until the migration
+slice moves the candidate-discovery AS IS document:
+
+- AS IS source: `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md`
+- TO BE Markdown: `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.md`
+- TO BE PDF: `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.pdf`
+
+For `signal-monitoring`:
+
+- AS IS source: none until the first runtime implementation creates it
+- TO BE Markdown: `docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_<slice>.md`
+- TO BE PDF: `docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_<slice>.pdf`
+
+For `power-web-discovery`:
+
+- AS IS source: none until the first runtime implementation creates it
+- TO BE Markdown: `docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_<slice>.md`
+- TO BE PDF: `docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_<slice>.pdf`
 
 Use the slice id exactly, replacing characters only when required by the file
 system.
 
-Generate the PDF from the Markdown with:
+Generate the PDF from the Markdown with the selected paths:
 
 ```bash
-python scripts/render_radar_pipeline_doc.py --source docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.md --output docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.pdf
+python scripts/render_radar_pipeline_doc.py --source <selected-to-be.md> --output <selected-to-be.pdf>
+```
+
+Example invocation:
+
+```text
+Сделай TO BE для signal-monitoring по слайсу 0.7.6.4.1
 ```
 
 ## Required TO BE Sections
@@ -66,7 +96,7 @@ python scripts/render_radar_pipeline_doc.py --source docs/radar/to-be/RADAR_SEAR
 
 ## Completion Checklist
 
-- TO BE document exists under `docs/radar/to-be/`.
+- TO BE document exists under the selected pipeline path.
 - TO BE PDF exists next to the Markdown.
 - TO BE PDF was visually checked or rendered to preview images when layout
   changed.

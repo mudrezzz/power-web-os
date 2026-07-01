@@ -7391,7 +7391,7 @@ Principles:
 
 ### Slice 0.7.6.4.1: Pipeline documentation registry and signal-monitoring TO BE
 
-- Status: Ready
+- Status: Done
 - Goal: Create the documentation system for multiple Radar search pipelines and
   prepare the first reviewed TO BE design for signal monitoring.
 - User value: A user and a developer can understand the signal-monitoring
@@ -7438,7 +7438,7 @@ Principles:
 
 ### Slice 0.7.6.4.2: Signal monitoring application contract and recorded harness
 
-- Status: Backlog
+- Status: Done
 - Goal: Create a fast no-live-provider test harness for signal monitoring
   before any OpenRouter/DaData/live source work.
 - User value: The team can prove signal-monitoring behavior in seconds and
@@ -7490,7 +7490,7 @@ Principles:
 
 ### Slice 0.7.6.4.3: Signal source strategy and warm-start from known sources
 
-- Status: Backlog
+- Status: Ready
 - Goal: Define and test the source strategy for signal monitoring: first reuse
   known useful candidate sources, then search official/company sources,
   signal-specific sources, and only then broader open web.
@@ -8231,4 +8231,4 @@ None.
 
 ## Next Recommended Task
 
-The next recommended task is Slice 0.7.6.4.1: Pipeline documentation registry and signal-monitoring TO BE. Use the roadmap tracker first, then regenerate ROADMAP.md and docs/roadmap/slices.export.jsonl before committing.
+Slice 0.7.6.4.3: Signal source strategy and warm-start from known sources
