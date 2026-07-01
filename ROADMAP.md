@@ -7490,7 +7490,7 @@ Principles:
 
 ### Slice 0.7.6.4.3: Signal source strategy and warm-start from known sources
 
-- Status: Ready
+- Status: Done
 - Goal: Define and test the source strategy for signal monitoring: first reuse
   known useful candidate sources, then search official/company sources,
   signal-specific sources, and only then broader open web.
@@ -7540,7 +7540,7 @@ Principles:
 
 ### Slice 0.7.6.4.4: Signal monitoring budgets and model profile isolation
 
-- Status: Backlog
+- Status: Ready
 - Goal: Give signal monitoring its own budgets and model row so candidate
   discovery tuning cannot starve or break signal search.
 - User value: A user can run frequent signal checks with predictable cost and
@@ -8231,4 +8231,4 @@ None.
 
 ## Next Recommended Task
 
-Slice 0.7.6.4.3: Signal source strategy and warm-start from known sources
+Slice 0.7.6.4.4: Signal monitoring budgets and model profile isolation

@@ -12,6 +12,8 @@ from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field
 
+from power_web_os.application.live_radar_source_cards import RadarPlannerSourceCard
+
 
 SignalObservationStatus = Literal["observed", "not_observed", "unclear"]
 SignalSearchStatus = Literal[
@@ -26,6 +28,17 @@ SignalSearchStatus = Literal[
 ]
 SignalAttemptRole = Literal["primary", "primary_retry", "backup_retry"]
 SignalEntityType = Literal["legal_entity", "branch", "production_site", "project", "asset", "unknown_entity"]
+SignalMonitoringSourceLane = Literal["known_source", "official_company", "signal_specific", "open_web"]
+SignalMonitoringSourceDecisionStatus = Literal["selected", "skipped", "rejected"]
+SignalMonitoringDiagnosticSeverity = Literal["info", "warning", "blocking"]
+
+
+class SignalMonitoringSourceHint(BaseModel):
+    source_id: str
+    label: str = ""
+    connector_profile_id: str = ""
+    source_type: str = ""
+    query_template: str = ""
 
 
 class SignalMonitoringCandidate(BaseModel):
@@ -50,6 +63,12 @@ class SignalMonitoringSourcePolicy(BaseModel):
     enabled: bool = True
     allowed_source_ids: list[str] = Field(default_factory=list)
     preferred_source_ids: list[str] = Field(default_factory=list)
+    required_source_ids: list[str] = Field(default_factory=list)
+    fallback_source_ids: list[str] = Field(default_factory=list)
+    official_source_ids: list[str] = Field(default_factory=list)
+    signal_source_hints: list[SignalMonitoringSourceHint] = Field(default_factory=list)
+    reuse_known_sources: bool = True
+    allow_open_web: bool = True
 
 
 class SignalMonitoringBudget(BaseModel):
@@ -66,6 +85,28 @@ class SignalSourceRef(BaseModel):
     snippet: str = ""
     source_id: str = ""
     observed_at: str = ""
+    lifecycle_state: Literal["used", "retrieved", "analyzed", "verified", "linked", "unknown"] = "unknown"
+    candidate_id: str = ""
+
+
+class SignalMonitoringSourceDecision(BaseModel):
+    decision_id: str
+    lane: SignalMonitoringSourceLane
+    status: SignalMonitoringSourceDecisionStatus
+    reason: str
+    source_id: str = ""
+    source_ref: str = ""
+    source_refs: list[str] = Field(default_factory=list)
+    connector_profile_id: str = ""
+    supports_signal_evidence: bool = False
+    required: bool = False
+    diagnostic_severity: SignalMonitoringDiagnosticSeverity = "info"
+
+
+class SignalMonitoringSourceStrategyResult(BaseModel):
+    decisions: list[SignalMonitoringSourceDecision] = Field(default_factory=list)
+    diagnostics: list["SignalMonitoringDiagnostic"] = Field(default_factory=list)
+    selected_decision_ids: list[str] = Field(default_factory=list)
 
 
 class SignalEvidence(BaseModel):
@@ -85,6 +126,10 @@ class SignalSearchTask(BaseModel):
     query: str
     lookback_days: int
     known_source_refs: list[str] = Field(default_factory=list)
+    source_lane: SignalMonitoringSourceLane = "open_web"
+    source_ids: list[str] = Field(default_factory=list)
+    source_refs: list[str] = Field(default_factory=list)
+    source_decision_ids: list[str] = Field(default_factory=list)
 
 
 class SignalMonitoringPlan(BaseModel):
@@ -130,6 +175,7 @@ class SignalMonitoringInput(BaseModel):
     signal_rules: list[SignalMonitoringSignalRule] = Field(default_factory=list)
     known_sources: list[SignalSourceRef] = Field(default_factory=list)
     source_policy: SignalMonitoringSourcePolicy = Field(default_factory=SignalMonitoringSourcePolicy)
+    source_cards: list[RadarPlannerSourceCard] = Field(default_factory=list)
     budget: SignalMonitoringBudget = Field(default_factory=SignalMonitoringBudget)
     lookback_days: int = 7
     previous_signal_fingerprints: list[str] = Field(default_factory=list)
@@ -149,6 +195,8 @@ class SignalMonitoringOutcome(BaseModel):
     tasks: list[SignalSearchTask] = Field(default_factory=list)
     observations: list[SignalObservation] = Field(default_factory=list)
     diagnostics: list[SignalMonitoringDiagnostic] = Field(default_factory=list)
+    source_strategy_decisions: list[SignalMonitoringSourceDecision] = Field(default_factory=list)
+    source_strategy_diagnostics: list[SignalMonitoringDiagnostic] = Field(default_factory=list)
     provider_attempts: list[SignalProviderAttemptRecord] = Field(default_factory=list)
     budget_counters: dict[str, int] = Field(default_factory=dict)
 

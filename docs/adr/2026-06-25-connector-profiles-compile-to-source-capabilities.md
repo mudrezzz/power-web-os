@@ -108,6 +108,14 @@ diagnostics can prove that connector capabilities are actually active.
   is reserved for invalid strategy, source capability, or policy problems.
 - Future connector/plugin authors can provide source descriptions without
   learning the Power Web OS execution pipeline.
+- Signal monitoring uses the same capability model. Its source strategy first
+  reuses known candidate-discovery source refs, then evaluates official,
+  signal-specific, and open-web lanes through source cards. A connector is
+  eligible for fresh signal evidence only when its compiled card supports
+  `signal_evidence`; lookup/enrichment-only registry sources are skipped by
+  capability, not by provider id. A future SPARK-like source can participate in
+  signal monitoring without algorithm changes if its profile compiles to a
+  signal-capable card.
 
 ## Alternatives considered
 

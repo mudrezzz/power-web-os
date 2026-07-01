@@ -94,11 +94,18 @@ provider SDK details.
   application contracts used before live runtime integration. It separates
   product signal status from search execution status so `not_observed` can only
   mean "searched and no signal found."
+- `signal_monitoring_source_strategy.py` owns no-network signal source
+  selection. It reuses known candidate-discovery source refs first, then
+  selects official/company, signal-specific, and open-web lanes only when
+  source policy and compiled source-card capabilities allow signal evidence.
+  It does not call providers and it does not hardcode provider names such as
+  DaData or future SPARK-like registries.
 - `signal_monitoring_executor.py` owns the no-network recorded harness for
   signal monitoring. It calls scripted provider ports, validates signal
   extraction payloads, applies deterministic repair plus bounded primary/backup
-  retries, and emits explicit diagnostic states without touching HTTP,
-  persistence, Redis, Celery, or API routes.
+  retries, executes tasks in source-strategy order, and emits explicit
+  diagnostic states without touching HTTP, persistence, Redis, Celery, or API
+  routes.
 
 ## Dependency Rules
 
@@ -194,6 +201,14 @@ whether checkpoint-approved work may consume protected capacity before local
 executors call providers. `RadarExecutionBudget` and `RadarExternalCallBudget`
 remain counters and guards; the scheduler owns admission order for guaranteed
 work lanes.
+
+Signal monitoring follows the same boundary discipline. The source strategy is
+application-owned and capability-driven: a source can be used for signal
+evidence only if the source card says it supports signal evidence, or if a
+known source ref from candidate discovery is being re-inspected directly. A
+lookup/enrichment-only registry connector is skipped by capability, not by
+provider name. A future registry-like connector can participate without code
+changes if its connector profile compiles to a signal-capable source card.
 
 The checkpoint decision service is not enough to claim full adaptive execution.
 The follow-up recovery layer must apply checkpoint actions explicitly in the

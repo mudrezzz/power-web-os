@@ -111,8 +111,9 @@ Signal monitoring should search in this order:
 1. Existing candidate sources from the last discovery run when they are still
    relevant to the lookback window.
 2. Official or preferred sources selected in the Radar source policy.
-3. Open web sources only when policy and budget allow them.
-4. Fallback sources only after preferred lanes are exhausted or unavailable.
+3. Signal-specific sources and query hints from Radar configuration.
+4. Open web sources only when policy and budget allow them.
+5. Fallback sources only after preferred lanes are exhausted or unavailable.
 
 Registry/enrichment connectors such as DaData-like sources are not signal
 evidence by default. The algorithm must not hardcode provider names; it should
@@ -249,6 +250,40 @@ The key product rule is enforced in tests: `not_observed` is only emitted with
 `search_status=searched`. Budget, policy, missing candidate scope, schema
 recovery, duplicate old signals, and evidence-linking failures remain explicit
 diagnostic states.
+
+## 12.2 Source Strategy Added In 0.7.6.4.3
+
+The second implementation slice adds a no-network source strategy in the
+application layer.
+
+New contract additions:
+
+- `SignalMonitoringSourcePolicy` can express known-source reuse,
+  required/preferred/fallback source ids, official source ids,
+  signal-specific source hints, and open-web allow/deny.
+- `SignalMonitoringSourceDecision` records whether a source lane was selected,
+  skipped, or rejected, with human-readable reasons.
+- `SignalMonitoringSourceLane` distinguishes `known_source`,
+  `official_company`, `signal_specific`, and `open_web`.
+- `SignalMonitoringSourceStrategyResult` is stored on
+  `SignalMonitoringOutcome`.
+- `SignalSearchTask` now carries source lane, source ids, source refs, and
+  source decision ids.
+
+Implemented behavior:
+
+1. Known candidate-discovery source refs are selected first when
+   `reuse_known_sources=true`.
+2. Official/company sources are evaluated next.
+3. Required, preferred, fallback, and signal-specific source hints are checked
+   through source cards.
+4. Open web is selected only if `allow_open_web=true` and an allowed source
+   card supports signal evidence.
+5. Identity/enrichment-only connectors are skipped by capability, not by
+   provider name. A signal-capable registry-like connector can be selected
+   without changing the algorithm.
+6. If all source lanes are policy/capability-limited, the executor emits
+   `not_searched_policy_limited`; it does not emit `not_observed`.
 
 ## 13. Explicit Out Of Scope
 

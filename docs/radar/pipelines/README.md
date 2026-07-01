@@ -13,7 +13,7 @@ the current candidate-discovery default.
 | Pipeline id | Purpose | Cadence | Current state |
 |---|---|---|---|
 | `candidate-discovery` | Find and qualify legal entities, sites, branches, projects, and review-needed upstream entities. | Infrequent: manual, monthly, quarterly, or after Radar settings change. | Implemented through the current Radar search pipeline; docs still live at `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` until the migration slice splits the file. |
-| `signal-monitoring` | Monitor configured intent signals for known candidates over a recent time window. | Frequent: weekly or another product-configured monitoring cadence. | Planned. First TO BE must be created before runtime implementation. |
+| `signal-monitoring` | Monitor configured intent signals for known candidates over a recent time window. | Frequent: weekly or another product-configured monitoring cadence. | No-network application contracts, recorded harness, and capability-driven source strategy exist. Live runtime, budgets/model profiles, scheduler, and UI are still planned. |
 | `power-web-discovery` | Discover people, roles, relationships, partner paths, buying committee structure, and access routes for accepted accounts. | Event-driven or account-workflow driven. | Planned. |
 
 ## Required files
@@ -51,6 +51,12 @@ the per-pipeline folder.
 `signal-monitoring` and `power-web-discovery` do not get AS IS documents until
 their first runtime implementation exists. Before that, their TO BE documents
 are reviewed design inputs, not claims about implemented behavior.
+
+For `signal-monitoring`, the current implemented surface is intentionally
+limited to application contracts and no-network tests. Source strategy is
+already capability-driven: known candidate-discovery sources are checked first,
+then official/company, signal-specific, and open-web lanes are selected only
+when source policy and source cards allow signal evidence.
 
 ## Skill invocation examples
 

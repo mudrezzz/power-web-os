@@ -21,12 +21,14 @@ from power_web_os.application.signal_monitoring_contracts import (
     SignalMonitoringInput,
     SignalMonitoringOutcome,
     SignalMonitoringProviderResult,
+    SignalMonitoringSourceStrategyResult,
     SignalObservation,
     SignalProviderAttemptRecord,
     SignalSearchStatus,
     SignalSearchTask,
     SignalSourceRef,
 )
+from power_web_os.application.signal_monitoring_source_strategy import SignalMonitoringSourceStrategy
 
 
 @dataclass(frozen=True)
@@ -51,14 +53,17 @@ class SignalMonitoringExecutor:
         provider: SignalMonitoringEvidenceProvider,
         *,
         backup_provider: SignalMonitoringEvidenceProvider | None = None,
+        source_strategy: SignalMonitoringSourceStrategy | None = None,
     ) -> None:
         self.provider = provider
         self.backup_provider = backup_provider
+        self.source_strategy = source_strategy or SignalMonitoringSourceStrategy()
 
     def run(self, monitoring_input: SignalMonitoringInput) -> SignalMonitoringOutcome:
-        tasks = _build_tasks(monitoring_input)
+        source_strategy_result = self.source_strategy.select_sources(monitoring_input)
+        tasks = _build_tasks(monitoring_input, source_strategy_result)
         observations: list[SignalObservation] = []
-        diagnostics: list[SignalMonitoringDiagnostic] = []
+        diagnostics: list[SignalMonitoringDiagnostic] = list(source_strategy_result.diagnostics)
         attempts: list[SignalProviderAttemptRecord] = []
         counters = {"tasks_built": len(tasks), "tasks_executed": 0, "provider_calls": 0, "retries": 0, "backup_retries": 0}
 
@@ -67,7 +72,11 @@ class SignalMonitoringExecutor:
         if not monitoring_input.source_policy.enabled:
             for task in tasks:
                 observations.append(_not_searched(task, "not_searched_policy_limited", "Signal source policy is disabled."))
-            return _outcome(monitoring_input, tasks, observations, diagnostics, attempts, counters)
+            return _outcome(monitoring_input, tasks, observations, diagnostics, attempts, counters, source_strategy_result)
+        if not source_strategy_result.selected_decision_ids:
+            for task in tasks:
+                observations.append(_not_searched(task, "not_searched_policy_limited", "No executable signal source lane was selected."))
+            return _outcome(monitoring_input, tasks, observations, diagnostics, attempts, counters, source_strategy_result)
 
         previous = set(monitoring_input.previous_signal_fingerprints)
         for task in tasks:
@@ -84,7 +93,7 @@ class SignalMonitoringExecutor:
             if result.search_status == "searched":
                 counters["tasks_executed"] += 1
 
-        return _outcome(monitoring_input, tasks, observations, diagnostics, attempts, counters)
+        return _outcome(monitoring_input, tasks, observations, diagnostics, attempts, counters, source_strategy_result)
 
     def _execute_with_recovery(
         self,
@@ -144,21 +153,34 @@ class SignalMonitoringExecutor:
         return result
 
 
-def _build_tasks(monitoring_input: SignalMonitoringInput) -> list[SignalSearchTask]:
+def _build_tasks(
+    monitoring_input: SignalMonitoringInput,
+    source_strategy_result: SignalMonitoringSourceStrategyResult,
+) -> list[SignalSearchTask]:
     tasks = []
+    selected_decisions = [decision for decision in source_strategy_result.decisions if decision.status == "selected"]
+    if not selected_decisions:
+        selected_decisions = []
     for candidate in monitoring_input.candidates:
         for rule in monitoring_input.signal_rules:
-            query = rule.query_template.format(candidate=candidate.display_name, signal=rule.label)
-            tasks.append(SignalSearchTask(
-                task_id=f"signal-{candidate.candidate_id}-{rule.signal_code}",
-                candidate_id=candidate.candidate_id,
-                candidate_name=candidate.display_name,
-                signal_code=rule.signal_code,
-                signal_label=rule.label,
-                query=" ".join(query.split()),
-                lookback_days=monitoring_input.lookback_days,
-                known_source_refs=list(candidate.source_refs),
-            ))
+            decisions = selected_decisions or [None]
+            for index, decision in enumerate(decisions, start=1):
+                query = rule.query_template.format(candidate=candidate.display_name, signal=rule.label)
+                suffix = f"-{decision.lane}-{index}" if decision else "-no-source"
+                tasks.append(SignalSearchTask(
+                    task_id=f"signal-{candidate.candidate_id}-{rule.signal_code}{suffix}",
+                    candidate_id=candidate.candidate_id,
+                    candidate_name=candidate.display_name,
+                    signal_code=rule.signal_code,
+                    signal_label=rule.label,
+                    query=" ".join(query.split()),
+                    lookback_days=monitoring_input.lookback_days,
+                    known_source_refs=list(candidate.source_refs),
+                    source_lane=decision.lane if decision else "open_web",
+                    source_ids=[decision.source_id] if decision and decision.source_id else [],
+                    source_refs=list(decision.source_refs) if decision else [],
+                    source_decision_ids=[decision.decision_id] if decision else [],
+                ))
     return tasks
 
 
@@ -346,6 +368,7 @@ def _outcome(
     diagnostics: list[SignalMonitoringDiagnostic],
     attempts: list[SignalProviderAttemptRecord],
     counters: dict[str, int],
+    source_strategy_result: SignalMonitoringSourceStrategyResult,
 ) -> SignalMonitoringOutcome:
     return SignalMonitoringOutcome(
         run_id=monitoring_input.run_id,
@@ -353,6 +376,8 @@ def _outcome(
         tasks=tasks,
         observations=observations,
         diagnostics=diagnostics,
+        source_strategy_decisions=source_strategy_result.decisions,
+        source_strategy_diagnostics=source_strategy_result.diagnostics,
         provider_attempts=attempts,
         budget_counters=counters,
     )

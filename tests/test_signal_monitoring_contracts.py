@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from power_web_os.application.live_radar_source_cards import RadarPlannerSourceCard
 from power_web_os.application.signal_monitoring_contracts import (
     SignalAttemptRole,
     SignalMonitoringBudget,
@@ -55,10 +56,37 @@ def base_input(**overrides: Any) -> SignalMonitoringInput:
                 query_template="{candidate} {signal} last week",
             )
         ],
+        "source_cards": [
+            source_card(
+                source_id="openrouter_web",
+                connector_profile_id="openrouter_web",
+                source_type="open_web",
+                supports_signal_evidence=True,
+                supports_broad_discovery=True,
+            )
+        ],
         "budget": SignalMonitoringBudget(max_tasks=10, max_provider_calls=10, max_retries_per_task=1),
     }
     payload.update(overrides)
     return SignalMonitoringInput(**payload)
+
+
+def source_card(
+    *,
+    source_id: str,
+    connector_profile_id: str,
+    source_type: str = "web",
+    supports_signal_evidence: bool,
+    supports_broad_discovery: bool = False,
+) -> RadarPlannerSourceCard:
+    return RadarPlannerSourceCard(
+        source_id=source_id,
+        source_label=source_id,
+        connector_profile_id=connector_profile_id,
+        source_type=source_type,
+        supports_signal_evidence=supports_signal_evidence,
+        supports_broad_discovery=supports_broad_discovery,
+    )
 
 
 def observed_payload(*, summary: str = "New TOIR tender", observed_at: str = "2026-06-30") -> dict[str, Any]:
@@ -109,7 +137,7 @@ def test_signal_found_projects_observed_and_searched_state() -> None:
     assert observation.search_status == "searched"
     assert observation.source_refs == ["src-signal"]
     assert outcome.budget_counters["provider_calls"] == 1
-    assert provider.calls == [("signal-candidate-a-toir_tender", "primary")]
+    assert provider.calls == [("signal-candidate-a-toir_tender-open_web-1", "primary")]
 
 
 def test_run_and_plan_contracts_wrap_input_and_tasks() -> None:
@@ -161,6 +189,27 @@ def test_policy_limited_task_is_not_executed() -> None:
     observation = outcome.observations[0]
     assert observation.search_status == "not_searched_policy_limited"
     assert observation.observation_status == "unclear"
+    assert provider.calls == []
+
+
+def test_no_executable_source_lane_does_not_emit_not_observed() -> None:
+    provider = ScriptedSignalProvider([observed_payload()])
+    monitoring_input = base_input(
+        source_cards=[
+            source_card(
+                source_id="registry",
+                connector_profile_id="registry_identity_only",
+                supports_signal_evidence=False,
+            )
+        ],
+        source_policy=SignalMonitoringSourcePolicy(allowed_source_ids=["registry"], allow_open_web=False),
+    )
+
+    outcome = SignalMonitoringExecutor(provider).run(monitoring_input)
+
+    assert outcome.observations[0].observation_status == "unclear"
+    assert outcome.observations[0].search_status == "not_searched_policy_limited"
+    assert outcome.source_strategy_diagnostics[0].code == "no_executable_signal_source_lane"
     assert provider.calls == []
 
 
