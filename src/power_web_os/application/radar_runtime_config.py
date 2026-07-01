@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import urlsplit, urlunsplit
 
+from power_web_os.application.radar_runtime_model_profiles import runtime_model_profiles_config
+
 SECRET_KEYS = {
     "OPENROUTER_API_KEY",
     "DADATA_API_KEY",
@@ -164,6 +166,7 @@ def build_effective_runtime_config_report(
     retrieval_provider = str(value("POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER", "openrouter") or "openrouter")
     retrieval_engine_default = "perplexity" if retrieval_provider == "openrouter_perplexity" else "auto"
     retrieval_engine = str(value("POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE", retrieval_engine_default) or retrieval_engine_default)
+    model_profile_dir = str(value("POWER_WEB_OS_RADAR_MODEL_PROFILE_DIR", "config/radar/model_profiles") or "config/radar/model_profiles")
 
     dadata_api_key_present = secret("DADATA_API_KEY")
     dadata_secret_present = secret("DADATA_SECRET_KEY")
@@ -225,6 +228,7 @@ def build_effective_runtime_config_report(
             "smoke_max_candidates": _optional_non_negative_int_value(value("POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES", "")),
             "smoke_max_signals": _optional_non_negative_int_value(value("POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS", "")),
         },
+        "model_profiles": runtime_model_profiles_config(model_profile_dir),
         "persistence": {
             "database_kind": _url_kind(database_url),
             "database_url": _redact_url(database_url),
@@ -323,6 +327,23 @@ def _runtime_config_checks(config: dict[str, Any]) -> list[RadarRuntimeConfigChe
             status="skipped",
             severity="info",
             message="DaData credentials are not required in recorded mode.",
+        ))
+    model_profiles = config.get("model_profiles", {})
+    if model_profiles.get("status") == "loaded":
+        checks.append(RadarRuntimeConfigCheckResult(
+            code="radar_model_profiles",
+            status="passed",
+            severity="info",
+            message="Radar model profiles are loaded.",
+        ))
+    else:
+        checks.append(RadarRuntimeConfigCheckResult(
+            code="radar_model_profiles",
+            status="failed",
+            severity="error",
+            message="Radar model profiles could not be loaded.",
+            details={"error": model_profiles.get("error", "")},
+            remediation="Check config/radar/model_profiles or POWER_WEB_OS_RADAR_MODEL_PROFILE_DIR.",
         ))
     return checks
 
@@ -440,12 +461,15 @@ def _fingerprint_payload(config: dict[str, Any]) -> dict[str, Any]:
         "retrieval": config.get("retrieval", {}),
         "dadata": config.get("dadata", {}),
         "radar": config.get("radar", {}),
+        "model_profiles": config.get("model_profiles", {}),
         "persistence": {"database_kind": _nested_value(config, ("persistence", "database_kind"))},
         "celery": {
             "broker_kind": _nested_value(config, ("celery", "broker_kind")),
             "result_backend_kind": _nested_value(config, ("celery", "result_backend_kind")),
         },
     }
+
+
 
 
 def _nested_value(payload: dict[str, Any], path: tuple[str, ...]) -> Any:

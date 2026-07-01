@@ -1,0 +1,25 @@
+{
+  "profile_id": "candidate_discovery_default",
+  "pipeline_id": "candidate-discovery",
+  "description": "Default non-secret model role profile for Radar candidate discovery.",
+  "roles": {
+    "planner": {
+      "primary_model": "deepseek/deepseek-v3.2",
+      "backup_model": "qwen/qwen3.7-max",
+      "temperature": 0,
+      "max_attempts": 3
+    },
+    "extractor": {
+      "primary_model": "deepseek/deepseek-v3.2",
+      "backup_model": "qwen/qwen3.7-max",
+      "temperature": 0,
+      "max_attempts": 3
+    },
+    "coverage_extractor": {
+      "primary_model": "deepseek/deepseek-v3.2",
+      "backup_model": "qwen/qwen3.7-max",
+      "temperature": 0,
+      "max_attempts": 3
+    }
+  }
+}

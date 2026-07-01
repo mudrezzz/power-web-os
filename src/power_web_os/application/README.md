@@ -33,6 +33,12 @@ provider SDK details.
   and compiles them into internal source capability cards for preflight,
   planning, source validation, and execution guards. Profiles must not expose
   internal Radar stage names to connector authors.
+- `radar_model_profiles.py` loads non-secret model-role profiles from
+  `config/radar/model_profiles`. It keeps candidate-discovery and
+  signal-monitoring model defaults independent while `.env` remains limited to
+  credentials and deployment overrides.
+- `radar_runtime_model_profiles.py` projects model profile summaries into
+  runtime-config reports without exposing secrets or provider request payloads.
 - `radar_preflight.py` owns fast live Radar readiness checks before expensive
   provider execution: active definition wiring, source-policy references,
   source-provider availability, recorded extraction schemas, evidence linking,
@@ -209,6 +215,9 @@ known source ref from candidate discovery is being re-inspected directly. A
 lookup/enrichment-only registry connector is skipped by capability, not by
 provider name. A future registry-like connector can participate without code
 changes if its connector profile compiles to a signal-capable source card.
+Signal monitoring also owns an independent model-profile id and signal-specific
+budget counters. Candidate-discovery OpenRouter env tuning must not silently
+change the no-network signal monitoring contract.
 
 The checkpoint decision service is not enough to claim full adaptive execution.
 The follow-up recovery layer must apply checkpoint actions explicitly in the

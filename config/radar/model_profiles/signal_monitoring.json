@@ -1,0 +1,37 @@
+{
+  "profile_id": "signal_monitoring_default",
+  "pipeline_id": "signal-monitoring",
+  "description": "Default non-secret model role profile for recurring Radar signal monitoring.",
+  "roles": {
+    "signal_task_builder": {
+      "primary_model": "deepseek/deepseek-v3.2",
+      "backup_model": "qwen/qwen3.7-max",
+      "temperature": 0.1,
+      "max_attempts": 2
+    },
+    "signal_extractor": {
+      "primary_model": "deepseek/deepseek-v3.2",
+      "backup_model": "qwen/qwen3.7-max",
+      "temperature": 0,
+      "max_attempts": 3
+    },
+    "signal_backup_extractor": {
+      "primary_model": "qwen/qwen3.7-max",
+      "backup_model": "",
+      "temperature": 0,
+      "max_attempts": 1
+    },
+    "signal_evidence_judge": {
+      "primary_model": "deepseek/deepseek-v3.2",
+      "backup_model": "qwen/qwen3.7-max",
+      "temperature": 0,
+      "max_attempts": 2
+    },
+    "signal_dedupe_judge": {
+      "primary_model": "deepseek/deepseek-v3.2",
+      "backup_model": "qwen/qwen3.7-max",
+      "temperature": 0,
+      "max_attempts": 2
+    }
+  }
+}

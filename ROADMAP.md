@@ -7540,7 +7540,7 @@ Principles:
 
 ### Slice 0.7.6.4.4: Signal monitoring budgets and model profile isolation
 
-- Status: Ready
+- Status: Done
 - Goal: Give signal monitoring its own budgets and model row so candidate
   discovery tuning cannot starve or break signal search.
 - User value: A user can run frequent signal checks with predictable cost and
@@ -7592,7 +7592,7 @@ Principles:
 
 ### Slice 0.7.6.4.5: First recorded TOIR signal monitoring loop
 
-- Status: Backlog
+- Status: Ready
 - Goal: Build the first working signal-monitoring loop for TOIR using
   fake/recorded providers, without making a live benchmark claim.
 - User value: The product can show the core signal-monitoring idea: known
@@ -8231,4 +8231,4 @@ None.
 
 ## Next Recommended Task
 
-Slice 0.7.6.4.4: Signal monitoring budgets and model profile isolation
+Slice 0.7.6.4.5: First recorded TOIR signal-monitoring loop over known candidates

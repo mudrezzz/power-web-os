@@ -137,6 +137,10 @@ def test_signal_found_projects_observed_and_searched_state() -> None:
     assert observation.search_status == "searched"
     assert observation.source_refs == ["src-signal"]
     assert outcome.budget_counters["provider_calls"] == 1
+    assert outcome.budget_counters["signal_provider_calls"] == 1
+    assert outcome.budget_counters["signal_tasks_executed"] == 1
+    assert outcome.model_profile_id == "signal_monitoring_default"
+    assert outcome.model_profile_summary["pipeline_id"] == "signal-monitoring"
     assert provider.calls == [("signal-candidate-a-toir_tender-open_web-1", "primary")]
 
 
@@ -170,13 +174,26 @@ def test_searched_negative_is_not_observed_only_after_search() -> None:
 
 def test_budget_limited_task_is_not_projected_as_not_observed() -> None:
     provider = ScriptedSignalProvider([observed_payload()])
-    monitoring_input = base_input(budget=SignalMonitoringBudget(max_tasks=0, max_provider_calls=10))
+    monitoring_input = base_input(budget=SignalMonitoringBudget(max_signal_tasks=0, max_provider_calls=10))
 
     outcome = SignalMonitoringExecutor(provider).run(monitoring_input)
 
     observation = outcome.observations[0]
     assert observation.observation_status == "unclear"
     assert observation.search_status == "not_searched_budget_limited"
+    assert provider.calls == []
+
+
+def test_signal_provider_call_budget_blocks_provider_call() -> None:
+    provider = ScriptedSignalProvider([observed_payload()])
+    monitoring_input = base_input(budget=SignalMonitoringBudget(max_signal_provider_calls=0))
+
+    outcome = SignalMonitoringExecutor(provider).run(monitoring_input)
+
+    observation = outcome.observations[0]
+    assert observation.observation_status == "unclear"
+    assert observation.search_status == "not_searched_budget_limited"
+    assert outcome.budget_counters["signal_provider_calls"] == 0
     assert provider.calls == []
 
 
@@ -226,7 +243,24 @@ def test_malformed_payload_retries_primary_then_backup_model() -> None:
         "backup_retry",
     ]
     assert outcome.budget_counters["retries"] == 1
+    assert outcome.budget_counters["signal_extraction_retries"] == 1
     assert outcome.budget_counters["backup_retries"] == 1
+    assert outcome.budget_counters["signal_backup_retries"] == 1
+
+
+def test_signal_retry_budget_exhaustion_stops_before_backup() -> None:
+    primary = ScriptedSignalProvider(["not json"])
+    backup = ScriptedSignalProvider([observed_payload()])
+
+    outcome = SignalMonitoringExecutor(primary, backup_provider=backup).run(
+        base_input(budget=SignalMonitoringBudget(max_signal_extraction_retries=0, allow_backup_retry=True))
+    )
+
+    observation = outcome.observations[0]
+    assert observation.search_status == "schema_recovery_needed"
+    assert "signal_extraction_retry_budget_exhausted" in observation.summary
+    assert outcome.budget_counters["signal_extraction_retries"] == 0
+    assert backup.calls == []
 
 
 def test_repairable_payload_is_fixed_without_backup() -> None:

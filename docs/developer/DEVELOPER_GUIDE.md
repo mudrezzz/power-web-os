@@ -192,6 +192,19 @@ signal-specific, and open-web lanes only when source policy and source cards
 allow signal evidence. Do not add provider-name branches for DaData/SPARK-like
 sources; change connector capabilities instead.
 
+Signal-monitoring model defaults are isolated from candidate-discovery defaults.
+Non-secret model role profiles live in:
+
+```text
+config/radar/model_profiles/candidate_discovery.json
+config/radar/model_profiles/signal_monitoring.json
+```
+
+The signal profile contains `signal_task_builder`, `signal_extractor`,
+`signal_backup_extractor`, `signal_evidence_judge`, and
+`signal_dedupe_judge`. Runtime config reports expose product-safe summaries of
+both profiles; `.env` remains for secrets and emergency deployment overrides.
+
 Use the project skills for the documentation loop:
 
 - `$radar-pipeline-to-be-design` before implementation;

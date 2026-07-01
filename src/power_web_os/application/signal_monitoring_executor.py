@@ -28,6 +28,11 @@ from power_web_os.application.signal_monitoring_contracts import (
     SignalSearchTask,
     SignalSourceRef,
 )
+from power_web_os.application.radar_model_profiles import (
+    RadarModelProfile,
+    RadarModelProfileRegistry,
+    default_model_profile_registry,
+)
 from power_web_os.application.signal_monitoring_source_strategy import SignalMonitoringSourceStrategy
 
 
@@ -54,29 +59,32 @@ class SignalMonitoringExecutor:
         *,
         backup_provider: SignalMonitoringEvidenceProvider | None = None,
         source_strategy: SignalMonitoringSourceStrategy | None = None,
+        model_profile_registry: RadarModelProfileRegistry | None = None,
     ) -> None:
         self.provider = provider
         self.backup_provider = backup_provider
         self.source_strategy = source_strategy or SignalMonitoringSourceStrategy()
+        self.model_profile_registry = model_profile_registry or default_model_profile_registry()
 
     def run(self, monitoring_input: SignalMonitoringInput) -> SignalMonitoringOutcome:
+        model_profile = monitoring_input.model_profile or self.model_profile_registry.require(monitoring_input.model_profile_id)
         source_strategy_result = self.source_strategy.select_sources(monitoring_input)
         tasks = _build_tasks(monitoring_input, source_strategy_result)
         observations: list[SignalObservation] = []
         diagnostics: list[SignalMonitoringDiagnostic] = list(source_strategy_result.diagnostics)
         attempts: list[SignalProviderAttemptRecord] = []
-        counters = {"tasks_built": len(tasks), "tasks_executed": 0, "provider_calls": 0, "retries": 0, "backup_retries": 0}
+        counters = _initial_counters(len(tasks))
 
         if not monitoring_input.candidates:
             diagnostics.append(_diagnostic("not_searched_missing_candidate_scope", "No candidates were provided."))
         if not monitoring_input.source_policy.enabled:
             for task in tasks:
                 observations.append(_not_searched(task, "not_searched_policy_limited", "Signal source policy is disabled."))
-            return _outcome(monitoring_input, tasks, observations, diagnostics, attempts, counters, source_strategy_result)
+            return _outcome(monitoring_input, tasks, observations, diagnostics, attempts, counters, source_strategy_result, model_profile)
         if not source_strategy_result.selected_decision_ids:
             for task in tasks:
                 observations.append(_not_searched(task, "not_searched_policy_limited", "No executable signal source lane was selected."))
-            return _outcome(monitoring_input, tasks, observations, diagnostics, attempts, counters, source_strategy_result)
+            return _outcome(monitoring_input, tasks, observations, diagnostics, attempts, counters, source_strategy_result, model_profile)
 
         previous = set(monitoring_input.previous_signal_fingerprints)
         for task in tasks:
@@ -84,16 +92,21 @@ class SignalMonitoringExecutor:
             if candidate is None or not candidate.monitorable:
                 observations.append(_not_searched(task, "not_searched_missing_candidate_scope", "Candidate is not monitorable."))
                 continue
-            if counters["tasks_executed"] >= monitoring_input.budget.max_tasks:
+            if counters["signal_tasks_executed"] >= _max_signal_tasks(monitoring_input):
                 observations.append(_not_searched(task, "not_searched_budget_limited", "Signal task budget exhausted."))
                 continue
+            if _signal_lookback_budget_exhausted(monitoring_input, counters):
+                observations.append(_not_searched(task, "not_searched_budget_limited", "Signal lookback query budget exhausted."))
+                continue
 
+            counters["signal_lookback_queries"] += 1
             result = self._execute_with_recovery(task, monitoring_input, counters, attempts, previous)
             observations.append(result)
             if result.search_status == "searched":
                 counters["tasks_executed"] += 1
+                counters["signal_tasks_executed"] += 1
 
-        return _outcome(monitoring_input, tasks, observations, diagnostics, attempts, counters, source_strategy_result)
+        return _outcome(monitoring_input, tasks, observations, diagnostics, attempts, counters, source_strategy_result, model_profile)
 
     def _execute_with_recovery(
         self,
@@ -103,7 +116,7 @@ class SignalMonitoringExecutor:
         attempts: list[SignalProviderAttemptRecord],
         previous_fingerprints: set[str],
     ) -> SignalObservation:
-        if counters["provider_calls"] >= monitoring_input.budget.max_provider_calls:
+        if _signal_provider_budget_exhausted(monitoring_input, counters):
             return _not_searched(task, "not_searched_budget_limited", "Signal provider-call budget exhausted.")
 
         primary = self._attempt(task, "primary", counters, attempts)
@@ -111,22 +124,26 @@ class SignalMonitoringExecutor:
         if isinstance(parsed, _ParsedSignalPayload):
             return _observation_from_payload(task, parsed, previous_fingerprints)
 
-        if counters["provider_calls"] >= monitoring_input.budget.max_provider_calls:
+        if _signal_provider_budget_exhausted(monitoring_input, counters):
             return _schema_failed(task, "budget_exhausted_before_retry", parsed)
 
-        if monitoring_input.budget.max_retries_per_task > 0:
+        if _signal_retry_budget_available(monitoring_input, counters):
             counters["retries"] += 1
+            counters["signal_extraction_retries"] += 1
             retry = self._attempt(task, "primary_retry", counters, attempts)
             parsed = _parse_payload(retry.payload)
             if isinstance(parsed, _ParsedSignalPayload):
                 return _observation_from_payload(task, parsed, previous_fingerprints)
+        else:
+            return _schema_failed(task, "signal_extraction_retry_budget_exhausted", parsed)
 
         if not monitoring_input.budget.allow_backup_retry or self.backup_provider is None:
             return _schema_failed(task, "backup_not_configured", parsed)
-        if counters["provider_calls"] >= monitoring_input.budget.max_provider_calls:
+        if _signal_provider_budget_exhausted(monitoring_input, counters):
             return _schema_failed(task, "budget_exhausted_before_backup", parsed)
 
         counters["backup_retries"] += 1
+        counters["signal_backup_retries"] += 1
         backup = self._attempt(task, "backup_retry", counters, attempts)
         parsed = _parse_payload(backup.payload)
         if isinstance(parsed, _ParsedSignalPayload):
@@ -142,6 +159,7 @@ class SignalMonitoringExecutor:
     ) -> SignalMonitoringProviderResult:
         provider = self.backup_provider if attempt_role == "backup_retry" and self.backup_provider else self.provider
         counters["provider_calls"] += 1
+        counters["signal_provider_calls"] += 1
         result = provider.run_signal_task(task=task, attempt_role=attempt_role)
         parse_result = _parse_payload(result.payload)
         attempts.append(SignalProviderAttemptRecord(
@@ -182,6 +200,56 @@ def _build_tasks(
                     source_decision_ids=[decision.decision_id] if decision else [],
                 ))
     return tasks
+
+
+def _initial_counters(task_count: int) -> dict[str, int]:
+    return {
+        "tasks_built": task_count,
+        "tasks_executed": 0,
+        "provider_calls": 0,
+        "retries": 0,
+        "backup_retries": 0,
+        "signal_tasks_built": task_count,
+        "signal_tasks_executed": 0,
+        "signal_provider_calls": 0,
+        "signal_extraction_retries": 0,
+        "signal_backup_retries": 0,
+        "signal_source_verifications": 0,
+        "signal_lookback_queries": 0,
+    }
+
+
+def _max_signal_tasks(monitoring_input: SignalMonitoringInput) -> int:
+    return monitoring_input.budget.max_signal_tasks if monitoring_input.budget.max_signal_tasks is not None else monitoring_input.budget.max_tasks
+
+
+def _max_signal_provider_calls(monitoring_input: SignalMonitoringInput) -> int:
+    return (
+        monitoring_input.budget.max_signal_provider_calls
+        if monitoring_input.budget.max_signal_provider_calls is not None
+        else monitoring_input.budget.max_provider_calls
+    )
+
+
+def _max_signal_extraction_retries(monitoring_input: SignalMonitoringInput) -> int:
+    return (
+        monitoring_input.budget.max_signal_extraction_retries
+        if monitoring_input.budget.max_signal_extraction_retries is not None
+        else monitoring_input.budget.max_retries_per_task
+    )
+
+
+def _signal_provider_budget_exhausted(monitoring_input: SignalMonitoringInput, counters: dict[str, int]) -> bool:
+    return counters["signal_provider_calls"] >= _max_signal_provider_calls(monitoring_input)
+
+
+def _signal_retry_budget_available(monitoring_input: SignalMonitoringInput, counters: dict[str, int]) -> bool:
+    return counters["signal_extraction_retries"] < _max_signal_extraction_retries(monitoring_input)
+
+
+def _signal_lookback_budget_exhausted(monitoring_input: SignalMonitoringInput, counters: dict[str, int]) -> bool:
+    limit = monitoring_input.budget.max_signal_lookback_queries
+    return limit is not None and counters["signal_lookback_queries"] >= limit
 
 
 def _parse_payload(payload: Any) -> _ParsedSignalPayload | _ParseFailure:
@@ -369,10 +437,13 @@ def _outcome(
     attempts: list[SignalProviderAttemptRecord],
     counters: dict[str, int],
     source_strategy_result: SignalMonitoringSourceStrategyResult,
+    model_profile: RadarModelProfile,
 ) -> SignalMonitoringOutcome:
     return SignalMonitoringOutcome(
         run_id=monitoring_input.run_id,
         radar_id=monitoring_input.radar_id,
+        model_profile_id=model_profile.profile_id,
+        model_profile_summary=model_profile.to_summary(),
         tasks=tasks,
         observations=observations,
         diagnostics=diagnostics,

@@ -58,11 +58,23 @@ Role temperature settings are configuration, not code constants:
 Default temperature remains `0` for deterministic structured output unless a
 run profile or environment explicitly changes it.
 
+Pipeline-specific model profiles are non-secret config. Candidate discovery and
+signal monitoring must not share one mutable model row by accident:
+
+- candidate-discovery defaults live in
+  `config/radar/model_profiles/candidate_discovery.json`;
+- signal-monitoring defaults live in
+  `config/radar/model_profiles/signal_monitoring.json`;
+- `.env` remains for credentials and deployment/runtime overrides, not as the
+  primary home for model-role defaults.
+
 ## Consequences
 
 - Planner and extraction failures become comparable in diagnostics.
 - Model experiments can vary role model and role temperature without changing
   Radar code.
+- Signal-monitoring model and budget changes can be tested without changing
+  candidate-discovery runtime defaults.
 - Tests must cover non-JSON and schema-invalid responses for every new
   structured LLM role.
 - A future connector or model-provider adapter must implement this contract

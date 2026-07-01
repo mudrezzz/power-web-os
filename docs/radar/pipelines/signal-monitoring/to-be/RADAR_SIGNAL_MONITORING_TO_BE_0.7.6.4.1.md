@@ -285,6 +285,42 @@ Implemented behavior:
 6. If all source lanes are policy/capability-limited, the executor emits
    `not_searched_policy_limited`; it does not emit `not_observed`.
 
+## 12.3 Budgets And Model Profiles Added In 0.7.6.4.4
+
+The third implementation slice keeps signal-monitoring isolated from
+candidate-discovery tuning.
+
+New config boundary:
+
+- `config/radar/model_profiles/candidate_discovery.json`;
+- `config/radar/model_profiles/signal_monitoring.json`.
+
+The signal model profile is non-secret config and contains:
+
+- `signal_task_builder`;
+- `signal_extractor`;
+- `signal_backup_extractor`;
+- `signal_evidence_judge`;
+- `signal_dedupe_judge`.
+
+New signal budget fields:
+
+- `max_signal_tasks`;
+- `max_signal_provider_calls`;
+- `max_signal_extraction_retries`;
+- `max_signal_source_verifications`;
+- `max_signal_lookback_queries`.
+
+The no-network executor records signal-specific counters such as
+`signal_tasks_executed`, `signal_provider_calls`,
+`signal_extraction_retries`, and `signal_backup_retries`, while preserving the
+old compatibility counter names. Budget-limited signal work remains
+`not_searched_budget_limited`; it never becomes `not_observed`.
+
+Runtime config reports now show separate product-safe model-profile summaries
+for candidate discovery and signal monitoring. `.env` remains for credentials
+and deployment overrides, not as the primary store for role defaults.
+
 ## 13. Explicit Out Of Scope
 
 - Runtime signal monitoring.

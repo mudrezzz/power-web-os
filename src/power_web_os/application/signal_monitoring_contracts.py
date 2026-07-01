@@ -10,9 +10,10 @@ from __future__ import annotations
 
 from typing import Any, Literal, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from power_web_os.application.live_radar_source_cards import RadarPlannerSourceCard
+from power_web_os.application.radar_model_profiles import RadarModelProfile
 
 
 SignalObservationStatus = Literal["observed", "not_observed", "unclear"]
@@ -76,6 +77,11 @@ class SignalMonitoringBudget(BaseModel):
     max_provider_calls: int = 20
     max_retries_per_task: int = 1
     allow_backup_retry: bool = True
+    max_signal_tasks: int | None = None
+    max_signal_provider_calls: int | None = None
+    max_signal_extraction_retries: int | None = None
+    max_signal_source_verifications: int | None = None
+    max_signal_lookback_queries: int | None = None
 
 
 class SignalSourceRef(BaseModel):
@@ -169,8 +175,12 @@ class SignalObservation(BaseModel):
 
 
 class SignalMonitoringInput(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     run_id: str
     radar_id: str
+    model_profile_id: str = "signal_monitoring_default"
+    model_profile: RadarModelProfile | None = None
     candidates: list[SignalMonitoringCandidate] = Field(default_factory=list)
     signal_rules: list[SignalMonitoringSignalRule] = Field(default_factory=list)
     known_sources: list[SignalSourceRef] = Field(default_factory=list)
@@ -190,8 +200,12 @@ class SignalMonitoringRun(BaseModel):
 
 
 class SignalMonitoringOutcome(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     run_id: str
     radar_id: str
+    model_profile_id: str = ""
+    model_profile_summary: dict[str, Any] = Field(default_factory=dict)
     tasks: list[SignalSearchTask] = Field(default_factory=list)
     observations: list[SignalObservation] = Field(default_factory=list)
     diagnostics: list[SignalMonitoringDiagnostic] = Field(default_factory=list)

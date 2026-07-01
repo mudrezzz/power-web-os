@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from power_web_os.application.radar_runtime_config import (
     build_effective_runtime_config_report,
@@ -25,6 +26,7 @@ def test_runtime_config_report_redacts_secrets_and_builds_fingerprint() -> None:
             "OPENROUTER_SIGNAL_TEMPERATURE": "0.2",
             "OPENROUTER_BACKUP_TEMPERATURE": "0.15",
             "OPENROUTER_WEB_MODE": "server_tools",
+            "POWER_WEB_OS_RADAR_MODEL_PROFILE_DIR": "config/radar/model_profiles",
             "POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER": "openrouter_perplexity",
             "POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE": "perplexity",
             "POWER_WEB_OS_DADATA_MODE": "live",
@@ -58,6 +60,10 @@ def test_runtime_config_report_redacts_secrets_and_builds_fingerprint() -> None:
     assert report["config"]["openrouter"]["extractor_temperature"] == 0
     assert report["config"]["openrouter"]["signal_temperature"] == 0.2
     assert report["config"]["openrouter"]["backup_temperature"] == 0.15
+    assert report["config"]["model_profiles"]["status"] == "loaded"
+    assert report["config"]["model_profiles"]["candidate_discovery"]["profile_id"] == "candidate_discovery_default"
+    assert report["config"]["model_profiles"]["signal_monitoring"]["profile_id"] == "signal_monitoring_default"
+    assert "signal_extractor" in report["config"]["model_profiles"]["signal_monitoring"]["roles"]
     assert report["config"]["dadata"]["credentials_present"] is True
     assert report["config"]["retrieval"]["provider"] == "openrouter_perplexity"
     assert report["config"]["retrieval"]["openrouter_web_search_engine"] == "perplexity"
@@ -77,6 +83,30 @@ def test_runtime_config_report_redacts_secrets_and_builds_fingerprint() -> None:
     assert "[REDACTED]@db.example.test:5432" in serialized
     assert "[REDACTED]@redis.example.test:6379" in serialized
     assert not any(secret in serialized for secret in ["sk-or-test-secret", "dadata-key", "dadata-secret", "password@"])
+
+
+def test_runtime_config_keeps_candidate_and_signal_model_profiles_independent(tmp_path: Path) -> None:
+    first_dir = tmp_path / "profiles-a"
+    second_dir = tmp_path / "profiles-b"
+    first_dir.mkdir()
+    second_dir.mkdir()
+    _write_model_profiles(first_dir, candidate_model="candidate/model-a", signal_model="signal/model")
+    _write_model_profiles(second_dir, candidate_model="candidate/model-b", signal_model="signal/model")
+
+    first = build_effective_runtime_config_report(
+        component="test",
+        env={"POWER_WEB_OS_RADAR_MODEL_PROFILE_DIR": str(first_dir)},
+    ).to_payload()
+    second = build_effective_runtime_config_report(
+        component="test",
+        env={"POWER_WEB_OS_RADAR_MODEL_PROFILE_DIR": str(second_dir)},
+    ).to_payload()
+
+    assert (
+        first["config"]["model_profiles"]["candidate_discovery"]["roles"]["planner"]["primary_model"]
+        != second["config"]["model_profiles"]["candidate_discovery"]["roles"]["planner"]["primary_model"]
+    )
+    assert first["config"]["model_profiles"]["signal_monitoring"] == second["config"]["model_profiles"]["signal_monitoring"]
 
 
 def test_runtime_config_fingerprint_is_stable_and_changes_for_critical_values() -> None:
@@ -144,3 +174,30 @@ def test_demo_secret_guard_allows_env_var_names_but_rejects_secret_values() -> N
         pass
     else:  # pragma: no cover - explicit assertion keeps the failure readable.
         raise AssertionError("secret-like OpenRouter value was not rejected")
+
+
+def _write_model_profiles(directory: Path, *, candidate_model: str, signal_model: str) -> None:
+    (directory / "candidate_discovery.json").write_text(
+        json.dumps({
+            "profile_id": "candidate_discovery_default",
+            "pipeline_id": "candidate-discovery",
+            "roles": {
+                "planner": {"primary_model": candidate_model, "temperature": 0, "max_attempts": 1}
+            },
+        }),
+        encoding="utf-8",
+    )
+    (directory / "signal_monitoring.json").write_text(
+        json.dumps({
+            "profile_id": "signal_monitoring_default",
+            "pipeline_id": "signal-monitoring",
+            "roles": {
+                "signal_task_builder": {"primary_model": signal_model, "temperature": 0.1, "max_attempts": 1},
+                "signal_extractor": {"primary_model": signal_model, "temperature": 0, "max_attempts": 1},
+                "signal_backup_extractor": {"primary_model": signal_model, "temperature": 0, "max_attempts": 1},
+                "signal_evidence_judge": {"primary_model": signal_model, "temperature": 0, "max_attempts": 1},
+                "signal_dedupe_judge": {"primary_model": signal_model, "temperature": 0, "max_attempts": 1},
+            },
+        }),
+        encoding="utf-8",
+    )
