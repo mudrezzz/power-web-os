@@ -7590,6 +7590,38 @@ Principles:
   - Too many model settings can confuse setup. Mitigate with named profile
     defaults and clear override precedence.
 
+### Slice 0.7.6.4.4.1: Radar runtime config source-of-truth extraction from .env
+
+- Status: Done
+- Goal: Make config/radar the source of truth for non-secret Radar runtime defaults while keeping .env as secrets and override layer.
+- Scope:
+  - Add config-backed non-secret runtime defaults and run profiles.
+  - Update candidate-discovery and signal-monitoring model profiles to match the current intended model row.
+  - Keep legacy env variable names as compatibility overrides.
+  - Wire runtime report, API settings, workflow defaults, OpenRouter provider, DaData provider, and preflight probes through the same effective runtime settings snapshot.
+  - Update .env.example to contain only secrets, infrastructure URLs, and config path.
+- Out of scope:
+  - No UI settings editor.
+  - No live provider benchmark.
+  - No migration of actual local .env secrets.
+  - No removal of compatibility env variable names.
+- Tests:
+  - Runtime config source-of-truth tests.
+  - Env override precedence tests.
+  - Workflow/provider config-consumer tests.
+  - Model profile value tests.
+  - Candidate-discovery regression tests around live Radar config and preflight.
+- Docs:
+  - Developer Guide explains config -> run profile -> .env -> process env -> explicit override precedence.
+  - Application README and Radar pipeline registry name the runtime settings owner.
+  - Universal LLM call ADR records that non-secret model and budget defaults live in config/radar.
+- Acceptance criteria:
+  - A clean environment without model/budget env vars resolves to the current intended OpenRouter, DaData, retrieval, and smoke budget values from config.
+  - .env/process env values still override config.
+  - Candidate-discovery live provider and workflow defaults use the same config-backed values as runtime config report.
+  - Runtime reports remain redacted and do not expose secrets.
+- Problem: Model rows, provider modes, DaData mode/base URL, and smoke budgets were split between .env.example, local .env, runtime report defaults, and model profile JSON. The values drifted, and signal/candidate profile isolation was only partial.
+
 ### Slice 0.7.6.4.5: First recorded TOIR signal monitoring loop
 
 - Status: Ready

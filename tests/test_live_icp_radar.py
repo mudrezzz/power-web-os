@@ -3185,7 +3185,7 @@ def test_openrouter_model_routing_uses_advanced_models_for_planner_and_extractor
     assert provider._model_for_search_plan(execution_task_to_search_plan(signal_task, radar_id=plan.radar_id)) == "fast/model"
 
 
-def test_openrouter_model_routing_falls_back_to_advanced_model_for_extractor(tmp_path: Path) -> None:
+def test_openrouter_model_routing_uses_configured_role_defaults_when_extractor_not_overridden(tmp_path: Path) -> None:
     env_file = tmp_path / ".env"
     env_file.write_text(
         "\n".join([
@@ -3198,8 +3198,8 @@ def test_openrouter_model_routing_falls_back_to_advanced_model_for_extractor(tmp
     provider = OpenRouterWebSearchProvider(env_path=env_file)
     planner = OpenRouterDiscoveryPlanner(env_path=env_file)
 
-    assert provider.extractor_model == "advanced/model"
-    assert planner.model == "advanced/model"
+    assert provider.extractor_model == "openai/gpt-5-mini"
+    assert planner.model == "google/gemini-3.1-pro-preview"
 
 
 class _StageAwareProvider:

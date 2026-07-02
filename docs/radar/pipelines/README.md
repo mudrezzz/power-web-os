@@ -104,7 +104,16 @@ config/radar/model_profiles/signal_monitoring.json
 config/radar/model_profiles/power_web_discovery.json
 ```
 
-`.env` remains for credentials and deployment/runtime overrides.
+General Radar runtime defaults and bounded run profiles live next to them:
+
+```text
+config/radar/runtime_defaults.json
+config/radar/run_profiles/smoke.json
+config/radar/run_profiles/live.json
+```
+
+`.env` remains for credentials, infrastructure URLs, and explicit
+deployment/runtime overrides.
 
 ## Planned rollout
 

@@ -44,6 +44,21 @@ def test_candidate_and_signal_profiles_are_independent() -> None:
     assert "planner" not in signal_summary["roles"]
 
 
+def test_default_model_profiles_match_runtime_model_row() -> None:
+    registry = RadarModelProfileRegistry.from_directory(DEFAULT_MODEL_PROFILE_DIR)
+
+    candidate = registry.require("candidate_discovery_default").to_summary()
+    signal = registry.require("signal_monitoring_default").to_summary()
+
+    assert candidate["roles"]["planner"]["primary_model"] == "google/gemini-3.1-pro-preview"
+    assert candidate["roles"]["planner"]["backup_model"] == "anthropic/claude-sonnet-4.6"
+    assert candidate["roles"]["extractor"]["primary_model"] == "openai/gpt-5-mini"
+    assert candidate["roles"]["extractor"]["backup_model"] == "anthropic/claude-sonnet-4.6"
+    assert signal["roles"]["signal_task_builder"]["primary_model"] == "google/gemini-3.1-pro-preview"
+    assert signal["roles"]["signal_extractor"]["primary_model"] == "openai/gpt-5-mini"
+    assert signal["roles"]["signal_backup_extractor"]["primary_model"] == "anthropic/claude-sonnet-4.6"
+
+
 def test_missing_signal_role_fails_with_actionable_error(tmp_path: Path) -> None:
     profile = {
         "profile_id": "broken_signal",

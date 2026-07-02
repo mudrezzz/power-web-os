@@ -1,0 +1,26 @@
+{
+  "description": "Non-secret Radar runtime defaults. Secrets and deployment-only values stay in .env.",
+  "env": {
+    "OPENROUTER_MODEL": "deepseek/deepseek-v4-pro",
+    "OPENROUTER_ADVANCED_MODEL": "google/gemini-3.1-pro-preview",
+    "OPENROUTER_PLANNER_MODEL": "google/gemini-3.1-pro-preview",
+    "OPENROUTER_PLANNER_BACKUP_MODEL": "anthropic/claude-sonnet-4.6",
+    "OPENROUTER_EXTRACTOR_MODEL": "openai/gpt-5-mini",
+    "OPENROUTER_EXTRACTION_BACKUP_MODEL": "anthropic/claude-sonnet-4.6",
+    "OPENROUTER_BACKUP_MODEL": "qwen/qwen3.7-max",
+    "OPENROUTER_PLANNER_TEMPERATURE": "0",
+    "OPENROUTER_EXTRACTOR_TEMPERATURE": "0",
+    "OPENROUTER_SIGNAL_TEMPERATURE": "0",
+    "OPENROUTER_BACKUP_TEMPERATURE": "0",
+    "OPENROUTER_WEB_MODE": "server_tools",
+    "POWER_WEB_OS_RADAR_MODEL_PROFILE_DIR": "config/radar/model_profiles",
+    "POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER": "openrouter_perplexity",
+    "POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE": "perplexity",
+    "POWER_WEB_OS_DADATA_BASE_URL": "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/party",
+    "POWER_WEB_OS_DADATA_MODE": "live",
+    "POWER_WEB_OS_RUN_LIVE_DADATA_TESTS": "0",
+    "POWER_WEB_OS_DADATA_TEST_QUERY": "1651025328",
+    "POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE": "soft",
+    "POWER_WEB_OS_RADAR_RUN_PROFILE": "smoke"
+  }
+}

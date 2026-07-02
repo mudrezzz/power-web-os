@@ -12,6 +12,7 @@ from power_web_os.application.live_radar_definition_runtime import active_defini
 from power_web_os.application.live_radar_contracts import RadarSearchPlan, RadarSearchQuery
 from power_web_os.application.radar_preflight import RadarExecutionPreflightService, validate_provider_output_fixture
 from power_web_os.application.radar_runtime_config import build_effective_runtime_config_report
+from power_web_os.application.radar_runtime_settings import effective_runtime_env
 from power_web_os.application.radar_source_providers import CompanyLookupRequest
 from power_web_os.integrations.dadata_provider import DaDataCompanyRegistryProvider
 from power_web_os.integrations.live_radar_openrouter import OpenRouterWebSearchProvider
@@ -92,7 +93,7 @@ def _active_runtime_definition_payload(
 
 
 def _available_company_registry_provider_ids() -> set[str]:
-    env = _load_env_file(Path.cwd() / ".env")
+    env = effective_runtime_env(dotenv_path=Path.cwd() / ".env")
     mode = (env.get("POWER_WEB_OS_DADATA_MODE") or "recorded").strip().lower()
     if mode == "recorded":
         return {"dadata"}
@@ -176,7 +177,7 @@ def _extraction_schema_probe() -> dict[str, Any]:
 
 def _dadata_probe() -> dict[str, Any]:
     started_at = perf_counter()
-    query = _load_env_file(Path.cwd() / ".env").get("POWER_WEB_OS_DADATA_TEST_QUERY") or "1651025328"
+    query = effective_runtime_env(dotenv_path=Path.cwd() / ".env").get("POWER_WEB_OS_DADATA_TEST_QUERY") or "1651025328"
     provider = DaDataCompanyRegistryProvider(env_path=Path.cwd() / ".env", timeout_seconds=8)
     try:
         result = provider.lookup_companies(
@@ -288,16 +289,3 @@ def _openrouter_probe(*, probe: str, radar_id: str) -> dict[str, Any]:
 
 def _duration_ms(started_at: float) -> int:
     return int((perf_counter() - started_at) * 1000)
-
-
-def _load_env_file(path: Path) -> dict[str, str]:
-    if not path.exists():
-        return {}
-    values: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
-            continue
-        key, value = stripped.split("=", 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
-    return values

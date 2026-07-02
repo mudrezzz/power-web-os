@@ -984,52 +984,44 @@ src/power_web_os/workflows/live_icp_radar_workflow.py      Optional langgraph-da
 src/power_web_os/live_icp_radar.py                        Compatibility facade for historical imports
 ```
 
-Environment variables are loaded from the process environment or local `.env`:
+Non-secret Radar runtime settings are loaded from repository config first:
+
+```text
+config/radar/runtime_defaults.json
+config/radar/run_profiles/smoke.json
+config/radar/run_profiles/live.json
+config/radar/model_profiles/candidate_discovery.json
+config/radar/model_profiles/signal_monitoring.json
+```
+
+The local `.env` remains for secrets, infrastructure URLs, and explicit
+emergency/deployment overrides:
 
 ```text
 OPENROUTER_API_KEY=
-OPENROUTER_MODEL=openai/gpt-4.1-mini
-OPENROUTER_ADVANCED_MODEL=deepseek/deepseek-v3.2
-OPENROUTER_PLANNER_MODEL=deepseek/deepseek-v3.2
-OPENROUTER_PLANNER_BACKUP_MODEL=
-OPENROUTER_EXTRACTOR_MODEL=deepseek/deepseek-v3.2
-OPENROUTER_EXTRACTION_BACKUP_MODEL=
-OPENROUTER_BACKUP_MODEL=
-OPENROUTER_PLANNER_TEMPERATURE=0
-OPENROUTER_EXTRACTOR_TEMPERATURE=0
-OPENROUTER_SIGNAL_TEMPERATURE=0
-OPENROUTER_BACKUP_TEMPERATURE=0
-OPENROUTER_WEB_MODE=server_tools
-POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=1
-POWER_WEB_OS_RADAR_MAX_DISCOVERY_TASKS_PER_RULE=
-POWER_WEB_OS_RADAR_MAX_GATE_TASKS_PER_CANDIDATE_RULE=
-POWER_WEB_OS_RADAR_MAX_SIGNAL_TASKS_PER_CANDIDATE_SIGNAL=
-POWER_WEB_OS_RADAR_MAX_TOTAL_WEB_TASKS_PER_RUN=
+DADATA_API_KEY=
+DADATA_SECRET_KEY=
+POWER_WEB_OS_DATABASE_URL=sqlite:///./demo/output/power_web_os.sqlite3
+POWER_WEB_OS_RADAR_CONFIG_DIR=config/radar
 ```
 
-For local CLI demo runs, explicit constructor arguments are strongest, then project `.env`, then ambient OS environment variables. This prevents an old Windows/user `OPENROUTER_API_KEY` from silently overriding the key in the repository-local `.env`.
+Effective precedence is: repository config -> run profile config -> process
+environment -> local `.env` -> explicit API/runtime overrides. This keeps the
+checked-in non-secret defaults reviewable while preserving local override
+compatibility.
 
-Model routing is role-specific. `OPENROUTER_MODEL` is the fast/default model for
-simple bounded tasks such as signal checks. Planner calls use
-`OPENROUTER_PLANNER_MODEL`; discovery, qualification, and coverage extraction
-use `OPENROUTER_EXTRACTOR_MODEL`. If a specific model is absent, planner and
-extractor fall back to `OPENROUTER_ADVANCED_MODEL`, then to `OPENROUTER_MODEL`.
-`OPENROUTER_EXTRACTION_BACKUP_MODEL` can be set for bounded extraction recovery
-when the primary extractor repeatedly returns non-JSON or schema-invalid
-payloads. `OPENROUTER_BACKUP_MODEL` is accepted as a generic compatibility
-alias, but role-specific `OPENROUTER_EXTRACTION_BACKUP_MODEL` is preferred for
-extraction. Planner calls follow the same structured-output contract:
-`OPENROUTER_PLANNER_MODEL`, one strict primary retry, then
-`OPENROUTER_PLANNER_BACKUP_MODEL` or the generic `OPENROUTER_BACKUP_MODEL`.
-Role temperatures are configurable, but default to `0` for deterministic JSON:
-planner, extractor, signal/default, and backup attempts use the corresponding
-`OPENROUTER_*_TEMPERATURE` setting.
+Model routing is role-specific and config-backed. Candidate discovery and
+signal monitoring have separate model profile JSON files, so tuning one
+pipeline does not silently change the other. The current candidate-discovery
+runtime row uses `OPENROUTER_MODEL` / `OPENROUTER_ADVANCED_MODEL` /
+planner / extractor / backup-compatible keys internally for existing provider
+adapters, but their defaults now come from config. Local env vars with the same
+names still override config for compatibility.
 
-`POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` is a compatibility safety limit
-for backend-controlled live Radar web/provider tasks. The checked-in
-`.env.example` uses a smoke-safe value of `1` so Docker/dev manual runs can
-finish quickly while the pipeline is still being tuned. The code fallback is
-`20` when no environment value is configured.
+`POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT` remains a compatibility safety
+limit for backend-controlled live Radar web/provider tasks. The smoke-safe
+default now lives in `config/radar/run_profiles/smoke.json`; the live default
+lives in `config/radar/run_profiles/live.json`.
 
 Hierarchical budget variables override the compatibility alias when set:
 

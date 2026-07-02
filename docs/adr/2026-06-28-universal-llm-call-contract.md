@@ -65,8 +65,12 @@ signal monitoring must not share one mutable model row by accident:
   `config/radar/model_profiles/candidate_discovery.json`;
 - signal-monitoring defaults live in
   `config/radar/model_profiles/signal_monitoring.json`;
-- `.env` remains for credentials and deployment/runtime overrides, not as the
-  primary home for model-role defaults.
+- provider modes, OpenRouter defaults, DaData URL/mode, and bounded smoke/live
+  runtime limits live in `config/radar/runtime_defaults.json` and
+  `config/radar/run_profiles/*.json`;
+- `.env` remains for credentials, infrastructure URLs, and explicit
+  deployment/runtime overrides, not as the primary home for non-secret model or
+  budget defaults.
 
 ## Consequences
 

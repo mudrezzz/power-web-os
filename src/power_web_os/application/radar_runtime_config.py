@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import urlsplit, urlunsplit
 
 from power_web_os.application.radar_runtime_model_profiles import runtime_model_profiles_config
+from power_web_os.application.radar_runtime_settings import effective_runtime_values
 
 SECRET_KEYS = {
     "OPENROUTER_API_KEY",
@@ -311,7 +311,7 @@ def _runtime_config_checks(config: dict[str, Any]) -> list[RadarRuntimeConfigChe
         passed=bool(config["openrouter"]["api_key_present"]),
         message="OpenRouter API key is present.",
         failed_message="OpenRouter API key is missing.",
-        remediation="Set OPENROUTER_API_KEY before live OpenRouter probes or full live Radar runs.",
+        remediation="Configure the OpenRouter credential before live OpenRouter probes or full live Radar runs.",
     ))
     if config["dadata"]["mode"] == "live":
         checks.append(_check(
@@ -319,7 +319,7 @@ def _runtime_config_checks(config: dict[str, Any]) -> list[RadarRuntimeConfigChe
             passed=bool(config["dadata"]["credentials_present"]),
             message="DaData live credentials are present.",
             failed_message="DaData live mode is enabled but credentials are missing.",
-            remediation="Set DADATA_API_KEY and DADATA_SECRET_KEY, or switch POWER_WEB_OS_DADATA_MODE to recorded.",
+            remediation="Configure DaData live credentials, or switch the DaData mode override to recorded.",
         ))
     else:
         checks.append(RadarRuntimeConfigCheckResult(
@@ -371,17 +371,7 @@ def _effective_env(
     dotenv_path: Path | None,
     overrides: Mapping[str, Any] | None,
 ) -> dict[str, tuple[Any, str]]:
-    result: dict[str, tuple[Any, str]] = {}
-    if dotenv_path is not None:
-        for key, value in _load_env_file(dotenv_path).items():
-            result[key] = (value, ".env")
-    source_env = dict(os.environ if env is None else env)
-    for key, value in source_env.items():
-        result[key] = (value, "process_env")
-    for key, value in (overrides or {}).items():
-        if value is not None:
-            result[key] = (value, "explicit_override")
-    return result
+    return effective_runtime_values(env=env, dotenv_path=dotenv_path, overrides=overrides)
 
 
 def _resolve(values: Mapping[str, tuple[Any, str]], name: str, default: Any) -> tuple[Any, str]:
@@ -469,9 +459,6 @@ def _fingerprint_payload(config: dict[str, Any]) -> dict[str, Any]:
         },
     }
 
-
-
-
 def _nested_value(payload: dict[str, Any], path: tuple[str, ...]) -> Any:
     value: Any = payload
     for item in path:
@@ -479,16 +466,3 @@ def _nested_value(payload: dict[str, Any], path: tuple[str, ...]) -> Any:
             return None
         value = value.get(item)
     return value
-
-
-def _load_env_file(path: Path) -> dict[str, str]:
-    if not path.exists():
-        return {}
-    values: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
-            continue
-        key, value = stripped.split("=", 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
-    return values

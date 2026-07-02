@@ -37,6 +37,10 @@ provider SDK details.
   `config/radar/model_profiles`. It keeps candidate-discovery and
   signal-monitoring model defaults independent while `.env` remains limited to
   credentials and deployment overrides.
+- `radar_runtime_settings.py` loads non-secret Radar runtime defaults from
+  `config/radar/runtime_defaults.json` and `config/radar/run_profiles/*`.
+  `.env` and process variables are compatibility override layers, not the
+  source of truth for model rows, provider modes, or smoke budgets.
 - `radar_runtime_model_profiles.py` projects model profile summaries into
   runtime-config reports without exposing secrets or provider request payloads.
 - `radar_preflight.py` owns fast live Radar readiness checks before expensive

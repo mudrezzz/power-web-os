@@ -110,7 +110,7 @@ Optional live mini ICP Radar run:
 
 ```bash
 copy .env.example .env
-# Fill OPENROUTER_API_KEY and OPENROUTER_MODEL locally.
+# Fill OPENROUTER_API_KEY locally. Non-secret Radar defaults live in config/radar/.
 python -m power_web_os.demo run-live-mini-icp-radar --dry-run-plan
 python -m power_web_os.demo run-live-mini-icp-radar --live
 ```

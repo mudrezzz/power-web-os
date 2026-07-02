@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -24,6 +23,7 @@ from power_web_os.application.live_radar_external_budget_context import (
 )
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 from power_web_os.application.live_radar_web_retrieval import retrieval_request_from_search_plan
+from power_web_os.application.radar_runtime_settings import effective_runtime_env
 from power_web_os.integrations.openrouter_request_builder import build_openrouter_request, openrouter_compiled_prompt_summary
 from power_web_os.integrations.openrouter_retrieval import retrieval_result_from_openrouter_response
 from power_web_os.integrations.openrouter_trace import (
@@ -65,55 +65,46 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
         env_path: Path | None = None,
         timeout_seconds: float = 90,
     ) -> None:
-        self._env = _load_env_file(env_path or Path.cwd() / ".env")
+        self._env = effective_runtime_env(dotenv_path=env_path or Path.cwd() / ".env")
         # Local demo runs should be reproducible from the project `.env`.
-        # Keep explicit constructor values strongest, then local `.env`, then
-        # ambient OS env as a production/CI fallback.
-        self._api_key = api_key or self._env.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
-        self._model = model or self._env.get("OPENROUTER_MODEL") or os.getenv("OPENROUTER_MODEL")
-        self._advanced_model = self._env.get("OPENROUTER_ADVANCED_MODEL") or os.getenv("OPENROUTER_ADVANCED_MODEL")
+        # Keep explicit constructor values strongest; effective runtime env
+        # already merges config defaults, local `.env`, and process env.
+        self._api_key = api_key or self._env.get("OPENROUTER_API_KEY")
+        self._model = model or self._env.get("OPENROUTER_MODEL")
+        self._advanced_model = self._env.get("OPENROUTER_ADVANCED_MODEL")
         self._extractor_model = (
             self._env.get("OPENROUTER_EXTRACTOR_MODEL")
-            or os.getenv("OPENROUTER_EXTRACTOR_MODEL")
             or self._advanced_model
             or self._model
         )
         self._extraction_backup_model = (
             self._env.get("OPENROUTER_EXTRACTION_BACKUP_MODEL")
-            or os.getenv("OPENROUTER_EXTRACTION_BACKUP_MODEL")
             or self._env.get("OPENROUTER_BACKUP_MODEL")
-            or os.getenv("OPENROUTER_BACKUP_MODEL")
             or ""
         )
         self._extractor_temperature = _float_setting(
-            self._env.get("OPENROUTER_EXTRACTOR_TEMPERATURE")
-            or os.getenv("OPENROUTER_EXTRACTOR_TEMPERATURE"),
+            self._env.get("OPENROUTER_EXTRACTOR_TEMPERATURE"),
             default=0.0,
         )
         self._signal_temperature = _float_setting(
-            self._env.get("OPENROUTER_SIGNAL_TEMPERATURE")
-            or os.getenv("OPENROUTER_SIGNAL_TEMPERATURE"),
+            self._env.get("OPENROUTER_SIGNAL_TEMPERATURE"),
             default=0.0,
         )
         self._backup_temperature = _float_setting(
-            self._env.get("OPENROUTER_BACKUP_TEMPERATURE")
-            or os.getenv("OPENROUTER_BACKUP_TEMPERATURE"),
+            self._env.get("OPENROUTER_BACKUP_TEMPERATURE"),
             default=self._extractor_temperature,
         )
-        self._web_mode = web_mode or self._env.get("OPENROUTER_WEB_MODE") or os.getenv("OPENROUTER_WEB_MODE") or "auto"
+        self._web_mode = web_mode or self._env.get("OPENROUTER_WEB_MODE") or "auto"
         self._retrieval_provider = (
             self._env.get("POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER")
-            or os.getenv("POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER")
             or "openrouter"
         )
         self._web_search_engine = (
             self._env.get("POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE")
-            or os.getenv("POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE")
             or ("perplexity" if self._retrieval_provider == "openrouter_perplexity" else "auto")
         )
         self._source_verification_mode = normalize_verification_mode(
             self._env.get("POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE")
-            or os.getenv("POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE")
         )
         self._timeout_seconds = timeout_seconds
 
@@ -850,22 +841,6 @@ def _budget_limited_result(
             }],
         },
     )
-
-
-def _load_env_file(path: Path) -> dict[str, str]:
-    if not path.exists():
-        return {}
-    try:
-        from dotenv import dotenv_values
-    except ImportError:
-        values: dict[str, str] = {}
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if not line or line.lstrip().startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            values[key.strip()] = value.strip().strip('"').strip("'")
-        return values
-    return {key: str(value) for key, value in dotenv_values(path).items() if value is not None}
 
 
 def _float_setting(value: str | None, *, default: float) -> float:

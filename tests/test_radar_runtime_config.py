@@ -7,7 +7,116 @@ from power_web_os.application.radar_runtime_config import (
     build_effective_runtime_config_report,
     compare_runtime_config_reports,
 )
+from power_web_os.application.radar_runtime_settings import effective_runtime_env
 from power_web_os.demo import _assert_no_secrets, _task_context_from_runtime_config
+from power_web_os.integrations.live_radar_openrouter import OpenRouterWebSearchProvider
+from power_web_os.workflows.live_radar_executor import _task_context_with_runtime_defaults
+
+
+NON_SECRET_RUNTIME_ENV_KEYS = (
+    "OPENROUTER_MODEL",
+    "OPENROUTER_ADVANCED_MODEL",
+    "OPENROUTER_PLANNER_MODEL",
+    "OPENROUTER_PLANNER_BACKUP_MODEL",
+    "OPENROUTER_EXTRACTOR_MODEL",
+    "OPENROUTER_EXTRACTION_BACKUP_MODEL",
+    "OPENROUTER_BACKUP_MODEL",
+    "OPENROUTER_PLANNER_TEMPERATURE",
+    "OPENROUTER_EXTRACTOR_TEMPERATURE",
+    "OPENROUTER_SIGNAL_TEMPERATURE",
+    "OPENROUTER_BACKUP_TEMPERATURE",
+    "OPENROUTER_WEB_MODE",
+    "POWER_WEB_OS_RADAR_WEB_RETRIEVAL_PROVIDER",
+    "POWER_WEB_OS_OPENROUTER_WEB_SEARCH_ENGINE",
+    "POWER_WEB_OS_DADATA_MODE",
+    "POWER_WEB_OS_DADATA_BASE_URL",
+    "POWER_WEB_OS_RADAR_RUN_PROFILE",
+    "POWER_WEB_OS_RADAR_MAX_TOTAL_WEB_TASKS_PER_RUN",
+    "POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN",
+)
+
+
+def test_runtime_config_loads_non_secret_defaults_from_config_without_env() -> None:
+    report = build_effective_runtime_config_report(component="test", env={}).to_payload()
+    values = {item["name"]: item for item in report["values"]}
+
+    assert report["config"]["openrouter"]["model"] == "deepseek/deepseek-v4-pro"
+    assert report["config"]["openrouter"]["advanced_model"] == "google/gemini-3.1-pro-preview"
+    assert report["config"]["openrouter"]["planner_model"] == "google/gemini-3.1-pro-preview"
+    assert report["config"]["openrouter"]["planner_backup_model"] == "anthropic/claude-sonnet-4.6"
+    assert report["config"]["openrouter"]["extractor_model"] == "openai/gpt-5-mini"
+    assert report["config"]["openrouter"]["extraction_backup_model"] == "anthropic/claude-sonnet-4.6"
+    assert report["config"]["openrouter"]["web_mode"] == "server_tools"
+    assert report["config"]["retrieval"]["provider"] == "openrouter_perplexity"
+    assert report["config"]["retrieval"]["openrouter_web_search_engine"] == "perplexity"
+    assert report["config"]["dadata"]["mode"] == "live"
+    assert report["config"]["radar"]["run_profile"] == "smoke"
+    assert report["config"]["radar"]["max_total_web_tasks_per_run"] == 12
+    assert report["config"]["radar"]["max_openrouter_calls_per_run"] == 8
+    assert report["config"]["radar"]["max_openrouter_planner_calls_per_run"] == 2
+    assert report["config"]["radar"]["max_openrouter_web_task_calls_per_run"] == 6
+    assert report["config"]["radar"]["max_dadata_lookups_per_run"] == 3
+    assert values["OPENROUTER_MODEL"]["source"] == "config:runtime_defaults"
+    assert values["POWER_WEB_OS_RADAR_MAX_TOTAL_WEB_TASKS_PER_RUN"]["source"] == "config:run_profile:smoke"
+
+
+def test_runtime_config_allows_env_override_over_config_defaults() -> None:
+    report = build_effective_runtime_config_report(
+        component="test",
+        env={"OPENROUTER_PLANNER_MODEL": "override/planner"},
+    ).to_payload()
+    values = {item["name"]: item for item in report["values"]}
+
+    assert report["config"]["openrouter"]["planner_model"] == "override/planner"
+    assert report["config"]["openrouter"]["extractor_model"] == "openai/gpt-5-mini"
+    assert values["OPENROUTER_PLANNER_MODEL"]["source"] == "process_env"
+
+
+def test_runtime_config_run_profile_switches_profile_values() -> None:
+    report = build_effective_runtime_config_report(
+        component="test",
+        env={"POWER_WEB_OS_RADAR_RUN_PROFILE": "live"},
+    ).to_payload()
+    values = {item["name"]: item for item in report["values"]}
+
+    assert report["config"]["radar"]["run_profile"] == "live"
+    assert report["config"]["radar"]["max_web_tasks_per_subject"] == 20
+    assert report["config"]["radar"]["max_openrouter_calls_per_run"] is None
+    assert values["POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT"]["source"] == "config:run_profile:live"
+
+
+def test_live_provider_uses_config_models_when_env_is_clean(monkeypatch) -> None:
+    for key in NON_SECRET_RUNTIME_ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
+    provider = OpenRouterWebSearchProvider(api_key="test-key", env_path=Path("missing.env"))
+
+    assert provider.model == "deepseek/deepseek-v4-pro"
+    assert provider.extractor_model == "openai/gpt-5-mini"
+    assert provider.extraction_backup_model == "anthropic/claude-sonnet-4.6"
+    assert provider.web_mode == "server_tools"
+    assert provider.retrieval_provider == "openrouter_perplexity"
+    assert provider.web_search_engine == "perplexity"
+
+
+def test_workflow_task_context_uses_config_budget_defaults_when_env_is_clean(monkeypatch) -> None:
+    for key in NON_SECRET_RUNTIME_ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
+
+    context = _task_context_with_runtime_defaults({})
+
+    assert context["run_profile"] == "smoke"
+    assert context["max_total_web_tasks_per_run"] == 12
+    assert context["max_openrouter_calls_per_run"] == 8
+    assert context["max_dadata_lookups_per_run"] == 3
+    assert context["source_verification_mode"] == "soft"
+
+
+def test_effective_runtime_env_keeps_secret_values_out_of_config() -> None:
+    runtime_env = effective_runtime_env(env={})
+
+    assert runtime_env.get("OPENROUTER_API_KEY", "") == ""
+    assert runtime_env.get("DADATA_API_KEY", "") == ""
+    assert runtime_env["OPENROUTER_MODEL"] == "deepseek/deepseek-v4-pro"
 
 
 def test_runtime_config_report_redacts_secrets_and_builds_fingerprint() -> None:
@@ -118,13 +227,13 @@ def test_runtime_config_fingerprint_is_stable_and_changes_for_critical_values() 
     assert first["fingerprint"] != changed["fingerprint"]
 
 
-def test_runtime_config_uses_generic_backup_model_alias_for_extraction_backup() -> None:
+def test_runtime_config_keeps_role_specific_extraction_backup_over_generic_alias() -> None:
     report = build_effective_runtime_config_report(
         component="test",
         env={"OPENROUTER_MODEL": "primary/model", "OPENROUTER_BACKUP_MODEL": "generic/backup"},
     ).to_payload()
 
-    assert report["config"]["openrouter"]["extraction_backup_model"] == "generic/backup"
+    assert report["config"]["openrouter"]["extraction_backup_model"] == "anthropic/claude-sonnet-4.6"
 
 
 def test_runtime_config_compare_reports_critical_mismatch() -> None:

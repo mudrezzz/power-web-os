@@ -7,12 +7,12 @@ actual run logic stays in the application service, and provider calls stay behin
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from power_web_os.application.live_radar_contracts import LiveICPRadarRunState, RadarDiscoveryPlanner, WebSearchProvider
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition
 from power_web_os.application.live_radar_service import LiveRadarRunService
+from power_web_os.application.radar_runtime_settings import effective_runtime_env
 from power_web_os.application.radar_source_providers import RadarSourceRegistry
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTracer, technical_trace_context
 from power_web_os.integrations.live_radar_openrouter import RecordedWebSearchProvider
@@ -44,43 +44,44 @@ def build_live_mini_radar_artifact(
             "correlation_id": "demo-slice-0.6.3.1",
             "requester": "demo",
         })
-    default_task_context.setdefault("max_web_tasks_per_subject", _positive_int(os.getenv("POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT"), 20))
-    _set_optional_positive(default_task_context, "max_discovery_tasks_per_rule", "POWER_WEB_OS_RADAR_MAX_DISCOVERY_TASKS_PER_RULE")
-    _set_optional_positive(default_task_context, "max_gate_tasks_per_candidate_rule", "POWER_WEB_OS_RADAR_MAX_GATE_TASKS_PER_CANDIDATE_RULE")
-    _set_optional_positive(default_task_context, "max_signal_tasks_per_candidate_signal", "POWER_WEB_OS_RADAR_MAX_SIGNAL_TASKS_PER_CANDIDATE_SIGNAL")
-    _set_optional_positive(default_task_context, "max_total_web_tasks_per_run", "POWER_WEB_OS_RADAR_MAX_TOTAL_WEB_TASKS_PER_RUN")
-    default_task_context.setdefault("run_profile", _run_profile(os.getenv("POWER_WEB_OS_RADAR_RUN_PROFILE"), "live"))
-    _set_optional_non_negative(default_task_context, "max_openrouter_calls_per_run", "POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN")
-    _set_optional_non_negative(default_task_context, "max_openrouter_planner_calls_per_run", "POWER_WEB_OS_RADAR_MAX_OPENROUTER_PLANNER_CALLS_PER_RUN")
-    _set_optional_non_negative(default_task_context, "max_openrouter_web_task_calls_per_run", "POWER_WEB_OS_RADAR_MAX_OPENROUTER_WEB_TASK_CALLS_PER_RUN")
-    _set_optional_non_negative(default_task_context, "max_openrouter_server_tool_web_searches_per_run", "POWER_WEB_OS_RADAR_MAX_OPENROUTER_SERVER_TOOL_WEB_SEARCHES_PER_RUN")
-    _set_optional_non_negative(default_task_context, "max_dadata_lookups_per_run", "POWER_WEB_OS_RADAR_MAX_DADATA_LOOKUPS_PER_RUN")
-    _set_optional_non_negative(default_task_context, "max_source_verification_requests_per_run", "POWER_WEB_OS_RADAR_MAX_SOURCE_VERIFICATION_REQUESTS_PER_RUN")
-    _set_optional_non_negative(default_task_context, "max_provider_retries_per_task", "POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK")
-    _set_optional_non_negative(default_task_context, "openrouter_web_max_results_per_call", "POWER_WEB_OS_RADAR_OPENROUTER_WEB_MAX_RESULTS_PER_CALL")
-    _set_optional_non_negative(default_task_context, "openrouter_web_max_total_results_per_call", "POWER_WEB_OS_RADAR_OPENROUTER_WEB_MAX_TOTAL_RESULTS_PER_CALL")
-    _set_optional_non_negative(default_task_context, "smoke_max_candidates", "POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES")
-    _set_optional_non_negative(default_task_context, "smoke_max_signals", "POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS")
-    default_task_context.setdefault("source_verification_mode", _verification_mode(os.getenv("POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE"), "soft"))
+    runtime_env = effective_runtime_env()
+    default_task_context.setdefault("max_web_tasks_per_subject", _positive_int(runtime_env.get("POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT"), 20))
+    _set_optional_positive(default_task_context, runtime_env, "max_discovery_tasks_per_rule", "POWER_WEB_OS_RADAR_MAX_DISCOVERY_TASKS_PER_RULE")
+    _set_optional_positive(default_task_context, runtime_env, "max_gate_tasks_per_candidate_rule", "POWER_WEB_OS_RADAR_MAX_GATE_TASKS_PER_CANDIDATE_RULE")
+    _set_optional_positive(default_task_context, runtime_env, "max_signal_tasks_per_candidate_signal", "POWER_WEB_OS_RADAR_MAX_SIGNAL_TASKS_PER_CANDIDATE_SIGNAL")
+    _set_optional_positive(default_task_context, runtime_env, "max_total_web_tasks_per_run", "POWER_WEB_OS_RADAR_MAX_TOTAL_WEB_TASKS_PER_RUN")
+    default_task_context.setdefault("run_profile", _run_profile(runtime_env.get("POWER_WEB_OS_RADAR_RUN_PROFILE"), "live"))
+    _set_optional_non_negative(default_task_context, runtime_env, "max_openrouter_calls_per_run", "POWER_WEB_OS_RADAR_MAX_OPENROUTER_CALLS_PER_RUN")
+    _set_optional_non_negative(default_task_context, runtime_env, "max_openrouter_planner_calls_per_run", "POWER_WEB_OS_RADAR_MAX_OPENROUTER_PLANNER_CALLS_PER_RUN")
+    _set_optional_non_negative(default_task_context, runtime_env, "max_openrouter_web_task_calls_per_run", "POWER_WEB_OS_RADAR_MAX_OPENROUTER_WEB_TASK_CALLS_PER_RUN")
+    _set_optional_non_negative(default_task_context, runtime_env, "max_openrouter_server_tool_web_searches_per_run", "POWER_WEB_OS_RADAR_MAX_OPENROUTER_SERVER_TOOL_WEB_SEARCHES_PER_RUN")
+    _set_optional_non_negative(default_task_context, runtime_env, "max_dadata_lookups_per_run", "POWER_WEB_OS_RADAR_MAX_DADATA_LOOKUPS_PER_RUN")
+    _set_optional_non_negative(default_task_context, runtime_env, "max_source_verification_requests_per_run", "POWER_WEB_OS_RADAR_MAX_SOURCE_VERIFICATION_REQUESTS_PER_RUN")
+    _set_optional_non_negative(default_task_context, runtime_env, "max_provider_retries_per_task", "POWER_WEB_OS_RADAR_MAX_PROVIDER_RETRIES_PER_TASK")
+    _set_optional_non_negative(default_task_context, runtime_env, "openrouter_web_max_results_per_call", "POWER_WEB_OS_RADAR_OPENROUTER_WEB_MAX_RESULTS_PER_CALL")
+    _set_optional_non_negative(default_task_context, runtime_env, "openrouter_web_max_total_results_per_call", "POWER_WEB_OS_RADAR_OPENROUTER_WEB_MAX_TOTAL_RESULTS_PER_CALL")
+    _set_optional_non_negative(default_task_context, runtime_env, "smoke_max_candidates", "POWER_WEB_OS_RADAR_SMOKE_MAX_CANDIDATES")
+    _set_optional_non_negative(default_task_context, runtime_env, "smoke_max_signals", "POWER_WEB_OS_RADAR_SMOKE_MAX_SIGNALS")
+    default_task_context.setdefault("source_verification_mode", _verification_mode(runtime_env.get("POWER_WEB_OS_RADAR_SOURCE_VERIFICATION_MODE"), "soft"))
     default_task_context.setdefault(
         "min_useful_sources_per_discovery_task",
-        _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MIN_USEFUL_SOURCES_PER_DISCOVERY_TASK"), 3),
+        _non_negative_int(runtime_env.get("POWER_WEB_OS_RADAR_MIN_USEFUL_SOURCES_PER_DISCOVERY_TASK"), 3),
     )
     default_task_context.setdefault(
         "min_candidates_per_discovery_task",
-        _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MIN_CANDIDATES_PER_DISCOVERY_TASK"), 5),
+        _non_negative_int(runtime_env.get("POWER_WEB_OS_RADAR_MIN_CANDIDATES_PER_DISCOVERY_TASK"), 5),
     )
     default_task_context.setdefault(
         "max_discovery_retries_per_task",
-        _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK"), 2),
+        _non_negative_int(runtime_env.get("POWER_WEB_OS_RADAR_MAX_DISCOVERY_RETRIES_PER_TASK"), 2),
     )
     default_task_context.setdefault(
         "max_checkpoint_revisions_per_run",
-        _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_REVISIONS_PER_RUN"), 2),
+        _non_negative_int(runtime_env.get("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_REVISIONS_PER_RUN"), 2),
     )
     default_task_context.setdefault(
         "max_checkpoint_retries_per_stage",
-        _non_negative_int(os.getenv("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE"), 1),
+        _non_negative_int(runtime_env.get("POWER_WEB_OS_RADAR_MAX_CHECKPOINT_RETRIES_PER_STAGE"), 1),
     )
     state = LiveICPRadarRunState(
         task_context=default_task_context,
@@ -94,18 +95,18 @@ def build_live_mini_radar_artifact(
     return result.artifact
 
 
-def _set_optional_positive(context: dict[str, Any], key: str, env_name: str) -> None:
+def _set_optional_positive(context: dict[str, Any], runtime_env: dict[str, str], key: str, env_name: str) -> None:
     if key in context and context[key] is not None:
         return
-    value = _optional_positive_int(os.getenv(env_name))
+    value = _optional_positive_int(runtime_env.get(env_name))
     if value is not None:
         context[key] = value
 
 
-def _set_optional_non_negative(context: dict[str, Any], key: str, env_name: str) -> None:
+def _set_optional_non_negative(context: dict[str, Any], runtime_env: dict[str, str], key: str, env_name: str) -> None:
     if key in context and context[key] is not None:
         return
-    value = _optional_non_negative_int(os.getenv(env_name))
+    value = _optional_non_negative_int(runtime_env.get(env_name))
     if value is not None:
         context[key] = value
 

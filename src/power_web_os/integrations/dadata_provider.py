@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 from time import perf_counter
@@ -21,6 +20,7 @@ from power_web_os.application.radar_source_providers import (
     RadarSourceRegistry,
 )
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
+from power_web_os.application.radar_runtime_settings import effective_runtime_env
 from power_web_os.integrations.dadata_lookup_terms import (
     attempt_payload,
     lookup_terms_for_execution,
@@ -118,10 +118,10 @@ class DaDataCompanyRegistryProvider(CompanyRegistryProvider):
         env_path: Path | None = None,
         timeout_seconds: float = 20,
     ) -> None:
-        env = _load_env_file(env_path or Path.cwd() / ".env")
-        self._api_key = api_key or env.get("DADATA_API_KEY") or os.getenv("DADATA_API_KEY")
-        self._secret_key = secret_key or env.get("DADATA_SECRET_KEY") or os.getenv("DADATA_SECRET_KEY")
-        self._base_url = base_url or env.get("POWER_WEB_OS_DADATA_BASE_URL") or os.getenv("POWER_WEB_OS_DADATA_BASE_URL") or DEFAULT_DADATA_URL
+        env = effective_runtime_env(dotenv_path=env_path or Path.cwd() / ".env")
+        self._api_key = api_key or env.get("DADATA_API_KEY")
+        self._secret_key = secret_key or env.get("DADATA_SECRET_KEY")
+        self._base_url = base_url or env.get("POWER_WEB_OS_DADATA_BASE_URL") or DEFAULT_DADATA_URL
         self._timeout_seconds = timeout_seconds
 
     def lookup_companies(self, request: CompanyLookupRequest) -> CompanyLookupResult:
@@ -245,8 +245,8 @@ class DaDataCompanyRegistryProvider(CompanyRegistryProvider):
 
 
 def dadata_source_registry_from_env(*, env_path: Path | None = None) -> RadarSourceRegistry:
-    env = _load_env_file(env_path or Path.cwd() / ".env")
-    mode = (env.get("POWER_WEB_OS_DADATA_MODE") or os.getenv("POWER_WEB_OS_DADATA_MODE") or "recorded").strip().lower()
+    env = effective_runtime_env(dotenv_path=env_path or Path.cwd() / ".env")
+    mode = (env.get("POWER_WEB_OS_DADATA_MODE") or "recorded").strip().lower()
     provider: CompanyRegistryProvider
     if mode == "live":
         provider = DaDataCompanyRegistryProvider(env_path=env_path)
@@ -484,16 +484,3 @@ def _trace_dadata(
 
 def _duration_ms(started_at: float) -> int:
     return int((perf_counter() - started_at) * 1000)
-
-
-def _load_env_file(path: Path) -> dict[str, str]:
-    if not path.exists():
-        return {}
-    values: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
-            continue
-        key, value = stripped.split("=", 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
-    return values

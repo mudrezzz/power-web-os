@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -20,7 +19,7 @@ from power_web_os.application.live_radar_external_budget_context import (
     reserve_openrouter_http_call,
 )
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
-from power_web_os.integrations.live_radar_openrouter import _load_env_file
+from power_web_os.application.radar_runtime_settings import effective_runtime_env
 
 
 class OpenRouterDiscoveryPlanner(RadarDiscoveryPlanner):
@@ -34,32 +33,26 @@ class OpenRouterDiscoveryPlanner(RadarDiscoveryPlanner):
         env_path: Path | None = None,
         timeout_seconds: float = 90,
     ) -> None:
-        self._env = _load_env_file(env_path or Path.cwd() / ".env")
-        self._api_key = api_key or self._env.get("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
-        advanced_model = self._env.get("OPENROUTER_ADVANCED_MODEL") or os.getenv("OPENROUTER_ADVANCED_MODEL")
+        self._env = effective_runtime_env(dotenv_path=env_path or Path.cwd() / ".env")
+        self._api_key = api_key or self._env.get("OPENROUTER_API_KEY")
+        advanced_model = self._env.get("OPENROUTER_ADVANCED_MODEL")
         self._model = (
             model
             or self._env.get("OPENROUTER_PLANNER_MODEL")
-            or os.getenv("OPENROUTER_PLANNER_MODEL")
             or advanced_model
             or self._env.get("OPENROUTER_MODEL")
-            or os.getenv("OPENROUTER_MODEL")
         )
         self._backup_model = (
             self._env.get("OPENROUTER_PLANNER_BACKUP_MODEL")
-            or os.getenv("OPENROUTER_PLANNER_BACKUP_MODEL")
             or self._env.get("OPENROUTER_BACKUP_MODEL")
-            or os.getenv("OPENROUTER_BACKUP_MODEL")
             or ""
         )
         self._temperature = _float_setting(
-            self._env.get("OPENROUTER_PLANNER_TEMPERATURE")
-            or os.getenv("OPENROUTER_PLANNER_TEMPERATURE"),
+            self._env.get("OPENROUTER_PLANNER_TEMPERATURE"),
             default=0.0,
         )
         self._backup_temperature = _float_setting(
-            self._env.get("OPENROUTER_BACKUP_TEMPERATURE")
-            or os.getenv("OPENROUTER_BACKUP_TEMPERATURE"),
+            self._env.get("OPENROUTER_BACKUP_TEMPERATURE"),
             default=self._temperature,
         )
         self._timeout_seconds = timeout_seconds

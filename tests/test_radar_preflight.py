@@ -323,7 +323,7 @@ def test_preflight_cli_returns_json_and_does_not_create_runs(tmp_path: Path) -> 
         text=True,
         encoding="utf-8",
         cwd=tmp_path,
-        env={**os.environ, "PYTHONPATH": str(Path.cwd() / "src")},
+            env={**os.environ, "PYTHONPATH": str(Path.cwd() / "src"), "POWER_WEB_OS_DADATA_MODE": "recorded"},
     )
 
     payload = json.loads(completed.stdout)
