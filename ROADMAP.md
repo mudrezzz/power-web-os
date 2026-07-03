@@ -7721,6 +7721,239 @@ Principles:
 - Status: Done
 - Goal: Move Radar run controls, preflight checks, and diagnostics out of the found-accounts tab into a dedicated Operations tab; remove the obsolete duplicated live-run plaque while preserving candidate-discovery and recorded signal-monitoring controls.
 
+### Slice 0.7.6.4.7: Radar backend architecture rescue plan and package contract
+
+- Status: Ready
+- Goal: Stop the Radar backend from growing as a flat pile of `live_radar_*` modules. Define the target package architecture, component contract, migration order, and architecture tests before moving runtime code.
+- User value: Developers and agents can understand where Radar backend logic belongs, extend the pipeline safely, and onboard without reverse-engineering dozens of unrelated-looking files.
+- Problem statement:
+  - `src/power_web_os/application` currently contains 38 `live_radar_*.py` modules with more than 10k lines in one flat namespace.
+  - `live_radar_staged_execution.py` and `live_radar_service.py` remain large allowlisted exceptions.
+  - Existing backend guardrails protect coarse layers such as API/application/integrations, but they do not protect internal Radar package boundaries.
+  - `src/power_web_os/application/README.md` lists modules, but does not give a navigable package map, common component contract, or extension path for candidate discovery phases.
+- Scope:
+  - Add ADR: Radar backend package architecture and component contract.
+  - Add `docs/architecture/RADAR_BACKEND_ARCHITECTURE.md` with AS IS inventory and TO BE package map.
+  - Classify current `live_radar_*` files by responsibility: contracts, planning, retrieval, extraction, source/capability, registry/enrichment, expansion, scheduler, checkpoints, universe, execution, diagnostics, service facade.
+  - Define target package layout under `src/power_web_os/application/radar/`.
+  - Define common component contract naming: `Input`, `Result`, `Decision`, `Issue`, `Event`, `Service`, and pure `*_payload`/`*_summary` helpers.
+  - Define allowed import direction inside Radar packages.
+  - Add architecture tests that forbid new root-level `application/live_radar_*.py` modules outside an explicit migration allowlist.
+  - Add architecture tests for package README presence, module fan-out, and large orchestration exceptions.
+  - Update agent guidance so future Radar backend work starts from the package contract instead of adding a new `live_radar_*` module.
+- Out of scope:
+  - No behavioral runtime refactor yet.
+  - No Docker smoke, benchmark, UI, provider, DB, or API changes.
+  - No mass moving files in this slice.
+  - No removal of existing compatibility imports yet.
+- Implementation notes:
+  - Treat this as the rescue design and guardrail slice. It should make the next code-moving slices safer.
+  - Do not pretend that module docstrings alone solve discoverability; each target package needs a local README with ownership, allowed imports, extension path, and tests.
+  - The architecture tests should initially allow current legacy files, but fail on new root-level `live_radar_*` modules.
+  - Capture measured baseline numbers in docs: current count of `live_radar_*` files, total lines, largest modules, and allowlisted files.
+- Tests:
+  - `python -m pytest tests/test_backend_architecture_contract.py -q` must pass with new architecture assertions.
+  - Add/extend tests that check no new root `application/live_radar_*.py` files can be introduced outside the migration allowlist.
+  - Add/extend tests that `docs/architecture/RADAR_BACKEND_ARCHITECTURE.md` exists and names target Radar packages.
+  - Add/extend tests that root-level large legacy allowlist is explicit and temporary.
+- Docs:
+  - New ADR under `docs/adr/`.
+  - New backend Radar architecture document.
+  - Update `docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md`.
+  - Update `docs/developer/DEVELOPER_GUIDE.md`.
+  - Update `src/power_web_os/application/README.md` to point to the detailed Radar backend architecture doc instead of trying to carry the whole map inline.
+  - Update relevant agent skills/rules if they currently permit ad hoc root-level backend modules.
+- Demo impact:
+  - None. This slice is architecture governance only.
+- Acceptance criteria:
+  - The next backend Radar slice has a clear target package and component contract.
+  - New root-level `live_radar_*` modules are prohibited by tests.
+  - Current legacy exceptions are documented as temporary migration debt.
+  - A developer can open one architecture document and understand where to place new Radar backend code.
+  - The roadmap clearly prioritizes this refactor track before more large Radar backend features.
+- Risks:
+  - Too much design without code movement. Mitigate by keeping this slice narrow and immediately following with package skeleton/facade migration.
+  - Overly strict tests may block small bugfixes. Mitigate with explicit temporary allowlists and clear migration notes.
+
+### Slice 0.7.6.4.8: Candidate discovery package skeleton and compatibility facades
+
+- Status: Backlog
+- Goal: Create the target Radar package structure without changing runtime behavior.
+- User value: Developers get real folders and local README files for candidate discovery phases instead of a flat `live_radar_*` namespace.
+- Problem statement: The package contract from `0.7.6.4.7` needs to become visible in code before modules can be moved safely.
+- Scope:
+  - Add `src/power_web_os/application/radar/` package.
+  - Add `shared/`, `candidate_discovery/`, `candidate_discovery/planning/`, `retrieval/`, `extraction/`, `sources/`, `universe/`, `checkpoints/`, `execution/`, and `diagnostics/` subpackages as needed.
+  - Add local README files explaining ownership, allowed imports, and extension paths.
+  - Add compatibility facade modules or re-export points so existing imports keep working while migration proceeds.
+  - Add architecture tests that target packages exist and include README guidance.
+- Out of scope:
+  - No large logic moves yet.
+  - No runtime behavior change.
+  - No deletion of legacy files.
+- Implementation notes:
+  - Keep this slice mostly structural. The goal is a safe landing zone for later moves.
+  - Prefer package-level `contracts.py` and `README.md` before moving phase logic.
+- Tests:
+  - Backend architecture contract tests.
+  - Import smoke tests for new packages and compatibility facades.
+  - Existing Radar unit/API tests should remain green.
+- Docs:
+  - Update Radar backend architecture doc with actual package paths.
+  - Update Developer Guide with the new extension path.
+- Demo impact:
+  - None.
+- Acceptance criteria:
+  - New Radar backend package skeleton exists.
+  - Existing runtime imports remain compatible.
+  - New packages are documented close to code.
+  - No behavior-changing refactor is hidden in the skeleton slice.
+- Risks:
+  - Creating folders without migration can look cosmetic. Mitigate by keeping the next migration slice immediately actionable.
+
+### Slice 0.7.6.4.9: Move candidate discovery contracts, planning, and source capability modules
+
+- Status: Backlog
+- Goal: Move lower-risk candidate-discovery contracts and planning/source-capability modules into the new package structure first.
+- User value: The most frequently extended planning/source-policy code becomes discoverable and package-owned before deeper execution refactors.
+- Problem statement: The current flat namespace mixes contracts, planner input, source cards, connector capabilities, and execution helpers. Safe migration should start with modules that have clear boundaries and good tests.
+- Scope:
+  - Move or wrap `live_radar_contracts`, discovery planning, plan acceptance, source cards, connector/capability-facing helpers, retrieval-plan contracts, and related pure models into target packages.
+  - Keep old import paths as compatibility shims during the migration.
+  - Update tests and docs to prefer the new package imports.
+- Out of scope:
+  - No `live_radar_staged_execution.py` split yet.
+  - No provider/integration adapter changes.
+  - No scoring or benchmark quality changes.
+- Implementation notes:
+  - Move pure contracts before orchestration.
+  - Avoid changing DTO fields unless tests prove compatibility.
+  - Track each old module as moved, wrapped, or deferred.
+- Tests:
+  - Existing planner/source-card/connector/preflight tests.
+  - Import compatibility tests for old paths.
+  - Architecture tests proving new code imports from the target packages.
+- Docs:
+  - Update Radar backend architecture inventory and migration table.
+  - Update AS IS pipeline docs only if behavior wording changes.
+- Demo impact:
+  - None.
+- Acceptance criteria:
+  - Planning/source capability code lives under the new package structure or has explicit compatibility wrappers.
+  - Existing tests pass without changing product behavior.
+  - The flat root-level `live_radar_*` count decreases or the remaining wrappers are clearly marked.
+- Risks:
+  - Import churn can break many tests. Mitigate with compatibility facades and narrow moves.
+
+### Slice 0.7.6.4.10: Split candidate discovery staged execution into phase executors
+
+- Status: Backlog
+- Goal: Break `live_radar_staged_execution.py` into explicit candidate-discovery phase executors with a thin orchestrator.
+- User value: The central live Radar execution path becomes understandable, testable by phase, and safer to modify.
+- Problem statement: `live_radar_staged_execution.py` is the current worst hotspot: it is oversized, imports many application modules, and owns too many execution phases at once.
+- Scope:
+  - Introduce phase executor services for discovery, qualification/gate, coverage, expansion, enrichment/registry, checkpoint handling, universe freeze, and signal-compat suppression if still needed.
+  - Keep one thin orchestrator that orders phases but does not own phase internals.
+  - Replace broad helper-function imports with explicit service dependencies and phase result contracts.
+  - Preserve current artifact shape and diagnostics.
+- Out of scope:
+  - No provider quality tuning.
+  - No signal-monitoring production runtime.
+  - No DB/API contract change unless unavoidable for compatibility.
+- Implementation notes:
+  - Do this after package skeleton and low-risk moves are complete.
+  - Start with golden recorded/fake tests around current behavior.
+  - Move one phase at a time inside the slice only if tests stay green; otherwise split further.
+- Tests:
+  - Recorded candidate-discovery pipeline tests before and after refactor.
+  - Existing live Radar/adaptive/budget/API tests.
+  - Architecture tests for module size and application import fan-out.
+  - Artifact/dossier compatibility tests.
+- Docs:
+  - Update Radar backend architecture doc and candidate-discovery AS IS Markdown/PDF.
+  - Document phase executor responsibilities close to code.
+- Demo impact:
+  - No intended visual/product change; demo should continue to read the same API outputs.
+- Acceptance criteria:
+  - `live_radar_staged_execution.py` is no longer a large allowlisted execution owner.
+  - Execution phases have explicit package locations and contracts.
+  - Runtime behavior and dossier/report outputs remain compatible.
+  - Tests demonstrate phase-level behavior, not only end-to-end behavior.
+- Risks:
+  - This is the highest-risk code movement. Mitigate with recorded fixtures, compatibility output tests, and small internal phase moves.
+
+### Slice 0.7.6.4.11: Radar backend architecture validators and agent rules
+
+- Status: Backlog
+- Goal: Turn the new Radar backend architecture rules into durable validators and agent workflows so the codebase cannot drift back into flat module sprawl.
+- User value: Future agents and developers get immediate feedback when they add code in the wrong place or recreate a hidden orchestration monolith.
+- Problem statement: Written ADRs are not enough. The current state happened despite existing guardrails because tests did not check internal Radar package shape, public helper sprawl, or orchestration fan-out.
+- Scope:
+  - Add or extend architecture check command, for example `python -m power_web_os.architecture check`, if useful.
+  - Extend `tests/test_backend_architecture_contract.py` with Radar-specific package rules.
+  - Validate no new root-level `live_radar_*` modules.
+  - Validate package README files, module docstrings for public services, max file size, max application import fan-out, and limited public top-level helper functions.
+  - Update agent skills so backend Radar work must name the target package and run architecture tests.
+- Out of scope:
+  - No new runtime behavior.
+  - No broad automated code formatter/rewrite.
+  - No style-only linting unrelated to architecture.
+- Implementation notes:
+  - Keep validators precise and explainable. Tests should fail with actionable messages, not generic style complaints.
+  - Allow explicit migration exceptions with expiry notes while legacy wrappers remain.
+- Tests:
+  - Architecture contract tests for every new rule.
+  - Negative fixture or temporary generated file test if practical.
+  - Roadmap/tracker check after docs updates.
+- Docs:
+  - Update ADR, Developer Guide, AGENTS/skills guidance, and Radar backend architecture doc.
+- Demo impact:
+  - None.
+- Acceptance criteria:
+  - A new ad hoc `application/live_radar_new_feature.py` would fail validation.
+  - A new phase package without README would fail validation.
+  - A large orchestration module or high fan-out module would fail validation unless explicitly allowlisted.
+  - Agent guidance points to the same rules as the tests.
+- Risks:
+  - Overly aggressive validators can slow delivery. Mitigate with migration allowlists and clear failure messages.
+
+### Slice 0.7.6.4.12: Remove legacy live_radar allowlist and compatibility debt
+
+- Status: Backlog
+- Goal: Close the architecture rescue by removing temporary large-module exceptions and reducing old root-level `live_radar_*` files to thin compatibility shims or deleting them.
+- User value: The backend no longer depends on undocumented legacy exceptions, and the Radar codebase has a stable structure for future candidate discovery, signal monitoring, and Power Web discovery work.
+- Problem statement: A refactor is incomplete if the old oversized modules remain permanently allowlisted. The migration needs a cleanup slice that makes the new architecture the actual enforced default.
+- Scope:
+  - Remove `live_radar_service.py` and `live_radar_staged_execution.py` from the large-module allowlist once migrated.
+  - Delete or shrink legacy root-level wrappers where imports have been migrated.
+  - Update architecture docs to mark the rescue complete.
+  - Run broad regression for candidate discovery and signal-monitoring recorded harness.
+- Out of scope:
+  - No new product features.
+  - No benchmark quality claims.
+  - No UI redesign.
+- Implementation notes:
+  - This slice should happen only after behavior-preserving migration and validators are green.
+  - Keep compatibility imports only where external callers still need them, and document removal plan.
+- Tests:
+  - Full backend architecture contract.
+  - Candidate discovery recorded/live relevant tests.
+  - Signal monitoring recorded tests.
+  - Backend API tests.
+  - Roadmap tracker check.
+- Docs:
+  - Update Radar backend architecture doc, SAO, Developer Guide, and ADR status/notes.
+  - Update AS IS pipeline docs if package names in the algorithm description changed.
+- Demo impact:
+  - No intended product change.
+- Acceptance criteria:
+  - Legacy large-module allowlist no longer contains the migrated Radar execution/service modules.
+  - Root-level `live_radar_*` files are either gone or explicitly thin compatibility wrappers.
+  - Architecture tests enforce the new structure without broad temporary exceptions.
+  - Existing product behavior remains stable.
+- Risks:
+  - Removing wrappers too early can break hidden imports. Mitigate with import compatibility tests and staged deprecation.
+
 ### Slice 0.7: Human review queue loop
 
 - Status: `Backlog`
@@ -8268,4 +8501,4 @@ None.
 
 ## Next Recommended Task
 
-Slice 0.7.6.4.5: First recorded TOIR signal-monitoring loop over known candidates
+Slice 0.7.6.4.7: Radar backend architecture rescue plan and package contract. Start by documenting the AS IS Radar backend module sprawl, defining the target package/component contract, and adding architecture tests that prevent new root-level `live_radar_*` modules before further Radar backend feature work.
