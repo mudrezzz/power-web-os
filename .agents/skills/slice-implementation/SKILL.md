@@ -39,6 +39,11 @@ Implement one small, complete, tested, documented product increment.
 - For backend layers, add or update local README guidance and concise module
   docstrings so future developers can extend the layer without reading every
   implementation file first.
+- For Radar backend work, read
+  `docs/architecture/RADAR_BACKEND_ARCHITECTURE.md` before adding or moving
+  application code. Do not add new root-level
+  `src/power_web_os/application/live_radar_*.py` modules; use the package
+  contract under `src/power_web_os/application/radar/...` as it is introduced.
 - For complex LLM pipelines, implement TDD/preflight coverage before relying on
   full live provider runs. Add or update static/config checks, recorded
   fixtures, malformed-output negative fixtures, and targeted provider probes

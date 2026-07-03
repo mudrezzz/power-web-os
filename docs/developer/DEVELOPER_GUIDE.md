@@ -837,6 +837,14 @@ Temporary legacy-large modules are allowed until a later decomposition slice:
 `icp_radar.py`, `icp_radar_catalog.py`, and `icp_radar_xlsx.py`. Do not copy
 their size or mixed responsibilities into new backend work.
 
+Radar backend has an additional internal package contract because candidate
+discovery grew beyond the coarse `application` boundary. Start backend Radar
+work in `docs/architecture/RADAR_BACKEND_ARCHITECTURE.md`. Current root-level
+`src/power_web_os/application/live_radar_*.py` modules are migration debt, not
+patterns for new code. Do not add a new root-level `application/live_radar_*.py`
+module; target `src/power_web_os/application/radar/...` package ownership as it
+is introduced by the architecture rescue slices.
+
 Validation:
 
 ```bash
@@ -984,7 +992,7 @@ The backend boundary is provider-neutral:
 - `RecordedWebSearchProvider` is used by tests and mocked runs.
 - `LiveICPRadarRunWorkflow` follows the optional `langgraph-dai` / `BaseWorkflow` pattern used elsewhere in the project.
 
-Current ownership:
+Historical/current ownership for the pre-rescue live Radar modules:
 
 ```text
 src/power_web_os/application/live_radar_contracts.py       Provider-neutral contracts and ports
@@ -998,6 +1006,11 @@ src/power_web_os/integrations/live_radar_openrouter.py     OpenRouter and record
 src/power_web_os/workflows/live_icp_radar_workflow.py      Optional langgraph-dai wrapper and fallback runtime
 src/power_web_os/live_icp_radar.py                        Compatibility facade for historical imports
 ```
+
+This table documents the current migration surface only. New backend Radar code
+should follow `docs/architecture/RADAR_BACKEND_ARCHITECTURE.md` and the
+`application/radar/...` package contract instead of adding more root-level
+`live_radar_*` modules.
 
 Non-secret Radar runtime settings are loaded from repository config first:
 

@@ -303,6 +303,14 @@ retention, checkpoints, budgets, signal search, dossier projection, or
 evaluation should first produce a reviewed TO BE document under
 `docs/radar/to-be/` and then update the AS IS document after implementation.
 
+The backend package architecture for Radar is documented separately in
+`docs/architecture/RADAR_BACKEND_ARCHITECTURE.md`. That document is the source
+for where backend Radar code belongs. The current root-level
+`src/power_web_os/application/live_radar_*.py` modules are migration debt, not
+patterns for new backend work. New candidate-discovery, signal-monitoring, and
+future Power Web discovery backend code should use the package contract under
+`src/power_web_os/application/radar/` as it is introduced by the rescue slices.
+
 Candidate universe execution is now iterative. Accepted discovery plans may
 contain executable `coverage_check` stages. The application service runs initial
 candidate discovery, applies qualification gates, executes coverage checks,

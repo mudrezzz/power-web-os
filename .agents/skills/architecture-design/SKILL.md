@@ -73,6 +73,13 @@ The guidance must explain allowed imports, forbidden imports, extension path,
 transaction/runtime ownership where relevant, and the architecture contract
 tests that protect the boundary.
 
+When the design touches Radar backend code, also use
+`docs/architecture/RADAR_BACKEND_ARCHITECTURE.md` as the internal package
+contract. New Radar backend behavior must not be planned as another root-level
+`src/power_web_os/application/live_radar_*.py` module; choose the target
+`src/power_web_os/application/radar/...` package and record any temporary
+compatibility exception explicitly.
+
 ## Complex LLM pipeline TDD rules
 
 When the design touches a complex LLM-backed pipeline such as Radar planning,

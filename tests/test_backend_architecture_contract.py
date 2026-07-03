@@ -7,6 +7,7 @@ from pathlib import Path
 BACKEND_ROOT = Path("src/power_web_os")
 ADR_PATH = Path("docs/adr/2026-06-16-backend-architecture-guardrails.md")
 ARCHITECTURE_PATH = Path("docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md")
+RADAR_BACKEND_ARCHITECTURE_PATH = Path("docs/architecture/RADAR_BACKEND_ARCHITECTURE.md")
 DEVELOPER_GUIDE_PATH = Path("docs/developer/DEVELOPER_GUIDE.md")
 APPLICATION_README_PATH = Path("src/power_web_os/application/README.md")
 PERSISTENCE_README_PATH = Path("src/power_web_os/persistence/README.md")
@@ -15,6 +16,7 @@ WORKFLOWS_README_PATH = Path("src/power_web_os/workflows/README.md")
 JOBS_README_PATH = Path("src/power_web_os/jobs/README.md")
 
 MAX_BACKEND_MODULE_LINES = 500
+MAX_APPLICATION_IMPORT_FANOUT = 10
 
 LEGACY_LARGE_MODULE_ALLOWLIST = {
     Path("src/power_web_os/icp_radar.py"),
@@ -23,6 +25,53 @@ LEGACY_LARGE_MODULE_ALLOWLIST = {
     Path("src/power_web_os/application/live_radar_service.py"),
     Path("src/power_web_os/application/live_radar_staged_execution.py"),
     Path("src/power_web_os/integrations/live_radar_openrouter.py"),
+}
+
+LEGACY_ROOT_LIVE_RADAR_MODULES = {
+    Path("src/power_web_os/application/live_radar_candidate_refs.py"),
+    Path("src/power_web_os/application/live_radar_checkpoints.py"),
+    Path("src/power_web_os/application/live_radar_checkpoint_actions.py"),
+    Path("src/power_web_os/application/live_radar_checkpoint_execution.py"),
+    Path("src/power_web_os/application/live_radar_collection_utils.py"),
+    Path("src/power_web_os/application/live_radar_contracts.py"),
+    Path("src/power_web_os/application/live_radar_cross_disambiguation.py"),
+    Path("src/power_web_os/application/live_radar_definition.py"),
+    Path("src/power_web_os/application/live_radar_definition_runtime.py"),
+    Path("src/power_web_os/application/live_radar_discovery_planning.py"),
+    Path("src/power_web_os/application/live_radar_entity_resolution.py"),
+    Path("src/power_web_os/application/live_radar_execution_budget.py"),
+    Path("src/power_web_os/application/live_radar_execution_plan.py"),
+    Path("src/power_web_os/application/live_radar_external_budget.py"),
+    Path("src/power_web_os/application/live_radar_external_budget_context.py"),
+    Path("src/power_web_os/application/live_radar_external_budget_reservations.py"),
+    Path("src/power_web_os/application/live_radar_external_budget_settings.py"),
+    Path("src/power_web_os/application/live_radar_extraction_contract.py"),
+    Path("src/power_web_os/application/live_radar_extraction_diagnostics.py"),
+    Path("src/power_web_os/application/live_radar_normalization.py"),
+    Path("src/power_web_os/application/live_radar_pipeline_support.py"),
+    Path("src/power_web_os/application/live_radar_planning_pipeline.py"),
+    Path("src/power_web_os/application/live_radar_plan_acceptance.py"),
+    Path("src/power_web_os/application/live_radar_product_sources.py"),
+    Path("src/power_web_os/application/live_radar_retrieval_plan.py"),
+    Path("src/power_web_os/application/live_radar_retrieved_candidates.py"),
+    Path("src/power_web_os/application/live_radar_search_expansion_execution.py"),
+    Path("src/power_web_os/application/live_radar_search_expansion_payloads.py"),
+    Path("src/power_web_os/application/live_radar_service.py"),
+    Path("src/power_web_os/application/live_radar_source_cards.py"),
+    Path("src/power_web_os/application/live_radar_source_risk.py"),
+    Path("src/power_web_os/application/live_radar_staged_execution.py"),
+    Path("src/power_web_os/application/live_radar_staged_helpers.py"),
+    Path("src/power_web_os/application/live_radar_staged_merge.py"),
+    Path("src/power_web_os/application/live_radar_staged_support.py"),
+    Path("src/power_web_os/application/live_radar_universe.py"),
+    Path("src/power_web_os/application/live_radar_useful_budget.py"),
+    Path("src/power_web_os/application/live_radar_web_retrieval.py"),
+}
+
+RADAR_APPLICATION_FANOUT_ALLOWLIST = {
+    Path("src/power_web_os/application/live_radar_service.py"),
+    Path("src/power_web_os/application/live_radar_staged_execution.py"),
+    Path("src/power_web_os/application/live_radar_search_expansion_execution.py"),
 }
 
 PURE_DOMAIN_MODULES = {
@@ -134,6 +183,19 @@ def imported_roots(path: Path) -> set[str]:
     return roots
 
 
+def application_imports(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    imports: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("power_web_os.application"):
+            imports.add(node.module)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.startswith("power_web_os.application"):
+                    imports.add(alias.name)
+    return imports
+
+
 def test_backend_architecture_docs_define_required_boundaries() -> None:
     docs = "\n".join(
         path.read_text(encoding="utf-8")
@@ -215,6 +277,67 @@ def test_domain_modules_do_not_import_transport_persistence_or_provider_infrastr
     }
 
     assert violations == {}
+
+
+def test_no_new_root_live_radar_modules_are_added() -> None:
+    root_live_radar_modules = set((BACKEND_ROOT / "application").glob("live_radar_*.py"))
+    unexpected = sorted(path.as_posix() for path in root_live_radar_modules - LEGACY_ROOT_LIVE_RADAR_MODULES)
+    missing = sorted(path.as_posix() for path in LEGACY_ROOT_LIVE_RADAR_MODULES - root_live_radar_modules)
+
+    assert unexpected == [], (
+        "New root-level application/live_radar_*.py modules are not allowed. "
+        "Use src/power_web_os/application/radar/... package ownership instead."
+    )
+    assert missing == []
+
+
+def test_radar_backend_architecture_doc_exists_and_defines_target_packages() -> None:
+    text = RADAR_BACKEND_ARCHITECTURE_PATH.read_text(encoding="utf-8")
+
+    for expected in [
+        "candidate_discovery",
+        "signal_monitoring",
+        "power_web_discovery",
+        "shared",
+        "planning",
+        "retrieval",
+        "extraction",
+        "sources",
+        "universe",
+        "checkpoints",
+        "execution",
+        "diagnostics",
+    ]:
+        assert expected in text
+
+
+def test_radar_root_legacy_hotspots_are_documented_as_migration_debt() -> None:
+    text = RADAR_BACKEND_ARCHITECTURE_PATH.read_text(encoding="utf-8")
+
+    for expected in ["live_radar_staged_execution.py", "live_radar_service.py", "migration debt"]:
+        assert expected in text
+
+
+def test_radar_application_import_fanout_requires_allowlist() -> None:
+    docs = RADAR_BACKEND_ARCHITECTURE_PATH.read_text(encoding="utf-8")
+    violations: dict[str, int] = {}
+    for path in sorted((BACKEND_ROOT / "application").glob("*.py")):
+        if path.name == "__init__.py":
+            continue
+        fanout = len(application_imports(path))
+        if fanout > MAX_APPLICATION_IMPORT_FANOUT and path not in RADAR_APPLICATION_FANOUT_ALLOWLIST:
+            violations[path.as_posix()] = fanout
+        if path in RADAR_APPLICATION_FANOUT_ALLOWLIST:
+            assert path.name in docs
+
+    assert violations == {}
+
+
+def test_radar_component_contract_is_documented() -> None:
+    text = RADAR_BACKEND_ARCHITECTURE_PATH.read_text(encoding="utf-8")
+
+    for expected in ["Input", "Result", "Decision", "Issue", "Event", "Service"]:
+        assert expected in text
 
 
 def test_api_modules_do_not_own_persistence_queries_or_domain_scoring() -> None:

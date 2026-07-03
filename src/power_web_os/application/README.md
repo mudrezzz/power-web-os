@@ -13,22 +13,6 @@ provider SDK details.
   implement these protocols outside this package.
 - `radar_catalog_seed.py` maps the existing deterministic demo catalog payload
   into records that repositories can persist.
-- `live_radar_contracts.py` defines provider-neutral live Radar DTOs and ports.
-- `live_radar_definition.py` owns the deterministic live mini Radar definition
-  and backward-compatible search-plan projection.
-- `live_radar_definition_runtime.py` maps persisted active Radar definitions
-  into the live runtime payload. It preserves definition id/version and source
-  policy while adding legacy `qualification_criteria` / signal projections for
-  the current pipeline.
-- `live_radar_execution_plan.py` compiles generic Radar definitions into
-  qualification-first staged execution plans.
-- `live_radar_retrieval_plan.py` projects accepted execution tasks into compact
-  retrieval task cards and backward-compatible search-plan queries.
-- `live_radar_extraction_contract.py` owns strict extraction schema gates and
-  conservative evidence-ref reconciliation before provider observations reach
-  candidate normalization.
-- `live_radar_extraction_diagnostics.py` projects extraction gate issues into
-  execution metadata and product-safe journal events.
 - `connector_profiles.py` loads external connector descriptions from config
   and compiles them into internal source capability cards for preflight,
   planning, source validation, and execution guards. Profiles must not expose
@@ -43,32 +27,6 @@ provider SDK details.
   source of truth for model rows, provider modes, or smoke budgets.
 - `radar_runtime_model_profiles.py` projects model profile summaries into
   runtime-config reports without exposing secrets or provider request payloads.
-- `radar_preflight.py` owns fast live Radar readiness checks before expensive
-  provider execution: active definition wiring, source-policy references,
-  source-provider availability, recorded extraction schemas, evidence linking,
-  and invalid zero-score projections.
-- `live_radar_web_retrieval.py` defines provider-neutral web retrieval
-  material: bounded retrieval requests, ranked retrieved sources, source
-  outcomes, and recorded fixtures. It does not own extraction, scoring,
-  verification, or provider HTTP details.
-- `live_radar_discovery_planning.py` owns the discovery planner contracts,
-  deterministic fallback planner, source-policy validation, and product-source
-  visibility helpers.
-- `live_radar_plan_acceptance.py` owns criterion-role inference and safe
-  planner-output repair before execution compilation. It may normalize
-  configured global sources used in rule-scoped tasks and split multi-rule
-  strategic steps, but hard source-policy violations still fail validation.
-- `live_radar_planning_pipeline.py` builds the accepted discovery plan through
-  a planner/validator/revision loop before compiling execution tasks.
-- `live_radar_staged_execution.py` executes staged provider tasks, expands the
-  candidate universe through coverage checks, re-runs qualification for new
-  candidates, freezes the universe, and suppresses signal searches for rejected
-  candidates.
-- `live_radar_normalization.py` owns provider-neutral candidate, signal,
-  qualification, evidence-card, and score-evaluation normalization.
-- `live_radar_service.py` orchestrates one live Radar execution pass through
-  explicit planning, provider collection, source normalization, candidate
-  extraction, candidate evaluation, validation, and artifact-shaping phases.
 - `persisted_live_radar.py` owns the durable live Radar run lifecycle through
   repository and executor ports.
 - `radar_review.py` validates and persists current human review decisions
@@ -77,49 +35,21 @@ provider SDK details.
   raw hidden chain-of-thought payload keys.
 - `radar_technical_trace.py` owns sanitized developer/admin trace semantics,
   secret redaction, long-string capping, and hidden-reasoning rejection.
-- `radar_source_providers.py` defines structured source-provider ports and the
-  source registry wrapper. It may select company-registry providers such as
-  DaData by source policy, but it does not know HTTP, MCP, SDK, or secret
-  handling details.
-- `radar_work_scheduler.py` owns Radar work admission and protected budget
-  capacity for application-approved lanes such as benchmark recall expansion.
-  For guaranteed recall expansion, it registers a protected first external
-  OpenRouter call so retries and optional work cannot consume another
-  guaranteed lane's execution slot.
-- `live_radar_external_budget_reservations.py` owns pure reservation summary
-  helpers for external-call budget diagnostics.
-- `live_radar_external_budget_context.py` owns context-local accessors for
-  external-call budgets used by provider adapters.
-- `radar_work_scheduler_metadata.py` owns pure report/merge helpers for work
-  scheduler metadata.
-  It orders and admits work, but does not call providers or mutate source
-  policy.
-- `radar_search_expansion_selection.py` owns guaranteed target selection before
-  work admission. It must choose benchmark lane minimums before optional
-  variants, prioritize explicit benchmark completion targets over incidental
-  source-backed targets, add bounded coverage-completion targets when
-  configured, and report selection-level blockers before any provider budget is
-  spent.
-- `signal_monitoring_contracts.py` defines the standalone signal-monitoring
-  application contracts used before live runtime integration. It separates
-  product signal status from search execution status so `not_observed` can only
-  mean "searched and no signal found."
-- `signal_monitoring_source_strategy.py` owns no-network signal source
-  selection. It reuses known candidate-discovery source refs first, then
-  selects official/company, signal-specific, and open-web lanes only when
-  source policy and compiled source-card capabilities allow signal evidence.
-  It does not call providers and it does not hardcode provider names such as
-  DaData or future SPARK-like registries.
-- `signal_monitoring_executor.py` owns the no-network recorded harness for
-  signal monitoring. It calls scripted provider ports, validates signal
-  extraction payloads, applies deterministic repair plus bounded primary/backup
-  retries, executes tasks in source-strategy order, and emits explicit
-  diagnostic states without touching HTTP, persistence, Redis, Celery, or API
-  routes.
-- `power_web_os.radar_signal_monitoring` is the demo/report runner around the
-  application signal-monitoring contracts. It loads recorded fixtures, invokes
-  the no-network executor, and writes product-safe reports; it does not own
-  source strategy or provider semantics.
+- Radar backend package architecture is documented in
+  `docs/architecture/RADAR_BACKEND_ARCHITECTURE.md`. Current root-level
+  `live_radar_*.py` modules are migration debt from candidate-discovery growth,
+  not examples for new backend work. New Radar backend logic must target the
+  package contract under `src/power_web_os/application/radar/` as it is
+  introduced:
+  - shared provider-neutral contracts and source capability primitives;
+  - candidate-discovery planning, retrieval, extraction, source, universe,
+    checkpoint, execution, and diagnostics packages;
+  - separate signal-monitoring and future Power Web discovery packages.
+- Existing root-level Radar modules remain compatibility/migration surfaces
+  until the rescue slices move behavior behind package-owned services and phase
+  executors. Do not add new root-level `application/live_radar_*.py` files.
+- Signal-monitoring contracts, source strategy, and recorded executor are
+  application-owned no-network surfaces until production runtime integration.
 
 ## Dependency Rules
 

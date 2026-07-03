@@ -7723,7 +7723,7 @@ Principles:
 
 ### Slice 0.7.6.4.7: Radar backend architecture rescue plan and package contract
 
-- Status: Ready
+- Status: Done
 - Goal: Stop the Radar backend from growing as a flat pile of `live_radar_*` modules. Define the target package architecture, component contract, migration order, and architecture tests before moving runtime code.
 - User value: Developers and agents can understand where Radar backend logic belongs, extend the pipeline safely, and onboard without reverse-engineering dozens of unrelated-looking files.
 - Problem statement:
@@ -7777,7 +7777,7 @@ Principles:
 
 ### Slice 0.7.6.4.8: Candidate discovery package skeleton and compatibility facades
 
-- Status: Backlog
+- Status: Ready
 - Goal: Create the target Radar package structure without changing runtime behavior.
 - User value: Developers get real folders and local README files for candidate discovery phases instead of a flat `live_radar_*` namespace.
 - Problem statement: The package contract from `0.7.6.4.7` needs to become visible in code before modules can be moved safely.
@@ -8501,4 +8501,4 @@ None.
 
 ## Next Recommended Task
 
-Slice 0.7.6.4.7: Radar backend architecture rescue plan and package contract. Start by documenting the AS IS Radar backend module sprawl, defining the target package/component contract, and adding architecture tests that prevent new root-level `live_radar_*` modules before further Radar backend feature work.
+Slice 0.7.6.4.8: Candidate discovery package skeleton and compatibility facades. Create the target application/radar package structure, local README ownership docs, and compatibility facades without changing runtime behavior.
