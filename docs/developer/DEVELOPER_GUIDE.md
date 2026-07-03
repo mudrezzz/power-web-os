@@ -178,9 +178,10 @@ Use the project skills with the pipeline id:
 
 `candidate-discovery` keeps using `docs/radar/to-be/` until its migration
 slice. `signal-monitoring` TO BE documents live under
-`docs/radar/pipelines/signal-monitoring/to-be/`. Signal monitoring has its own
-future model-role profile and budget rules so tuning the frequent monitoring
-loop does not silently change candidate discovery.
+`docs/radar/pipelines/signal-monitoring/to-be/`, and the current AS IS document
+is `docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md`.
+Signal monitoring has its own model-role profile and budget rules so tuning the
+frequent monitoring loop does not silently change candidate discovery.
 
 The current `signal-monitoring` implementation is still no-network. Its
 application contracts and recorded executor live in
@@ -191,6 +192,20 @@ candidate-discovery source refs first, then selects official/company,
 signal-specific, and open-web lanes only when source policy and source cards
 allow signal evidence. Do not add provider-name branches for DaData/SPARK-like
 sources; change connector capabilities instead.
+
+Run the first recorded TOIR signal-monitoring loop without live providers:
+
+```bash
+python -m power_web_os.demo run-recorded-signal-monitoring \
+  --signal-monitoring-fixture demo/fixtures/radar_signal_monitoring/toir_recorded_signal_monitoring.json \
+  --signal-monitoring-output demo/output/radar_signal_monitoring_report.json
+```
+
+The command writes a product-safe report with new signals, duplicate old
+signals, searched-negative states, budget-limited tasks, evidence refs, source
+strategy decisions, provider attempts, and signal budget counters. It does not
+rediscover candidates and does not call OpenRouter, DaData, Redis, Celery, or
+the backend API.
 
 Signal-monitoring model defaults are isolated from candidate-discovery defaults.
 Non-secret model role profiles live in:

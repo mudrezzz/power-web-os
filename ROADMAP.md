@@ -7624,7 +7624,7 @@ Principles:
 
 ### Slice 0.7.6.4.5: First recorded TOIR signal monitoring loop
 
-- Status: Ready
+- Status: Done
 - Goal: Build the first working signal-monitoring loop for TOIR using
   fake/recorded providers, without making a live benchmark claim.
 - User value: The product can show the core signal-monitoring idea: known

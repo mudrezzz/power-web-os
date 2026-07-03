@@ -116,6 +116,10 @@ provider SDK details.
   retries, executes tasks in source-strategy order, and emits explicit
   diagnostic states without touching HTTP, persistence, Redis, Celery, or API
   routes.
+- `power_web_os.radar_signal_monitoring` is the demo/report runner around the
+  application signal-monitoring contracts. It loads recorded fixtures, invokes
+  the no-network executor, and writes product-safe reports; it does not own
+  source strategy or provider semantics.
 
 ## Dependency Rules
 

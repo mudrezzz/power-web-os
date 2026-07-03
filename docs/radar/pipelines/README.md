@@ -13,7 +13,7 @@ the current candidate-discovery default.
 | Pipeline id | Purpose | Cadence | Current state |
 |---|---|---|---|
 | `candidate-discovery` | Find and qualify legal entities, sites, branches, projects, and review-needed upstream entities. | Infrequent: manual, monthly, quarterly, or after Radar settings change. | Implemented through the current Radar search pipeline; docs still live at `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` until the migration slice splits the file. |
-| `signal-monitoring` | Monitor configured intent signals for known candidates over a recent time window. | Frequent: weekly or another product-configured monitoring cadence. | No-network application contracts, recorded harness, capability-driven source strategy, independent signal budgets, and config-backed signal model profile exist. Live runtime, scheduler, and UI are still planned. |
+| `signal-monitoring` | Monitor configured intent signals for known candidates over a recent time window. | Frequent: weekly or another product-configured monitoring cadence. | No-network application contracts, recorded TOIR loop, capability-driven source strategy, independent signal budgets, config-backed signal model profile, and AS IS docs exist. Live runtime, scheduler, and UI are still planned. |
 | `power-web-discovery` | Discover people, roles, relationships, partner paths, buying committee structure, and access routes for accepted accounts. | Event-driven or account-workflow driven. | Planned. |
 
 ## Required files
@@ -48,17 +48,19 @@ The current `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` remains the canonical
 candidate-discovery AS IS document until a later migration slice moves it into
 the per-pipeline folder.
 
-`signal-monitoring` and `power-web-discovery` do not get AS IS documents until
-their first runtime implementation exists. Before that, their TO BE documents
-are reviewed design inputs, not claims about implemented behavior.
+`power-web-discovery` does not get an AS IS document until its first runtime
+implementation exists. Before that, its TO BE documents are reviewed design
+inputs, not claims about implemented behavior.
 
-For `signal-monitoring`, the current implemented surface is intentionally
-limited to application contracts and no-network tests. Source strategy is
-already capability-driven: known candidate-discovery sources are checked first,
-then official/company, signal-specific, and open-web lanes are selected only
-when source policy and source cards allow signal evidence.
-Signal budgets and model-role defaults are also isolated from
-candidate-discovery through `config/radar/model_profiles/signal_monitoring.json`.
+For `signal-monitoring`, the first AS IS document now lives at
+`docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md`.
+The current implemented surface is intentionally limited to application
+contracts, no-network tests, and a recorded TOIR loop over known candidates.
+Source strategy is capability-driven: known candidate-discovery sources are
+checked first, then official/company, signal-specific, and open-web lanes are
+selected only when source policy and source cards allow signal evidence.
+Signal budgets and model-role defaults are isolated from candidate-discovery
+through `config/radar/model_profiles/signal_monitoring.json`.
 
 ## Skill invocation examples
 
@@ -76,7 +78,7 @@ Path mapping:
 | Pipeline id | Current AS IS path | TO BE path |
 |---|---|---|
 | `candidate-discovery` | `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` | `docs/radar/to-be/RADAR_SEARCH_PIPELINE_TO_BE_<slice>.md` |
-| `signal-monitoring` | planned: `docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md` | `docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_<slice>.md` |
+| `signal-monitoring` | `docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md` | `docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_<slice>.md` |
 | `power-web-discovery` | planned: `docs/radar/pipelines/power-web-discovery/RADAR_POWER_WEB_DISCOVERY_AS_IS.md` | `docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_<slice>.md` |
 
 ## Documentation rule

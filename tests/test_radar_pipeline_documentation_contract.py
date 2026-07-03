@@ -16,6 +16,8 @@ SIGNAL_TO_BE_MD = Path(
 SIGNAL_TO_BE_PDF = Path(
     "docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.1.pdf"
 )
+SIGNAL_AS_IS_MD = Path("docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md")
+SIGNAL_AS_IS_PDF = Path("docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.pdf")
 SKILL_PATHS = [
     Path(".agents/skills/radar-pipeline-to-be-design/SKILL.md"),
     Path(".agents/skills/radar-pipeline-as-is-sync/SKILL.md"),
@@ -144,6 +146,28 @@ def test_signal_monitoring_to_be_exists_and_is_rendered() -> None:
 
     assert "Radar Signal Monitoring TO BE: 0.7.6.4.1" in text
     assert "Figure 1. End-to-end Radar execution flow" in text
+    for marker in FORBIDDEN_PDF_MERMAID_MARKERS:
+        assert marker not in text
+    for marker in FORBIDDEN_PRODUCT_MARKERS:
+        assert marker not in text
+
+
+def test_signal_monitoring_as_is_exists_after_recorded_runtime_slice() -> None:
+    assert SIGNAL_AS_IS_MD.exists()
+    assert SIGNAL_AS_IS_PDF.exists()
+
+    markdown = SIGNAL_AS_IS_MD.read_text(encoding="utf-8")
+    assert "Status: AS IS" in markdown
+    assert "Pipeline id: `signal-monitoring`" in markdown
+    assert "run-recorded-signal-monitoring" in markdown
+    assert "`not_observed` never means" in markdown
+
+    reader = PdfReader(str(SIGNAL_AS_IS_PDF))
+    text = "\n".join(page.extract_text() or "" for page in reader.pages)
+
+    assert "Radar Signal Monitoring AS IS" in text
+    assert "Figure 1. End-to-end Radar execution flow" in text
+    assert "| Signal code |" not in text
     for marker in FORBIDDEN_PDF_MERMAID_MARKERS:
         assert marker not in text
     for marker in FORBIDDEN_PRODUCT_MARKERS:

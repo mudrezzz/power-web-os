@@ -1,0 +1,256 @@
+{
+  "fixture_kind": "recorded_fake",
+  "run_id": "signal-run-recorded-toir-0.7.6.4.5",
+  "radar_id": "benchmark-sibur-holding-contour",
+  "model_profile_id": "signal_monitoring_default",
+  "lookback_days": 7,
+  "candidates": [
+    {
+      "candidate_id": "nizhnekamskneftekhim",
+      "display_name": "ПАО Нижнекамскнефтехим",
+      "legal_name": "Публичное акционерное общество \"Нижнекамскнефтехим\"",
+      "entity_type": "legal_entity",
+      "monitorable": true,
+      "source_refs": ["sibur-known-sources"]
+    },
+    {
+      "candidate_id": "kazanorgsintez",
+      "display_name": "ПАО Казаньоргсинтез",
+      "legal_name": "Публичное акционерное общество \"Казаньоргсинтез\"",
+      "entity_type": "legal_entity",
+      "monitorable": true,
+      "source_refs": ["sibur-known-sources"]
+    },
+    {
+      "candidate_id": "zapsibneftekhim",
+      "display_name": "ООО ЗапСибНефтехим",
+      "legal_name": "Общество с ограниченной ответственностью \"ЗапСибНефтехим\"",
+      "entity_type": "legal_entity",
+      "monitorable": true,
+      "source_refs": ["sibur-known-sources"]
+    },
+    {
+      "candidate_id": "gubkinsky-gpp",
+      "display_name": "Губкинский ГПЗ",
+      "entity_type": "production_site",
+      "monitorable": true,
+      "review_flags": ["requires_human_review", "not_standalone_legal_entity"],
+      "source_refs": ["sibur-known-sources"]
+    },
+    {
+      "candidate_id": "tobolsk-site",
+      "display_name": "Тобольская промышленная площадка СИБУР",
+      "entity_type": "production_site",
+      "monitorable": true,
+      "review_flags": ["requires_human_review", "not_standalone_legal_entity"],
+      "source_refs": ["sibur-known-sources"]
+    }
+  ],
+  "signal_rules": [
+    {
+      "signal_code": "toir_tender",
+      "label": "тендер ТОиР",
+      "description": "Новая закупка, конкурс или тендер на ремонт, сервис, ТОиР, EAM/CMMS или промышленное обслуживание.",
+      "expected_evidence": ["procurement", "tender", "service scope", "fresh date"],
+      "query_template": "{candidate} {signal} за последние 7 дней"
+    },
+    {
+      "signal_code": "toir_vacancy",
+      "label": "вакансия ТОиР EAM CMMS",
+      "description": "Вакансия, указывающая на работу с ТОиР, EAM, CMMS, 1С ТОИР или планированием ремонтов.",
+      "expected_evidence": ["vacancy", "role", "maintenance planning", "fresh date"],
+      "query_template": "{candidate} {signal} за последние 7 дней"
+    },
+    {
+      "signal_code": "toir_digitalization",
+      "label": "1С ТОИР EAM внедрение",
+      "description": "Новость, статья или пресс-релиз о внедрении, развитии или использовании 1С ТОИР, EAM, CMMS.",
+      "expected_evidence": ["article", "implementation", "maintenance system", "fresh date"],
+      "query_template": "{candidate} {signal} за последние 7 дней"
+    }
+  ],
+  "known_sources": [
+    {
+      "source_ref": "sibur-known-sources",
+      "title": "Recorded SIBUR source bundle for TOIR monitoring",
+      "url": "https://recorded.example.test/sibur/toir-monitoring",
+      "snippet": "Recorded candidate-discovery source bundle reused for signal monitoring.",
+      "source_id": "sibur_known_sources",
+      "lifecycle_state": "used"
+    }
+  ],
+  "source_policy": {
+    "enabled": true,
+    "reuse_known_sources": true,
+    "allow_open_web": false
+  },
+  "source_cards": [
+    {
+      "source_id": "sibur_known_sources",
+      "source_label": "Recorded SIBUR known sources",
+      "connector_profile_id": "recorded_known_sources",
+      "source_type": "web",
+      "supports_signal_evidence": true,
+      "supports_broad_discovery": false,
+      "supports_coverage": true
+    }
+  ],
+  "budget": {
+    "max_signal_tasks": 20,
+    "max_signal_provider_calls": 6,
+    "max_signal_extraction_retries": 1,
+    "max_signal_lookback_queries": 20,
+    "allow_backup_retry": true
+  },
+  "previous_signal_fingerprints": [
+    "nizhnekamskneftekhim|toir_digitalization|https://recorded.example.test/nknh/toir-1c|2026-06-27|recorded article says nizhnekamskneftekhim expanded 1c toir maintenance planning."
+  ],
+  "provider_payloads": {
+    "signal-nizhnekamskneftekhim-toir_tender-known_source-1": {
+      "sources": [
+        {
+          "source_ref": "src-nknh-tender",
+          "title": "Закупка услуг по ремонту насосного оборудования",
+          "url": "https://recorded.example.test/nknh/tender-toir",
+          "snippet": "ПАО Нижнекамскнефтехим разместило закупку услуг по ремонту насосного оборудования.",
+          "source_id": "sibur_known_sources"
+        }
+      ],
+      "observations": [
+        {
+          "candidate_id": "nizhnekamskneftekhim",
+          "signal_code": "toir_tender",
+          "status": "observed",
+          "summary": "Recorded tender signal: Нижнекамскнефтехим ищет подрядчика на ремонт промышленного оборудования.",
+          "score": 2,
+          "evidence_refs": ["src-nknh-tender"],
+          "observed_at": "2026-07-01",
+          "confidence": "strong"
+        }
+      ]
+    },
+    "signal-nizhnekamskneftekhim-toir_vacancy-known_source-1": {
+      "sources": [
+        {
+          "source_ref": "src-nknh-vacancy-empty",
+          "title": "Recorded vacancy search result",
+          "url": "https://recorded.example.test/nknh/vacancies",
+          "snippet": "За период мониторинга новых вакансий по ТОиР не найдено.",
+          "source_id": "sibur_known_sources"
+        }
+      ],
+      "observations": [
+        {
+          "candidate_id": "nizhnekamskneftekhim",
+          "signal_code": "toir_vacancy",
+          "status": "not_observed",
+          "summary": "Recorded search-negative: свежих вакансий ТОиР/EAM/CMMS за окно мониторинга не найдено."
+        }
+      ]
+    },
+    "signal-nizhnekamskneftekhim-toir_digitalization-known_source-1": {
+      "sources": [
+        {
+          "source_ref": "src-nknh-toir-1c",
+          "title": "Опыт развития 1С ТОИР на производстве",
+          "url": "https://recorded.example.test/nknh/toir-1c",
+          "snippet": "Recorded article says Nizhnekamskneftekhim expanded 1C TOIR maintenance planning.",
+          "source_id": "sibur_known_sources"
+        }
+      ],
+      "observations": [
+        {
+          "candidate_id": "nizhnekamskneftekhim",
+          "signal_code": "toir_digitalization",
+          "status": "observed",
+          "summary": "Recorded article says Nizhnekamskneftekhim expanded 1C TOIR maintenance planning.",
+          "score": 2,
+          "evidence_refs": ["src-nknh-toir-1c"],
+          "observed_at": "2026-06-27",
+          "confidence": "medium"
+        }
+      ]
+    },
+    "signal-kazanorgsintez-toir_tender-known_source-1": {
+      "sources": [
+        {
+          "source_ref": "src-kos-tender",
+          "title": "Закупка сервиса КИПиА и ремонтных работ",
+          "url": "https://recorded.example.test/kazanorgsintez/tender-service",
+          "snippet": "ПАО Казаньоргсинтез опубликовало закупку по сервису и ремонтным работам.",
+          "source_id": "sibur_known_sources"
+        }
+      ],
+      "observations": [
+        {
+          "candidate_id": "kazanorgsintez",
+          "signal_code": "toir_tender",
+          "status": "observed",
+          "summary": "Recorded tender signal: Казаньоргсинтез ищет подрядчика на сервис и ремонтные работы.",
+          "score": 2,
+          "evidence_refs": ["src-kos-tender"],
+          "observed_at": "2026-07-02",
+          "confidence": "strong"
+        }
+      ]
+    },
+    "signal-kazanorgsintez-toir_vacancy-known_source-1": {
+      "sources": [
+        {
+          "source_ref": "src-kos-vacancy",
+          "title": "Вакансия инженера по планированию ремонтов",
+          "url": "https://recorded.example.test/kazanorgsintez/vacancy-maintenance-planning",
+          "snippet": "Казаньоргсинтез ищет инженера по планированию ремонтов и работе с EAM/CMMS.",
+          "source_id": "sibur_known_sources"
+        }
+      ],
+      "observations": [
+        {
+          "candidate_id": "kazanorgsintez",
+          "signal_code": "toir_vacancy",
+          "status": "observed",
+          "summary": "Recorded vacancy signal: открыта вакансия инженера по планированию ремонтов с EAM/CMMS.",
+          "score": 2,
+          "evidence_refs": ["src-kos-vacancy"],
+          "observed_at": "2026-07-02",
+          "confidence": "strong"
+        }
+      ]
+    },
+    "signal-kazanorgsintez-toir_digitalization-known_source-1": {
+      "sources": [
+        {
+          "source_ref": "src-kos-digital",
+          "title": "Развитие цифрового планирования ремонтов",
+          "url": "https://recorded.example.test/kazanorgsintez/digital-maintenance",
+          "snippet": "Recorded article mentions EAM and 1C TOIR practices for maintenance planning.",
+          "source_id": "sibur_known_sources"
+        }
+      ],
+      "observations": [
+        {
+          "candidate_id": "kazanorgsintez",
+          "signal_code": "toir_digitalization",
+          "status": "observed",
+          "summary": "Recorded article signal: Казаньоргсинтез развивает цифровое планирование ремонтов и EAM-практики.",
+          "score": 2,
+          "evidence_refs": ["src-kos-digital"],
+          "observed_at": "2026-07-01",
+          "confidence": "medium"
+        }
+      ]
+    }
+  },
+  "default_provider_payload": {
+    "sources": [
+      {
+        "source_ref": "src-default-empty",
+        "title": "Recorded empty result",
+        "url": "https://recorded.example.test/empty",
+        "snippet": "No fresh signal was found in the recorded source bundle.",
+        "source_id": "sibur_known_sources"
+      }
+    ],
+    "observations": []
+  }
+}

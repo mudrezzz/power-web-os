@@ -28,6 +28,9 @@ The demo shows the current Power Web OS loop: a ТОиР/SIBUR-style ICP Radar f
 - Optional persisted live Radar backend run that stores durable run state and the
   live output snapshot; the UI can read that state through the backend API and
   still falls back to exported JSON when the API is unavailable.
+- A recorded no-network TOIR signal-monitoring loop over known candidates,
+  showing new signals, repeated signals, searched-negative states, budget-limited
+  tasks, and evidence refs without calling live providers.
 
 ## How To Run
 
@@ -78,6 +81,21 @@ python -m power_web_os.demo run-live-mini-icp-radar-persisted --live
 celery -A power_web_os.jobs.radar_jobs.radar_celery_app worker --loglevel=INFO --pool=solo
 power-web-os-api
 ```
+
+Recorded TOIR signal-monitoring loop:
+
+```bash
+python -m power_web_os.demo run-recorded-signal-monitoring \
+  --signal-monitoring-fixture demo/fixtures/radar_signal_monitoring/toir_recorded_signal_monitoring.json \
+  --signal-monitoring-output demo/output/radar_signal_monitoring_report.json
+```
+
+This command does not rediscover candidates and does not call OpenRouter,
+DaData, Redis, Celery, Docker, or the backend API. It reuses a recorded SIBUR
+candidate/source fixture and writes `demo/output/radar_signal_monitoring_report.json`.
+The report should include at least one new signal, one duplicate old signal,
+one searched-negative signal, one budget-limited task, evidence refs, source
+strategy decisions, provider attempts, and signal budget counters.
 
 The committed `.env.example` uses a smoke-safe live Radar budget:
 `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=1` and
