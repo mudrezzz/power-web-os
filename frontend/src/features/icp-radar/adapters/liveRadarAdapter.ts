@@ -13,7 +13,7 @@ export function liveRadarToViewModel(radar: ICPRadarCatalogItem, artifact: LiveI
     owner: radar.definition.metadata.owner || radar.owner,
     sourceKind: 'live',
     hasArtifact: Boolean(artifact),
-    tabs: ['shortlist', 'settings'],
+    tabs: ['shortlist', 'operations', 'settings'],
   };
 }
 

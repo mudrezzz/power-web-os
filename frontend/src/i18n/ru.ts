@@ -99,6 +99,13 @@
           runAgain: 'Запустить поиск кандидатов снова',
           runInProgress: 'Запуск выполняется',
           outputPending: 'Output еще не готов',
+          operations: {
+            eyebrow: 'Операции Radar',
+            title: 'Запуски, проверки и диагностика',
+            copy: 'Здесь запускается поиск кандидатов, открывается recorded отчет мониторинга сигналов, выполняется проверка настроек и смотрится диагностика запуска.',
+            fixtureTitle: 'Операции доступны для live Radar запусков',
+            fixtureCopy: 'Fixture-радары показывают здесь сгенерированных кандидатов и настройки; live run controls доступны для радаров, подключенных к backend.',
+          },
           pipeline: {
             aria: 'Управление пайплайнами Radar',
             status: 'Статус',
@@ -835,6 +842,7 @@
         radarBreadcrumbs: 'Навигация ICP Radar',
         radarTabs: 'Режимы радара',
         shortlistTab: 'Найденные аккаунты',
+        operationsTab: 'Запуски',
         settingsTab: 'Настройки',
         readOnly: 'Только просмотр',
         createRadar: 'Создать радар',

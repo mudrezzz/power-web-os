@@ -7716,6 +7716,11 @@ Principles:
   - UI may get ahead of backend runtime. Only expose actions backed by real API
     behavior or clearly disabled/planned state.
 
+### Slice 0.7.6.4.6.1: Radar operations tab for runs, checks, and diagnostics
+
+- Status: Done
+- Goal: Move Radar run controls, preflight checks, and diagnostics out of the found-accounts tab into a dedicated Operations tab; remove the obsolete duplicated live-run plaque while preserving candidate-discovery and recorded signal-monitoring controls.
+
 ### Slice 0.7: Human review queue loop
 
 - Status: `Backlog`

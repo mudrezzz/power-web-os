@@ -2,11 +2,12 @@ import type { ReactNode } from 'react';
 import { Activity, BellRing, Clock, Eye, ListChecks, Play, Radar } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../../components/primitives';
-import type { ICPRadarCatalogItem, SignalMonitoringReportArtifact, SignalMonitoringReportSignal } from '../../types';
+import type { ICPRadarCatalogItem, LiveICPRadarRunArtifact, SignalMonitoringReportArtifact, SignalMonitoringReportSignal } from '../../types';
 import type { RadarRunControlState } from './application/useRadarBackend';
 
 // Radar pipeline controls make candidate discovery and signal monitoring visibly separate without owning API transport.
 export function RadarPipelineControlPanel({
+  artifact,
   diagnosticsOpen,
   onCheckSetup,
   onRunCandidateDiscovery,
@@ -19,6 +20,7 @@ export function RadarPipelineControlPanel({
   signalMonitoringReport,
   signalReportOpen,
 }: {
+  artifact: LiveICPRadarRunArtifact | null;
   diagnosticsOpen: boolean;
   onCheckSetup: () => void;
   onRunCandidateDiscovery: () => void;
@@ -35,6 +37,7 @@ export function RadarPipelineControlPanel({
   const monitoring = radar?.definition.monitoring_policy;
   const signalSummary = signalMonitoringReport?.summary;
   const signalRows = signalMonitoringReport?.signals.slice(0, 6) ?? [];
+  const lastCandidateRun = candidateDiscoveryLastRunLabel(runState, radar, artifact, t);
   return (
     <Card>
       <section className="radar-pipeline-controls" aria-label={t('icpRadar.live.pipeline.aria')}>
@@ -60,7 +63,7 @@ export function RadarPipelineControlPanel({
             </div>
             <div>
               <dt>{t('icpRadar.live.pipeline.lastRun')}</dt>
-              <dd>{runState.runId ? <Mono>{runState.runId}</Mono> : radar?.summary.last_run || t('icpRadar.live.pipeline.notConfigured')}</dd>
+              <dd>{lastCandidateRun.kind === 'id' ? <Mono>{lastCandidateRun.label}</Mono> : lastCandidateRun.label}</dd>
             </div>
             <div>
               <dt>{t('icpRadar.live.pipeline.nextRun')}</dt>
@@ -137,6 +140,31 @@ export function RadarPipelineControlPanel({
       {signalReportOpen && <SignalMonitoringRecordedReport report={signalMonitoringReport} rows={signalRows} />}
     </Card>
   );
+}
+
+function candidateDiscoveryLastRunLabel(
+  runState: RadarRunControlState,
+  radar: ICPRadarCatalogItem | null,
+  artifact: LiveICPRadarRunArtifact | null,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
+  const summaryLastRun = radar?.summary.last_run;
+  const artifactRunId = artifact?.dossier?.run_context.run_id || artifact?.run_metadata.task_id;
+  const artifactRunAt = artifact?.run_metadata.run_at;
+  const fallback = t('icpRadar.live.pipeline.notConfigured');
+  if (runState.runId) {
+    return { kind: 'id' as const, label: runState.runId };
+  }
+  if (artifactRunId) {
+    return { kind: 'id' as const, label: artifactRunId };
+  }
+  if (summaryLastRun && summaryLastRun !== 'not_run') {
+    return { kind: 'text' as const, label: summaryLastRun };
+  }
+  if (artifactRunAt) {
+    return { kind: 'text' as const, label: artifactRunAt };
+  }
+  return { kind: 'text' as const, label: fallback };
 }
 
 function PipelineRunStatus({ state }: { state: RadarRunControlState }) {

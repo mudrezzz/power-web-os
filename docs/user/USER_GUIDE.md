@@ -83,12 +83,14 @@ The language switcher localizes UI chrome plus visible deterministic demo data s
 
 ### ICP Radar catalog and shortlist
 
-Live Radar now shows two separate pipeline controls. `Candidate discovery`
-answers "who should we monitor" and uses the existing backend run API to create
-a candidate-discovery run. `Signal monitoring` answers "what changed recently"
-for already known candidates. In the current UI it is a recorded/no-network
-preview only: the report can be inspected, but the production `Check signals`
-action is disabled until the signal-monitoring backend API is implemented.
+Live Radar separates results from operations. The `Found accounts` tab is only
+for the candidate table and candidate review flow. The `Runs` tab contains two
+pipeline controls: `Candidate discovery` answers "who should we monitor" and
+uses the existing backend run API to create a candidate-discovery run; `Signal
+monitoring` answers "what changed recently" for already known candidates. In
+the current UI signal monitoring is a recorded/no-network preview only: the
+report can be inspected, but the production `Check signals` action is disabled
+until the signal-monitoring backend API is implemented.
 
 The `ICP Radar` screen now starts with a list-first catalog of configured radars. Each row represents a configured ICP Radar with aligned columns for status, owner, cadence, last run, run mode, candidate count, needs-review count, and accepted count. Use `Create radar` to add a browser-local demo radar, or open `ТОиР / SIBUR` to inspect the active fixture-backed radar. Its `Found accounts` tab contains the current ranked table, and its `Settings` tab edits the radar definition by block: radar header, global search base, account qualification rules, monitoring, intent signals, scoring model, and validation.
 
@@ -147,7 +149,7 @@ Open `Playbook` to see how the customer's rules shape the plan. The screen shows
 
 The current ICP Radar UI is table-first:
 
-- The workspace opens with a list-first radar catalog; select a radar row to enter its `Found accounts` and `Settings` tabs.
+- The workspace opens with a list-first radar catalog; select a radar row to enter its `Found accounts`, `Runs`, and `Settings` tabs.
 - `Settings` is edited by block. The radar header owns name/description/status editing and lifecycle actions; each content block has its own `Edit`, `Save`, and `Discard`, and saved edits are stored only in browser local demo state and labelled as `Local draft`.
 - Switches are used for active/inactive and boolean source policies. Disabled switches are informational and should not mutate local demo state.
 - You can create a radar, edit an existing radar, save a draft, discard unsaved changes, duplicate a radar, reset one radar back to the generated artifact, or reset all demo changes.

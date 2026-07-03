@@ -12,6 +12,7 @@ import {
 import { LiveRadarCandidateDetailView, LiveRadarShortlistTable } from './liveCandidateViews';
 import { RadarCatalogScreen } from './components/RadarCatalogScreen';
 import { RadarDetailHeader } from './components/RadarDetailHeader';
+import { LiveRadarOperationsTab } from './liveOperations';
 import './icpRadar.css';
 
 const RadarSettings = lazy(() => import('./settings').then((module) => ({ default: module.RadarSettings })));
@@ -142,18 +143,62 @@ export function ICPRadarScreen({
             validationErrors={workspace.validationErrors}
           />
         </Suspense>
+      ) : navigation.selectedTab === 'operations' ? (
+        <RadarOperations signalMonitoringReport={signalMonitoringReport} workspace={workspace} />
       ) : (
-        <RadarShortlist signalMonitoringReport={signalMonitoringReport} workspace={workspace} />
+        <RadarShortlist workspace={workspace} />
       )}
     </section>
   );
 }
 
-function RadarShortlist({
+function RadarOperations({
   signalMonitoringReport,
   workspace,
 }: {
   signalMonitoringReport: SignalMonitoringReportArtifact | null;
+  workspace: ReturnType<typeof useRadarWorkspace>;
+}) {
+  const { navigation } = workspace;
+  const { t } = useTranslation();
+  if (workspace.radarViewModel?.sourceKind === 'live') {
+    return (
+      <LiveRadarOperationsTab
+        artifact={workspace.selectedLiveArtifact}
+        diagnosticsOpen={navigation.runDiagnosticsOpen}
+        onCheckSetup={() => {
+          navigation.setRunPreflightOpen(true);
+          void workspace.checkRadarSetup(workspace.selectedRadar!.radar_id);
+        }}
+        onOpenSettings={() => navigation.setSelectedTab('settings')}
+        onRunRadar={() => workspace.runRadar(workspace.selectedRadar!.radar_id)}
+        onToggleDiagnostics={() => navigation.setRunDiagnosticsOpen(!navigation.runDiagnosticsOpen)}
+        onTogglePreflight={() => navigation.setRunPreflightOpen(!navigation.runPreflightOpen)}
+        preflightOpen={navigation.runPreflightOpen}
+        preflightState={workspace.preflightState}
+        radar={workspace.selectedRadar}
+        runState={workspace.runState}
+        signalMonitoringReport={signalMonitoringReport}
+      />
+    );
+  }
+
+  return (
+    <Card>
+      <div className="icp-empty-shortlist">
+        <div>
+          <Eyebrow>{t('icpRadar.operations.eyebrow')}</Eyebrow>
+          <h2>{t('icpRadar.operations.fixtureTitle')}</h2>
+          <p>{t('icpRadar.operations.fixtureCopy')}</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function RadarShortlist({
+  workspace,
+}: {
   workspace: ReturnType<typeof useRadarWorkspace>;
 }) {
   const { navigation } = workspace;
@@ -176,25 +221,12 @@ function RadarShortlist({
     return (
       <LiveRadarShortlistTable
         artifact={workspace.selectedLiveArtifact}
-        diagnosticsOpen={navigation.runDiagnosticsOpen}
         expandedCandidateId={navigation.expandedLiveCandidateId}
         onOpenDetails={navigation.setDetailLiveCandidateId}
         onOpenSettings={() => navigation.setSelectedTab('settings')}
-        onCheckSetup={() => {
-          navigation.setRunPreflightOpen(true);
-          void workspace.checkRadarSetup(workspace.selectedRadar!.radar_id);
-        }}
-        onRunRadar={() => workspace.runRadar(workspace.selectedRadar!.radar_id)}
-        onToggleDiagnostics={() => navigation.setRunDiagnosticsOpen(!navigation.runDiagnosticsOpen)}
-        onTogglePreflight={() => navigation.setRunPreflightOpen(!navigation.runPreflightOpen)}
         onToggleCandidate={(candidateId) => navigation.setExpandedLiveCandidateId(
           navigation.expandedLiveCandidateId === candidateId ? null : candidateId,
         )}
-        preflightOpen={navigation.runPreflightOpen}
-        preflightState={workspace.preflightState}
-        radar={workspace.selectedRadar}
-        runState={workspace.runState}
-        signalMonitoringReport={signalMonitoringReport}
       />
     );
   }

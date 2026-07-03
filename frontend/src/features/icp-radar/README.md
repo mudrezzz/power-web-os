@@ -16,7 +16,8 @@ application/            Navigation, backend mode, browser-local fallback overlay
 domain/                 Pure score, status, validation, qualification, and metadata helpers.
 components/             Presentation-only catalog/header components.
 fixture*                Fixture-backed shortlist, preview, and detail surfaces.
-live*                   Live-run shortlist, diagnostics, preview, and detail surfaces through the same UX contract.
+liveOperations          Live Radar runs/checks/diagnostics tab for backend-connected radars.
+live*                   Live-run shortlist, operations, diagnostics, preview, and detail surfaces through the same UX contract.
 settings*               Block-editable radar configuration surfaces.
 styles/                 Feature CSS split by UI surface.
 ```
@@ -30,7 +31,7 @@ flowchart TD
     Adapters["adapters/<br/>catalogAdapter<br/>fixtureRadarAdapter<br/>liveRadarAdapter"]
     ViewModels["Canonical view models<br/>RadarViewModel<br/>RadarCandidateViewModel"]
     AppHooks["application hooks<br/>useRadarBackend<br/>useRadarWorkspace<br/>navigation and overlays"]
-    UI["UI surfaces<br/>catalog -> shortlist -> run diagnostics -> preview -> detail tabs -> settings"]
+    UI["UI surfaces<br/>catalog -> shortlist -> operations -> preview -> detail tabs -> settings"]
     LocalOverlays["localStorage overlays<br/>config drafts<br/>signal validation<br/>qualification review"]
 
     Api --> AppHooks
@@ -63,7 +64,8 @@ action stays disabled until a backend signal-monitoring API exists.
    presentation component.
 4. Reuse the canonical table -> preview -> detail-tabs flow. Do not create a new
    visual paradigm, side panel, or provider-specific shortlist column set.
-5. Put run-level runtime/provider metadata into run diagnostics, and
+5. Put run-level runtime/provider metadata into the `Runs` operations tab and
+   run diagnostics, and
    candidate-specific evidence/runtime context into the candidate `Journal` tab.
    Do not put either above the shortlist table.
 6. Map technical trace records through `liveTraceModel.ts` before rendering:

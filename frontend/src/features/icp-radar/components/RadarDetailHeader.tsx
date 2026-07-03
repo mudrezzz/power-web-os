@@ -150,6 +150,14 @@ export function RadarDetailHeader({
           {t('icpRadar.shortlistTab')}
         </button>
         <button
+          aria-pressed={activeTab === 'operations'}
+          className={`criteria-chip${activeTab === 'operations' ? ' criteria-chip-active' : ''}`}
+          type="button"
+          onClick={() => onTabChange('operations')}
+        >
+          {t('icpRadar.operationsTab')}
+        </button>
+        <button
           aria-pressed={activeTab === 'settings'}
           className={`criteria-chip${activeTab === 'settings' ? ' criteria-chip-active' : ''}`}
           type="button"
@@ -161,4 +169,3 @@ export function RadarDetailHeader({
     </div>
   );
 }
-

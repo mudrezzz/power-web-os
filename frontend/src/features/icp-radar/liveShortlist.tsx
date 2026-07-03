@@ -1,121 +1,46 @@
-import { useState } from 'react';
-import { ArrowRight, ChevronDown, ChevronRight, Eye, ListChecks, Radar, Settings, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronRight, Radar, Settings, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../../components/primitives';
-import type { ICPRadarCatalogItem, LiveICPRadarRunArtifact, LiveRadarCandidate, SignalMonitoringReportArtifact } from '../../types';
-import { LiveRadarRunDiagnosticsView } from './liveRunDiagnostics';
-import { RadarPipelineControlPanel } from './livePipelineControls';
-import { LiveRadarPreflightPanel } from './livePreflightPanel';
+import type { LiveICPRadarRunArtifact, LiveRadarCandidate } from '../../types';
 import { liveTotalScore, qualificationAssessmentTone, qualificationRuleText, qualificationStatusToAssessment } from './model';
-import type { RadarPreflightControlState, RadarRunControlState } from './application/useRadarBackend';
 // Live shortlist deliberately mirrors fixture shortlist: table scan, inline preview, then explicit detail navigation.
 export function LiveRadarShortlistTable({
   artifact,
   expandedCandidateId,
-  diagnosticsOpen,
   onOpenDetails,
-  onToggleDiagnostics,
-  onCheckSetup,
   onOpenSettings,
-  onTogglePreflight,
-  onRunRadar,
   onToggleCandidate,
-  preflightOpen,
-  preflightState,
-  radar,
-  runState,
-  signalMonitoringReport,
 }: {
   artifact: LiveICPRadarRunArtifact | null;
   expandedCandidateId: string | null;
-  diagnosticsOpen: boolean;
   onOpenDetails: (candidateId: string) => void;
-  onToggleDiagnostics: () => void;
-  onCheckSetup: () => void;
   onOpenSettings: () => void;
-  onTogglePreflight: () => void;
-  onRunRadar: () => void;
   onToggleCandidate: (candidateId: string) => void;
-  preflightOpen: boolean;
-  preflightState: RadarPreflightControlState;
-  radar: ICPRadarCatalogItem | null;
-  runState: RadarRunControlState;
-  signalMonitoringReport: SignalMonitoringReportArtifact | null;
 }) {
   const { t } = useTranslation();
-  const [signalReportOpen, setSignalReportOpen] = useState(false);
-  const pipelineControls = (
-    <RadarPipelineControlPanel
-      diagnosticsOpen={diagnosticsOpen}
-      onCheckSetup={onCheckSetup}
-      onRunCandidateDiscovery={onRunRadar}
-      onToggleDiagnostics={onToggleDiagnostics}
-      onTogglePreflight={onTogglePreflight}
-      onToggleSignalReport={() => setSignalReportOpen((current) => !current)}
-      preflightOpen={preflightOpen}
-      radar={radar}
-      runState={runState}
-      signalMonitoringReport={signalMonitoringReport}
-      signalReportOpen={signalReportOpen}
-    />
-  );
 
   if (!artifact) {
     return (
-      <>
-        {pipelineControls}
-        <Card>
-          <div className="icp-empty-shortlist live-radar-empty">
-            <span className="section-icon">
-              <Radar aria-hidden="true" />
-            </span>
-            <div>
-              <Eyebrow>{t('icpRadar.live.emptyEyebrow')}</Eyebrow>
-              <h2>{t('icpRadar.live.emptyTitle')}</h2>
-              <p>{t('icpRadar.live.emptyCopy')}</p>
-              <code>python -m power_web_os.demo run-live-mini-icp-radar --live</code>
-              <LiveRunStatus state={runState} />
-            </div>
-            <div className="live-radar-actions">
-              {runState.runId && (
-                <Button icon={<Eye aria-hidden="true" />} variant="default" onClick={onToggleDiagnostics}>
-                  {diagnosticsOpen ? t('icpRadar.live.diagnostics.hideRun') : t('icpRadar.live.diagnostics.inspectRun')}
-                </Button>
-              )}
-              <Button icon={<ListChecks aria-hidden="true" />} variant="default" onClick={preflightOpen ? onTogglePreflight : onCheckSetup}>
-                {preflightOpen ? t('icpRadar.live.preflight.hide') : t('icpRadar.live.preflight.checkSetup')}
-              </Button>
-              <Button icon={<Settings aria-hidden="true" />} variant="quiet" onClick={onOpenSettings}>
-                {t('icpRadar.openSettings')}
-              </Button>
-            </div>
+      <Card>
+        <div className="icp-empty-shortlist live-radar-empty">
+          <span className="section-icon">
+            <Radar aria-hidden="true" />
+          </span>
+          <div>
+            <Eyebrow>{t('icpRadar.live.emptyEyebrow')}</Eyebrow>
+            <h2>{t('icpRadar.live.emptyTitle')}</h2>
+            <p>{t('icpRadar.live.emptyCopy')}</p>
           </div>
-        </Card>
-        {preflightOpen && <LiveRadarPreflightPanel artifact={artifact} preflightState={preflightState} runState={runState} />}
-        {diagnosticsOpen && <LiveRadarRunDiagnosticsView artifact={artifact} runState={runState} />}
-      </>
+          <Button icon={<Settings aria-hidden="true" />} variant="quiet" onClick={onOpenSettings}>
+            {t('icpRadar.openSettings')}
+          </Button>
+        </div>
+      </Card>
     );
   }
 
   return (
     <>
-      {pipelineControls}
-      <Card>
-        <div className="live-radar-run-toolbar">
-          <div>
-            <Eyebrow>{t('icpRadar.live.runEyebrow')}</Eyebrow>
-            <LiveRunStatus state={runState} />
-          </div>
-          <Button icon={<Eye aria-hidden="true" />} variant="default" onClick={onToggleDiagnostics}>
-            {diagnosticsOpen ? t('icpRadar.live.diagnostics.hideRun') : t('icpRadar.live.diagnostics.inspectRun')}
-          </Button>
-          <Button icon={<ListChecks aria-hidden="true" />} variant="default" onClick={preflightOpen ? onTogglePreflight : onCheckSetup}>
-            {preflightOpen ? t('icpRadar.live.preflight.hide') : t('icpRadar.live.preflight.checkSetup')}
-          </Button>
-        </div>
-      </Card>
-      {preflightOpen && <LiveRadarPreflightPanel artifact={artifact} preflightState={preflightState} runState={runState} />}
-      {diagnosticsOpen && <LiveRadarRunDiagnosticsView artifact={artifact} runState={runState} />}
       {artifact.candidates.length === 0 ? (
         <Card>
           <div className="icp-empty-shortlist">
@@ -127,8 +52,8 @@ export function LiveRadarShortlistTable({
               <h2>{t('icpRadar.live.noCandidatesTitle')}</h2>
               <p>{t('icpRadar.live.noCandidatesCopy')}</p>
             </div>
-            <Button icon={<Eye aria-hidden="true" />} variant="default" onClick={onToggleDiagnostics}>
-              {diagnosticsOpen ? t('icpRadar.live.diagnostics.hideRun') : t('icpRadar.live.diagnostics.inspectRun')}
+            <Button icon={<Settings aria-hidden="true" />} variant="quiet" onClick={onOpenSettings}>
+              {t('icpRadar.openSettings')}
             </Button>
           </div>
         </Card>
@@ -195,22 +120,6 @@ export function LiveRadarShortlistTable({
         </Card>
       )}
     </>
-  );
-}
-
-function LiveRunStatus({ state }: { state: RadarRunControlState }) {
-  const { t } = useTranslation();
-  const status = state.status ?? (state.mode === 'api' ? 'ready' : state.mode);
-  return (
-    <div className="live-radar-run-status">
-      <Badge tone={state.error ? 'blocker' : state.busy || state.outputPending ? 'unsurfaced' : state.mode === 'api' ? 'ally' : 'neutral'}>
-        {t(`icpRadar.live.runStatus.${status}`, { defaultValue: status })}
-      </Badge>
-      <span>{t(`icpRadar.live.backendMode.${state.mode}`)}</span>
-      {state.runId && <Mono>{state.runId}</Mono>}
-      {state.outputPending && <span>{t('icpRadar.live.outputPending')}</span>}
-      {state.error && <span className="live-radar-run-error">{state.error}</span>}
-    </div>
   );
 }
 

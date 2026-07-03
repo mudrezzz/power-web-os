@@ -103,8 +103,10 @@ strategy decisions, provider attempts, and signal budget counters.
 
 The frontend also includes a sanitized projection at
 `frontend/public/demo/radar_signal_monitoring_report.json`. It is only for the
-Radar UI preview: the `Check signals` production action remains disabled until
-the signal-monitoring backend API exists.
+Radar UI preview. Open a live Radar and use the `Runs` tab to inspect the
+candidate-discovery control, setup check, run diagnostics, and recorded
+signal-monitoring report. The `Check signals` production action remains
+disabled until the signal-monitoring backend API exists.
 
 The committed `.env.example` uses a smoke-safe live Radar budget:
 `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=1` and

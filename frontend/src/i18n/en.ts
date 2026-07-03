@@ -99,6 +99,13 @@
           runAgain: 'Run candidate discovery again',
           runInProgress: 'Run in progress',
           outputPending: 'Output is not ready yet',
+          operations: {
+            eyebrow: 'Radar operations',
+            title: 'Runs, checks, and diagnostics',
+            copy: 'Start candidate discovery, inspect the recorded signal-monitoring report, run setup checks, and open run diagnostics here.',
+            fixtureTitle: 'Operations are available for live Radar runs',
+            fixtureCopy: 'Fixture-backed radars keep their generated candidates and settings here; live run controls are shown for backend-connected radars.',
+          },
           pipeline: {
             aria: 'Radar pipeline controls',
             status: 'Status',
@@ -836,6 +843,7 @@
         radarBreadcrumbs: 'ICP Radar breadcrumbs',
         radarTabs: 'Radar detail tabs',
         shortlistTab: 'Found accounts',
+        operationsTab: 'Runs',
         settingsTab: 'Settings',
         readOnly: 'Read-only',
         createRadar: 'Create radar',

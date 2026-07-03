@@ -47,6 +47,30 @@
   overflow-y: hidden;
 }
 
+.radar-operations-stack {
+  display: grid;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.radar-operations-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.radar-operations-heading h2 {
+  margin: var(--s-1) 0;
+  font: var(--h3);
+}
+
+.radar-operations-heading p {
+  margin: 0;
+  color: var(--fg2);
+}
+
 .radar-pipeline-controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -69,6 +93,10 @@
 .radar-pipeline-card-active {
   border-color: var(--border);
   background: var(--surface);
+}
+
+.radar-pipeline-card {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
 }
 
 .radar-pipeline-card header,
@@ -127,6 +155,9 @@
 
 .radar-pipeline-actions {
   align-items: center;
+  align-self: end;
+  justify-content: flex-end;
+  margin-top: auto;
 }
 
 .radar-pipeline-disabled-copy {

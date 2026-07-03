@@ -57,6 +57,15 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .radar-operations-heading {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .radar-operations-heading .button {
+    grid-column: 2;
+    justify-self: start;
+  }
+
   .radar-pipeline-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -12,7 +12,7 @@ export function fixtureRadarToViewModel(radar: ICPRadarCatalogItem, artifact: IC
     owner: radar.definition.metadata.owner || radar.owner,
     sourceKind: 'fixture',
     hasArtifact: Boolean(artifact),
-    tabs: ['shortlist', 'settings'],
+    tabs: ['shortlist', 'operations', 'settings'],
   };
 }
 

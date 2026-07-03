@@ -1,6 +1,6 @@
 import type { QualificationReviewDecision } from '../../types';
 
-export type RadarDetailTab = 'shortlist' | 'settings';
+export type RadarDetailTab = 'shortlist' | 'operations' | 'settings';
 export type CandidateDetailTab = 'overview' | 'qualification' | 'signals' | 'sources' | 'journal' | 'trace';
 export type RadarOperationalStatus = 'draft' | 'active' | 'stopped';
 export type QualificationReviewOverlay = Record<string, QualificationReviewDecision>;

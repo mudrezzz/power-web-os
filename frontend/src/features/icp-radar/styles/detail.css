@@ -184,7 +184,6 @@
 }
 
 .live-radar-actions,
-.live-radar-run-toolbar,
 .live-radar-run-status {
   display: flex;
   flex-wrap: wrap;
@@ -195,18 +194,6 @@
 
 .live-radar-actions {
   justify-content: flex-end;
-}
-
-.live-radar-run-toolbar {
-  justify-content: flex-end;
-  gap: var(--s-4);
-}
-
-.live-radar-run-toolbar > div {
-  display: grid;
-  gap: var(--s-2);
-  margin-right: auto;
-  min-width: 0;
 }
 
 .live-radar-run-status {

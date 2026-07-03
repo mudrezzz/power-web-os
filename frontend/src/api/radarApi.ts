@@ -1,6 +1,7 @@
 import type { QualificationAssessmentStatus, RadarPipelineId, SignalValidationStatus } from '../types';
 
-const defaultBaseUrl = 'http://127.0.0.1:8000';
+const defaultBaseUrl = 'http://127.0.0.1:8001';
+const requestTimeoutMs = 30000;
 
 export type RadarApiErrorKind = 'http' | 'network' | 'conflict' | 'validation';
 
@@ -520,9 +521,12 @@ export class RadarApiClient {
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     let response: Response;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs);
     try {
       response = await fetch(`${this.baseUrl}${path}`, {
         ...init,
+        signal: init.signal ?? controller.signal,
         headers: {
           Accept: 'application/json',
           ...(init.body ? { 'Content-Type': 'application/json' } : {}),
@@ -531,6 +535,8 @@ export class RadarApiClient {
       });
     } catch (error) {
       throw new RadarApiError(error instanceof Error ? error.message : 'Radar API is unavailable', 'network');
+    } finally {
+      window.clearTimeout(timeoutId);
     }
 
     if (!response.ok) {

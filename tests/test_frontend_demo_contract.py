@@ -251,6 +251,9 @@ def test_icp_radar_ui_separates_candidate_discovery_and_signal_monitoring() -> N
     i18n = i18n_text()
 
     assert "/demo/radar_signal_monitoring_report.json" in app
+    assert "const defaultBaseUrl = 'http://127.0.0.1:8001'" in api
+    assert "const requestTimeoutMs = 30000" in api
+    assert "controller.abort()" in api
     assert "signalMonitoringReportFromJson" in app
     assert "queueCandidateDiscoveryRun" in api
     assert "pipeline_id: 'candidate-discovery'" in api
@@ -260,6 +263,10 @@ def test_icp_radar_ui_separates_candidate_discovery_and_signal_monitoring() -> N
     assert "queueRadarRun(radarId" not in backend_hook
 
     for expected in [
+        "candidateDiscoveryLastRunLabel",
+        "artifact?.dossier?.run_context.run_id",
+        "artifact?.run_metadata.task_id",
+        "summaryLastRun !== 'not_run'",
         "icpRadar.live.pipeline.candidate.run",
         "icpRadar.live.pipeline.signal.run",
         "disabled",
@@ -356,6 +363,7 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "ValidationReportView",
         "EmptyShortlist",
         "shortlistTab",
+        "operationsTab",
         "settingsTab",
         "radarOverrides",
         "power-web-os-icp-radar-config-overrides",
@@ -386,7 +394,6 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "detailLiveCandidateId",
         "CandidateDetailTab",
             "toir-quick-live",
-            "python -m power_web_os.demo run-live-mini-icp-radar --live",
             "icpRadar.live.emptyTitle",
             "icpRadar.live.qualification",
             "icpRadar.live.signals",
@@ -744,10 +751,15 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     assert "source_lifecycle.map" in live_detail_segment
 
     live_run_diagnostics_segment = screen.split("function LiveRadarRunDiagnosticsView", 1)[1].split("function RunDiagnosticsStatus", 1)[0]
+    live_operations_segment = read_text("frontend/src/features/icp-radar/liveOperations.tsx")
     assert "icpRadar.live.diagnostics.inspectRun" in screen
     assert "runDiagnosticsOpen" in screen
     assert "LiveRunDossierPanel artifact={artifact} dossier={artifact.dossier}" in screen
     assert "LiveRunTechnicalTracePanel trace={artifact?.technical_trace}" in screen
+    assert "LiveRadarPreflightPanel" in live_operations_segment
+    assert "LiveRadarRunDiagnosticsView" in live_operations_segment
+    assert "RadarPipelineControlPanel" in live_operations_segment
+    assert "live-radar-run-toolbar" not in screen
     assert "CandidateUniverseDiagnostics" in live_run_diagnostics_segment
     assert "SourceLifecycleDiagnostics" in live_run_diagnostics_segment
     assert "fetch(" not in live_run_diagnostics_segment
@@ -764,6 +776,8 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         assert ru_label in i18n
     assert "shortlistTab: 'Found accounts'" in i18n
     assert "shortlistTab: 'Найденные аккаунты'" in i18n
+    assert "operationsTab: 'Runs'" in i18n
+    assert "operationsTab: 'Запуски'" in i18n
     assert "backToTable: 'Back to found accounts'" in i18n
     assert "backToTable: 'К найденным аккаунтам'" in i18n
     for lifecycle_label in [

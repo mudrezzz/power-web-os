@@ -38,6 +38,6 @@ export function radarToViewModel(
     owner: radar.definition.metadata.owner || radar.owner,
     sourceKind: 'empty',
     hasArtifact: false,
-    tabs: ['shortlist', 'settings'],
+    tabs: ['shortlist', 'operations', 'settings'],
   };
 }

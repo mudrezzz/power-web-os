@@ -29,6 +29,7 @@ def test_icp_radar_feature_is_decomposed_by_responsibility() -> None:
         "fixturePreview.tsx",
         "fixtureShortlist.tsx",
         "liveDetail.tsx",
+        "liveOperations.tsx",
         "livePipelineControls.tsx",
         "livePreflightPanel.tsx",
         "liveRunDiagnostics.tsx",
@@ -69,6 +70,7 @@ def test_icp_radar_feature_is_decomposed_by_responsibility() -> None:
     assert line_count(feature_dir / "fixturePreview.tsx") <= 160
     assert line_count(feature_dir / "fixtureShortlist.tsx") <= 180
     assert line_count(feature_dir / "liveDetail.tsx") <= 600
+    assert line_count(feature_dir / "liveOperations.tsx") <= 180
     assert line_count(feature_dir / "livePipelineControls.tsx") <= 320
     assert line_count(feature_dir / "livePreflightPanel.tsx") <= 320
     assert line_count(feature_dir / "liveRunDiagnostics.tsx") <= 400
@@ -191,6 +193,7 @@ def test_icp_radar_presentation_does_not_own_api_transport() -> None:
     presentation_files = [
         feature_dir / "ICPRadarScreen.tsx",
         feature_dir / "liveShortlist.tsx",
+        feature_dir / "liveOperations.tsx",
         feature_dir / "liveDetail.tsx",
         feature_dir / "livePreflightPanel.tsx",
         feature_dir / "liveRunDiagnostics.tsx",
@@ -220,6 +223,7 @@ def test_icp_radar_feature_modules_document_non_obvious_boundaries() -> None:
         "fixturePreview.tsx": "Preview stays intentionally bounded",
         "fixtureDetail.tsx": "Fixture detail hosts signal validation",
         "liveShortlist.tsx": "Live shortlist deliberately mirrors fixture shortlist",
+        "liveOperations.tsx": "Operations owns run controls and diagnostics",
         "livePipelineControls.tsx": "Radar pipeline controls make candidate discovery",
         "liveDetail.tsx": "Detail tabs keep runtime/provider evidence separate",
         "livePreflightPanel.tsx": "Preflight stays run-scoped",
@@ -310,3 +314,22 @@ def test_icp_radar_css_is_owned_by_feature_module() -> None:
     assert "@media" in read(str(feature_styles_dir / "responsive.css"))
     assert ".icp-radar-list-row" not in global_css
     assert ".icp-settings-grid" not in global_css
+
+
+def test_icp_radar_operations_tab_owns_run_level_controls() -> None:
+    feature_dir = Path("frontend/src/features/icp-radar")
+    shortlist = read(str(feature_dir / "liveShortlist.tsx"))
+    operations = read(str(feature_dir / "liveOperations.tsx"))
+    header = read(str(feature_dir / "components" / "RadarDetailHeader.tsx"))
+    css = "\n".join(path.read_text(encoding="utf-8") for path in sorted((feature_dir / "styles").glob("*.css")))
+
+    assert "onClick={() => onTabChange('operations')}" in header
+    assert "LiveRadarPreflightPanel" in operations
+    assert "LiveRadarRunDiagnosticsView" in operations
+    assert "RadarPipelineControlPanel" in operations
+    assert "LiveRadarPreflightPanel" not in shortlist
+    assert "LiveRadarRunDiagnosticsView" not in shortlist
+    assert "RadarPipelineControlPanel" not in shortlist
+    assert "live-radar-run-toolbar" not in shortlist
+    assert ".live-radar-run-toolbar" not in css
+    assert ".radar-operations-stack" in css
