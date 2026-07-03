@@ -1,4 +1,4 @@
-import type { QualificationAssessmentStatus, SignalValidationStatus } from '../types';
+import type { QualificationAssessmentStatus, RadarPipelineId, SignalValidationStatus } from '../types';
 
 const defaultBaseUrl = 'http://127.0.0.1:8000';
 
@@ -109,6 +109,12 @@ export type RadarRunRequestDto = {
   correlation_id?: string;
   requester: string;
   task_context: Record<string, unknown>;
+};
+
+export type RadarPipelineRunSupport = {
+  pipeline_id: RadarPipelineId;
+  supported: boolean;
+  reason: string;
 };
 
 export type SourceUsageDto = {
@@ -433,6 +439,25 @@ export class RadarApiClient {
       method: 'POST',
       body: JSON.stringify(request),
     });
+  }
+
+  queueCandidateDiscoveryRun(radarId: string, request: RadarRunRequestDto) {
+    return this.queueRadarRun(radarId, {
+      ...request,
+      task_context: {
+        ...request.task_context,
+        pipeline_id: 'candidate-discovery',
+        run_kind: 'candidate_discovery',
+      },
+    });
+  }
+
+  signalMonitoringRunSupport(): RadarPipelineRunSupport {
+    return {
+      pipeline_id: 'signal-monitoring',
+      supported: false,
+      reason: 'signal_monitoring_backend_api_not_available',
+    };
   }
 
   getRun(runId: string) {

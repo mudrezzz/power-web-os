@@ -31,6 +31,10 @@ The demo shows the current Power Web OS loop: a ТОиР/SIBUR-style ICP Radar f
 - A recorded no-network TOIR signal-monitoring loop over known candidates,
   showing new signals, repeated signals, searched-negative states, budget-limited
   tasks, and evidence refs without calling live providers.
+- ICP Radar UI controls that separate candidate discovery from signal
+  monitoring. Candidate discovery can use the existing backend run API; signal
+  monitoring is shown as a recorded/no-network report until a production signal
+  API is implemented.
 
 ## How To Run
 
@@ -96,6 +100,11 @@ candidate/source fixture and writes `demo/output/radar_signal_monitoring_report.
 The report should include at least one new signal, one duplicate old signal,
 one searched-negative signal, one budget-limited task, evidence refs, source
 strategy decisions, provider attempts, and signal budget counters.
+
+The frontend also includes a sanitized projection at
+`frontend/public/demo/radar_signal_monitoring_report.json`. It is only for the
+Radar UI preview: the `Check signals` production action remains disabled until
+the signal-monitoring backend API exists.
 
 The committed `.env.example` uses a smoke-safe live Radar budget:
 `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=1` and

@@ -6,6 +6,7 @@ import { AccountMapScreen } from './screens/AccountMapScreen';
 import { ICPRadarScreen } from './screens/ICPRadarScreen';
 import { PlannedScreen } from './screens/PlannedScreen';
 import { useRadarBackend } from './features/icp-radar/application/useRadarBackend';
+import { signalMonitoringReportFromJson } from './features/icp-radar/signalMonitoringReport';
 import { PlaybookScreen } from './screens/PlaybookScreen';
 import type {
   AccountRadarArtifact,
@@ -14,11 +15,13 @@ import type {
   ICPRadarArtifact,
   ICPRadarCatalogArtifact,
   LiveICPRadarRunArtifact,
+  SignalMonitoringReportArtifact,
 } from './types';
 
 const icpRadarCatalogUrl = '/demo/icp_radars.json';
 const icpRadarArtifactUrl = '/demo/icp_radar.json';
 const liveMiniRadarArtifactUrl = '/demo/live_mini_icp_radar_run.json';
+const signalMonitoringReportUrl = '/demo/radar_signal_monitoring_report.json';
 const radarArtifactUrl = '/demo/account_radar.json';
 
 export function App() {
@@ -28,6 +31,7 @@ export function App() {
   const [icpRadarArtifact, setIcpRadarArtifact] = useState<ICPRadarArtifact | null>(null);
   const [icpRadarError, setIcpRadarError] = useState<string | null>(null);
   const [liveMiniRadarArtifact, setLiveMiniRadarArtifact] = useState<LiveICPRadarRunArtifact | null>(null);
+  const [signalMonitoringReport, setSignalMonitoringReport] = useState<SignalMonitoringReportArtifact | null>(null);
   const [radarArtifact, setRadarArtifact] = useState<AccountRadarArtifact | null>(null);
   const [radarError, setRadarError] = useState<string | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -72,6 +76,18 @@ export function App() {
       })
       .then(setLiveMiniRadarArtifact)
       .catch(() => setLiveMiniRadarArtifact(null));
+  }, []);
+
+  useEffect(() => {
+    fetch(signalMonitoringReportUrl)
+      .then((response) => {
+        if (!response.ok) {
+          return null;
+        }
+        return response.json();
+      })
+      .then((payload) => setSignalMonitoringReport(signalMonitoringReportFromJson(payload)))
+      .catch(() => setSignalMonitoringReport(null));
   }, []);
 
   useEffect(() => {
@@ -125,6 +141,7 @@ export function App() {
           catalog={activeIcpRadarCatalog}
           error={activeIcpRadarError}
           liveRunArtifact={activeLiveMiniRadarArtifact}
+          signalMonitoringReport={signalMonitoringReport}
         />
       ) : activeScreen === 'accounts' ? (
         <AccountsScreen

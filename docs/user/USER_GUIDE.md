@@ -83,6 +83,13 @@ The language switcher localizes UI chrome plus visible deterministic demo data s
 
 ### ICP Radar catalog and shortlist
 
+Live Radar now shows two separate pipeline controls. `Candidate discovery`
+answers "who should we monitor" and uses the existing backend run API to create
+a candidate-discovery run. `Signal monitoring` answers "what changed recently"
+for already known candidates. In the current UI it is a recorded/no-network
+preview only: the report can be inspected, but the production `Check signals`
+action is disabled until the signal-monitoring backend API is implemented.
+
 The `ICP Radar` screen now starts with a list-first catalog of configured radars. Each row represents a configured ICP Radar with aligned columns for status, owner, cadence, last run, run mode, candidate count, needs-review count, and accepted count. Use `Create radar` to add a browser-local demo radar, or open `ТОиР / SIBUR` to inspect the active fixture-backed radar. Its `Found accounts` tab contains the current ranked table, and its `Settings` tab edits the radar definition by block: radar header, global search base, account qualification rules, monitoring, intent signals, scoring model, and validation.
 
 Settings are intentionally business-facing:

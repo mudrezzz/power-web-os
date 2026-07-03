@@ -241,6 +241,49 @@ def test_app_loads_account_radar_and_selected_access_plan_artifacts() -> None:
     assert "access_plan_path" in app
 
 
+def test_icp_radar_ui_separates_candidate_discovery_and_signal_monitoring() -> None:
+    app = Path("frontend/src/App.tsx").read_text(encoding="utf-8")
+    api = Path("frontend/src/api/radarApi.ts").read_text(encoding="utf-8")
+    backend_hook = Path("frontend/src/features/icp-radar/application/useRadarBackend.ts").read_text(encoding="utf-8")
+    controls = Path("frontend/src/features/icp-radar/livePipelineControls.tsx").read_text(encoding="utf-8")
+    report_mapper = Path("frontend/src/features/icp-radar/signalMonitoringReport.ts").read_text(encoding="utf-8")
+    report = Path("frontend/public/demo/radar_signal_monitoring_report.json").read_text(encoding="utf-8")
+    i18n = i18n_text()
+
+    assert "/demo/radar_signal_monitoring_report.json" in app
+    assert "signalMonitoringReportFromJson" in app
+    assert "queueCandidateDiscoveryRun" in api
+    assert "pipeline_id: 'candidate-discovery'" in api
+    assert "run_kind: 'candidate_discovery'" in api
+    assert "signalMonitoringRunSupport" in api
+    assert "queueCandidateDiscoveryRun" in backend_hook
+    assert "queueRadarRun(radarId" not in backend_hook
+
+    for expected in [
+        "icpRadar.live.pipeline.candidate.run",
+        "icpRadar.live.pipeline.signal.run",
+        "disabled",
+        "signalMonitoringReport",
+        "onToggleSignalReport",
+    ]:
+        assert expected in controls
+
+    for expected in [
+        "Кого мониторить",
+        "Что нового произошло",
+        "Run candidate discovery",
+        "Check signals",
+        "Production execution will arrive after the backend API slice",
+    ]:
+        assert expected in i18n
+
+    assert "blockedKeyPattern" in report_mapper
+    assert "raw_prompt" not in report
+    assert "headers" not in report
+    assert "secret" not in report.lower()
+    assert '"live_provider_calls": 0' in report
+
+
 def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
     app = Path("frontend/src/App.tsx").read_text(encoding="utf-8")
     shell = Path("frontend/src/layout/AppShell.tsx").read_text(encoding="utf-8")

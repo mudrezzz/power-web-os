@@ -26,7 +26,7 @@ styles/                 Feature CSS split by UI surface.
 ```mermaid
 flowchart TD
     Api["Backend Radar API<br/>catalog, queued runs, candidates, reviews"]
-    RawArtifacts["Raw demo artifacts<br/>icp_radars.json<br/>icp_radar.json<br/>live_mini_icp_radar_run.json"]
+    RawArtifacts["Raw demo artifacts<br/>icp_radars.json<br/>icp_radar.json<br/>live_mini_icp_radar_run.json<br/>radar_signal_monitoring_report.json"]
     Adapters["adapters/<br/>catalogAdapter<br/>fixtureRadarAdapter<br/>liveRadarAdapter"]
     ViewModels["Canonical view models<br/>RadarViewModel<br/>RadarCandidateViewModel"]
     AppHooks["application hooks<br/>useRadarBackend<br/>useRadarWorkspace<br/>navigation and overlays"]
@@ -44,9 +44,14 @@ flowchart TD
 ```
 
 Generated artifacts are read-only. The backend API is preferred for live Radar
-catalog, run, candidates, and review decisions when available. Browser-local
-overlays can change fixture/offline demo state, but they must never mutate
-generated JSON.
+catalog, candidate-discovery runs, candidates, and review decisions when
+available. Browser-local overlays can change fixture/offline demo state, but
+they must never mutate generated JSON.
+
+`frontend/public/demo/radar_signal_monitoring_report.json` is a recorded
+no-network signal-monitoring report used only to make the separate
+signal-monitoring contour visible in the UI. The production `Check signals`
+action stays disabled until a backend signal-monitoring API exists.
 
 ## How To Add A New Radar Type
 

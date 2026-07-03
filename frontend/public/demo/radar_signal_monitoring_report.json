@@ -1,0 +1,89 @@
+{
+  "artifact_type": "radar_signal_monitoring_report",
+  "artifact_version": "0.7.6.4.5",
+  "generated_at": "2026-07-03T08:34:51Z",
+  "fixture_kind": "recorded_fake",
+  "recorded_provider": true,
+  "live_provider_calls": 0,
+  "run_id": "signal-run-recorded-toir-0.7.6.4.5",
+  "radar_id": "benchmark-sibur-holding-contour",
+  "model_profile_id": "signal_monitoring_default",
+  "lookback_days": 7,
+  "summary": {
+    "candidate_count": 5,
+    "signal_rule_count": 3,
+    "task_count": 15,
+    "observation_count": 15,
+    "new_signal_count": 4,
+    "repeated_signal_count": 1,
+    "searched_negative_count": 1,
+    "not_searched_budget_limited_count": 9
+  },
+  "signals": [
+    {
+      "candidate_id": "nizhnekamskneftekhim",
+      "candidate_name": "ПАО Нижнекамскнефтехим",
+      "signal_code": "toir_tender",
+      "signal_label": "тендер ТОиР",
+      "search_status": "searched",
+      "observation_status": "observed",
+      "novelty": "new_signal",
+      "summary": "Найдена закупка услуг по ремонту и обслуживанию промышленного оборудования.",
+      "evidence_refs": ["sig-src-nknh-tender"],
+      "source_lane": "known_source",
+      "source_ids": ["sibur_known_sources"]
+    },
+    {
+      "candidate_id": "kazanorgsintez",
+      "candidate_name": "ПАО Казаньоргсинтез",
+      "signal_code": "toir_vacancy",
+      "signal_label": "вакансия ТОиР EAM CMMS",
+      "search_status": "searched",
+      "observation_status": "observed",
+      "novelty": "new_signal",
+      "summary": "Найдена вакансия, связанная с планированием ремонтов и EAM/CMMS контуром.",
+      "evidence_refs": ["sig-src-kos-vacancy"],
+      "source_lane": "official_company",
+      "source_ids": ["sibur_site"]
+    },
+    {
+      "candidate_id": "zapsibneftekhim",
+      "candidate_name": "ООО ЗапСибНефтехим",
+      "signal_code": "toir_digitalization",
+      "signal_label": "1С ТОИР EAM внедрение",
+      "search_status": "duplicate_existing_signal",
+      "observation_status": "observed",
+      "novelty": "duplicate_existing_signal",
+      "summary": "Повтор ранее известного материала о цифровизации ремонтного контура.",
+      "evidence_refs": ["sig-src-zapsib-article"],
+      "source_lane": "signal_specific",
+      "source_ids": ["toir_industry_news"]
+    },
+    {
+      "candidate_id": "gubkinsky-gpp",
+      "candidate_name": "Губкинский ГПЗ",
+      "signal_code": "toir_tender",
+      "signal_label": "тендер ТОиР",
+      "search_status": "searched",
+      "observation_status": "not_observed",
+      "novelty": "none",
+      "summary": "Поиск выполнен, новых сигналов за окно мониторинга не найдено.",
+      "evidence_refs": [],
+      "source_lane": "open_web",
+      "source_ids": ["openrouter_web"]
+    },
+    {
+      "candidate_id": "tobolsk-site",
+      "candidate_name": "Тобольская промышленная площадка СИБУР",
+      "signal_code": "toir_vacancy",
+      "signal_label": "вакансия ТОиР EAM CMMS",
+      "search_status": "not_searched_budget_limited",
+      "observation_status": "unclear",
+      "novelty": "unknown",
+      "summary": "Задача не выполнялась: исчерпан recorded budget мониторинга сигналов.",
+      "evidence_refs": [],
+      "source_lane": "open_web",
+      "source_ids": ["openrouter_web"]
+    }
+  ]
+}

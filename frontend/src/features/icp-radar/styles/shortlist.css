@@ -47,6 +47,183 @@
   overflow-y: hidden;
 }
 
+.radar-pipeline-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.radar-pipeline-card,
+.radar-signal-report {
+  display: grid;
+  align-content: start;
+  gap: var(--s-4);
+  min-width: 0;
+  padding: var(--s-4);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.radar-pipeline-card-active {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.radar-pipeline-card header,
+.radar-signal-report header,
+.radar-pipeline-actions,
+.radar-signal-report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.radar-pipeline-card header > div,
+.radar-signal-report header > div {
+  min-width: 0;
+}
+
+.radar-pipeline-card h2,
+.radar-signal-report h3 {
+  margin: 0;
+  font: var(--h4);
+}
+
+.radar-pipeline-card p,
+.radar-signal-report p {
+  margin: var(--s-1) 0 0;
+  color: var(--fg2);
+}
+
+.radar-pipeline-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+}
+
+.radar-pipeline-facts div {
+  min-width: 0;
+}
+
+.radar-pipeline-facts dt {
+  color: var(--fg3);
+  font: var(--mono-sm);
+}
+
+.radar-pipeline-facts dd {
+  min-width: 0;
+  margin: var(--s-1) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.radar-pipeline-facts .live-radar-run-status {
+  align-items: flex-start;
+}
+
+.radar-pipeline-actions {
+  align-items: center;
+}
+
+.radar-pipeline-disabled-copy {
+  max-width: calc(var(--s-20) * 3);
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.radar-pipeline-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.radar-pipeline-metric {
+  display: grid;
+  gap: var(--s-1);
+  min-width: 0;
+  padding: var(--s-2);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.radar-pipeline-metric svg {
+  width: var(--s-4);
+  height: var(--s-4);
+  color: var(--fg3);
+}
+
+.radar-pipeline-metric span {
+  min-width: 0;
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.radar-signal-report {
+  margin-top: var(--s-4);
+}
+
+.radar-signal-report header {
+  justify-content: space-between;
+}
+
+.radar-signal-report-table {
+  display: grid;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.radar-signal-report-head,
+.radar-signal-report-row {
+  display: grid;
+  grid-template-columns:
+    minmax(calc(var(--s-20) * 2), 1fr)
+    minmax(calc(var(--s-20) * 2), 1fr)
+    minmax(var(--s-20), 0.65fr)
+    minmax(var(--s-16), 0.5fr)
+    minmax(var(--s-12), 0.35fr);
+  gap: var(--s-3);
+  min-width: calc(var(--s-20) * 8);
+  align-items: center;
+}
+
+.radar-signal-report-head {
+  padding-bottom: var(--s-2);
+  border-bottom: 1px solid var(--border);
+  color: var(--fg3);
+  font: var(--mono-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.radar-signal-report-row {
+  padding: var(--s-3) 0;
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.radar-signal-report-row > span {
+  min-width: 0;
+}
+
+.radar-signal-report-row strong,
+.radar-signal-report-row small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.radar-signal-report-row small {
+  color: var(--fg3);
+  font: var(--meta);
+}
+
 .icp-radar-table {
   display: grid;
   min-width: calc(var(--s-20) * 13);

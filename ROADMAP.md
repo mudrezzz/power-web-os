@@ -7673,7 +7673,7 @@ Principles:
 
 ### Slice 0.7.6.4.6: UI controls for candidate discovery vs signal monitoring
 
-- Status: Backlog
+- Status: Done
 - Goal: Make the pipeline split visible to users in the Radar UI.
 - User value: A user understands whether they are launching candidate search or
   signal monitoring, and can see separate cadence/status for both.

@@ -220,7 +220,7 @@ export function useRadarBackend({
       error: null,
       outputPending: false,
     }));
-    api.queueRadarRun(radarId, {
+    api.queueCandidateDiscoveryRun(radarId, {
       live: true,
       idempotency_key: idempotencyKey,
       requester: 'frontend',

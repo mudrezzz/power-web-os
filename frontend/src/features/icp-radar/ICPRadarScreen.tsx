@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, Eyebrow } from '../../components/primitives';
-import type { ICPRadarArtifact, ICPRadarCatalogArtifact, LiveICPRadarRunArtifact } from '../../types';
+import type { ICPRadarArtifact, ICPRadarCatalogArtifact, LiveICPRadarRunArtifact, SignalMonitoringReportArtifact } from '../../types';
 import { useRadarWorkspace } from './application/useRadarWorkspace';
 import type { RadarBackendController } from './application/useRadarBackend';
 import {
@@ -22,12 +22,14 @@ export function ICPRadarScreen({
   catalog,
   error,
   liveRunArtifact,
+  signalMonitoringReport,
 }: {
   artifact: ICPRadarArtifact | null;
   backend: RadarBackendController;
   catalog: ICPRadarCatalogArtifact | null;
   error: string | null;
   liveRunArtifact: LiveICPRadarRunArtifact | null;
+  signalMonitoringReport: SignalMonitoringReportArtifact | null;
 }) {
   const { t } = useTranslation();
   const workspace = useRadarWorkspace({ artifact, backend, catalog, liveRunArtifact, t });
@@ -141,13 +143,19 @@ export function ICPRadarScreen({
           />
         </Suspense>
       ) : (
-        <RadarShortlist workspace={workspace} />
+        <RadarShortlist signalMonitoringReport={signalMonitoringReport} workspace={workspace} />
       )}
     </section>
   );
 }
 
-function RadarShortlist({ workspace }: { workspace: ReturnType<typeof useRadarWorkspace> }) {
+function RadarShortlist({
+  signalMonitoringReport,
+  workspace,
+}: {
+  signalMonitoringReport: SignalMonitoringReportArtifact | null;
+  workspace: ReturnType<typeof useRadarWorkspace>;
+}) {
   const { navigation } = workspace;
   if (workspace.selectedFixtureArtifact) {
     return (
@@ -184,7 +192,9 @@ function RadarShortlist({ workspace }: { workspace: ReturnType<typeof useRadarWo
         )}
         preflightOpen={navigation.runPreflightOpen}
         preflightState={workspace.preflightState}
+        radar={workspace.selectedRadar}
         runState={workspace.runState}
+        signalMonitoringReport={signalMonitoringReport}
       />
     );
   }

@@ -866,3 +866,45 @@ export type ICPRadarCatalogArtifact = {
     radar_count: number;
   };
 };
+
+export type RadarPipelineId = 'candidate-discovery' | 'signal-monitoring';
+
+export type SignalMonitoringReportSummary = {
+  candidate_count: number;
+  signal_rule_count: number;
+  task_count: number;
+  observation_count: number;
+  new_signal_count: number;
+  repeated_signal_count: number;
+  searched_negative_count: number;
+  not_searched_budget_limited_count: number;
+};
+
+export type SignalMonitoringReportSignal = {
+  candidate_id: string;
+  candidate_name: string;
+  signal_code: string;
+  signal_label: string;
+  search_status: string;
+  observation_status: string;
+  novelty: string;
+  summary: string;
+  evidence_refs: string[];
+  source_lane: string;
+  source_ids: string[];
+};
+
+export type SignalMonitoringReportArtifact = {
+  artifact_type: 'radar_signal_monitoring_report';
+  artifact_version: string;
+  generated_at: string;
+  fixture_kind: string;
+  recorded_provider: boolean;
+  live_provider_calls: number;
+  run_id: string;
+  radar_id: string;
+  model_profile_id: string;
+  lookback_days: number;
+  summary: SignalMonitoringReportSummary;
+  signals: SignalMonitoringReportSignal[];
+};

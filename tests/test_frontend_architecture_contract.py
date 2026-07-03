@@ -29,6 +29,7 @@ def test_icp_radar_feature_is_decomposed_by_responsibility() -> None:
         "fixturePreview.tsx",
         "fixtureShortlist.tsx",
         "liveDetail.tsx",
+        "livePipelineControls.tsx",
         "livePreflightPanel.tsx",
         "liveRunDiagnostics.tsx",
         "liveTrace.tsx",
@@ -68,6 +69,7 @@ def test_icp_radar_feature_is_decomposed_by_responsibility() -> None:
     assert line_count(feature_dir / "fixturePreview.tsx") <= 160
     assert line_count(feature_dir / "fixtureShortlist.tsx") <= 180
     assert line_count(feature_dir / "liveDetail.tsx") <= 600
+    assert line_count(feature_dir / "livePipelineControls.tsx") <= 320
     assert line_count(feature_dir / "livePreflightPanel.tsx") <= 320
     assert line_count(feature_dir / "liveRunDiagnostics.tsx") <= 400
     assert line_count(feature_dir / "liveShortlist.tsx") <= 290
@@ -130,7 +132,7 @@ def test_icp_radar_has_application_and_adapter_boundaries() -> None:
         "useRadarConfigOverrides.ts": ["radarConfigStorageKey", "window.localStorage"],
         "useSignalValidationOverlay.ts": ["signalValidationStorageKey", "window.localStorage"],
         "useQualificationReviewOverlay.ts": ["qualificationReviewStorageKey", "window.localStorage"],
-        "useRadarBackend.ts": ["RadarApiClient", "queueRadarRun", "getRunCandidates", "getRunDossier", "getRunTechnicalTrace", "getRadarPreflight", "updateRadarDefinition"],
+        "useRadarBackend.ts": ["RadarApiClient", "queueCandidateDiscoveryRun", "getRunCandidates", "getRunDossier", "getRunTechnicalTrace", "getRadarPreflight", "updateRadarDefinition"],
     }
 
     for file_name, expected_symbols in adapters.items():
@@ -218,6 +220,7 @@ def test_icp_radar_feature_modules_document_non_obvious_boundaries() -> None:
         "fixturePreview.tsx": "Preview stays intentionally bounded",
         "fixtureDetail.tsx": "Fixture detail hosts signal validation",
         "liveShortlist.tsx": "Live shortlist deliberately mirrors fixture shortlist",
+        "livePipelineControls.tsx": "Radar pipeline controls make candidate discovery",
         "liveDetail.tsx": "Detail tabs keep runtime/provider evidence separate",
         "livePreflightPanel.tsx": "Preflight stays run-scoped",
         "liveRunDiagnostics.tsx": "Run diagnostics is intentionally run-scoped",
