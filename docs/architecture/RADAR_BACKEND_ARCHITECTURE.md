@@ -82,6 +82,30 @@ src/power_web_os/application/radar/
   power_web_discovery/
 ```
 
+## Package Skeleton Status
+
+As of slice `0.7.6.4.8`, the target package skeleton exists at:
+
+```text
+src/power_web_os/application/radar/
+```
+
+The local package contract starts at
+`src/power_web_os/application/radar/README.md`. Each meaningful package has its
+own README with ownership, allowed imports, forbidden imports, and extension
+rules.
+
+Compatibility currently means:
+
+- old root-level `live_radar_*` import paths remain the runtime paths;
+- new packages do not re-export legacy symbols;
+- `src/power_web_os/application/radar/candidate_discovery/compatibility.py`
+  stores a declarative migration map from legacy modules to target packages;
+- future migration slices will move code behind package-owned contracts
+  deliberately, one phase at a time.
+
+This is a skeleton milestone, not a behavior migration.
+
 ### `radar/shared`
 
 Owns contracts and utilities that are genuinely common across Radar pipelines:
@@ -187,7 +211,8 @@ debt from growing while follow-up slices migrate code safely.
 The roadmap tracks this rescue as several small slices:
 
 1. `0.7.6.4.7` defines this package contract and guardrails.
-2. `0.7.6.4.8` creates the package skeleton and compatibility facades.
+2. `0.7.6.4.8` creates the package skeleton, local README files, and the
+   declarative compatibility map.
 3. `0.7.6.4.9` moves contracts, planning, and source capability modules.
 4. `0.7.6.4.10` splits staged execution into phase executors.
 5. `0.7.6.4.11` hardens validators and agent rules.

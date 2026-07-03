@@ -230,6 +230,33 @@ Use the project skills for the documentation loop:
 Future Radar pipeline slices are not complete until the AS IS Markdown/PDF and
 the documentation contract test are current.
 
+## How To Add Radar Backend Code After 0.7.6.4.8
+
+Radar backend code now has a package skeleton under:
+
+```text
+src/power_web_os/application/radar/
+```
+
+Before adding or moving Radar backend logic:
+
+1. Read `docs/architecture/RADAR_BACKEND_ARCHITECTURE.md`.
+2. Pick the target package: `shared`, `candidate_discovery/<phase>`,
+   `signal_monitoring`, or `power_web_discovery`.
+3. Read that package's local `README.md`.
+4. Use the component contract names from the architecture guide: `Input`,
+   `Result`, `Decision`, `Issue`, `Event`, and `Service`.
+5. Do not create a new root-level `src/power_web_os/application/live_radar_*.py`
+   module.
+6. Do not import or re-export legacy `live_radar_*` modules from new packages.
+   During migration, keep compatibility in the declarative map at
+   `src/power_web_os/application/radar/candidate_discovery/compatibility.py`.
+7. Add or update architecture tests when a package boundary changes.
+
+Old `live_radar_*` imports remain runtime-compatible until migration slices move
+behavior into package-owned services. The new package tree is the extension
+path; the old flat namespace is migration debt.
+
 Direct checkout demo without installing:
 
 ```bash

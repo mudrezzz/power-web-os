@@ -14,6 +14,7 @@ PERSISTENCE_README_PATH = Path("src/power_web_os/persistence/README.md")
 INTEGRATIONS_README_PATH = Path("src/power_web_os/integrations/README.md")
 WORKFLOWS_README_PATH = Path("src/power_web_os/workflows/README.md")
 JOBS_README_PATH = Path("src/power_web_os/jobs/README.md")
+RADAR_PACKAGE_ROOT = Path("src/power_web_os/application/radar")
 
 MAX_BACKEND_MODULE_LINES = 500
 MAX_APPLICATION_IMPORT_FANOUT = 10
@@ -74,6 +75,24 @@ RADAR_APPLICATION_FANOUT_ALLOWLIST = {
     Path("src/power_web_os/application/live_radar_search_expansion_execution.py"),
 }
 
+RADAR_TARGET_PACKAGES = [
+    RADAR_PACKAGE_ROOT,
+    RADAR_PACKAGE_ROOT / "shared",
+    RADAR_PACKAGE_ROOT / "candidate_discovery",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "planning",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "retrieval",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "extraction",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "sources",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "universe",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "checkpoints",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "diagnostics",
+    RADAR_PACKAGE_ROOT / "signal_monitoring",
+    RADAR_PACKAGE_ROOT / "power_web_discovery",
+]
+
+RADAR_PACKAGE_READMES = [path / "README.md" for path in RADAR_TARGET_PACKAGES]
+
 PURE_DOMAIN_MODULES = {
     Path("src/power_web_os/domain.py"),
     Path("src/power_web_os/planner.py"),
@@ -113,6 +132,13 @@ APPLICATION_FORBIDDEN_IMPORT_PREFIXES = {
     "uvicorn",
     "httpx",
     "dotenv",
+}
+
+RADAR_PACKAGE_FORBIDDEN_IMPORT_PREFIXES = APPLICATION_FORBIDDEN_IMPORT_PREFIXES | {
+    "celery",
+    "redis",
+    "openai",
+    "anthropic",
 }
 
 INTEGRATION_FORBIDDEN_IMPORT_PREFIXES = {
@@ -193,6 +219,18 @@ def application_imports(path: Path) -> set[str]:
             for alias in node.names:
                 if alias.name.startswith("power_web_os.application"):
                     imports.add(alias.name)
+    return imports
+
+
+def imported_modules(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    imports: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            imports.add(node.module)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                imports.add(alias.name)
     return imports
 
 
@@ -338,6 +376,80 @@ def test_radar_component_contract_is_documented() -> None:
 
     for expected in ["Input", "Result", "Decision", "Issue", "Event", "Service"]:
         assert expected in text
+
+
+def test_radar_target_packages_exist_with_package_markers() -> None:
+    missing = [
+        path.as_posix()
+        for path in RADAR_TARGET_PACKAGES
+        if not path.is_dir() or not (path / "__init__.py").exists()
+    ]
+
+    assert missing == []
+
+
+def test_radar_package_readmes_define_local_extension_rules() -> None:
+    missing_or_incomplete: dict[str, list[str]] = {}
+    for path in RADAR_PACKAGE_READMES:
+        if not path.exists():
+            missing_or_incomplete[path.as_posix()] = ["missing"]
+            continue
+        text = path.read_text(encoding="utf-8")
+        missing_sections = [
+            section
+            for section in ["Ownership", "Allowed imports", "Forbidden imports", "How to extend"]
+            if section not in text
+        ]
+        if missing_sections:
+            missing_or_incomplete[path.as_posix()] = missing_sections
+
+    assert missing_or_incomplete == {}
+
+
+def test_radar_package_modules_do_not_import_infrastructure_or_legacy_runtime() -> None:
+    violations: dict[str, list[str]] = {}
+    for path in sorted(RADAR_PACKAGE_ROOT.rglob("*.py")):
+        roots = imported_roots(path) & RADAR_PACKAGE_FORBIDDEN_IMPORT_PREFIXES
+        modules = imported_modules(path)
+        found = sorted(roots)
+        found.extend(sorted(module for module in modules if module.startswith("power_web_os.application.live_radar")))
+        if found:
+            violations[path.as_posix()] = found
+
+    assert violations == {}
+
+
+def test_radar_shared_package_does_not_import_pipeline_packages() -> None:
+    shared_root = RADAR_PACKAGE_ROOT / "shared"
+    forbidden = {
+        "power_web_os.application.radar.candidate_discovery",
+        "power_web_os.application.radar.signal_monitoring",
+        "power_web_os.application.radar.power_web_discovery",
+    }
+    violations: dict[str, list[str]] = {}
+    for path in sorted(shared_root.rglob("*.py")):
+        imports = imported_modules(path)
+        found = sorted(module for module in imports for prefix in forbidden if module.startswith(prefix))
+        if found:
+            violations[path.as_posix()] = found
+
+    assert violations == {}
+
+
+def test_radar_candidate_discovery_does_not_import_other_pipeline_packages() -> None:
+    candidate_root = RADAR_PACKAGE_ROOT / "candidate_discovery"
+    forbidden = {
+        "power_web_os.application.radar.signal_monitoring",
+        "power_web_os.application.radar.power_web_discovery",
+    }
+    violations: dict[str, list[str]] = {}
+    for path in sorted(candidate_root.rglob("*.py")):
+        imports = imported_modules(path)
+        found = sorted(module for module in imports for prefix in forbidden if module.startswith(prefix))
+        if found:
+            violations[path.as_posix()] = found
+
+    assert violations == {}
 
 
 def test_api_modules_do_not_own_persistence_queries_or_domain_scoring() -> None:

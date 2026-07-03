@@ -7777,7 +7777,7 @@ Principles:
 
 ### Slice 0.7.6.4.8: Candidate discovery package skeleton and compatibility facades
 
-- Status: Ready
+- Status: Done
 - Goal: Create the target Radar package structure without changing runtime behavior.
 - User value: Developers get real folders and local README files for candidate discovery phases instead of a flat `live_radar_*` namespace.
 - Problem statement: The package contract from `0.7.6.4.7` needs to become visible in code before modules can be moved safely.
@@ -7813,7 +7813,7 @@ Principles:
 
 ### Slice 0.7.6.4.9: Move candidate discovery contracts, planning, and source capability modules
 
-- Status: Backlog
+- Status: Ready
 - Goal: Move lower-risk candidate-discovery contracts and planning/source-capability modules into the new package structure first.
 - User value: The most frequently extended planning/source-policy code becomes discoverable and package-owned before deeper execution refactors.
 - Problem statement: The current flat namespace mixes contracts, planner input, source cards, connector capabilities, and execution helpers. Safe migration should start with modules that have clear boundaries and good tests.

@@ -1,0 +1,59 @@
+"""Declarative migration map from legacy Radar modules to target packages.
+
+This module intentionally does not import legacy `live_radar_*` modules. It is
+an inventory for documentation, architecture tests, and future migration slices,
+not a runtime facade or re-export layer.
+"""
+
+from __future__ import annotations
+
+
+LEGACY_MODULE_TARGETS: dict[str, str] = {
+    "power_web_os.application.live_radar_candidate_refs": "power_web_os.application.radar.candidate_discovery.universe",
+    "power_web_os.application.live_radar_checkpoint_actions": "power_web_os.application.radar.candidate_discovery.checkpoints",
+    "power_web_os.application.live_radar_checkpoint_execution": "power_web_os.application.radar.candidate_discovery.checkpoints",
+    "power_web_os.application.live_radar_checkpoints": "power_web_os.application.radar.candidate_discovery.checkpoints",
+    "power_web_os.application.live_radar_collection_utils": "power_web_os.application.radar.candidate_discovery.diagnostics",
+    "power_web_os.application.live_radar_contracts": "power_web_os.application.radar.shared",
+    "power_web_os.application.live_radar_cross_disambiguation": "power_web_os.application.radar.candidate_discovery.execution",
+    "power_web_os.application.live_radar_definition": "power_web_os.application.radar.shared",
+    "power_web_os.application.live_radar_definition_runtime": "power_web_os.application.radar.candidate_discovery.planning",
+    "power_web_os.application.live_radar_discovery_planning": "power_web_os.application.radar.candidate_discovery.planning",
+    "power_web_os.application.live_radar_entity_resolution": "power_web_os.application.radar.candidate_discovery.universe",
+    "power_web_os.application.live_radar_execution_budget": "power_web_os.application.radar.shared",
+    "power_web_os.application.live_radar_execution_plan": "power_web_os.application.radar.candidate_discovery.planning",
+    "power_web_os.application.live_radar_external_budget": "power_web_os.application.radar.shared",
+    "power_web_os.application.live_radar_external_budget_context": "power_web_os.application.radar.shared",
+    "power_web_os.application.live_radar_external_budget_reservations": "power_web_os.application.radar.shared",
+    "power_web_os.application.live_radar_external_budget_settings": "power_web_os.application.radar.shared",
+    "power_web_os.application.live_radar_extraction_contract": "power_web_os.application.radar.candidate_discovery.extraction",
+    "power_web_os.application.live_radar_extraction_diagnostics": "power_web_os.application.radar.candidate_discovery.extraction",
+    "power_web_os.application.live_radar_normalization": "power_web_os.application.radar.candidate_discovery.diagnostics",
+    "power_web_os.application.live_radar_pipeline_support": "power_web_os.application.radar.candidate_discovery.diagnostics",
+    "power_web_os.application.live_radar_plan_acceptance": "power_web_os.application.radar.candidate_discovery.planning",
+    "power_web_os.application.live_radar_planning_pipeline": "power_web_os.application.radar.candidate_discovery.planning",
+    "power_web_os.application.live_radar_product_sources": "power_web_os.application.radar.candidate_discovery.retrieval",
+    "power_web_os.application.live_radar_retrieval_plan": "power_web_os.application.radar.candidate_discovery.planning",
+    "power_web_os.application.live_radar_retrieved_candidates": "power_web_os.application.radar.candidate_discovery.universe",
+    "power_web_os.application.live_radar_search_expansion_execution": "power_web_os.application.radar.candidate_discovery.execution",
+    "power_web_os.application.live_radar_search_expansion_payloads": "power_web_os.application.radar.candidate_discovery.execution",
+    "power_web_os.application.live_radar_service": "power_web_os.application.radar.candidate_discovery.execution",
+    "power_web_os.application.live_radar_source_cards": "power_web_os.application.radar.candidate_discovery.sources",
+    "power_web_os.application.live_radar_source_risk": "power_web_os.application.radar.candidate_discovery.sources",
+    "power_web_os.application.live_radar_staged_execution": "power_web_os.application.radar.candidate_discovery.execution",
+    "power_web_os.application.live_radar_staged_helpers": "power_web_os.application.radar.candidate_discovery.execution",
+    "power_web_os.application.live_radar_staged_merge": "power_web_os.application.radar.candidate_discovery.execution",
+    "power_web_os.application.live_radar_staged_support": "power_web_os.application.radar.candidate_discovery.execution",
+    "power_web_os.application.live_radar_universe": "power_web_os.application.radar.candidate_discovery.universe",
+    "power_web_os.application.live_radar_useful_budget": "power_web_os.application.radar.candidate_discovery.execution",
+    "power_web_os.application.live_radar_web_retrieval": "power_web_os.application.radar.candidate_discovery.retrieval",
+}
+
+LEGACY_HOTSPOTS: tuple[str, ...] = (
+    "power_web_os.application.live_radar_staged_execution",
+    "power_web_os.application.live_radar_service",
+    "power_web_os.application.live_radar_search_expansion_execution",
+    "power_web_os.application.live_radar_checkpoint_actions",
+)
+
+__all__ = ["LEGACY_MODULE_TARGETS", "LEGACY_HOTSPOTS"]

@@ -39,8 +39,8 @@ provider SDK details.
   `docs/architecture/RADAR_BACKEND_ARCHITECTURE.md`. Current root-level
   `live_radar_*.py` modules are migration debt from candidate-discovery growth,
   not examples for new backend work. New Radar backend logic must target the
-  package contract under `src/power_web_os/application/radar/` as it is
-  introduced:
+  package contract under `src/power_web_os/application/radar/`; the skeleton
+  and local package README files now exist:
   - shared provider-neutral contracts and source capability primitives;
   - candidate-discovery planning, retrieval, extraction, source, universe,
     checkpoint, execution, and diagnostics packages;
