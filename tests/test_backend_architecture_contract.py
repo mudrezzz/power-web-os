@@ -93,6 +93,18 @@ RADAR_TARGET_PACKAGES = [
 
 RADAR_PACKAGE_READMES = [path / "README.md" for path in RADAR_TARGET_PACKAGES]
 
+MOVED_RADAR_LEGACY_MODULES = {
+    "power_web_os.application.live_radar_contracts",
+    "power_web_os.application.live_radar_definition_runtime",
+    "power_web_os.application.live_radar_discovery_planning",
+    "power_web_os.application.live_radar_execution_plan",
+    "power_web_os.application.live_radar_plan_acceptance",
+    "power_web_os.application.live_radar_planning_pipeline",
+    "power_web_os.application.live_radar_product_sources",
+    "power_web_os.application.live_radar_retrieval_plan",
+    "power_web_os.application.live_radar_source_cards",
+}
+
 PURE_DOMAIN_MODULES = {
     Path("src/power_web_os/domain.py"),
     Path("src/power_web_os/planner.py"),
@@ -406,13 +418,13 @@ def test_radar_package_readmes_define_local_extension_rules() -> None:
     assert missing_or_incomplete == {}
 
 
-def test_radar_package_modules_do_not_import_infrastructure_or_legacy_runtime() -> None:
+def test_radar_package_modules_do_not_import_infrastructure_or_moved_legacy_shims() -> None:
     violations: dict[str, list[str]] = {}
     for path in sorted(RADAR_PACKAGE_ROOT.rglob("*.py")):
         roots = imported_roots(path) & RADAR_PACKAGE_FORBIDDEN_IMPORT_PREFIXES
         modules = imported_modules(path)
         found = sorted(roots)
-        found.extend(sorted(module for module in modules if module.startswith("power_web_os.application.live_radar")))
+        found.extend(sorted(module for module in modules if module in MOVED_RADAR_LEGACY_MODULES))
         if found:
             violations[path.as_posix()] = found
 

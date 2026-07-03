@@ -32,8 +32,9 @@ until later migration slices move their code.
 - FastAPI, SQLAlchemy, Celery, Redis, HTTP clients, provider SDKs, and dotenv.
 - `power_web_os.persistence`, `power_web_os.api`, `power_web_os.jobs`, and
   provider adapters under `power_web_os.integrations`.
-- Legacy `power_web_os.application.live_radar_*` modules from new packages.
-  Compatibility is tracked declaratively, not by re-export.
+- Already-moved `power_web_os.application.live_radar_*` shims from new
+  packages. Temporary imports from deferred legacy modules must stay documented
+  in the compatibility map until their migration slices run.
 
 ## How to extend
 
@@ -43,3 +44,5 @@ until later migration slices move their code.
    `Issue`, `Event`, and `Service`.
 4. Add focused tests for the package boundary and behavior.
 5. Do not create a new root-level `live_radar_*.py` module.
+6. Prefer package-owned imports such as
+   `power_web_os.application.radar.candidate_discovery.contracts`.

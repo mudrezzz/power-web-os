@@ -14,7 +14,7 @@ LEGACY_MODULE_TARGETS: dict[str, str] = {
     "power_web_os.application.live_radar_checkpoint_execution": "power_web_os.application.radar.candidate_discovery.checkpoints",
     "power_web_os.application.live_radar_checkpoints": "power_web_os.application.radar.candidate_discovery.checkpoints",
     "power_web_os.application.live_radar_collection_utils": "power_web_os.application.radar.candidate_discovery.diagnostics",
-    "power_web_os.application.live_radar_contracts": "power_web_os.application.radar.shared",
+    "power_web_os.application.live_radar_contracts": "power_web_os.application.radar.candidate_discovery.contracts",
     "power_web_os.application.live_radar_cross_disambiguation": "power_web_os.application.radar.candidate_discovery.execution",
     "power_web_os.application.live_radar_definition": "power_web_os.application.radar.shared",
     "power_web_os.application.live_radar_definition_runtime": "power_web_os.application.radar.candidate_discovery.planning",
@@ -38,7 +38,7 @@ LEGACY_MODULE_TARGETS: dict[str, str] = {
     "power_web_os.application.live_radar_search_expansion_execution": "power_web_os.application.radar.candidate_discovery.execution",
     "power_web_os.application.live_radar_search_expansion_payloads": "power_web_os.application.radar.candidate_discovery.execution",
     "power_web_os.application.live_radar_service": "power_web_os.application.radar.candidate_discovery.execution",
-    "power_web_os.application.live_radar_source_cards": "power_web_os.application.radar.candidate_discovery.sources",
+    "power_web_os.application.live_radar_source_cards": "power_web_os.application.radar.shared.source_cards",
     "power_web_os.application.live_radar_source_risk": "power_web_os.application.radar.candidate_discovery.sources",
     "power_web_os.application.live_radar_staged_execution": "power_web_os.application.radar.candidate_discovery.execution",
     "power_web_os.application.live_radar_staged_helpers": "power_web_os.application.radar.candidate_discovery.execution",
@@ -49,6 +49,29 @@ LEGACY_MODULE_TARGETS: dict[str, str] = {
     "power_web_os.application.live_radar_web_retrieval": "power_web_os.application.radar.candidate_discovery.retrieval",
 }
 
+LEGACY_MODULE_MIGRATION_STATUS: dict[str, str] = {
+    module_name: "deferred"
+    for module_name in LEGACY_MODULE_TARGETS
+}
+for module_name in [
+    "power_web_os.application.live_radar_contracts",
+    "power_web_os.application.live_radar_definition_runtime",
+    "power_web_os.application.live_radar_discovery_planning",
+    "power_web_os.application.live_radar_execution_plan",
+    "power_web_os.application.live_radar_plan_acceptance",
+    "power_web_os.application.live_radar_planning_pipeline",
+    "power_web_os.application.live_radar_product_sources",
+    "power_web_os.application.live_radar_retrieval_plan",
+    "power_web_os.application.live_radar_source_cards",
+]:
+    LEGACY_MODULE_MIGRATION_STATUS[module_name] = "moved"
+
+LEGACY_SHIM_MODULES: tuple[str, ...] = tuple(
+    module_name
+    for module_name, status in LEGACY_MODULE_MIGRATION_STATUS.items()
+    if status == "moved"
+)
+
 LEGACY_HOTSPOTS: tuple[str, ...] = (
     "power_web_os.application.live_radar_staged_execution",
     "power_web_os.application.live_radar_service",
@@ -56,4 +79,9 @@ LEGACY_HOTSPOTS: tuple[str, ...] = (
     "power_web_os.application.live_radar_checkpoint_actions",
 )
 
-__all__ = ["LEGACY_MODULE_TARGETS", "LEGACY_HOTSPOTS"]
+__all__ = [
+    "LEGACY_MODULE_TARGETS",
+    "LEGACY_MODULE_MIGRATION_STATUS",
+    "LEGACY_SHIM_MODULES",
+    "LEGACY_HOTSPOTS",
+]

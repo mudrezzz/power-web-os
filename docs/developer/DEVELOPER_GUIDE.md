@@ -257,6 +257,22 @@ Old `live_radar_*` imports remain runtime-compatible until migration slices move
 behavior into package-owned services. The new package tree is the extension
 path; the old flat namespace is migration debt.
 
+Preferred Radar backend imports after `0.7.6.4.9`:
+
+```text
+power_web_os.application.radar.shared.source_cards
+power_web_os.application.radar.candidate_discovery.contracts
+power_web_os.application.radar.candidate_discovery.planning.definition_runtime
+power_web_os.application.radar.candidate_discovery.planning.discovery_planning
+power_web_os.application.radar.candidate_discovery.planning.plan_acceptance
+power_web_os.application.radar.candidate_discovery.planning.planning_pipeline
+power_web_os.application.radar.candidate_discovery.planning.execution_plan
+power_web_os.application.radar.candidate_discovery.planning.retrieval_plan
+power_web_os.application.radar.candidate_discovery.retrieval.product_sources
+```
+
+The matching root-level `live_radar_*` files are compatibility shims only.
+
 Direct checkout demo without installing:
 
 ```bash

@@ -21,10 +21,16 @@ the "who should we monitor" pipeline.
 - `power_web_os.application.radar.signal_monitoring`.
 - `power_web_os.application.radar.power_web_discovery`.
 - FastAPI, SQLAlchemy, Celery, Redis, HTTP clients, provider SDKs, and dotenv.
-- Legacy `power_web_os.application.live_radar_*` modules from new package code.
+- Already-moved legacy shims from new package code. Deferred legacy imports are
+  temporary migration debt and must be visible in `compatibility.py`.
 
 ## How to extend
 
 Choose the smallest phase package that owns the behavior. If a change crosses
 multiple phases, introduce a narrow `Service` or `Decision` contract instead of
 adding broad helper functions or a new root-level module.
+
+Current package-owned source-of-truth modules:
+
+- `contracts.py`: candidate-discovery DTOs, provider-neutral records, and
+  ports.

@@ -19,3 +19,12 @@ execution-plan projection.
 
 Add planning contracts before adding new planner behavior. Execution belongs in
 `candidate_discovery/execution`, not here.
+
+Current source-of-truth modules:
+
+- `definition_runtime.py`;
+- `discovery_planning.py`;
+- `plan_acceptance.py`;
+- `planning_pipeline.py`;
+- `execution_plan.py`;
+- `retrieval_plan.py`.

@@ -106,6 +106,27 @@ Compatibility currently means:
 
 This is a skeleton milestone, not a behavior migration.
 
+As of slice `0.7.6.4.9`, the first candidate-discovery layer has moved. These
+modules now have package-owned source of truth and root-level compatibility
+shims:
+
+| Legacy module | Source of truth |
+|---|---|
+| `live_radar_source_cards.py` | `radar/shared/source_cards.py` |
+| `live_radar_contracts.py` | `radar/candidate_discovery/contracts.py` |
+| `live_radar_definition_runtime.py` | `radar/candidate_discovery/planning/definition_runtime.py` |
+| `live_radar_discovery_planning.py` | `radar/candidate_discovery/planning/discovery_planning.py` |
+| `live_radar_plan_acceptance.py` | `radar/candidate_discovery/planning/plan_acceptance.py` |
+| `live_radar_planning_pipeline.py` | `radar/candidate_discovery/planning/planning_pipeline.py` |
+| `live_radar_execution_plan.py` | `radar/candidate_discovery/planning/execution_plan.py` |
+| `live_radar_retrieval_plan.py` | `radar/candidate_discovery/planning/retrieval_plan.py` |
+| `live_radar_product_sources.py` | `radar/candidate_discovery/retrieval/product_sources.py` |
+
+Deferred modules, including `live_radar_definition.py`,
+`live_radar_pipeline_support.py`, staged execution, checkpoints, extraction,
+universe, and diagnostics helpers, remain legacy migration debt until their
+own slices move them.
+
 ### `radar/shared`
 
 Owns contracts and utilities that are genuinely common across Radar pipelines:
@@ -213,7 +234,8 @@ The roadmap tracks this rescue as several small slices:
 1. `0.7.6.4.7` defines this package contract and guardrails.
 2. `0.7.6.4.8` creates the package skeleton, local README files, and the
    declarative compatibility map.
-3. `0.7.6.4.9` moves contracts, planning, and source capability modules.
+3. `0.7.6.4.9` moves contracts, planning, source-card, retrieval-plan, and
+   product-source modules behind compatibility shims.
 4. `0.7.6.4.10` splits staged execution into phase executors.
 5. `0.7.6.4.11` hardens validators and agent rules.
 6. `0.7.6.4.12` removes the legacy allowlist and compatibility debt.

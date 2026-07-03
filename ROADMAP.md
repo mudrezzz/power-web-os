@@ -7813,7 +7813,7 @@ Principles:
 
 ### Slice 0.7.6.4.9: Move candidate discovery contracts, planning, and source capability modules
 
-- Status: Ready
+- Status: Done
 - Goal: Move lower-risk candidate-discovery contracts and planning/source-capability modules into the new package structure first.
 - User value: The most frequently extended planning/source-policy code becomes discoverable and package-owned before deeper execution refactors.
 - Problem statement: The current flat namespace mixes contracts, planner input, source cards, connector capabilities, and execution helpers. Safe migration should start with modules that have clear boundaries and good tests.
@@ -7847,7 +7847,7 @@ Principles:
 
 ### Slice 0.7.6.4.10: Split candidate discovery staged execution into phase executors
 
-- Status: Backlog
+- Status: Ready
 - Goal: Break `live_radar_staged_execution.py` into explicit candidate-discovery phase executors with a thin orchestrator.
 - User value: The central live Radar execution path becomes understandable, testable by phase, and safer to modify.
 - Problem statement: `live_radar_staged_execution.py` is the current worst hotspot: it is oversized, imports many application modules, and owns too many execution phases at once.

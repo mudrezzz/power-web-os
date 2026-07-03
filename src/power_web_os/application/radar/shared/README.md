@@ -19,10 +19,15 @@ product-safe issue/event shapes.
 
 - Candidate discovery, signal monitoring, or Power Web discovery packages.
 - FastAPI, SQLAlchemy, Celery, Redis, HTTP clients, provider SDKs, and dotenv.
-- Legacy `power_web_os.application.live_radar_*` modules.
+- Already-moved legacy shims such as `live_radar_source_cards`.
 
 ## How to extend
 
 Add shared code only after checking that at least two pipeline packages need the
 same concept. If only candidate discovery needs it, keep it under
 `candidate_discovery`.
+
+Current source-of-truth modules:
+
+- `source_cards.py`: planner-facing source cards and source capability
+  validation.

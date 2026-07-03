@@ -18,3 +18,7 @@ Owns provider-neutral retrieval task cards and retrieved source material.
 
 Keep retrieval records provider-neutral. Actual HTTP/provider execution belongs
 in integration adapters and phase executors.
+
+Current source-of-truth modules:
+
+- `product_sources.py`: strict product-source projection for candidate rows.
