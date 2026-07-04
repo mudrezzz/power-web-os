@@ -188,7 +188,7 @@ def recorded_provider_payload() -> dict[str, object]:
 def test_live_radar_facade_points_to_extracted_backend_layers() -> None:
     assert live_facade.OpenRouterWebSearchProvider is live_radar_openrouter.OpenRouterWebSearchProvider
     assert live_facade.LiveICPRadarRunWorkflow is live_icp_radar_workflow.LiveICPRadarRunWorkflow
-    assert LiveRadarRunService.__module__ == "power_web_os.application.live_radar_service"
+    assert LiveRadarRunService.__module__ == "power_web_os.application.radar.candidate_discovery.service"
 
 
 def test_live_mini_radar_dry_run_plan_does_not_create_candidates(tmp_path: Path) -> None:

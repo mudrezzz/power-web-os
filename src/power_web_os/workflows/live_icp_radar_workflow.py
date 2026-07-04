@@ -11,7 +11,7 @@ from typing import Any
 
 from power_web_os.application.live_radar_contracts import LiveICPRadarRunState, RadarDiscoveryPlanner, WebSearchProvider
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition
-from power_web_os.application.live_radar_service import LiveRadarRunService
+from power_web_os.application.radar.candidate_discovery.service import LiveRadarRunService
 from power_web_os.application.radar_runtime_settings import effective_runtime_env
 from power_web_os.application.radar_source_providers import RadarSourceRegistry
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTracer, technical_trace_context

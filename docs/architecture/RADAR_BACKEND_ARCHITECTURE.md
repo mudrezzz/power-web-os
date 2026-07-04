@@ -44,8 +44,8 @@ backend work.
 
 | Module | Current issue | Target treatment |
 |---|---|---|
-| `live_radar_staged_execution.py` | Large phase executor with many helpers and high application import fan-out | Split into candidate-discovery phase executors with a thin orchestrator |
-| `live_radar_service.py` | Large service facade that shapes a full live run artifact | Keep as facade during migration, then reduce to orchestration/use-case boundary |
+| `live_radar_staged_execution.py` | Former large phase executor with many helpers and high application import fan-out | Moved to candidate-discovery phase executors; root file is now a thin compatibility shim |
+| `live_radar_service.py` | Former large service facade that shaped a full live run artifact | Moved to `radar/candidate_discovery/service.py`; root file is now a thin compatibility shim |
 | `live_radar_search_expansion_execution.py` | Expansion execution imports many phase helpers | Move under candidate-discovery expansion/execution package |
 | `live_radar_checkpoint_actions.py` | Checkpoint action and recovery logic mixes phase execution concerns | Move under candidate-discovery checkpoint package |
 
@@ -102,8 +102,11 @@ rules.
 
 Compatibility currently means:
 
-- old root-level `live_radar_*` import paths remain the runtime paths;
-- new packages do not re-export legacy symbols;
+- old root-level import paths remain available only as compatibility shims for
+  moved modules;
+- production code should import moved behavior from package-owned paths;
+- new packages do not re-export legacy symbols through broad compatibility
+  layers;
 - `src/power_web_os/application/radar/candidate_discovery/compatibility.py`
   stores a declarative migration map from legacy modules to target packages;
 - future migration slices will move code behind package-owned contracts
@@ -196,10 +199,29 @@ authoritative class-by-class contract is maintained in
   `Does not own`, and an `Architecture` link to the execution handbook. The
   handbook must mention every public class.
 
+As of slice `0.7.6.4.12`, the live Radar run service facade has also moved:
+
+| Legacy module | Source of truth |
+|---|---|
+| `live_radar_service.py` | `radar/candidate_discovery/service.py` |
+
+`LiveRadarRunService` now owns only the provider-neutral use-case order:
+planning, staged execution, and delegation to artifact projection. Product-safe
+artifact shaping lives in
+`radar/candidate_discovery/diagnostics/live_run_artifact.py`. Service-adjacent
+runtime policies are named package-owned components:
+`LiveRadarTaskContextReader` owns typed task-context access for staged execution
+options, `ExternalBudgetMetadataMerger` owns planner/execution budget metadata
+merging, and `LiveRadarEventStateProjector` owns event-list projection. The old
+root-level `live_radar_service.py` file is a compatibility shim for existing
+imports and must not regain behavior.
+
 Deferred modules, including `live_radar_definition.py`,
 `live_radar_pipeline_support.py`, checkpoints, extraction, universe, and
 diagnostics helpers, remain legacy migration debt until their own slices move
-them.
+them. `live_radar_search_expansion_execution.py` and
+`live_radar_checkpoint_actions.py` are the remaining documented Radar
+application hotspots; they are not examples for new backend work.
 
 ### `radar/shared`
 
@@ -292,7 +314,9 @@ Architecture tests enforce this rescue plan:
 
 - no new root-level `src/power_web_os/application/live_radar_*.py` files outside
   the explicit migration allowlist;
-- large/high-fan-out legacy modules must be documented as migration debt;
+- large/high-fan-out legacy modules must be documented as migration debt, and
+  moved modules such as `live_radar_service.py` and
+  `live_radar_staged_execution.py` must stay thin compatibility shims;
 - target Radar packages and the component contract must be named in this
   document;
 - new backend Radar work should start from the package contract before adding
@@ -316,13 +340,32 @@ The roadmap tracks this rescue as several small slices:
    service API across the whole execution package.
 7. `0.7.6.4.11.2` adds the execution architecture handbook, class docstring
    contract, and protocol-level service interface guardrails.
-8. `0.7.6.4.12` removes the legacy allowlist and compatibility debt.
+8. `0.7.6.4.12` removes the migrated staged-execution/service facade from the
+   legacy allowlist and compatibility debt.
 
-## Out Of Scope For This Slice
+The rescue is complete, but the post-rescue refactor plan continues as small
+bounded slices:
 
-- Moving runtime code into the new package structure.
-- Changing provider behavior, scoring, dossier projection, API endpoints, worker
-  execution, database schema, Docker, or UI.
-- Running live Radar smoke tests.
+9. `0.7.6.4.13` replaces the broad `run_staged_radar_execution` kwargs
+   boundary with a named candidate-discovery execution-options contract.
+10. `0.7.6.4.14` moves `LiveRadarRunService` collaborator assembly into a
+    package-owned composition/factory component so the facade stays a use-case
+    boundary.
+11. Product corrective work resumes after that, starting with the already
+    planned `0.7.6.3.6.6` post-extraction fallback materialization and
+    `0.7.6.3.7` model-role evaluation slices, unless a blocking architecture
+    regression appears.
+12. `0.7.6.4.15` moves checkpoint decision/action ownership into
+    `radar/candidate_discovery/checkpoints`.
+13. `0.7.6.4.16` moves search-expansion execution/payload ownership into the
+    candidate-discovery package.
+14. `0.7.6.4.17` assesses shared budget contracts and extracts only genuinely
+    shared budget records/services to `radar/shared/budgets`.
 
-This slice is deliberately governance-only.
+## Remaining Migration Debt
+
+The architecture rescue for staged execution and the service facade is complete,
+but not every root-level `live_radar_*` module has moved. Deferred legacy
+modules must be migrated through their own slices when their behavior changes or
+when their target package becomes mature enough. Until then, they remain
+explicit migration debt and must not be copied as patterns for new code.

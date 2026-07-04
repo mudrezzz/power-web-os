@@ -34,3 +34,11 @@ Current package-owned source-of-truth modules:
 
 - `contracts.py`: candidate-discovery DTOs, provider-neutral records, and
   ports.
+- `service.py`: `LiveRadarRunService`, the provider-neutral live run use-case
+  facade used by workflow wrappers and legacy compatibility imports.
+- `service_context.py`: `LiveRadarTaskContextReader`, typed task-context
+  access for staged execution options.
+- `service_budget.py`: `ExternalBudgetMetadataMerger`, budget metadata merge
+  policy for planner-node and staged-execution snapshots.
+- `service_events.py`: `LiveRadarEventStateProjector`, product-safe event state
+  projection for the live run facade.

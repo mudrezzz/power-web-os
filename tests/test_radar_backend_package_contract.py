@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import importlib
 from pathlib import Path
 
@@ -44,6 +45,11 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.execution.state",
     "power_web_os.application.radar.candidate_discovery.execution.task_runner",
     "power_web_os.application.radar.candidate_discovery.execution.task_runner_payloads",
+    "power_web_os.application.radar.candidate_discovery.service",
+    "power_web_os.application.radar.candidate_discovery.service_budget",
+    "power_web_os.application.radar.candidate_discovery.service_context",
+    "power_web_os.application.radar.candidate_discovery.service_events",
+    "power_web_os.application.radar.candidate_discovery.diagnostics.live_run_artifact",
 ]
 
 LEGACY_KEY_MODULES = [
@@ -70,6 +76,7 @@ MOVED_LEGACY_SHIMS = [
     "live_radar_planning_pipeline.py",
     "live_radar_product_sources.py",
     "live_radar_retrieval_plan.py",
+    "live_radar_service.py",
     "live_radar_staged_execution.py",
     "live_radar_staged_helpers.py",
     "live_radar_staged_merge.py",
@@ -96,7 +103,7 @@ def test_candidate_discovery_compatibility_map_is_declarative() -> None:
         "power_web_os.application.radar.candidate_discovery.execution"
     )
     assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_service"] == (
-        "power_web_os.application.radar.candidate_discovery.execution"
+        "power_web_os.application.radar.candidate_discovery.service"
     )
     assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_contracts"] == (
         "power_web_os.application.radar.candidate_discovery.contracts"
@@ -105,7 +112,9 @@ def test_candidate_discovery_compatibility_map_is_declarative() -> None:
         "power_web_os.application.radar.shared.source_cards"
     )
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_contracts"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_service"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_staged_execution"] == "moved"
+    assert "power_web_os.application.live_radar_service" not in module.LEGACY_HOTSPOTS
     assert "power_web_os.application.live_radar_staged_execution" not in module.LEGACY_HOTSPOTS
 
     source = Path(module.__file__).read_text(encoding="utf-8")
@@ -120,6 +129,43 @@ def test_moved_legacy_modules_are_thin_shims() -> None:
         assert "Source of truth:" in source
         assert "import *" in source
         assert len(source.splitlines()) <= 8
+
+
+def test_live_radar_service_old_and_new_import_paths_are_compatible() -> None:
+    legacy = importlib.import_module("power_web_os.application.live_radar_service")
+    package_owned = importlib.import_module("power_web_os.application.radar.candidate_discovery.service")
+
+    assert legacy.LiveRadarRunService is package_owned.LiveRadarRunService
+
+
+def test_live_radar_run_service_does_not_expose_module_level_helpers() -> None:
+    path = Path("src/power_web_os/application/radar/candidate_discovery/service.py")
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    functions = [
+        node.name
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+
+    assert functions == []
+
+
+def test_live_radar_run_service_support_components_are_importable() -> None:
+    required = {
+        "power_web_os.application.radar.candidate_discovery.service_budget": [
+            "ExternalBudgetMetadataMerger",
+        ],
+        "power_web_os.application.radar.candidate_discovery.service_context": [
+            "LiveRadarTaskContextReader",
+        ],
+        "power_web_os.application.radar.candidate_discovery.service_events": [
+            "LiveRadarEventStateProjector",
+        ],
+    }
+    for module_name, names in required.items():
+        module = importlib.import_module(module_name)
+        for name in names:
+            assert hasattr(module, name)
 
 
 def test_candidate_discovery_execution_service_classes_are_importable() -> None:

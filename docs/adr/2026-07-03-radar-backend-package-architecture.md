@@ -95,6 +95,23 @@ must live beside candidate discovery, not inside it.
 - Some old imports will need compatibility wrappers during migration. Those
   wrappers are temporary and must not own new behavior.
 
+## Implementation status
+
+As of slice `0.7.6.4.12`, the highest-risk staged execution path and the live
+run service facade have package-owned sources of truth:
+
+- `live_radar_staged_execution.py` is a thin compatibility shim over
+  `radar/candidate_discovery/execution/orchestrator.py`;
+- `live_radar_service.py` is a thin compatibility shim over
+  `radar/candidate_discovery/service.py`;
+- live run artifact shaping is split into
+  `radar/candidate_discovery/diagnostics/live_run_artifact.py`;
+- architecture tests no longer allow `live_radar_service.py` as a large or
+  high-fan-out legacy exception.
+
+Deferred root-level `live_radar_*` modules remain migration debt and should
+move only through explicit follow-up slices.
+
 ## Alternatives considered
 
 - **Keep root-level `live_radar_*` files and add more docstrings.** Rejected

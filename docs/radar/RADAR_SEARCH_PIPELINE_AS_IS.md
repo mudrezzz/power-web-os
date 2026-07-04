@@ -117,6 +117,7 @@ candidate state.
 | API route | `src/power_web_os/api` | Create runs, expose status, candidates, dossier, runtime/preflight DTOs. | Provider calls, scoring, SQL queries in routes. |
 | Worker entrypoint | `src/power_web_os/jobs` | Load run id, call application executor, persist status. | Provider normalization or domain decisions. |
 | Workflow wrapper | `src/power_web_os/workflows` | Wrap application execution in workflow state when needed. | SQLAlchemy queries, provider logic, scoring semantics. |
+| Live run service | `src/power_web_os/application/radar/candidate_discovery/service.py` | Order planning, staged execution, and product-safe artifact projection for one candidate-discovery run. | Provider adapter internals, checkpoint policy, or dossier/API mapping. |
 | Active definition adapter | `src/power_web_os/application/live_radar_definition_runtime.py` | Convert persisted definition payload into runtime Radar payload. | HTTP/provider details. |
 | Connector profile registry | `src/power_web_os/application/connector_profiles.py` and `connector_capability_defaults.py` | Load connector profiles and compile capability cards. | User source obligations or provider calls. |
 | Planner input builder | `src/power_web_os/application/live_radar_discovery_planning.py` | Build source-card-aware planning input and deterministic fallback plans. | Final truth or provider execution. |
@@ -135,6 +136,7 @@ candidate state.
 | Checkpoint action executor | `src/power_web_os/application/live_radar_checkpoint_actions.py` | Apply approved checkpoint actions under budgets and policy. | Unbounded loops. |
 | Entity resolution | `src/power_web_os/application/live_radar_entity_resolution.py` | Distinguish legal entity, branch, production site, project, asset, and unknown entity. | Provider transport. |
 | Candidate universe support | `src/power_web_os/application/live_radar_universe.py` and retrieved-candidate helpers | Preserve source-backed legal entities and review-needed upstream entities. | Product precision claims. |
+| Live artifact projection | `src/power_web_os/application/radar/candidate_discovery/diagnostics/live_run_artifact.py` | Shape product-safe live run artifacts from completed application state. | Provider execution, checkpoint decisions, or scheduler admission. |
 | Dossier projection | `src/power_web_os/api/radar_dossier_mappers.py` and related mappers | Explain lifecycle, diagnostics, checkpoints, budgets, candidates, and sources. | Mutating run behavior. |
 | Evaluation | `src/power_web_os/radar_evaluation.py` | Compare persisted run/dossier output to curated baseline. | Live provider calls. |
 

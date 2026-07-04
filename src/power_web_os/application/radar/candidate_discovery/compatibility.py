@@ -37,7 +37,7 @@ LEGACY_MODULE_TARGETS: dict[str, str] = {
     "power_web_os.application.live_radar_retrieved_candidates": "power_web_os.application.radar.candidate_discovery.universe",
     "power_web_os.application.live_radar_search_expansion_execution": "power_web_os.application.radar.candidate_discovery.execution",
     "power_web_os.application.live_radar_search_expansion_payloads": "power_web_os.application.radar.candidate_discovery.execution",
-    "power_web_os.application.live_radar_service": "power_web_os.application.radar.candidate_discovery.execution",
+    "power_web_os.application.live_radar_service": "power_web_os.application.radar.candidate_discovery.service",
     "power_web_os.application.live_radar_source_cards": "power_web_os.application.radar.shared.source_cards",
     "power_web_os.application.live_radar_source_risk": "power_web_os.application.radar.candidate_discovery.sources",
     "power_web_os.application.live_radar_staged_execution": "power_web_os.application.radar.candidate_discovery.execution",
@@ -62,6 +62,7 @@ for module_name in [
     "power_web_os.application.live_radar_planning_pipeline",
     "power_web_os.application.live_radar_product_sources",
     "power_web_os.application.live_radar_retrieval_plan",
+    "power_web_os.application.live_radar_service",
     "power_web_os.application.live_radar_source_cards",
     "power_web_os.application.live_radar_staged_execution",
     "power_web_os.application.live_radar_staged_helpers",
@@ -77,7 +78,6 @@ LEGACY_SHIM_MODULES: tuple[str, ...] = tuple(
 )
 
 LEGACY_HOTSPOTS: tuple[str, ...] = (
-    "power_web_os.application.live_radar_service",
     "power_web_os.application.live_radar_search_expansion_execution",
     "power_web_os.application.live_radar_checkpoint_actions",
 )

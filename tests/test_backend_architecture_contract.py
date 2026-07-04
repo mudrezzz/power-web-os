@@ -24,7 +24,6 @@ LEGACY_LARGE_MODULE_ALLOWLIST = {
     Path("src/power_web_os/icp_radar.py"),
     Path("src/power_web_os/icp_radar_catalog.py"),
     Path("src/power_web_os/icp_radar_xlsx.py"),
-    Path("src/power_web_os/application/live_radar_service.py"),
     Path("src/power_web_os/integrations/live_radar_openrouter.py"),
 }
 
@@ -70,7 +69,6 @@ LEGACY_ROOT_LIVE_RADAR_MODULES = {
 }
 
 RADAR_APPLICATION_FANOUT_ALLOWLIST = {
-    Path("src/power_web_os/application/live_radar_service.py"),
     Path("src/power_web_os/application/live_radar_search_expansion_execution.py"),
 }
 
@@ -140,6 +138,7 @@ MOVED_RADAR_LEGACY_MODULES = {
     "power_web_os.application.live_radar_product_sources",
     "power_web_os.application.live_radar_retrieval_plan",
     "power_web_os.application.live_radar_source_cards",
+    "power_web_os.application.live_radar_service",
     "power_web_os.application.live_radar_staged_execution",
     "power_web_os.application.live_radar_staged_helpers",
     "power_web_os.application.live_radar_staged_merge",
@@ -418,7 +417,7 @@ def test_radar_backend_architecture_doc_exists_and_defines_target_packages() -> 
 def test_radar_root_legacy_hotspots_are_documented_as_migration_debt() -> None:
     text = RADAR_BACKEND_ARCHITECTURE_PATH.read_text(encoding="utf-8")
 
-    for expected in ["live_radar_staged_execution.py", "live_radar_service.py", "migration debt"]:
+    for expected in ["live_radar_search_expansion_execution.py", "live_radar_checkpoint_actions.py", "migration debt"]:
         assert expected in text
 
 

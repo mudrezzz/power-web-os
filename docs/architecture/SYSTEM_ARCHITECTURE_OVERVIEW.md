@@ -310,6 +310,9 @@ for where backend Radar code belongs. The current root-level
 patterns for new backend work. New candidate-discovery, signal-monitoring, and
 future Power Web discovery backend code should use the package contract under
 `src/power_web_os/application/radar/` as it is introduced by the rescue slices.
+The staged candidate-discovery executor and live run service facade have moved
+behind package-owned source-of-truth modules; their old root-level files are
+compatibility shims only.
 
 Candidate universe execution is now iterative. Accepted discovery plans may
 contain executable `coverage_check` stages. The application service runs initial

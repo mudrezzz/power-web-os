@@ -7958,7 +7958,7 @@ Principles:
 
 ### Slice 0.7.6.4.12: Remove legacy live_radar allowlist and compatibility debt
 
-- Status: Ready
+- Status: Done
 - Goal: Close the architecture rescue by removing temporary large-module exceptions and reducing old root-level `live_radar_*` files to thin compatibility shims or deleting them.
 - User value: The backend no longer depends on undocumented legacy exceptions, and the Radar codebase has a stable structure for future candidate discovery, signal monitoring, and Power Web discovery work.
 - Problem statement: A refactor is incomplete if the old oversized modules remain permanently allowlisted. The migration needs a cleanup slice that makes the new architecture the actual enforced default.
@@ -7992,6 +7992,184 @@ Principles:
   - Existing product behavior remains stable.
 - Risks:
   - Removing wrappers too early can break hidden imports. Mitigate with import compatibility tests and staged deprecation.
+
+### Slice 0.7.6.4.13: Candidate discovery staged execution options value object
+
+- Status: Ready
+- Goal: Replace the large kwargs interface around `run_staged_radar_execution` with a named candidate-discovery execution options value object.
+- User value: Developers can change Radar execution limits, reserves, and policy inputs through one typed contract instead of tracing dozens of optional keyword arguments.
+- Problem statement: The rescue slices moved staged execution behind service classes, but the boundary between `LiveRadarRunService` and the execution orchestrator still exposes a procedural kwargs surface. That surface can drift, hides option ownership, and makes future pipeline fixes harder to review.
+- Scope:
+  - Introduce `CandidateDiscoveryExecutionOptions` or an equivalent value object in the candidate-discovery execution package.
+  - Move staged execution option parsing from `LiveRadarTaskContextReader` into that value object or a factory returning it.
+  - Change `run_staged_radar_execution` / `CandidateDiscoveryOrchestrator` to accept the options object while preserving the old compatibility wrapper if needed.
+  - Keep `LiveRadarRunService` as a thin use-case facade that passes an options object, not a long kwargs list.
+  - Add architecture tests that prevent a new broad staged-execution kwargs surface from returning.
+- Out of scope:
+  - No provider quality tuning.
+  - No checkpoint, extraction, scoring, dossier, API, DB, or UI behavior changes.
+  - No migration of unrelated root-level `live_radar_*` modules.
+- Implementation notes:
+  - Treat this as post-rescue hardening before the next behavior-changing Radar pipeline slice.
+  - Keep old import paths compatible.
+  - Prefer a Pydantic or frozen dataclass-style value object only if it matches existing execution contracts; do not add a validation framework solely for style.
+  - Preserve AS IS pipeline order, checkpoint semantics, budget counters, and dossier contract.
+- Tests:
+  - `python -m pytest tests/test_backend_architecture_contract.py tests/test_radar_backend_package_contract.py tests/test_radar_live_run_service_components.py -q`
+  - `python -m pytest tests/test_live_icp_radar.py tests/test_radar_adaptive_execution.py tests/test_radar_search_expansion.py tests/test_radar_external_call_budget.py -q`
+  - `python -m pytest tests/test_backend_api.py tests/test_radar_preflight.py tests/test_persisted_live_radar.py tests/test_radar_jobs.py -q`
+  - `python -m power_web_os.roadmap check`
+  - `git diff --check`
+- Docs:
+  - Update `docs/architecture/RADAR_BACKEND_ARCHITECTURE.md`.
+  - Update `src/power_web_os/application/radar/candidate_discovery/execution/README.md` or the execution handbook if the public execution contract changes.
+  - Update `src/power_web_os/application/radar/candidate_discovery/README.md` if the service/component map changes.
+- Demo impact:
+  - None intended; existing Radar API/demo outputs should remain compatible.
+- Acceptance criteria:
+  - Staged execution options are represented by one named value object or equivalent service-owned contract.
+  - `LiveRadarRunService` no longer passes a broad list of execution kwargs.
+  - Existing compatibility imports and fake/recorded candidate-discovery behavior remain green.
+  - Architecture tests catch reintroduction of broad procedural staged-execution option plumbing.
+- Risks:
+  - A mechanical signature change can alter default handling. Mitigate with budget/adaptive/API regression tests and focused tests for context-to-options parsing.
+  - Over-designing the value object can slow future pipeline fixes. Keep it scoped to the current execution boundary.
+
+### Slice 0.7.6.4.14: Live Radar run service composition factory
+
+- Status: Backlog
+- Goal: Move `LiveRadarRunService` dependency assembly into a package-owned composition/factory component so the service stays a use-case facade.
+- User value: Developers can replace planner, provider wrapper, artifact projector, budget merger, event projector, and context/options factories intentionally without editing the facade constructor for every wiring change.
+- Problem statement: `LiveRadarRunService` now delegates behavior to named components, but it still constructs most collaborators directly. That keeps composition decisions inside the use-case facade and makes future tests or alternate runtime wiring more awkward.
+- Scope:
+  - Introduce a narrow `LiveRadarRunServiceFactory`, `LiveRadarRunComposition`, or equivalent package-owned composition component.
+  - Keep production workflow imports on the package-owned path.
+  - Allow explicit injection of projector/merger/event/options dependencies for tests and alternate runtime assembly.
+  - Preserve legacy import compatibility for `power_web_os.application.live_radar_service`.
+- Out of scope:
+  - No DI framework.
+  - No API/worker/scheduler topology change.
+  - No behavior change to planning, staged execution, signal search, scoring, or dossier projection.
+- Implementation notes:
+  - Do this after `0.7.6.4.13`, because the options object should be one of the factory-owned collaborators.
+  - Keep the factory small; it should wire objects, not own pipeline decisions.
+  - After this slice, resume the product corrective backlog, starting with `0.7.6.3.6.6`, before further migration waves unless architecture drift reappears.
+- Tests:
+  - Package import tests for factory/composition components.
+  - Existing live ICP, adaptive, budget, API, persisted/job, and architecture tests.
+  - A focused construction test proving default factory output and manually injected collaborators preserve service behavior.
+- Docs:
+  - Update Radar backend architecture doc and candidate-discovery README with composition ownership.
+  - Update Developer Guide if service construction guidance changes.
+- Demo impact:
+  - None intended.
+- Acceptance criteria:
+  - `LiveRadarRunService` remains a use-case facade and no longer acts as its own composition root.
+  - Default production workflow can construct the service through the package-owned composition path.
+  - Tests prove compatibility with the legacy import path and existing runtime behavior.
+- Risks:
+  - Introducing a factory can become ceremonial. Keep only dependencies that already exist and are useful to test or replace.
+
+### Slice 0.7.6.4.15: Candidate discovery checkpoint package migration
+
+- Status: Backlog
+- Goal: Move checkpoint decision/action ownership out of root-level legacy modules into `radar/candidate_discovery/checkpoints` behind service/decision contracts.
+- User value: Adaptive checkpoint behavior becomes easier to inspect and safer to change without editing root-level legacy files.
+- Problem statement: Architecture docs still identify checkpoint modules such as `live_radar_checkpoint_actions.py`, `live_radar_checkpoint_execution.py`, and `live_radar_checkpoints.py` as deferred migration debt. Checkpoint behavior is central to bounded fallback semantics and should not remain a legacy hotspot indefinitely.
+- Scope:
+  - Define checkpoint package service/decision ownership.
+  - Move or wrap checkpoint decision/action code behind package-owned classes.
+  - Keep compatibility shims for old imports.
+  - Add architecture tests that forbid new checkpoint behavior in root-level `live_radar_*` modules.
+- Out of scope:
+  - No change to checkpoint policy semantics.
+  - No hidden broad fallback, unbounded retry, or signal-before-pre-signal checkpoint behavior.
+  - No scoring or provider quality tuning.
+- Implementation notes:
+  - Schedule after the next behavior corrective work unless checkpoint code must change for that correction.
+  - Use AS IS verification gates because checkpoint ordering is high-risk.
+- Tests:
+  - Adaptive execution and checkpoint-related recorded tests.
+  - Backend architecture/package compatibility tests.
+  - AS IS documentation contract if docs change.
+- Docs:
+  - Update Radar backend architecture migration table and checkpoint package README.
+  - Update AS IS only if backend-role/package ownership wording changes.
+- Demo impact:
+  - None intended.
+- Acceptance criteria:
+  - Checkpoint behavior has a package-owned source of truth.
+  - Old checkpoint import paths remain compatible or are explicitly retired.
+  - Pipeline checkpoint semantics match the AS IS document.
+- Risks:
+  - Checkpoint moves can accidentally widen fallback. Mitigate with bounded-checkpoint tests and recorded fixtures.
+
+### Slice 0.7.6.4.16: Candidate discovery search expansion package migration
+
+- Status: Backlog
+- Goal: Move search expansion execution and payload ownership into candidate-discovery package services without changing expansion scheduling behavior.
+- User value: Search expansion becomes a package-owned execution capability with visible admission, payload, and diagnostics contracts.
+- Problem statement: `live_radar_search_expansion_execution.py` and related payload modules remain documented Radar application hotspots. They should be migrated only after the options/composition cleanup and the next measured pipeline blocker work are not depending on root-level legacy shape.
+- Scope:
+  - Classify expansion execution, payload shaping, diagnostics, and scheduler admission responsibilities.
+  - Move source-of-truth behavior into `radar/candidate_discovery/execution` or a narrower package if the code proves to be retrieval/expansion-owned.
+  - Keep root-level compatibility shims where hidden imports still exist.
+  - Add package/import/fan-out guardrails for expansion modules.
+- Out of scope:
+  - No new expansion strategy.
+  - No benchmark quality claim.
+  - No live-provider broad run as the first validation signal.
+- Implementation notes:
+  - Do not combine migration with target-lane algorithm changes. If behavior must change, split that into a TO BE/AS IS pipeline slice.
+  - Preserve expansion target coverage and budget metadata surfaces.
+- Tests:
+  - `tests/test_radar_search_expansion.py` and budget/adaptive/API regression.
+  - Architecture/package compatibility tests.
+  - Recorded fixtures for expansion payload and target coverage metadata.
+- Docs:
+  - Update Radar backend architecture doc, execution README/handbook, and AS IS backend-role ownership wording if paths change.
+- Demo impact:
+  - None intended.
+- Acceptance criteria:
+  - Search expansion behavior has a package-owned source of truth.
+  - Root-level expansion files are thin compatibility shims or explicitly deferred.
+  - Expansion metadata and budget surfaces remain compatible.
+- Risks:
+  - Mixing migration with scheduling changes can obscure benchmark regressions. Keep behavior-preserving migration separate.
+
+### Slice 0.7.6.4.17: Radar shared budget contracts assessment and extraction
+
+- Status: Backlog
+- Goal: Decide and implement the minimal shared budget contract only if candidate discovery and signal monitoring both need the same budget semantics.
+- User value: Budget behavior stays consistent where it is genuinely shared while avoiding a premature shared abstraction that hides pipeline-specific rules.
+- Problem statement: Candidate discovery now has service-owned budget metadata merging, while signal monitoring has isolated budgets. Some budget records may belong in `radar/shared/budgets`, but moving them too early would couple pipelines that intentionally have different cadence and policy.
+- Scope:
+  - Compare candidate-discovery and signal-monitoring budget surfaces.
+  - Extract only genuinely shared budget records/services to `radar/shared/budgets`.
+  - Keep candidate-discovery-specific budget merge/projection behavior in candidate-discovery.
+  - Add import-direction tests so shared budget code does not import pipeline packages.
+- Out of scope:
+  - No budget limit tuning.
+  - No signal-monitoring behavior change.
+  - No provider/model selection change.
+- Implementation notes:
+  - This slice should happen after signal monitoring or candidate discovery actually needs shared budget reuse.
+  - It may remain Backlog if the assessment shows the current separation is correct.
+- Tests:
+  - Shared package import tests.
+  - Candidate-discovery and signal-monitoring budget isolation tests.
+  - Backend architecture contract tests.
+- Docs:
+  - Update Radar backend architecture doc with the decision.
+  - Add `radar/shared/budgets/README.md` only if shared code is introduced.
+- Demo impact:
+  - None intended.
+- Acceptance criteria:
+  - The decision is explicit: extract a minimal shared contract or keep budget behavior pipeline-owned.
+  - Architecture tests enforce the chosen dependency direction.
+  - Existing budget counters, reserve counters, exhaustion events, and source verification cache stats remain compatible.
+- Risks:
+  - Premature sharing can blur candidate-discovery vs signal-monitoring boundaries. Require concrete reuse before extraction.
 
 ### Slice 0.7: Human review queue loop
 
@@ -8540,4 +8718,4 @@ None.
 
 ## Next Recommended Task
 
-Slice 0.7.6.4.8: Candidate discovery package skeleton and compatibility facades. Create the target application/radar package structure, local README ownership docs, and compatibility facades without changing runtime behavior.
+Slice 0.7.6.4.13: Candidate discovery staged execution options value object. Replace the broad `run_staged_radar_execution` kwargs boundary with a named execution-options contract before resuming behavior-changing Radar pipeline work.
