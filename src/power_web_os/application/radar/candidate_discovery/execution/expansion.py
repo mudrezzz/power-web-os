@@ -6,33 +6,23 @@ from typing import Any
 
 from power_web_os.application.radar.candidate_discovery.contracts import (
     LiveRadarPipelineEvent,
-    RadarExecutionPlan,
     RadarExecutionTask,
-    RadarSourceEvidence,
-    WebSearchProvider,
     WebSearchProviderResult,
 )
-from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
-from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
-from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
 from power_web_os.application.live_radar_search_expansion_payloads import benchmark_target_probe_minimums, merge_selection_summary
 from power_web_os.application.radar_search_expansion_models import RadarSearchExpansionPlan
 from power_web_os.application.radar_search_expansion_scheduler import schedule_guaranteed_expansion_variants
-from power_web_os.application.radar_work_scheduler import RadarWorkScheduler
 from power_web_os.application.radar_work_scheduler_metadata import merge_work_scheduler_metadata
 from power_web_os.application.radar.candidate_discovery.execution.context import (
     CandidateDiscoveryExecutionContext,
     PhaseResult,
 )
-from power_web_os.application.radar.candidate_discovery.execution.state import CandidateDiscoveryExecutionState
-from power_web_os.application.radar.candidate_discovery.execution.state import limit_smoke_candidates
-from power_web_os.application.radar.candidate_discovery.execution.task_runner import (
-    eligible_candidate_names as _eligible_candidate_names,
-    run_task as _run_task,
+from power_web_os.application.radar.candidate_discovery.execution.state import (
+    CandidateDiscoveryExecutionState,
+    SmokeLimitPolicy,
 )
-from power_web_os.application.radar.candidate_discovery.execution.merge import merge_result as _merge_result
+from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 from power_web_os.application.live_radar_universe import (
-    candidate_name_set,
     dict_list,
     gap_items,
     gap_observations,
@@ -41,7 +31,29 @@ from power_web_os.application.live_radar_universe import (
 
 
 class ExpansionPhaseExecutor:
-    """Runs target-aware recall expansion through scheduler/admission guards."""
+    """Runs target-aware recall expansion through scheduler/admission guards.
+
+    Owns:
+    - Expansion planning diagnostics, guaranteed target scheduling, scheduler
+      portfolio execution, skip records, result merge, and expansion events.
+
+    Does not own:
+    - Source strategy generation, scheduler admission policy internals, final
+      evaluation, or provider adapter implementation.
+
+    Architecture:
+    docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md#expansionphaseexecutor
+    """
+
+    phase_name = "search_expansion"
+
+    def __init__(
+        self,
+        task_service: TaskExecutionService | None = None,
+        smoke_policy: SmokeLimitPolicy | None = None,
+    ) -> None:
+        self._task_service = task_service or TaskExecutionService()
+        self._smoke_policy = smoke_policy or SmokeLimitPolicy()
 
     def run(
         self,
@@ -49,195 +61,190 @@ class ExpansionPhaseExecutor:
         state: CandidateDiscoveryExecutionState,
         base_tasks: list[RadarExecutionTask],
     ) -> PhaseResult:
-        state.sources, state.observations, state.provider_metadata, state.candidate_scope = _run_search_expansion(
-            radar=context.radar,
-            execution_plan=context.execution_plan,
-            provider=context.provider,
-            service=context.search_expansion_service,
-            base_tasks=base_tasks,
-            sources=state.sources,
-            observations=state.observations,
-            provider_metadata=state.provider_metadata,
-            candidate_scope=state.candidate_scope,
-            completed_qualification_ids=state.completed_qualification_ids,
-            coverage_checks=state.coverage_checks,
-            unresolved_candidate_gaps=state.unresolved_candidate_gaps,
-            events=state.events,
-            executed_task_ids=state.executed_task_ids,
-            budget=context.task_budget,
-            external_budget=context.external_budget,
-            work_scheduler=context.work_scheduler,
-            smoke_candidate_limit=context.external_budget.settings.smoke_max_candidates,
-        )
+        expansion_plan = self._plan_expansion(context, state)
+        expansion_payload = expansion_plan.to_payload()
+        self._persist_plan_diagnostics(context, state, expansion_payload)
+        if not expansion_plan.should_expand:
+            return PhaseResult(phase_name="search_expansion")
+
+        schedule, scheduled_plan = self._schedule_expansion(context, state, expansion_plan, expansion_payload)
+        tasks = self._build_expansion_tasks(context, state, scheduled_plan, base_tasks)
+        portfolio = self._build_work_portfolio(context, state, tasks, schedule)
+        self._execute_portfolio(context, state, portfolio)
+        state.candidate_scope = self._candidate_scope(context, state)
         return PhaseResult(phase_name="search_expansion")
 
+    def _plan_expansion(
+        self,
+        context: CandidateDiscoveryExecutionContext,
+        state: CandidateDiscoveryExecutionState,
+    ) -> RadarSearchExpansionPlan:
+        return context.search_expansion_service.plan_expansion(
+            radar=context.radar,
+            candidate_scope=state.candidate_scope,
+            provider_metadata=state.provider_metadata,
+            coverage_checks=state.coverage_checks,
+            unresolved_candidate_gaps=state.unresolved_candidate_gaps,
+        )
 
-def _run_search_expansion(
-    *,
-    radar: dict[str, Any],
-    execution_plan: RadarExecutionPlan,
-    provider: WebSearchProvider,
-    service: RadarSearchExpansionService,
-    base_tasks: list[RadarExecutionTask],
-    sources: list[RadarSourceEvidence],
-    observations: list[dict[str, Any]],
-    provider_metadata: dict[str, Any],
-    candidate_scope: list[str],
-    completed_qualification_ids: list[str],
-    coverage_checks: list[dict[str, Any]],
-    unresolved_candidate_gaps: list[dict[str, Any]],
-    events: list[LiveRadarPipelineEvent],
-    executed_task_ids: list[str],
-    budget: RadarExecutionBudget,
-    external_budget: RadarExternalCallBudget | None,
-    work_scheduler: RadarWorkScheduler,
-    smoke_candidate_limit: int | None,
-) -> tuple[list[RadarSourceEvidence], list[dict[str, Any]], dict[str, Any], list[str]]:
-    expansion_plan = service.plan_expansion(
-        radar=radar,
-        candidate_scope=candidate_scope,
-        provider_metadata=provider_metadata,
-        coverage_checks=coverage_checks,
-        unresolved_candidate_gaps=unresolved_candidate_gaps,
-    )
-    expansion_payload = expansion_plan.to_payload()
-    provider_metadata = {
-        **provider_metadata,
-        "expansion_target_queue": [
-            *dict_list(provider_metadata.get("expansion_target_queue")),
-            *expansion_payload.get("targets", []),
-        ],
-        "expansion_target_summary_by_type": _merge_int_dicts(
-            provider_metadata.get("expansion_target_summary_by_type"),
-            expansion_payload.get("targets_by_type"),
-        ),
-        "search_expansion_query_variants_by_target": {
-            **(
-                provider_metadata.get("search_expansion_query_variants_by_target")
-                if isinstance(provider_metadata.get("search_expansion_query_variants_by_target"), dict)
-                else {}
-            ),
-            **expansion_payload.get("variants_by_target", {}),
-        },
-        "search_expansion_query_variants_by_target_type": {
-            **(
-                provider_metadata.get("search_expansion_query_variants_by_target_type")
-                if isinstance(provider_metadata.get("search_expansion_query_variants_by_target_type"), dict)
-                else {}
-            ),
-            **expansion_payload.get("variants_by_target_type", {}),
-        },
-        "targets_not_searched": _dedupe_target_records([
-            *dict_list(provider_metadata.get("targets_not_searched")),
-            *dict_list(expansion_payload.get("targets_not_selected")),
-        ]),
-        "search_expansion_selection_summary": merge_selection_summary(
-            provider_metadata.get("search_expansion_selection_summary"),
-            expansion_payload.get("selection_summary"),
-        ),
-        "search_expansion_selection_diagnostics": [
-            *dict_list(provider_metadata.get("search_expansion_selection_diagnostics")),
-            *dict_list(expansion_payload.get("selection_diagnostics")),
-        ],
-        "source_capability_strategy_summary": _source_capability_strategy_summary(
-            radar=radar,
-            expansion_plan=expansion_payload,
-        ),
-        "search_expansion_query_variants": [
-            *dict_list(provider_metadata.get("search_expansion_query_variants")),
-            *expansion_payload.get("variants", []),
-        ],
-    }
-    if not expansion_plan.should_expand:
-        return sources, observations, provider_metadata, candidate_scope
-    schedule = schedule_guaranteed_expansion_variants(
-        variants=list(expansion_plan.variants),
-        targets=expansion_payload.get("targets", []),
-        minimums=benchmark_target_probe_minimums(radar),
-    )
-    provider_metadata = {
-        **provider_metadata,
-        **schedule.to_metadata(),
-        "targets_not_searched": _dedupe_target_records([
-            *dict_list(provider_metadata.get("targets_not_searched")),
-            *schedule.unscheduled_targets,
-        ]),
-    }
-    scheduled_plan = RadarSearchExpansionPlan(
-        should_expand=expansion_plan.should_expand,
-        variants=schedule.variants,
-        targets=expansion_plan.targets,
-        reason=expansion_plan.reason,
-    )
-    tasks = service.tasks_from_plan(plan=scheduled_plan, base_task=base_tasks[0] if base_tasks else None)
-    provider_metadata = {
-        **provider_metadata,
-        "search_expansion_tasks": [
-            *dict_list(provider_metadata.get("search_expansion_tasks")),
-            *[
-                {
-                    "task_id": task.task_id,
-                    "query": task.query,
-                    "source_ids": list(task.source_ids),
-                    "source_scope": task.source_scope,
-                    "reason": expansion_plan.reason,
-                }
-                for task in tasks
+    def _persist_plan_diagnostics(
+        self,
+        context: CandidateDiscoveryExecutionContext,
+        state: CandidateDiscoveryExecutionState,
+        expansion_payload: dict[str, Any],
+    ) -> None:
+        state.provider_metadata = {
+            **state.provider_metadata,
+            "expansion_target_queue": [
+                *dict_list(state.provider_metadata.get("expansion_target_queue")),
+                *expansion_payload.get("targets", []),
             ],
-        ],
-    }
-    portfolio = work_scheduler.build_recall_expansion_portfolio(
-        tasks=tasks,
-        scheduled_variants=list(schedule.scheduled_variants),
-        external_budget=external_budget,
-    )
-    provider_metadata = merge_work_scheduler_metadata(provider_metadata, portfolio.to_metadata())
-    decisions_by_work_id = {decision.work_id: decision for decision in portfolio.ledger.decisions}
-    for work_item in portfolio.work_items:
+            "expansion_target_summary_by_type": _merge_int_dicts(
+                state.provider_metadata.get("expansion_target_summary_by_type"),
+                expansion_payload.get("targets_by_type"),
+            ),
+            "search_expansion_query_variants_by_target": {
+                **(
+                    state.provider_metadata.get("search_expansion_query_variants_by_target")
+                    if isinstance(state.provider_metadata.get("search_expansion_query_variants_by_target"), dict)
+                    else {}
+                ),
+                **expansion_payload.get("variants_by_target", {}),
+            },
+            "search_expansion_query_variants_by_target_type": {
+                **(
+                    state.provider_metadata.get("search_expansion_query_variants_by_target_type")
+                    if isinstance(state.provider_metadata.get("search_expansion_query_variants_by_target_type"), dict)
+                    else {}
+                ),
+                **expansion_payload.get("variants_by_target_type", {}),
+            },
+            "targets_not_searched": _dedupe_target_records([
+                *dict_list(state.provider_metadata.get("targets_not_searched")),
+                *dict_list(expansion_payload.get("targets_not_selected")),
+            ]),
+            "search_expansion_selection_summary": merge_selection_summary(
+                state.provider_metadata.get("search_expansion_selection_summary"),
+                expansion_payload.get("selection_summary"),
+            ),
+            "search_expansion_selection_diagnostics": [
+                *dict_list(state.provider_metadata.get("search_expansion_selection_diagnostics")),
+                *dict_list(expansion_payload.get("selection_diagnostics")),
+            ],
+            "source_capability_strategy_summary": _source_capability_strategy_summary(
+                radar=context.radar,
+                expansion_plan=expansion_payload,
+            ),
+            "search_expansion_query_variants": [
+                *dict_list(state.provider_metadata.get("search_expansion_query_variants")),
+                *expansion_payload.get("variants", []),
+            ],
+        }
+
+    def _schedule_expansion(
+        self,
+        context: CandidateDiscoveryExecutionContext,
+        state: CandidateDiscoveryExecutionState,
+        expansion_plan: RadarSearchExpansionPlan,
+        expansion_payload: dict[str, Any],
+    ) -> tuple[Any, RadarSearchExpansionPlan]:
+        schedule = schedule_guaranteed_expansion_variants(
+            variants=list(expansion_plan.variants),
+            targets=expansion_payload.get("targets", []),
+            minimums=benchmark_target_probe_minimums(context.radar),
+        )
+        state.provider_metadata = {
+            **state.provider_metadata,
+            **schedule.to_metadata(),
+            "targets_not_searched": _dedupe_target_records([
+                *dict_list(state.provider_metadata.get("targets_not_searched")),
+                *schedule.unscheduled_targets,
+            ]),
+        }
+        return schedule, RadarSearchExpansionPlan(
+            should_expand=expansion_plan.should_expand,
+            variants=schedule.variants,
+            targets=expansion_plan.targets,
+            reason=expansion_plan.reason,
+        )
+
+    def _build_expansion_tasks(
+        self,
+        context: CandidateDiscoveryExecutionContext,
+        state: CandidateDiscoveryExecutionState,
+        scheduled_plan: RadarSearchExpansionPlan,
+        base_tasks: list[RadarExecutionTask],
+    ) -> list[RadarExecutionTask]:
+        tasks = context.search_expansion_service.tasks_from_plan(
+            plan=scheduled_plan,
+            base_task=base_tasks[0] if base_tasks else None,
+        )
+        state.provider_metadata = {
+            **state.provider_metadata,
+            "search_expansion_tasks": [
+                *dict_list(state.provider_metadata.get("search_expansion_tasks")),
+                *[
+                    {
+                        "task_id": task.task_id,
+                        "query": task.query,
+                        "source_ids": list(task.source_ids),
+                        "source_scope": task.source_scope,
+                        "reason": scheduled_plan.reason,
+                    }
+                    for task in tasks
+                ],
+            ],
+        }
+        return tasks
+
+    def _build_work_portfolio(
+        self,
+        context: CandidateDiscoveryExecutionContext,
+        state: CandidateDiscoveryExecutionState,
+        tasks: list[RadarExecutionTask],
+        schedule: Any,
+    ) -> Any:
+        portfolio = context.work_scheduler.build_recall_expansion_portfolio(
+            tasks=tasks,
+            scheduled_variants=list(schedule.scheduled_variants),
+            external_budget=context.external_budget,
+        )
+        state.provider_metadata = merge_work_scheduler_metadata(state.provider_metadata, portfolio.to_metadata())
+        return portfolio
+
+    def _execute_portfolio(
+        self,
+        context: CandidateDiscoveryExecutionContext,
+        state: CandidateDiscoveryExecutionState,
+        portfolio: Any,
+    ) -> None:
+        decisions_by_work_id = {decision.work_id: decision for decision in portfolio.ledger.decisions}
+        for work_item in portfolio.work_items:
+            self._execute_work_item(context, state, work_item, decisions_by_work_id)
+
+    def _execute_work_item(
+        self,
+        context: CandidateDiscoveryExecutionContext,
+        state: CandidateDiscoveryExecutionState,
+        work_item: Any,
+        decisions_by_work_id: dict[str, Any],
+    ) -> None:
         task = work_item.task
         scheduled_variant = work_item.scheduled_variant
         if scheduled_variant is None:
-            continue
+            return
         variant = scheduled_variant.variant
         admission_decision = decisions_by_work_id.get(work_item.work_id)
         if admission_decision is not None and not admission_decision.accepted:
-            skipped = {
-                "task_id": task.task_id,
-                "query": task.query,
-                "source_ids": list(task.source_ids),
-                "target_id": variant.target_id,
-                "target_type": variant.target_type,
-                "budget_reserve_key": variant.budget_reserve_key,
-                "execution_status": "work_admission_rejected",
-                "not_searched_reason": admission_decision.reason,
-                "budget_decision": admission_decision.budget_decision,
-                "work_id": work_item.work_id,
-                "lane": work_item.lane,
-            }
-            provider_metadata = {
-                **provider_metadata,
-                "targets_not_searched": [
-                    *dict_list(provider_metadata.get("targets_not_searched")),
-                    skipped,
-                ],
-            }
-            events.append(LiveRadarPipelineEvent(
-                event_type="search_expansion_skipped_budget_reserve",
-                phase="collection",
-                actor="application",
-                node_name="search_expansion",
-                visibility="operator",
-                summary=f"Skipped recall expansion task {task.task_id}: {admission_decision.message}",
-                payload=skipped,
-            ))
-            continue
-        result = _run_task(
-            provider=provider,
-            radar=radar,
+            self._record_admission_rejection(state, work_item, task, variant, admission_decision)
+            return
+        result = self._task_service.run_task(
+            provider=context.provider,
+            radar=context.radar,
             task=task,
-            radar_id=execution_plan.radar_id,
-            budget=budget,
-            external_budget=external_budget,
+            radar_id=context.execution_plan.radar_id,
+            budget=context.task_budget,
+            external_budget=context.external_budget,
             semantic_reserve_key=variant.budget_reserve_key,
         )
         result_payload = _expansion_result_payload(
@@ -247,31 +254,87 @@ def _run_search_expansion(
             budget_decision=result.provider_metadata.get("budget_decision", {}),
         )
         if result_payload["execution_status"] == "not_executed":
-            not_executed = {
-                **result_payload,
-                "execution_status": "not_searched",
-            }
-            provider_metadata = {
-                **provider_metadata,
-                "targets_not_searched": [
-                    *dict_list(provider_metadata.get("targets_not_searched")),
-                    not_executed,
-                ],
-                "search_expansion_results": [
-                    *dict_list(provider_metadata.get("search_expansion_results")),
-                    result_payload,
-                ],
-            }
-            events.append(LiveRadarPipelineEvent(
-                event_type="search_expansion_skipped_external_budget",
-                phase="collection",
-                actor="application",
-                node_name="search_expansion",
-                visibility="operator",
-                summary=f"Skipped recall expansion task {task.task_id}: external provider budget was exhausted.",
-                payload=not_executed,
-            ))
-            continue
+            self._record_not_executed(state, task, result_payload)
+            return
+        self._merge_executed_result(state, task, variant, result, result_payload)
+
+    def _record_admission_rejection(
+        self,
+        state: CandidateDiscoveryExecutionState,
+        work_item: Any,
+        task: RadarExecutionTask,
+        variant: Any,
+        admission_decision: Any,
+    ) -> None:
+        skipped = {
+            "task_id": task.task_id,
+            "query": task.query,
+            "source_ids": list(task.source_ids),
+            "target_id": variant.target_id,
+            "target_type": variant.target_type,
+            "budget_reserve_key": variant.budget_reserve_key,
+            "execution_status": "work_admission_rejected",
+            "not_searched_reason": admission_decision.reason,
+            "budget_decision": admission_decision.budget_decision,
+            "work_id": work_item.work_id,
+            "lane": work_item.lane,
+        }
+        state.provider_metadata = {
+            **state.provider_metadata,
+            "targets_not_searched": [
+                *dict_list(state.provider_metadata.get("targets_not_searched")),
+                skipped,
+            ],
+        }
+        state.events.append(LiveRadarPipelineEvent(
+            event_type="search_expansion_skipped_budget_reserve",
+            phase="collection",
+            actor="application",
+            node_name="search_expansion",
+            visibility="operator",
+            summary=f"Skipped recall expansion task {task.task_id}: {admission_decision.message}",
+            payload=skipped,
+        ))
+
+    def _record_not_executed(
+        self,
+        state: CandidateDiscoveryExecutionState,
+        task: RadarExecutionTask,
+        result_payload: dict[str, Any],
+    ) -> None:
+        not_executed = {
+            **result_payload,
+            "execution_status": "not_searched",
+        }
+        state.provider_metadata = {
+            **state.provider_metadata,
+            "targets_not_searched": [
+                *dict_list(state.provider_metadata.get("targets_not_searched")),
+                not_executed,
+            ],
+            "search_expansion_results": [
+                *dict_list(state.provider_metadata.get("search_expansion_results")),
+                result_payload,
+            ],
+        }
+        state.events.append(LiveRadarPipelineEvent(
+            event_type="search_expansion_skipped_external_budget",
+            phase="collection",
+            actor="application",
+            node_name="search_expansion",
+            visibility="operator",
+            summary=f"Skipped recall expansion task {task.task_id}: external provider budget was exhausted.",
+            payload=not_executed,
+        ))
+
+    def _merge_executed_result(
+        self,
+        state: CandidateDiscoveryExecutionState,
+        task: RadarExecutionTask,
+        variant: Any,
+        result: WebSearchProviderResult,
+        result_payload: dict[str, Any],
+    ) -> None:
         gaps = gap_items(result)
         result = result.model_copy(update={
             "candidate_observations": [
@@ -279,19 +342,24 @@ def _run_search_expansion(
                 *gap_observations(gaps, origin_task_id=task.task_id),
             ],
         })
-        sources, observations, provider_metadata = _merge_result(sources, observations, provider_metadata, result)
-        executed_task_ids.append(f"{task.task_id}:search_expansion")
-        unresolved_candidate_gaps.extend(gap_payloads(gaps, origin_task_id=task.task_id))
-        provider_metadata = {
-            **provider_metadata,
+        state.sources, state.observations, state.provider_metadata = self._task_service.merger.merge_result(
+            state.sources,
+            state.observations,
+            state.provider_metadata,
+            result,
+        )
+        state.executed_task_ids.append(f"{task.task_id}:search_expansion")
+        state.unresolved_candidate_gaps.extend(gap_payloads(gaps, origin_task_id=task.task_id))
+        state.provider_metadata = {
+            **state.provider_metadata,
             "search_expansion_results": [
-                *dict_list(provider_metadata.get("search_expansion_results")),
+                *dict_list(state.provider_metadata.get("search_expansion_results")),
                 {
                     **result_payload,
                 },
             ],
         }
-        events.append(LiveRadarPipelineEvent(
+        state.events.append(LiveRadarPipelineEvent(
             event_type="search_expansion_executed",
             phase="collection",
             actor="application",
@@ -310,13 +378,22 @@ def _run_search_expansion(
             },
             source_refs=[source.evidence_ref for source in result.sources if source.evidence_ref],
         ))
-    candidate_scope = _eligible_candidate_names(
-        radar=radar,
-        sources=sources,
-        observations=observations,
-        completed_qualification_ids=completed_qualification_ids,
-    )
-    return sources, observations, provider_metadata, limit_smoke_candidates(candidate_scope, smoke_candidate_limit)
+
+    def _candidate_scope(
+        self,
+        context: CandidateDiscoveryExecutionContext,
+        state: CandidateDiscoveryExecutionState,
+    ) -> list[str]:
+        scope = self._task_service.eligible_candidate_names(
+            radar=context.radar,
+            sources=state.sources,
+            observations=state.observations,
+            completed_qualification_ids=state.completed_qualification_ids,
+        )
+        return self._smoke_policy.limit_candidates(
+            scope,
+            context.external_budget.settings.smoke_max_candidates,
+        )
 
 def _source_capability_strategy_summary(*, radar: dict[str, Any], expansion_plan: dict[str, Any]) -> dict[str, Any]:
     policy = radar.get("global_search_policy") if isinstance(radar.get("global_search_policy"), dict) else {}

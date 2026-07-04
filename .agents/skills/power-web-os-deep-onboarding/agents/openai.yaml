@@ -1,0 +1,4 @@
+interface:
+  display_name: "Power Web OS Deep Onboarding"
+  short_description: "Rebuild project context for a new chat"
+  default_prompt: "Используй $power-web-os-deep-onboarding и дай мне краткое погружение в текущее состояние проекта."

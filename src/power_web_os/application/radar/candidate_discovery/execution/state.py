@@ -3,17 +3,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, TypeVar
+from typing import Any
 
 from power_web_os.application.radar.candidate_discovery.contracts import LiveRadarPipelineEvent, RadarSourceEvidence
 from power_web_os.application.live_radar_universe import dict_list
 
-T = TypeVar("T")
-
 
 @dataclass
 class CandidateDiscoveryExecutionState:
-    """Mutable state passed from the orchestrator to phase/finalization services."""
+    """Mutable state passed from the orchestrator to phase/finalization services.
+
+    Owns:
+    - Cross-phase mutable sources, observations, metadata, events, checkpoints,
+      candidate scope, coverage records, expansion diagnostics, and signal status.
+
+    Does not own:
+    - Provider dependencies, budgets, policy services, or immutable run limits.
+
+    Architecture:
+    docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md#candidatediscoveryexecutionstate
+    """
 
     sources: list[RadarSourceEvidence] = field(default_factory=list)
     observations: list[dict[str, Any]] = field(default_factory=list)
@@ -39,23 +48,48 @@ class CandidateDiscoveryExecutionState:
     signal_search_statuses: list[dict[str, Any]] = field(default_factory=list)
 
 
-def limit_smoke_candidates(candidate_scope: list[str], limit: int | None) -> list[str]:
-    if limit is None or limit <= 0:
-        return candidate_scope
-    return candidate_scope[:limit]
+class SmokeLimitPolicy:
+    """Applies smoke-profile caps without owning candidate selection semantics.
+
+    Owns:
+    - Deterministic smoke-profile list truncation for candidate and signal scopes.
+
+    Does not own:
+    - Candidate scoring, source policy, or budget admission.
+
+    Architecture:
+    docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md#smokelimitpolicy
+    """
+
+    def limit_candidates(self, candidate_scope: list[str], limit: int | None) -> list[str]:
+        if limit is None or limit <= 0:
+            return candidate_scope
+        return candidate_scope[:limit]
+
+    def limit_signal_tasks(self, tasks: list[Any], limit: int | None) -> list[Any]:
+        if limit is None or limit <= 0:
+            return tasks
+        return tasks[:limit]
 
 
-def limit_smoke_signal_tasks(tasks: list[T], limit: int | None) -> list[T]:
-    if limit is None or limit <= 0:
-        return tasks
-    return tasks[:limit]
+class ExecutionMetadataFactory:
+    """Builds initial execution metadata from product-safe task context.
 
+    Owns:
+    - Initial product-safe provider metadata derived from explicit task context.
 
-def initial_provider_metadata(radar: dict[str, Any]) -> dict[str, Any]:
-    task_context = radar.get("task_context") if isinstance(radar.get("task_context"), dict) else {}
-    if not str(task_context.get("benchmark_profile") or "").startswith("benchmark_"):
-        return {}
-    targets = dict_list(task_context.get("benchmark_target_hints"))
-    if not targets:
-        return {}
-    return {"benchmark_recall_targets": targets}
+    Does not own:
+    - Runtime provider results, checkpoint decisions, or final metadata projection.
+
+    Architecture:
+    docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md#executionmetadatafactory
+    """
+
+    def initial_provider_metadata(self, radar: dict[str, Any]) -> dict[str, Any]:
+        task_context = radar.get("task_context") if isinstance(radar.get("task_context"), dict) else {}
+        if not str(task_context.get("benchmark_profile") or "").startswith("benchmark_"):
+            return {}
+        targets = dict_list(task_context.get("benchmark_target_hints"))
+        if not targets:
+            return {}
+        return {"benchmark_recall_targets": targets}

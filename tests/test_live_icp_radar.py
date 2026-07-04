@@ -48,8 +48,8 @@ from power_web_os.application.live_radar_staged_execution import (
     _target_probe_guarantees,
     run_staged_radar_execution,
 )
-from power_web_os.application.live_radar_staged_merge import candidate_universe_with_entity_metadata
-from power_web_os.application.live_radar_staged_helpers import run_gate_pass
+from power_web_os.application.radar.candidate_discovery.execution.merge import ExecutionResultMerger
+from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 from power_web_os.application.live_radar_web_retrieval import (
     RadarWebRetrievalResult,
     RadarRetrievedSource,
@@ -82,6 +82,9 @@ from power_web_os.live_icp_radar import (
 )
 from power_web_os.integrations.openrouter_discovery_planner import _plan_from_response
 from power_web_os.workflows import live_icp_radar_workflow
+
+TASK_SERVICE = TaskExecutionService()
+EXECUTION_MERGER = ExecutionResultMerger()
 
 
 def recorded_provider_payload() -> dict[str, object]:
@@ -657,7 +660,7 @@ def test_gate_pass_materializes_placeholder_scope_before_registry_lookup() -> No
     events = []
     executed_task_ids: list[str] = []
 
-    _, merged_observations, metadata, candidate_scope = run_gate_pass(
+    _, merged_observations, metadata, candidate_scope = TASK_SERVICE.run_gate_pass(
         radar=radar,
         execution_plan=RadarExecutionPlan(radar_id="toir-quick-live", tasks=[task]),
         provider=provider,
@@ -707,7 +710,7 @@ def test_gate_pass_skips_registry_lookup_when_placeholder_scope_has_no_candidate
     events = []
     executed_task_ids: list[str] = []
 
-    _, observations, metadata, candidate_scope = run_gate_pass(
+    _, observations, metadata, candidate_scope = TASK_SERVICE.run_gate_pass(
         radar=radar,
         execution_plan=RadarExecutionPlan(radar_id="toir-quick-live", tasks=[task]),
         provider=provider,
@@ -1593,7 +1596,7 @@ def test_candidate_universe_projection_preserves_review_needed_entity_type_witho
         }
     ]
 
-    projected = candidate_universe_with_entity_metadata(universe, observations=[])
+    projected = EXECUTION_MERGER.candidate_universe_with_entity_metadata(universe, observations=[])
 
     assert projected[0]["entity_type"] == "production_site"
     assert projected[0]["resolution_status"] == "linked_to_legal_entity"

@@ -5,6 +5,11 @@ the product pipeline AS IS/TO BE documents under `docs/radar/` by answering a
 different question: where backend code belongs and how new components should be
 shaped.
 
+Candidate-discovery execution has a dedicated procedural handbook:
+`docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md`.
+Use it together with this document before changing phase executors, execution
+state, finalization, task running, or projection services.
+
 ## Purpose
 
 Radar backend code must remain understandable as candidate discovery, signal
@@ -148,10 +153,15 @@ Execution phase map:
 | `signals.py` | `SignalCompatibilityPhaseExecutor`: preserve the compatibility signal-search stage and `not_searched_*` projection. |
 | `finalization.py` | `FinalizationProjector`: build final `WebSearchProviderResult`, event list, and dossier/report metadata. |
 | `finalization_universe.py` | Add review-needed upstream entities and upstream disambiguation events. |
-| `task_runner.py`, `merge.py`, `projection.py` | Provider-neutral task execution, result merging, and artifact projection helpers. |
+| `task_runner.py` | `TaskExecutionService`: provider-neutral task execution, gate pass, retries, and candidate task utilities. |
+| `merge.py` | `ExecutionResultMerger`: source/observation/provider metadata merge and universe entity metadata projection. |
+| `projection.py` | `CandidateProjectionService` and `PipelineEventFactory`: candidate projection and product-safe event payloads. |
+| `finalization_metadata.py`, `task_runner_payloads.py` | Private small payload/summary helpers used by service classes. |
 
-As of slice `0.7.6.4.11`, candidate-discovery execution phases follow an
-explicit service contract:
+As of slices `0.7.6.4.11`, `0.7.6.4.11.1`, and `0.7.6.4.11.2`,
+candidate-discovery execution follows an explicit service contract. The
+authoritative class-by-class contract is maintained in
+`docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md`:
 
 - `CandidateDiscoveryExecutionContext` carries run-level dependencies and
   limits: radar payload, execution/retrieval plans, provider port, task and
@@ -171,11 +181,20 @@ explicit service contract:
   `DiscoveryPhaseExecutor.run`, `GatePhaseExecutor.run`,
   `CoveragePhaseExecutor.run`, `ExpansionPhaseExecutor.run`,
   `SignalCompatibilityPhaseExecutor.run`, and `FinalizationProjector.project`.
-- Public top-level phase functions are forbidden in phase modules, except the
-  compatibility wrapper `run_staged_radar_execution`. Existing helper modules
-  may expose small provider-neutral helpers until their own migration slice,
-  but stateful provider/budget/checkpoint phase behavior must be implemented
-  as a service method.
+- Helper behavior is also service-owned:
+  `TaskExecutionService`, `ExecutionResultMerger`,
+  `CandidateProjectionService`, `PipelineEventFactory`,
+  `SmokeLimitPolicy`, and `ExecutionMetadataFactory`.
+- Public top-level functions are forbidden across
+  `candidate_discovery/execution`, except the compatibility wrapper
+  `run_staged_radar_execution`. Private helpers are allowed only for small local
+  payload/summary transformations.
+- Execution functions and methods should stay under the architecture-test line
+  threshold. A large private helper that hides phase behavior is treated as
+  migration debt, not as a valid service boundary.
+- Every public class in `candidate_discovery/execution` must document `Owns`,
+  `Does not own`, and an `Architecture` link to the execution handbook. The
+  handbook must mention every public class.
 
 Deferred modules, including `live_radar_definition.py`,
 `live_radar_pipeline_support.py`, checkpoints, extraction, universe, and
@@ -293,7 +312,11 @@ The roadmap tracks this rescue as several small slices:
    product-source modules behind compatibility shims.
 4. `0.7.6.4.10` splits staged execution into phase executors.
 5. `0.7.6.4.11` hardens validators and agent rules.
-6. `0.7.6.4.12` removes the legacy allowlist and compatibility debt.
+6. `0.7.6.4.11.1` decomposes execution helper debt and enforces the strict
+   service API across the whole execution package.
+7. `0.7.6.4.11.2` adds the execution architecture handbook, class docstring
+   contract, and protocol-level service interface guardrails.
+8. `0.7.6.4.12` removes the legacy allowlist and compatibility debt.
 
 ## Out Of Scope For This Slice
 

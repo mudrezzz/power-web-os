@@ -22,12 +22,14 @@ from power_web_os.application.live_radar_external_budget_context import (
     reserve_budget_slice,
     reserve_openrouter_http_call,
 )
-from power_web_os.application.live_radar_staged_helpers import run_task
+from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 from power_web_os.application.radar_source_obligations import obligation_decisions_from_plan, source_obligation_summary
 from power_web_os.application.radar_source_providers import CompanyLookupRequest
 from power_web_os.integrations.dadata_provider import RecordedDaDataCompanyRegistryProvider
 from power_web_os.integrations.openrouter_request_builder import build_openrouter_request
 from power_web_os.integrations.live_radar_source_verification import SourceReachabilityResult, verify_sources
+
+TASK_SERVICE = TaskExecutionService()
 
 
 def test_external_call_budget_blocks_fourth_openrouter_call_when_limit_is_three() -> None:
@@ -276,8 +278,8 @@ def test_semantic_task_reserve_allows_expansion_after_total_web_task_budget_is_e
         )
     )
 
-    regular = run_task(provider=provider, radar={"radar_id": "radar"}, task=_task(), radar_id="radar", budget=budget)
-    expansion = run_task(
+    regular = TASK_SERVICE.run_task(provider=provider, radar={"radar_id": "radar"}, task=_task(), radar_id="radar", budget=budget)
+    expansion = TASK_SERVICE.run_task(
         provider=provider,
         radar={"radar_id": "radar"},
         task=RadarExecutionTask(
@@ -320,8 +322,8 @@ def test_semantic_task_reserve_exhaustion_blocks_expansion_with_specific_reason(
         expected_evidence=["coverage"],
     )
 
-    run_task(provider=provider, radar={"radar_id": "radar"}, task=_task(), radar_id="radar", budget=budget)
-    run_task(
+    TASK_SERVICE.run_task(provider=provider, radar={"radar_id": "radar"}, task=_task(), radar_id="radar", budget=budget)
+    TASK_SERVICE.run_task(
         provider=provider,
         radar={"radar_id": "radar"},
         task=expansion_task,
@@ -329,7 +331,7 @@ def test_semantic_task_reserve_exhaustion_blocks_expansion_with_specific_reason(
         budget=budget,
         semantic_reserve_key="production_site_coverage_probe",
     )
-    blocked = run_task(
+    blocked = TASK_SERVICE.run_task(
         provider=provider,
         radar={"radar_id": "radar"},
         task=expansion_task.model_copy(update={"task_id": "expansion-2"}),
@@ -378,7 +380,7 @@ def test_provider_schema_invalid_result_gets_one_budgeted_retry_then_succeeds() 
     ])
     budget = RadarExternalCallBudget(RadarExternalCallBudgetSettings(max_provider_retries_per_task=1))
 
-    result = run_task(
+    result = TASK_SERVICE.run_task(
         provider=provider,
         radar={"radar_id": "radar"},
         task=_task(),
@@ -398,7 +400,7 @@ def test_provider_schema_invalid_stops_when_retry_budget_is_exhausted() -> None:
     ])
     budget = RadarExternalCallBudget(RadarExternalCallBudgetSettings(max_provider_retries_per_task=0))
 
-    result = run_task(
+    result = TASK_SERVICE.run_task(
         provider=provider,
         radar={"radar_id": "radar"},
         task=_task(),

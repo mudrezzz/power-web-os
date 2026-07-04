@@ -278,6 +278,9 @@ power_web_os.application.radar.candidate_discovery.execution.coverage
 power_web_os.application.radar.candidate_discovery.execution.expansion
 power_web_os.application.radar.candidate_discovery.execution.signals
 power_web_os.application.radar.candidate_discovery.execution.finalization
+power_web_os.application.radar.candidate_discovery.execution.task_runner
+power_web_os.application.radar.candidate_discovery.execution.merge
+power_web_os.application.radar.candidate_discovery.execution.projection
 ```
 
 The matching root-level `live_radar_*` files are compatibility shims only.
@@ -286,7 +289,8 @@ Execution behavior belongs in the phase modules under
 order phases.
 
 Candidate-discovery execution phases must use the service contract from
-`docs/architecture/RADAR_BACKEND_ARCHITECTURE.md`:
+`docs/architecture/RADAR_BACKEND_ARCHITECTURE.md` and the detailed handbook
+`docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md`:
 
 - `CandidateDiscoveryExecutionContext` carries dependencies, budgets, services,
   source policy decisions, and phase limits.
@@ -300,6 +304,17 @@ Candidate-discovery execution phases must use the service contract from
 - Public top-level phase functions are forbidden except
   `run_staged_radar_execution`, which remains the compatibility wrapper for old
   import paths.
+- Public execution helpers are also forbidden. Use service classes:
+  `TaskExecutionService`, `ExecutionResultMerger`,
+  `CandidateProjectionService`, `PipelineEventFactory`, `SmokeLimitPolicy`, and
+  `ExecutionMetadataFactory`.
+- Private helpers must stay small and local. If a method only delegates to one
+  large `_helper`, the code is still procedural debt and should be decomposed
+  before the slice is considered complete.
+- Every public class in `candidate_discovery/execution` must explain `Owns`,
+  `Does not own`, and `Architecture` in its docstring, with a link to the
+  matching handbook section. Do not merge a new execution service if a developer
+  cannot understand its role from the class docstring plus the handbook.
 
 Direct checkout demo without installing:
 

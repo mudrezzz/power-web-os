@@ -16,9 +16,9 @@ from power_web_os.application.live_radar_execution_budget import RadarExecutionB
 from power_web_os.application.live_radar_external_budget import (
     RadarExternalCallBudget,
 )
-from power_web_os.application.live_radar_staged_helpers import eligible_candidate_names, run_task
-from power_web_os.application.live_radar_staged_merge import merge_result
 from power_web_os.application.live_radar_universe import gap_items, gap_observations, gap_payloads, dict_list
+from power_web_os.application.radar.candidate_discovery.execution.state import SmokeLimitPolicy
+from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
 from power_web_os.application.radar_search_expansion_models import RadarSearchExpansionPlan
 from power_web_os.application.live_radar_search_expansion_payloads import (
@@ -75,6 +75,8 @@ def execute_targeted_search_expansion(
     work_scheduler: RadarWorkScheduler | None = None,
     smoke_candidate_limit: int | None = None,
 ) -> TargetedSearchExpansionExecutionResult:
+    task_service = TaskExecutionService()
+    smoke_policy = SmokeLimitPolicy()
     expansion_plan = service.plan_expansion(
         radar=radar,
         candidate_scope=candidate_scope,
@@ -184,7 +186,7 @@ def execute_targeted_search_expansion(
             continue
 
         attempted_count += 1
-        result = run_task(
+        result = task_service.run_task(
             provider=provider,
             radar=radar,
             task=task,
@@ -223,7 +225,9 @@ def execute_targeted_search_expansion(
                 *gap_observations(gaps, origin_task_id=task.task_id),
             ],
         })
-        sources, observations, provider_metadata = merge_result(sources, observations, provider_metadata, result)
+        sources, observations, provider_metadata = task_service.merger.merge_result(
+            sources, observations, provider_metadata, result
+        )
         if not has_extraction_issues(result.provider_metadata):
             provider_metadata = without_extraction_issues(provider_metadata)
         unresolved_candidate_gaps.extend(gap_payloads(gaps, origin_task_id=task.task_id))
@@ -238,14 +242,13 @@ def execute_targeted_search_expansion(
         }
         events.append(executed_event(task, variant, result))
 
-    candidate_scope = eligible_candidate_names(
+    candidate_scope = task_service.eligible_candidate_names(
         radar=radar,
         sources=sources,
         observations=observations,
         completed_qualification_ids=completed_qualification_ids,
     )
-    if smoke_candidate_limit and smoke_candidate_limit > 0:
-        candidate_scope = candidate_scope[:smoke_candidate_limit]
+    candidate_scope = smoke_policy.limit_candidates(candidate_scope, smoke_candidate_limit)
     stopped_reason = ""
     stop_code = ""
     if not executed_count and skipped_count:

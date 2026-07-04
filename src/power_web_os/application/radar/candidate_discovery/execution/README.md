@@ -6,6 +6,10 @@ Owns candidate-discovery phase orchestration, scheduler admission, search
 expansion execution, budget-sensitive execution order, and migration of staged
 executor behavior.
 
+Detailed architecture handbook:
+`docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md`.
+Read it before changing this package.
+
 ## Phase map
 
 - `context.py`: `CandidateDiscoveryExecutionContext` and `PhaseResult`.
@@ -28,9 +32,15 @@ executor behavior.
 - `finalization.py`: `FinalizationProjector` for final provider result,
   events, candidate universe, budget metadata, source obligations, and
   dossier/report payload.
+- `finalization_metadata.py`: private small summary helpers used by finalization.
 - `finalization_universe.py`: review-needed upstream entity projection.
-- `task_runner.py`, `merge.py`, `projection.py`: provider-neutral task
-  execution helpers, result merging, and artifact projection.
+- `task_runner.py`: `TaskExecutionService` for provider-neutral task execution,
+  gate passes, retries, and candidate task utilities.
+- `task_runner_payloads.py`: private small payload/schema helpers used by task execution.
+- `service_contracts.py`: protocol-level service interfaces for phase executors,
+  projectors, deterministic policies, and payload factories.
+- `merge.py`: `ExecutionResultMerger` for result merge and entity metadata projection.
+- `projection.py`: `CandidateProjectionService` and `PipelineEventFactory`.
 
 ## Service Contract
 
@@ -45,6 +55,14 @@ Use `context` for dependencies and limits that should not be mutated by a phase.
 Use `state` for shared execution data that phases intentionally mutate. Return
 `PhaseResult` only for compact status/reason reporting; do not return another
 copy of all sources, observations, events, budgets, and metadata.
+
+Every public class must have a docstring that states:
+
+- `Owns:`
+- `Does not own:`
+- `Architecture:`
+- a link to
+  `docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md#...`
 
 ## Allowed imports
 
@@ -71,6 +89,10 @@ phase that owns the behavior. Do not add new logic to root-level
 Do not add public top-level phase functions. Public execution behavior belongs
 to `CandidateDiscoveryOrchestrator`, `DiscoveryPhaseExecutor`,
 `GatePhaseExecutor`, `CoveragePhaseExecutor`, `ExpansionPhaseExecutor`,
-`SignalCompatibilityPhaseExecutor`, or `FinalizationProjector`. Private
-`_helper` functions are acceptable for local pure transformations or preserved
-implementation details during migration.
+`SignalCompatibilityPhaseExecutor`, `FinalizationProjector`,
+`TaskExecutionService`, `ExecutionResultMerger`,
+`CandidateProjectionService`, `PipelineEventFactory`, `SmokeLimitPolicy`, or
+`ExecutionMetadataFactory`. Private `_helper` functions are acceptable only for
+small local pure transformations and product-safe payload/summary builders.
+Do not hide phase behavior inside a large private function called by a service
+method; architecture tests should catch that pattern.

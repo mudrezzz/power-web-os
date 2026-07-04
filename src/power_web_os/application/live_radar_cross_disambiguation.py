@@ -13,8 +13,7 @@ from power_web_os.application.live_radar_contracts import (
 )
 from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
 from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
-from power_web_os.application.live_radar_staged_helpers import run_task
-from power_web_os.application.live_radar_staged_merge import merge_result
+from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 
 
 def execute_cross_source_disambiguation(
@@ -30,6 +29,7 @@ def execute_cross_source_disambiguation(
     events: list[LiveRadarPipelineEvent],
     executed_task_ids: list[str],
 ) -> tuple[list[RadarSourceEvidence], list[dict[str, Any]], dict[str, Any]]:
+    task_service = TaskExecutionService()
     planned_tasks = _dedupe_planned_tasks(_dict_list(provider_metadata.get("cross_source_disambiguation_tasks")))
     if not planned_tasks:
         return sources, observations, provider_metadata
@@ -49,7 +49,7 @@ def execute_cross_source_disambiguation(
             events.append(_event(updated))
             continue
         task = _execution_task_from_planned(planned, source_ids=source_ids, entity_name=entity_name)
-        result = run_task(
+        result = task_service.run_task(
             provider=provider,
             radar=radar,
             task=task,
@@ -67,9 +67,13 @@ def execute_cross_source_disambiguation(
             )
         elif _schema_invalid(result.provider_metadata):
             updated = _task_outcome(planned, outcome="schema_failed", reason="Cross-source extraction failed strict schema validation.")
-            sources, observations, provider_metadata = merge_result(sources, observations, provider_metadata, result)
+            sources, observations, provider_metadata = task_service.merger.merge_result(
+                sources, observations, provider_metadata, result
+            )
         elif result.sources or result.candidate_observations:
-            sources, observations, provider_metadata = merge_result(sources, observations, provider_metadata, result)
+            sources, observations, provider_metadata = task_service.merger.merge_result(
+                sources, observations, provider_metadata, result
+            )
             provider_metadata = _mark_confirmed_relation(provider_metadata, planned, result)
             updated = _task_outcome(
                 planned,

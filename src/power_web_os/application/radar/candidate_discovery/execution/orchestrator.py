@@ -32,14 +32,10 @@ from power_web_os.application.radar.candidate_discovery.execution.finalization i
 from power_web_os.application.radar.candidate_discovery.execution.signals import SignalCompatibilityPhaseExecutor
 from power_web_os.application.radar.candidate_discovery.execution.state import (
     CandidateDiscoveryExecutionState,
-    initial_provider_metadata,
-    limit_smoke_candidates,
-    limit_smoke_signal_tasks,
+    ExecutionMetadataFactory,
+    SmokeLimitPolicy,
 )
-from power_web_os.application.radar.candidate_discovery.execution.task_runner import (
-    eligible_candidate_names as _eligible_candidate_names,
-    tasks_for_stage as _tasks_for_stage,
-)
+from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 from power_web_os.application.live_radar_useful_budget import UsefulResultBudget
 from power_web_os.integrations.live_radar_source_verification import (
     SourceVerificationCache,
@@ -51,33 +47,61 @@ MAX_CANDIDATE_UNIVERSE_SIZE = 50
 
 
 class CandidateDiscoveryOrchestrator:
-    """Coordinates candidate-discovery phase services without owning phase logic."""
+    """Coordinates candidate-discovery phase services without owning phase logic.
+
+    Owns:
+    - Phase order, compatibility run flow, and final handoff to projection.
+
+    Does not own:
+    - Discovery, coverage, expansion, signal, finalization, provider, or budget
+      internals.
+
+    Architecture:
+    docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md#candidatediscoveryorchestrator
+    """
 
     def __init__(
         self,
         *,
+        task_service: TaskExecutionService | None = None,
+        smoke_policy: SmokeLimitPolicy | None = None,
         discovery: DiscoveryPhaseExecutor | None = None,
         coverage: CoveragePhaseExecutor | None = None,
         expansion: ExpansionPhaseExecutor | None = None,
         signals: SignalCompatibilityPhaseExecutor | None = None,
         finalization: FinalizationProjector | None = None,
     ) -> None:
-        self._discovery = discovery or DiscoveryPhaseExecutor()
-        self._coverage = coverage or CoveragePhaseExecutor()
-        self._expansion = expansion or ExpansionPhaseExecutor()
-        self._signals = signals or SignalCompatibilityPhaseExecutor()
-        self._finalization = finalization or FinalizationProjector()
+        self._task_service = task_service or TaskExecutionService()
+        self._smoke_policy = smoke_policy or SmokeLimitPolicy()
+        self._discovery = discovery or DiscoveryPhaseExecutor(
+            task_service=self._task_service,
+            smoke_policy=self._smoke_policy,
+        )
+        self._coverage = coverage or CoveragePhaseExecutor(
+            task_service=self._task_service,
+            smoke_policy=self._smoke_policy,
+        )
+        self._expansion = expansion or ExpansionPhaseExecutor(
+            task_service=self._task_service,
+            smoke_policy=self._smoke_policy,
+        )
+        self._signals = signals or SignalCompatibilityPhaseExecutor(self._task_service)
+        self._finalization = finalization or FinalizationProjector(self._task_service)
 
     def run(
         self,
         context: CandidateDiscoveryExecutionContext,
         state: CandidateDiscoveryExecutionState,
     ) -> tuple[WebSearchProviderResult, list[LiveRadarPipelineEvent], dict[str, Any]]:
-        discovery_tasks = _tasks_for_stage(context.execution_plan, "qualification_discovery")
+        discovery_tasks = self._task_service.tasks_for_stage(context.execution_plan, "qualification_discovery")
         gate_tasks, _ = self._discovery.run(context, state, discovery_tasks)
         terminal_stop_after_discovery = bool(state.stopped_for_review_reason)
 
-        coverage_tasks = [] if terminal_stop_after_discovery else _tasks_for_stage(context.execution_plan, "coverage_check")
+        coverage_tasks = (
+            []
+            if terminal_stop_after_discovery
+            else self._task_service.tasks_for_stage(context.execution_plan, "coverage_check")
+        )
         self._coverage.run(
             context,
             state,
@@ -106,20 +130,20 @@ class CandidateDiscoveryOrchestrator:
                 events=state.events,
                 executed_task_ids=state.executed_task_ids,
             )
-        state.candidate_scope = _eligible_candidate_names(
+        state.candidate_scope = self._task_service.eligible_candidate_names(
             radar=context.radar,
             sources=state.sources,
             observations=state.observations,
             completed_qualification_ids=state.completed_qualification_ids,
         )
-        state.candidate_scope = limit_smoke_candidates(
+        state.candidate_scope = self._smoke_policy.limit_candidates(
             state.candidate_scope,
             context.external_budget.settings.smoke_max_candidates,
         )
 
         pre_signal_decision, can_run_signal_search, _ = self._signals.review_before_search(context, state)
-        signal_tasks = limit_smoke_signal_tasks(
-            _tasks_for_stage(context.execution_plan, "signal_search"),
+        signal_tasks = self._smoke_policy.limit_signal_tasks(
+            self._task_service.tasks_for_stage(context.execution_plan, "signal_search"),
             context.external_budget.settings.smoke_max_signals,
         )
         self._signals.run(
@@ -216,7 +240,7 @@ def run_staged_radar_execution(
     verification_cache = SourceVerificationCache(results_by_url={})
     state = CandidateDiscoveryExecutionState(
         provider_metadata={
-            **initial_provider_metadata(radar),
+            **ExecutionMetadataFactory().initial_provider_metadata(radar),
             **work_scheduler.configure_run_admission(radar=radar, external_budget=external_budget),
         }
     )

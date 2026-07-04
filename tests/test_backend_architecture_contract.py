@@ -8,6 +8,7 @@ BACKEND_ROOT = Path("src/power_web_os")
 ADR_PATH = Path("docs/adr/2026-06-16-backend-architecture-guardrails.md")
 ARCHITECTURE_PATH = Path("docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md")
 RADAR_BACKEND_ARCHITECTURE_PATH = Path("docs/architecture/RADAR_BACKEND_ARCHITECTURE.md")
+RADAR_EXECUTION_ARCHITECTURE_PATH = Path("docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md")
 DEVELOPER_GUIDE_PATH = Path("docs/developer/DEVELOPER_GUIDE.md")
 APPLICATION_README_PATH = Path("src/power_web_os/application/README.md")
 PERSISTENCE_README_PATH = Path("src/power_web_os/persistence/README.md")
@@ -101,11 +102,32 @@ RADAR_EXECUTION_PHASE_MODULES = {
     RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "signals.py",
 }
 
+RADAR_EXECUTION_MODULES = {
+    path
+    for path in (RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution").glob("*.py")
+    if path.name != "__init__.py"
+}
+
 RADAR_EXECUTION_PUBLIC_FUNCTION_ALLOWLIST = {
     (
         RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "orchestrator.py",
         "run_staged_radar_execution",
     ),
+}
+
+RADAR_PHASE_EXECUTOR_CLASSES = {
+    "DiscoveryPhaseExecutor",
+    "GatePhaseExecutor",
+    "CoveragePhaseExecutor",
+    "ExpansionPhaseExecutor",
+    "SignalCompatibilityPhaseExecutor",
+}
+
+RADAR_EXECUTION_SERVICE_CONTRACTS = {
+    "CandidateDiscoveryPhaseExecutor",
+    "CandidateDiscoveryProjector",
+    "CandidateDiscoveryPolicy",
+    "CandidateDiscoveryFactory",
 }
 
 MOVED_RADAR_LEGACY_MODULES = {
@@ -265,6 +287,16 @@ def imported_modules(path: Path) -> set[str]:
     return imports
 
 
+def public_execution_classes() -> dict[str, Path]:
+    classes: dict[str, Path] = {}
+    for path in sorted(RADAR_EXECUTION_MODULES):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in tree.body:
+            if isinstance(node, ast.ClassDef) and not node.name.startswith("_"):
+                classes[node.name] = path
+    return classes
+
+
 def test_backend_architecture_docs_define_required_boundaries() -> None:
     docs = "\n".join(
         path.read_text(encoding="utf-8")
@@ -361,7 +393,10 @@ def test_no_new_root_live_radar_modules_are_added() -> None:
 
 
 def test_radar_backend_architecture_doc_exists_and_defines_target_packages() -> None:
-    text = RADAR_BACKEND_ARCHITECTURE_PATH.read_text(encoding="utf-8")
+    text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in [RADAR_BACKEND_ARCHITECTURE_PATH, RADAR_EXECUTION_ARCHITECTURE_PATH]
+    )
 
     for expected in [
         "candidate_discovery",
@@ -410,7 +445,10 @@ def test_radar_component_contract_is_documented() -> None:
 
 
 def test_candidate_discovery_execution_phase_services_are_documented() -> None:
-    text = RADAR_BACKEND_ARCHITECTURE_PATH.read_text(encoding="utf-8")
+    text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in [RADAR_BACKEND_ARCHITECTURE_PATH, RADAR_EXECUTION_ARCHITECTURE_PATH]
+    )
 
     for expected in [
         "CandidateDiscoveryExecutionContext",
@@ -423,13 +461,34 @@ def test_candidate_discovery_execution_phase_services_are_documented() -> None:
         "ExpansionPhaseExecutor",
         "SignalCompatibilityPhaseExecutor",
         "FinalizationProjector",
+        "TaskExecutionService",
+        "ExecutionResultMerger",
+        "CandidateProjectionService",
+        "PipelineEventFactory",
+        "SmokeLimitPolicy",
+        "ExecutionMetadataFactory",
+        *sorted(RADAR_EXECUTION_SERVICE_CONTRACTS),
     ]:
         assert expected in text
 
 
+def test_candidate_discovery_execution_handbook_is_the_required_class_reference() -> None:
+    handbook = RADAR_EXECUTION_ARCHITECTURE_PATH.read_text(encoding="utf-8")
+    package_readme = (RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "README.md").read_text(
+        encoding="utf-8"
+    )
+    backend_doc = RADAR_BACKEND_ARCHITECTURE_PATH.read_text(encoding="utf-8")
+
+    assert "Candidate Discovery Execution Architecture" in handbook
+    assert RADAR_EXECUTION_ARCHITECTURE_PATH.as_posix() in package_readme
+    assert RADAR_EXECUTION_ARCHITECTURE_PATH.as_posix() in backend_doc
+    for class_name in sorted(public_execution_classes()):
+        assert f"### `{class_name}`" in handbook
+
+
 def test_candidate_discovery_phase_modules_do_not_expose_stateful_public_functions() -> None:
     violations: list[str] = []
-    for path in sorted(RADAR_EXECUTION_PHASE_MODULES):
+    for path in sorted(RADAR_EXECUTION_MODULES):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in tree.body:
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -441,9 +500,93 @@ def test_candidate_discovery_phase_modules_do_not_expose_stateful_public_functio
             violations.append(f"{path.as_posix()}::{node.name}")
 
     assert violations == [], (
-        "Stateful candidate-discovery phase behavior must live on PhaseExecutor/Projector "
-        f"classes. Public top-level phase functions found: {violations}"
+        "Candidate-discovery execution behavior must live on service/projector "
+        f"classes. Public top-level execution functions found: {violations}"
     )
+
+
+def test_candidate_discovery_execution_functions_stay_small_or_explicitly_compatibility_wrapped() -> None:
+    violations: list[str] = []
+    for path in sorted(RADAR_EXECUTION_MODULES):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            line_count = (node.end_lineno or node.lineno) - node.lineno + 1
+            if (path, node.name) in RADAR_EXECUTION_PUBLIC_FUNCTION_ALLOWLIST:
+                if line_count > 140:
+                    violations.append(f"{path.as_posix()}::{node.name} has {line_count} lines")
+                continue
+            if line_count > 80:
+                violations.append(f"{path.as_posix()}::{node.name} has {line_count} lines")
+
+    assert violations == [], (
+        "Candidate-discovery execution helpers must stay small. "
+        f"Split long methods/functions into service methods: {violations}"
+    )
+
+
+def test_candidate_discovery_execution_public_service_classes_have_docstrings() -> None:
+    missing: list[str] = []
+    incomplete: list[str] = []
+    for path in sorted(RADAR_EXECUTION_MODULES):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in tree.body:
+            if not isinstance(node, ast.ClassDef) or node.name.startswith("_"):
+                continue
+            docstring = ast.get_docstring(node)
+            if not docstring:
+                missing.append(f"{path.as_posix()}::{node.name}")
+                continue
+            required_fragments = [
+                "Owns:",
+                "Does not own:",
+                "Architecture:",
+                f"{RADAR_EXECUTION_ARCHITECTURE_PATH.as_posix()}#{node.name.lower()}",
+            ]
+            absent = [fragment for fragment in required_fragments if fragment not in docstring]
+            if absent:
+                incomplete.append(f"{path.as_posix()}::{node.name} missing {absent}")
+
+    assert missing == []
+    assert incomplete == []
+
+
+def test_candidate_discovery_execution_phase_classes_follow_service_contract() -> None:
+    violations: list[str] = []
+    for class_name, path in public_execution_classes().items():
+        if class_name not in RADAR_PHASE_EXECUTOR_CLASSES:
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        class_node = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == class_name
+        )
+        has_phase_name = any(
+            isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "phase_name" for target in node.targets)
+            for node in class_node.body
+        )
+        run_node = next(
+            (node for node in class_node.body if isinstance(node, ast.FunctionDef) and node.name == "run"),
+            None,
+        )
+        run_args = [arg.arg for arg in run_node.args.args[:3]] if run_node is not None else []
+        if not has_phase_name:
+            violations.append(f"{path.as_posix()}::{class_name} missing phase_name")
+        if run_args != ["self", "context", "state"]:
+            violations.append(f"{path.as_posix()}::{class_name}.run first args are {run_args}")
+
+    assert violations == []
+
+
+def test_candidate_discovery_execution_service_contracts_are_declared() -> None:
+    path = RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "service_contracts.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    classes = {node.name for node in tree.body if isinstance(node, ast.ClassDef)}
+
+    assert RADAR_EXECUTION_SERVICE_CONTRACTS <= classes
 
 
 def test_radar_target_packages_exist_with_package_markers() -> None:

@@ -83,8 +83,16 @@ For candidate-discovery execution changes, plan around the concrete service
 contract: `CandidateDiscoveryExecutionContext`,
 `CandidateDiscoveryExecutionState`, `PhaseResult`,
 `CandidateDiscoveryOrchestrator`, phase executors, and
-`FinalizationProjector`. Do not plan new public procedural phase functions as
-the extension point.
+`FinalizationProjector`, plus helper services such as `TaskExecutionService`,
+`ExecutionResultMerger`, `CandidateProjectionService`,
+`PipelineEventFactory`, `SmokeLimitPolicy`, and `ExecutionMetadataFactory`.
+Use
+`docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md` as the
+class-by-class handbook for those services, and require public class docstrings
+to link to the relevant handbook section.
+Do not plan new public procedural phase/helper functions as the extension
+point, and do not accept a service method that delegates to one large private
+function as a finished architecture.
 
 ## Complex LLM pipeline TDD rules
 

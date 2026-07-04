@@ -21,7 +21,19 @@ from power_web_os.integrations.live_radar_source_verification import SourceVerif
 
 @dataclass(slots=True)
 class CandidateDiscoveryExecutionContext:
-    """Shared dependencies and immutable-ish limits for one candidate-discovery run."""
+    """Shared dependencies and immutable-ish limits for one candidate-discovery run.
+
+    Owns:
+    - Provider port, budgets, checkpoint services, scheduler, expansion service,
+      retrieval plan, source policy decisions, and execution limits for one run.
+
+    Does not own:
+    - Mutable sources, observations, events, or provider metadata; those belong to
+      `CandidateDiscoveryExecutionState`.
+
+    Architecture:
+    docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md#candidatediscoveryexecutioncontext
+    """
 
     radar: dict[str, Any]
     execution_plan: RadarExecutionPlan
@@ -43,7 +55,17 @@ class CandidateDiscoveryExecutionContext:
 
 @dataclass(frozen=True, slots=True)
 class PhaseResult:
-    """Small phase status record; phase services mutate state explicitly."""
+    """Small phase status record; phase services mutate state explicitly.
+
+    Owns:
+    - Compact phase status, reason, and phase name for orchestration decisions.
+
+    Does not own:
+    - Full state transfer, provider results, events, or dossier metadata.
+
+    Architecture:
+    docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md#phaseresult
+    """
 
     phase_name: str
     status: str = "completed"

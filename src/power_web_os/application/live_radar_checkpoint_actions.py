@@ -16,8 +16,7 @@ from power_web_os.application.live_radar_contracts import (
 )
 from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
 from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
-from power_web_os.application.live_radar_staged_helpers import eligible_candidate_names, run_task
-from power_web_os.application.live_radar_staged_merge import merge_result
+from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 from power_web_os.application.live_radar_search_expansion_execution import execute_targeted_search_expansion
 from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
 from power_web_os.application.radar_work_scheduler import RadarWorkScheduler
@@ -92,6 +91,7 @@ class RadarCheckpointActionExecutor:
 
     def __init__(self, plan_reviser: RadarExecutionPlanReviser | None = None) -> None:
         self._plan_reviser = plan_reviser or DefaultRadarExecutionPlanReviser()
+        self._task_service = TaskExecutionService()
 
     def recover(
         self,
@@ -199,7 +199,7 @@ class RadarCheckpointActionExecutor:
                 if state.stopped_for_review_reason or decision.action == "continue":
                     break
                 continue
-            result = run_task(
+            result = self._task_service.run_task(
                 provider=context.provider,
                 radar=context.radar,
                 task=task,
@@ -207,7 +207,7 @@ class RadarCheckpointActionExecutor:
                 budget=context.budget,
                 external_budget=context.external_budget,
             )
-            state.sources, state.observations, state.provider_metadata = merge_result(
+            state.sources, state.observations, state.provider_metadata = self._task_service.merger.merge_result(
                 state.sources,
                 state.observations,
                 state.provider_metadata,
@@ -232,7 +232,7 @@ class RadarCheckpointActionExecutor:
             if action in {"revise_plan", "repair_extraction", "retry_extraction"} and not _has_extraction_issues(result.provider_metadata):
                 state.provider_metadata = _without_extraction_issues(state.provider_metadata)
             context.executed_task_ids.append(f"{task.task_id}:adaptive-{action}-{attempt}")
-            state.candidate_scope = eligible_candidate_names(
+            state.candidate_scope = self._task_service.eligible_candidate_names(
                 radar=context.radar,
                 sources=state.sources,
                 observations=state.observations,

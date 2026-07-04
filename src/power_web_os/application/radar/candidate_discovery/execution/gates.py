@@ -2,24 +2,31 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from power_web_os.application.radar.candidate_discovery.contracts import (
-    LiveRadarPipelineEvent,
-    RadarExecutionPlan,
-    RadarExecutionTask,
-    RadarSourceEvidence,
-    WebSearchProvider,
-)
-from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
-from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
+from power_web_os.application.radar.candidate_discovery.contracts import RadarExecutionTask
 from power_web_os.application.radar.candidate_discovery.execution.context import CandidateDiscoveryExecutionContext
 from power_web_os.application.radar.candidate_discovery.execution.state import CandidateDiscoveryExecutionState
-from power_web_os.application.radar.candidate_discovery.execution.task_runner import run_gate_pass as _run_gate_pass
+from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 
 
 class GatePhaseExecutor:
-    """Runs qualification gate tasks and writes gate outputs back to execution state."""
+    """Runs qualification gate tasks and writes gate outputs back to execution state.
+
+    Owns:
+    - Qualification gate pass execution for an explicit task list and candidate
+      scope.
+
+    Does not own:
+    - Discovery task selection, coverage iteration, expansion scheduling, or
+      final projection.
+
+    Architecture:
+    docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md#gatephaseexecutor
+    """
+
+    phase_name = "qualification_gate"
+
+    def __init__(self, task_service: TaskExecutionService | None = None) -> None:
+        self._task_service = task_service or TaskExecutionService()
 
     def run(
         self,
@@ -28,7 +35,7 @@ class GatePhaseExecutor:
         tasks: list[RadarExecutionTask],
         candidate_scope: list[str] | None = None,
     ) -> None:
-        state.sources, state.observations, state.provider_metadata, state.candidate_scope = _run_qualification_gate_pass(
+        state.sources, state.observations, state.provider_metadata, state.candidate_scope = self._task_service.run_gate_pass(
             radar=context.radar,
             execution_plan=context.execution_plan,
             provider=context.provider,
@@ -44,38 +51,3 @@ class GatePhaseExecutor:
             budget=context.task_budget,
             external_budget=context.external_budget,
         )
-
-
-def _run_qualification_gate_pass(
-    *,
-    radar: dict[str, Any],
-    execution_plan: RadarExecutionPlan,
-    provider: WebSearchProvider,
-    tasks: list[RadarExecutionTask],
-    sources: list[RadarSourceEvidence],
-    observations: list[dict[str, Any]],
-    provider_metadata: dict[str, Any],
-    candidate_scope: list[str],
-    completed_qualification_ids: list[str],
-    gate_results: list[dict[str, Any]],
-    events: list[LiveRadarPipelineEvent],
-    executed_task_ids: list[str],
-    budget: RadarExecutionBudget,
-    external_budget: RadarExternalCallBudget,
-) -> tuple[list[RadarSourceEvidence], list[dict[str, Any]], dict[str, Any], list[str]]:
-    return _run_gate_pass(
-        radar=radar,
-        execution_plan=execution_plan,
-        provider=provider,
-        tasks=tasks,
-        sources=sources,
-        observations=observations,
-        provider_metadata=provider_metadata,
-        candidate_scope=candidate_scope,
-        completed_qualification_ids=completed_qualification_ids,
-        gate_results=gate_results,
-        events=events,
-        executed_task_ids=executed_task_ids,
-        budget=budget,
-        external_budget=external_budget,
-    )

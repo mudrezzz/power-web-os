@@ -33,14 +33,17 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.execution.expansion",
     "power_web_os.application.radar.candidate_discovery.execution.expansion_diagnostics",
     "power_web_os.application.radar.candidate_discovery.execution.finalization",
+    "power_web_os.application.radar.candidate_discovery.execution.finalization_metadata",
     "power_web_os.application.radar.candidate_discovery.execution.finalization_universe",
     "power_web_os.application.radar.candidate_discovery.execution.gates",
     "power_web_os.application.radar.candidate_discovery.execution.merge",
     "power_web_os.application.radar.candidate_discovery.execution.orchestrator",
     "power_web_os.application.radar.candidate_discovery.execution.projection",
+    "power_web_os.application.radar.candidate_discovery.execution.service_contracts",
     "power_web_os.application.radar.candidate_discovery.execution.signals",
     "power_web_os.application.radar.candidate_discovery.execution.state",
     "power_web_os.application.radar.candidate_discovery.execution.task_runner",
+    "power_web_os.application.radar.candidate_discovery.execution.task_runner_payloads",
 ]
 
 LEGACY_KEY_MODULES = [
@@ -135,6 +138,23 @@ def test_candidate_discovery_execution_service_classes_are_importable() -> None:
         "power_web_os.application.radar.candidate_discovery.execution.expansion": ["ExpansionPhaseExecutor"],
         "power_web_os.application.radar.candidate_discovery.execution.signals": ["SignalCompatibilityPhaseExecutor"],
         "power_web_os.application.radar.candidate_discovery.execution.finalization": ["FinalizationProjector"],
+        "power_web_os.application.radar.candidate_discovery.execution.merge": ["ExecutionResultMerger"],
+        "power_web_os.application.radar.candidate_discovery.execution.projection": [
+            "CandidateProjectionService",
+            "PipelineEventFactory",
+        ],
+        "power_web_os.application.radar.candidate_discovery.execution.service_contracts": [
+            "CandidateDiscoveryFactory",
+            "CandidateDiscoveryPhaseExecutor",
+            "CandidateDiscoveryPolicy",
+            "CandidateDiscoveryProjector",
+        ],
+        "power_web_os.application.radar.candidate_discovery.execution.state": [
+            "CandidateDiscoveryExecutionState",
+            "ExecutionMetadataFactory",
+            "SmokeLimitPolicy",
+        ],
+        "power_web_os.application.radar.candidate_discovery.execution.task_runner": ["TaskExecutionService"],
     }
 
     for module_name, names in required.items():

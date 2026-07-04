@@ -41,14 +41,22 @@ Implement one small, complete, tested, documented product increment.
   implementation file first.
 - For Radar backend work, read
   `docs/architecture/RADAR_BACKEND_ARCHITECTURE.md` before adding or moving
-  application code. Do not add new root-level
+  application code. For candidate-discovery execution work, also read
+  `docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md`.
+  Do not add new root-level
   `src/power_web_os/application/live_radar_*.py` modules; use the package
   contract under `src/power_web_os/application/radar/...` as it is introduced.
   Candidate-discovery execution work must name the target package and phase
   service (`CandidateDiscoveryOrchestrator`, `DiscoveryPhaseExecutor`,
   `GatePhaseExecutor`, `CoveragePhaseExecutor`, `ExpansionPhaseExecutor`,
-  `SignalCompatibilityPhaseExecutor`, or `FinalizationProjector`) and update the
-  architecture tests when that contract changes.
+  `SignalCompatibilityPhaseExecutor`, `FinalizationProjector`,
+  `TaskExecutionService`, `ExecutionResultMerger`,
+  `CandidateProjectionService`, `PipelineEventFactory`, `SmokeLimitPolicy`, or
+  `ExecutionMetadataFactory`) and update the architecture tests when that
+  contract changes. Public execution classes must include `Owns`, `Does not
+  own`, and `Architecture` docstring sections with a link to the handbook. Do
+  not add public module-level helper functions or hide stateful phase behavior
+  inside one large private helper.
 - For complex LLM pipelines, implement TDD/preflight coverage before relying on
   full live provider runs. Add or update static/config checks, recorded
   fixtures, malformed-output negative fixtures, and targeted provider probes

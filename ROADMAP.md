@@ -7946,6 +7946,16 @@ Principles:
   - Converting functions to classes can accidentally change mutation order or artifact shape. Mitigate with the existing adaptive/live/budget/API regression set.
   - Overly aggressive validators can slow delivery. Mitigate with migration allowlists and clear failure messages.
 
+### Slice 0.7.6.4.11.1: Candidate discovery execution helper decomposition and strict service API
+
+- Status: Done
+- Goal: Convert candidate-discovery execution helpers into strict service-owned APIs, enforce guardrails, and preserve recorded/fake pipeline behavior.
+
+### Slice 0.7.6.4.11.2: Candidate discovery execution architecture handbook, class docstrings, and service interface contract
+
+- Status: Done
+- Goal: Document candidate-discovery execution architecture, add service interface contracts, require class docstrings with handbook links, and enforce drift checks.
+
 ### Slice 0.7.6.4.12: Remove legacy live_radar allowlist and compatibility debt
 
 - Status: Ready
