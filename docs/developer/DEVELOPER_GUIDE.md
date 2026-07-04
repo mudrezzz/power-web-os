@@ -257,7 +257,7 @@ Old `live_radar_*` imports remain runtime-compatible until migration slices move
 behavior into package-owned services. The new package tree is the extension
 path; the old flat namespace is migration debt.
 
-Preferred Radar backend imports after `0.7.6.4.9`:
+Preferred Radar backend imports after `0.7.6.4.11`:
 
 ```text
 power_web_os.application.radar.shared.source_cards
@@ -269,9 +269,37 @@ power_web_os.application.radar.candidate_discovery.planning.planning_pipeline
 power_web_os.application.radar.candidate_discovery.planning.execution_plan
 power_web_os.application.radar.candidate_discovery.planning.retrieval_plan
 power_web_os.application.radar.candidate_discovery.retrieval.product_sources
+power_web_os.application.radar.candidate_discovery.execution.context
+power_web_os.application.radar.candidate_discovery.execution.state
+power_web_os.application.radar.candidate_discovery.execution.orchestrator
+power_web_os.application.radar.candidate_discovery.execution.discovery
+power_web_os.application.radar.candidate_discovery.execution.gates
+power_web_os.application.radar.candidate_discovery.execution.coverage
+power_web_os.application.radar.candidate_discovery.execution.expansion
+power_web_os.application.radar.candidate_discovery.execution.signals
+power_web_os.application.radar.candidate_discovery.execution.finalization
 ```
 
 The matching root-level `live_radar_*` files are compatibility shims only.
+Execution behavior belongs in the phase modules under
+`candidate_discovery/execution/`; the orchestrator should stay thin and only
+order phases.
+
+Candidate-discovery execution phases must use the service contract from
+`docs/architecture/RADAR_BACKEND_ARCHITECTURE.md`:
+
+- `CandidateDiscoveryExecutionContext` carries dependencies, budgets, services,
+  source policy decisions, and phase limits.
+- `CandidateDiscoveryExecutionState` carries mutable cross-phase sources,
+  observations, metadata, events, checkpoint decisions, candidate scope, and
+  signal statuses.
+- Phase behavior belongs to service/projector classes:
+  `CandidateDiscoveryOrchestrator`, `DiscoveryPhaseExecutor`,
+  `GatePhaseExecutor`, `CoveragePhaseExecutor`, `ExpansionPhaseExecutor`,
+  `SignalCompatibilityPhaseExecutor`, and `FinalizationProjector`.
+- Public top-level phase functions are forbidden except
+  `run_staged_radar_execution`, which remains the compatibility wrapper for old
+  import paths.
 
 Direct checkout demo without installing:
 

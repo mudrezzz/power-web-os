@@ -27,6 +27,20 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.planning.planning_pipeline",
     "power_web_os.application.radar.candidate_discovery.planning.retrieval_plan",
     "power_web_os.application.radar.candidate_discovery.retrieval.product_sources",
+    "power_web_os.application.radar.candidate_discovery.execution.coverage",
+    "power_web_os.application.radar.candidate_discovery.execution.context",
+    "power_web_os.application.radar.candidate_discovery.execution.discovery",
+    "power_web_os.application.radar.candidate_discovery.execution.expansion",
+    "power_web_os.application.radar.candidate_discovery.execution.expansion_diagnostics",
+    "power_web_os.application.radar.candidate_discovery.execution.finalization",
+    "power_web_os.application.radar.candidate_discovery.execution.finalization_universe",
+    "power_web_os.application.radar.candidate_discovery.execution.gates",
+    "power_web_os.application.radar.candidate_discovery.execution.merge",
+    "power_web_os.application.radar.candidate_discovery.execution.orchestrator",
+    "power_web_os.application.radar.candidate_discovery.execution.projection",
+    "power_web_os.application.radar.candidate_discovery.execution.signals",
+    "power_web_os.application.radar.candidate_discovery.execution.state",
+    "power_web_os.application.radar.candidate_discovery.execution.task_runner",
 ]
 
 LEGACY_KEY_MODULES = [
@@ -53,6 +67,10 @@ MOVED_LEGACY_SHIMS = [
     "live_radar_planning_pipeline.py",
     "live_radar_product_sources.py",
     "live_radar_retrieval_plan.py",
+    "live_radar_staged_execution.py",
+    "live_radar_staged_helpers.py",
+    "live_radar_staged_merge.py",
+    "live_radar_staged_support.py",
 ]
 
 
@@ -84,8 +102,8 @@ def test_candidate_discovery_compatibility_map_is_declarative() -> None:
         "power_web_os.application.radar.shared.source_cards"
     )
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_contracts"] == "moved"
-    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_staged_execution"] == "deferred"
-    assert "power_web_os.application.live_radar_staged_execution" in module.LEGACY_HOTSPOTS
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_staged_execution"] == "moved"
+    assert "power_web_os.application.live_radar_staged_execution" not in module.LEGACY_HOTSPOTS
 
     source = Path(module.__file__).read_text(encoding="utf-8")
     assert "import power_web_os.application.live_radar" not in source
@@ -99,3 +117,27 @@ def test_moved_legacy_modules_are_thin_shims() -> None:
         assert "Source of truth:" in source
         assert "import *" in source
         assert len(source.splitlines()) <= 8
+
+
+def test_candidate_discovery_execution_service_classes_are_importable() -> None:
+    required = {
+        "power_web_os.application.radar.candidate_discovery.execution.context": [
+            "CandidateDiscoveryExecutionContext",
+            "PhaseResult",
+        ],
+        "power_web_os.application.radar.candidate_discovery.execution.orchestrator": [
+            "CandidateDiscoveryOrchestrator",
+            "run_staged_radar_execution",
+        ],
+        "power_web_os.application.radar.candidate_discovery.execution.discovery": ["DiscoveryPhaseExecutor"],
+        "power_web_os.application.radar.candidate_discovery.execution.gates": ["GatePhaseExecutor"],
+        "power_web_os.application.radar.candidate_discovery.execution.coverage": ["CoveragePhaseExecutor"],
+        "power_web_os.application.radar.candidate_discovery.execution.expansion": ["ExpansionPhaseExecutor"],
+        "power_web_os.application.radar.candidate_discovery.execution.signals": ["SignalCompatibilityPhaseExecutor"],
+        "power_web_os.application.radar.candidate_discovery.execution.finalization": ["FinalizationProjector"],
+    }
+
+    for module_name, names in required.items():
+        module = importlib.import_module(module_name)
+        for name in names:
+            assert hasattr(module, name), f"{module_name} must export {name}"

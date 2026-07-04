@@ -24,7 +24,6 @@ LEGACY_LARGE_MODULE_ALLOWLIST = {
     Path("src/power_web_os/icp_radar_catalog.py"),
     Path("src/power_web_os/icp_radar_xlsx.py"),
     Path("src/power_web_os/application/live_radar_service.py"),
-    Path("src/power_web_os/application/live_radar_staged_execution.py"),
     Path("src/power_web_os/integrations/live_radar_openrouter.py"),
 }
 
@@ -71,7 +70,6 @@ LEGACY_ROOT_LIVE_RADAR_MODULES = {
 
 RADAR_APPLICATION_FANOUT_ALLOWLIST = {
     Path("src/power_web_os/application/live_radar_service.py"),
-    Path("src/power_web_os/application/live_radar_staged_execution.py"),
     Path("src/power_web_os/application/live_radar_search_expansion_execution.py"),
 }
 
@@ -93,6 +91,23 @@ RADAR_TARGET_PACKAGES = [
 
 RADAR_PACKAGE_READMES = [path / "README.md" for path in RADAR_TARGET_PACKAGES]
 
+RADAR_EXECUTION_PHASE_MODULES = {
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "coverage.py",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "discovery.py",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "expansion.py",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "finalization.py",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "gates.py",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "orchestrator.py",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "signals.py",
+}
+
+RADAR_EXECUTION_PUBLIC_FUNCTION_ALLOWLIST = {
+    (
+        RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "orchestrator.py",
+        "run_staged_radar_execution",
+    ),
+}
+
 MOVED_RADAR_LEGACY_MODULES = {
     "power_web_os.application.live_radar_contracts",
     "power_web_os.application.live_radar_definition_runtime",
@@ -103,6 +118,10 @@ MOVED_RADAR_LEGACY_MODULES = {
     "power_web_os.application.live_radar_product_sources",
     "power_web_os.application.live_radar_retrieval_plan",
     "power_web_os.application.live_radar_source_cards",
+    "power_web_os.application.live_radar_staged_execution",
+    "power_web_os.application.live_radar_staged_helpers",
+    "power_web_os.application.live_radar_staged_merge",
+    "power_web_os.application.live_radar_staged_support",
 }
 
 PURE_DOMAIN_MODULES = {
@@ -388,6 +407,43 @@ def test_radar_component_contract_is_documented() -> None:
 
     for expected in ["Input", "Result", "Decision", "Issue", "Event", "Service"]:
         assert expected in text
+
+
+def test_candidate_discovery_execution_phase_services_are_documented() -> None:
+    text = RADAR_BACKEND_ARCHITECTURE_PATH.read_text(encoding="utf-8")
+
+    for expected in [
+        "CandidateDiscoveryExecutionContext",
+        "CandidateDiscoveryExecutionState",
+        "PhaseResult",
+        "CandidateDiscoveryOrchestrator",
+        "DiscoveryPhaseExecutor",
+        "GatePhaseExecutor",
+        "CoveragePhaseExecutor",
+        "ExpansionPhaseExecutor",
+        "SignalCompatibilityPhaseExecutor",
+        "FinalizationProjector",
+    ]:
+        assert expected in text
+
+
+def test_candidate_discovery_phase_modules_do_not_expose_stateful_public_functions() -> None:
+    violations: list[str] = []
+    for path in sorted(RADAR_EXECUTION_PHASE_MODULES):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in tree.body:
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if node.name.startswith("_"):
+                continue
+            if (path, node.name) in RADAR_EXECUTION_PUBLIC_FUNCTION_ALLOWLIST:
+                continue
+            violations.append(f"{path.as_posix()}::{node.name}")
+
+    assert violations == [], (
+        "Stateful candidate-discovery phase behavior must live on PhaseExecutor/Projector "
+        f"classes. Public top-level phase functions found: {violations}"
+    )
 
 
 def test_radar_target_packages_exist_with_package_markers() -> None:

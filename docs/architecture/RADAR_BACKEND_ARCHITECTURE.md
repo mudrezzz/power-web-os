@@ -122,10 +122,65 @@ shims:
 | `live_radar_retrieval_plan.py` | `radar/candidate_discovery/planning/retrieval_plan.py` |
 | `live_radar_product_sources.py` | `radar/candidate_discovery/retrieval/product_sources.py` |
 
+As of slice `0.7.6.4.10`, staged candidate-discovery execution has also moved.
+The old root-level files are compatibility shims, while the package-owned
+source of truth is split into phase executors:
+
+| Legacy module | Source of truth |
+|---|---|
+| `live_radar_staged_execution.py` | `radar/candidate_discovery/execution/orchestrator.py` |
+| `live_radar_staged_helpers.py` | `radar/candidate_discovery/execution/task_runner.py` |
+| `live_radar_staged_merge.py` | `radar/candidate_discovery/execution/merge.py` |
+| `live_radar_staged_support.py` | `radar/candidate_discovery/execution/projection.py` |
+
+Execution phase map:
+
+| Module | Responsibility |
+|---|---|
+| `context.py` | Define `CandidateDiscoveryExecutionContext` and `PhaseResult`. |
+| `state.py` | Define `CandidateDiscoveryExecutionState`, the mutable cross-phase state object. |
+| `orchestrator.py` | Preserve the public `run_staged_radar_execution` entrypoint and run `CandidateDiscoveryOrchestrator`. |
+| `discovery.py` | `DiscoveryPhaseExecutor`: run discovery tasks, retrieved-candidate extraction, cross-source disambiguation, first checkpoint, and gate pass. |
+| `gates.py` | `GatePhaseExecutor`: own the qualification gate phase wrapper reused by discovery and coverage. |
+| `coverage.py` | `CoveragePhaseExecutor`: run iterative coverage checks and after-coverage checkpoint recovery. |
+| `expansion.py` | `ExpansionPhaseExecutor`: execute search expansion tasks under scheduler/admission and budget guards. |
+| `expansion_diagnostics.py` | Build expansion summaries, target coverage, and guarantee diagnostics. |
+| `signals.py` | `SignalCompatibilityPhaseExecutor`: preserve the compatibility signal-search stage and `not_searched_*` projection. |
+| `finalization.py` | `FinalizationProjector`: build final `WebSearchProviderResult`, event list, and dossier/report metadata. |
+| `finalization_universe.py` | Add review-needed upstream entities and upstream disambiguation events. |
+| `task_runner.py`, `merge.py`, `projection.py` | Provider-neutral task execution, result merging, and artifact projection helpers. |
+
+As of slice `0.7.6.4.11`, candidate-discovery execution phases follow an
+explicit service contract:
+
+- `CandidateDiscoveryExecutionContext` carries run-level dependencies and
+  limits: radar payload, execution/retrieval plans, provider port, task and
+  external budgets, useful-result budget, checkpoint services, expansion
+  service, work scheduler, verification cache, source policy decisions, and
+  phase limits.
+- `CandidateDiscoveryExecutionState` carries mutable cross-phase data:
+  sources, observations, provider metadata, events, executed task ids,
+  candidate scope, coverage records, checkpoint decisions, adaptive actions,
+  review-stop reason, signal statuses, and finalization counters.
+- `PhaseResult` is a small phase-status record. It must not duplicate the full
+  state payload.
+- `CandidateDiscoveryOrchestrator` owns only phase order. It must not become a
+  hidden place for discovery, expansion, scoring, checkpoint, or finalization
+  rules.
+- Phase behavior belongs to service/projector methods:
+  `DiscoveryPhaseExecutor.run`, `GatePhaseExecutor.run`,
+  `CoveragePhaseExecutor.run`, `ExpansionPhaseExecutor.run`,
+  `SignalCompatibilityPhaseExecutor.run`, and `FinalizationProjector.project`.
+- Public top-level phase functions are forbidden in phase modules, except the
+  compatibility wrapper `run_staged_radar_execution`. Existing helper modules
+  may expose small provider-neutral helpers until their own migration slice,
+  but stateful provider/budget/checkpoint phase behavior must be implemented
+  as a service method.
+
 Deferred modules, including `live_radar_definition.py`,
-`live_radar_pipeline_support.py`, staged execution, checkpoints, extraction,
-universe, and diagnostics helpers, remain legacy migration debt until their
-own slices move them.
+`live_radar_pipeline_support.py`, checkpoints, extraction, universe, and
+diagnostics helpers, remain legacy migration debt until their own slices move
+them.
 
 ### `radar/shared`
 

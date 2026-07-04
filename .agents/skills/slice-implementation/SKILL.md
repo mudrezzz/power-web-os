@@ -44,6 +44,11 @@ Implement one small, complete, tested, documented product increment.
   application code. Do not add new root-level
   `src/power_web_os/application/live_radar_*.py` modules; use the package
   contract under `src/power_web_os/application/radar/...` as it is introduced.
+  Candidate-discovery execution work must name the target package and phase
+  service (`CandidateDiscoveryOrchestrator`, `DiscoveryPhaseExecutor`,
+  `GatePhaseExecutor`, `CoveragePhaseExecutor`, `ExpansionPhaseExecutor`,
+  `SignalCompatibilityPhaseExecutor`, or `FinalizationProjector`) and update the
+  architecture tests when that contract changes.
 - For complex LLM pipelines, implement TDD/preflight coverage before relying on
   full live provider runs. Add or update static/config checks, recorded
   fixtures, malformed-output negative fixtures, and targeted provider probes

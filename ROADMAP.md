@@ -7847,7 +7847,7 @@ Principles:
 
 ### Slice 0.7.6.4.10: Split candidate discovery staged execution into phase executors
 
-- Status: Ready
+- Status: Done
 - Goal: Break `live_radar_staged_execution.py` into explicit candidate-discovery phase executors with a thin orchestrator.
 - User value: The central live Radar execution path becomes understandable, testable by phase, and safer to modify.
 - Problem statement: `live_radar_staged_execution.py` is the current worst hotspot: it is oversized, imports many application modules, and owns too many execution phases at once.
@@ -7882,44 +7882,73 @@ Principles:
 - Risks:
   - This is the highest-risk code movement. Mitigate with recorded fixtures, compatibility output tests, and small internal phase moves.
 
-### Slice 0.7.6.4.11: Radar backend architecture validators and agent rules
+### Slice 0.7.6.4.11: Candidate discovery phase service contract, validators, and agent rules
 
-- Status: Backlog
-- Goal: Turn the new Radar backend architecture rules into durable validators and agent workflows so the codebase cannot drift back into flat module sprawl.
+- Status: Done
+- Goal: Turn the candidate-discovery phase split into a durable service-oriented execution contract, then enforce the Radar backend architecture rules with validators and agent workflows.
 - User value: Future agents and developers get immediate feedback when they add code in the wrong place or recreate a hidden orchestration monolith.
-- Problem statement: Written ADRs are not enough. The current state happened despite existing guardrails because tests did not check internal Radar package shape, public helper sprawl, or orchestration fan-out.
+- Problem statement: Slice 0.7.6.4.10 safely split the old staged execution monolith into package-owned phase modules, but the first split is still mostly procedural: public phase functions pass many state, budget, provider, and checkpoint arguments around. Written ADRs are not enough; without a concrete PhaseExecutor/Service contract and validators, the codebase can drift back into hidden orchestration sprawl.
 - Scope:
-  - Add or extend architecture check command, for example `python -m power_web_os.architecture check`, if useful.
+  - Introduce explicit execution contracts for candidate discovery:
+  - `CandidateDiscoveryExecutionContext`;
+  - `CandidateDiscoveryExecutionState`;
+  - `PhaseResult` / phase issue records where useful;
+  - `CandidateDiscoveryOrchestrator`;
+  - `DiscoveryPhaseExecutor`;
+  - `GatePhaseExecutor`;
+  - `CoveragePhaseExecutor`;
+  - `ExpansionPhaseExecutor`;
+  - `SignalCompatibilityPhaseExecutor`;
+  - `FinalizationProjector`.
+  - Convert the current procedural phase functions from 0.7.6.4.10 into classes/services without changing runtime behavior or artifact shape.
+  - Make `CandidateDiscoveryExecutionState` the normal way to carry mutable execution data between phases instead of passing long argument lists.
+  - Keep pure helpers only for small local transformations, `*_payload`, `*_summary`, and compatibility projections.
   - Extend `tests/test_backend_architecture_contract.py` with Radar-specific package rules.
   - Validate no new root-level `live_radar_*` modules.
   - Validate package README files, module docstrings for public services, max file size, max application import fan-out, and limited public top-level helper functions.
-  - Update agent skills so backend Radar work must name the target package and run architecture tests.
+  - Add a rule that public top-level functions carrying provider, budget, checkpoint, source policy, or execution state are forbidden unless explicitly allowlisted as compatibility shims.
+  - Update agent skills so backend Radar work must name the target package, service/phase contract, and architecture tests.
 - Out of scope:
-  - No new runtime behavior.
-  - No broad automated code formatter/rewrite.
+  - No product behavior changes.
+  - No provider quality tuning.
+  - No DB/API/UI contract changes.
+  - No broad automated formatter/rewrite.
   - No style-only linting unrelated to architecture.
+  - No removal of legacy wrappers; that remains 0.7.6.4.12.
 - Implementation notes:
+  - Do the service-contract refactor before writing strict validators, otherwise validators will either be too weak or fail on the current procedural phase modules.
+  - Keep behavior-preserving compatibility: old imports and `run_staged_radar_execution` must continue to work.
+  - Prefer constructor-injected dependencies and explicit context/state objects over long function signatures.
   - Keep validators precise and explainable. Tests should fail with actionable messages, not generic style complaints.
   - Allow explicit migration exceptions with expiry notes while legacy wrappers remain.
 - Tests:
+  - Regression tests proving the class-based phase services preserve adaptive execution, live ICP recorded behavior, external-call budgets, API behavior, and preflight behavior.
   - Architecture contract tests for every new rule.
-  - Negative fixture or temporary generated file test if practical.
+  - Import compatibility tests proving old staged execution paths still work.
+  - Negative fixture or temporary generated file test if practical for public top-level phase functions.
   - Roadmap/tracker check after docs updates.
 - Docs:
-  - Update ADR, Developer Guide, AGENTS/skills guidance, and Radar backend architecture doc.
+  - Update Radar backend architecture doc with the concrete phase service contract.
+  - Update execution package README with service classes, context/state ownership, and extension rules.
+  - Update Developer Guide and agent skills so future Radar backend work follows the same service contract.
+  - Update ADR notes if the component contract is tightened.
 - Demo impact:
   - None.
 - Acceptance criteria:
+  - Candidate-discovery staged execution phases are represented by explicit service/projector classes, not only public procedural functions.
+  - `CandidateDiscoveryExecutionState` or equivalent state object is the normal cross-phase state carrier.
+  - `run_staged_radar_execution` remains compatible through the old import path.
   - A new ad hoc `application/live_radar_new_feature.py` would fail validation.
   - A new phase package without README would fail validation.
-  - A large orchestration module or high fan-out module would fail validation unless explicitly allowlisted.
+  - A large orchestration module, high fan-out module, or public stateful phase function would fail validation unless explicitly allowlisted.
   - Agent guidance points to the same rules as the tests.
 - Risks:
+  - Converting functions to classes can accidentally change mutation order or artifact shape. Mitigate with the existing adaptive/live/budget/API regression set.
   - Overly aggressive validators can slow delivery. Mitigate with migration allowlists and clear failure messages.
 
 ### Slice 0.7.6.4.12: Remove legacy live_radar allowlist and compatibility debt
 
-- Status: Backlog
+- Status: Ready
 - Goal: Close the architecture rescue by removing temporary large-module exceptions and reducing old root-level `live_radar_*` files to thin compatibility shims or deleting them.
 - User value: The backend no longer depends on undocumented legacy exceptions, and the Radar codebase has a stable structure for future candidate discovery, signal monitoring, and Power Web discovery work.
 - Problem statement: A refactor is incomplete if the old oversized modules remain permanently allowlisted. The migration needs a cleanup slice that makes the new architecture the actual enforced default.

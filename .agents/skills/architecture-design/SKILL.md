@@ -79,6 +79,12 @@ contract. New Radar backend behavior must not be planned as another root-level
 `src/power_web_os/application/live_radar_*.py` module; choose the target
 `src/power_web_os/application/radar/...` package and record any temporary
 compatibility exception explicitly.
+For candidate-discovery execution changes, plan around the concrete service
+contract: `CandidateDiscoveryExecutionContext`,
+`CandidateDiscoveryExecutionState`, `PhaseResult`,
+`CandidateDiscoveryOrchestrator`, phase executors, and
+`FinalizationProjector`. Do not plan new public procedural phase functions as
+the extension point.
 
 ## Complex LLM pipeline TDD rules
 

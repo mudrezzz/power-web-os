@@ -63,6 +63,10 @@ for module_name in [
     "power_web_os.application.live_radar_product_sources",
     "power_web_os.application.live_radar_retrieval_plan",
     "power_web_os.application.live_radar_source_cards",
+    "power_web_os.application.live_radar_staged_execution",
+    "power_web_os.application.live_radar_staged_helpers",
+    "power_web_os.application.live_radar_staged_merge",
+    "power_web_os.application.live_radar_staged_support",
 ]:
     LEGACY_MODULE_MIGRATION_STATUS[module_name] = "moved"
 
@@ -73,7 +77,6 @@ LEGACY_SHIM_MODULES: tuple[str, ...] = tuple(
 )
 
 LEGACY_HOTSPOTS: tuple[str, ...] = (
-    "power_web_os.application.live_radar_staged_execution",
     "power_web_os.application.live_radar_service",
     "power_web_os.application.live_radar_search_expansion_execution",
     "power_web_os.application.live_radar_checkpoint_actions",
