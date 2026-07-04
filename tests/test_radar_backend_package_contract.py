@@ -39,6 +39,7 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.execution.gates",
     "power_web_os.application.radar.candidate_discovery.execution.merge",
     "power_web_os.application.radar.candidate_discovery.execution.orchestrator",
+    "power_web_os.application.radar.candidate_discovery.execution.options",
     "power_web_os.application.radar.candidate_discovery.execution.projection",
     "power_web_os.application.radar.candidate_discovery.execution.service_contracts",
     "power_web_os.application.radar.candidate_discovery.execution.signals",
@@ -161,11 +162,30 @@ def test_live_radar_run_service_support_components_are_importable() -> None:
         "power_web_os.application.radar.candidate_discovery.service_events": [
             "LiveRadarEventStateProjector",
         ],
+        "power_web_os.application.radar.candidate_discovery.execution.options": [
+            "CandidateDiscoveryExecutionOptions",
+        ],
     }
     for module_name, names in required.items():
         module = importlib.import_module(module_name)
         for name in names:
             assert hasattr(module, name)
+
+
+def test_live_radar_run_service_uses_named_staged_execution_options() -> None:
+    path = Path("src/power_web_os/application/radar/candidate_discovery/service.py")
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "run_staged_radar_execution"
+    ]
+
+    assert len(calls) == 1
+    assert any(keyword.arg == "options" for keyword in calls[0].keywords)
+    assert all(keyword.arg is not None for keyword in calls[0].keywords)
 
 
 def test_candidate_discovery_execution_service_classes_are_importable() -> None:
@@ -177,6 +197,9 @@ def test_candidate_discovery_execution_service_classes_are_importable() -> None:
         "power_web_os.application.radar.candidate_discovery.execution.orchestrator": [
             "CandidateDiscoveryOrchestrator",
             "run_staged_radar_execution",
+        ],
+        "power_web_os.application.radar.candidate_discovery.execution.options": [
+            "CandidateDiscoveryExecutionOptions",
         ],
         "power_web_os.application.radar.candidate_discovery.execution.discovery": ["DiscoveryPhaseExecutor"],
         "power_web_os.application.radar.candidate_discovery.execution.gates": ["GatePhaseExecutor"],

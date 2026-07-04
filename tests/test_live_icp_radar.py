@@ -49,6 +49,7 @@ from power_web_os.application.live_radar_staged_execution import (
     run_staged_radar_execution,
 )
 from power_web_os.application.radar.candidate_discovery.execution.merge import ExecutionResultMerger
+from power_web_os.application.radar.candidate_discovery.execution.options import CandidateDiscoveryExecutionOptions
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 from power_web_os.application.live_radar_web_retrieval import (
     RadarWebRetrievalResult,
@@ -910,6 +911,42 @@ def test_useful_result_budget_retries_weak_discovery_result() -> None:
     assert execution_results["retrieval_plan"]["tasks"][0]["response_contract"]["schema_id"] == "qualification_finding_v1"
     assert execution_results["useful_result_retry_records"][0]["reason"] == "verification_limited"
     assert execution_results["useful_result_warnings"]
+    assert "validation_warning" in [event.event_type for event in events]
+
+
+def test_staged_execution_options_drive_useful_result_retry() -> None:
+    radar = build_live_mini_radar_definition()
+    provider = _WeakThenUsefulProvider()
+    execution_plan = RadarExecutionPlan(
+        radar_id="toir-quick-live",
+        tasks=[
+            RadarExecutionTask(
+                task_id="discover-q1",
+                stage="qualification_discovery",
+                subject_type="qualification",
+                subject_id="Q1",
+                query="Find candidate universe.",
+                purpose="Discovery",
+                expected_evidence=["candidate identity", "qualification evidence"],
+            )
+        ],
+    )
+
+    result, events, execution_results = run_staged_radar_execution(
+        radar=radar,
+        execution_plan=execution_plan,
+        provider=provider,
+        options=CandidateDiscoveryExecutionOptions.from_legacy_kwargs(
+            min_useful_sources_per_discovery_task=1,
+            min_candidates_per_discovery_task=1,
+            max_discovery_retries_per_task=1,
+            max_checkpoint_retries_per_stage=0,
+        ),
+    )
+
+    assert len(provider.calls) == 2
+    assert len(result.candidate_observations) == 2
+    assert execution_results["useful_result_retry_records"][0]["reason"] == "verification_limited"
     assert "validation_warning" in [event.event_type for event in events]
 
 

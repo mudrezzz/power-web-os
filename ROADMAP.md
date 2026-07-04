@@ -7995,7 +7995,7 @@ Principles:
 
 ### Slice 0.7.6.4.13: Candidate discovery staged execution options value object
 
-- Status: Ready
+- Status: Done
 - Goal: Replace the large kwargs interface around `run_staged_radar_execution` with a named candidate-discovery execution options value object.
 - User value: Developers can change Radar execution limits, reserves, and policy inputs through one typed contract instead of tracing dozens of optional keyword arguments.
 - Problem statement: The rescue slices moved staged execution behind service classes, but the boundary between `LiveRadarRunService` and the execution orchestrator still exposes a procedural kwargs surface. That surface can drift, hides option ownership, and makes future pipeline fixes harder to review.
@@ -8037,7 +8037,7 @@ Principles:
 
 ### Slice 0.7.6.4.14: Live Radar run service composition factory
 
-- Status: Backlog
+- Status: Ready
 - Goal: Move `LiveRadarRunService` dependency assembly into a package-owned composition/factory component so the service stays a use-case facade.
 - User value: Developers can replace planner, provider wrapper, artifact projector, budget merger, event projector, and context/options factories intentionally without editing the facade constructor for every wiring change.
 - Problem statement: `LiveRadarRunService` now delegates behavior to named components, but it still constructs most collaborators directly. That keeps composition decisions inside the use-case facade and makes future tests or alternate runtime wiring more awkward.
@@ -8718,4 +8718,4 @@ None.
 
 ## Next Recommended Task
 
-Slice 0.7.6.4.13: Candidate discovery staged execution options value object. Replace the broad `run_staged_radar_execution` kwargs boundary with a named execution-options contract before resuming behavior-changing Radar pipeline work.
+Slice 0.7.6.4.14: Live Radar run service composition factory. Move LiveRadarRunService collaborator assembly into a package-owned composition/factory component after the execution options contract.

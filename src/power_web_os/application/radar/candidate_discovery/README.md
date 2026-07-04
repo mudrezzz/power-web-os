@@ -37,7 +37,8 @@ Current package-owned source-of-truth modules:
 - `service.py`: `LiveRadarRunService`, the provider-neutral live run use-case
   facade used by workflow wrappers and legacy compatibility imports.
 - `service_context.py`: `LiveRadarTaskContextReader`, typed task-context
-  access for staged execution options.
+  access that adapts live-run task context into
+  `CandidateDiscoveryExecutionOptions`.
 - `service_budget.py`: `ExternalBudgetMetadataMerger`, budget metadata merge
   policy for planner-node and staged-execution snapshots.
 - `service_events.py`: `LiveRadarEventStateProjector`, product-safe event state

@@ -13,6 +13,8 @@ Read it before changing this package.
 ## Phase map
 
 - `context.py`: `CandidateDiscoveryExecutionContext` and `PhaseResult`.
+- `options.py`: `CandidateDiscoveryExecutionOptions`, the named staged
+  execution option contract used by the compatibility wrapper and live service.
 - `state.py`: `CandidateDiscoveryExecutionState`, the mutable cross-phase state.
 - `orchestrator.py`: public `run_staged_radar_execution` wrapper and
   `CandidateDiscoveryOrchestrator` phase order only.
@@ -55,6 +57,10 @@ Use `context` for dependencies and limits that should not be mutated by a phase.
 Use `state` for shared execution data that phases intentionally mutate. Return
 `PhaseResult` only for compact status/reason reporting; do not return another
 copy of all sources, observations, events, budgets, and metadata.
+
+`run_staged_radar_execution` remains the public compatibility wrapper for old
+callers, but package-owned code should pass a
+`CandidateDiscoveryExecutionOptions` instance instead of broad execution kwargs.
 
 Every public class must have a docstring that states:
 

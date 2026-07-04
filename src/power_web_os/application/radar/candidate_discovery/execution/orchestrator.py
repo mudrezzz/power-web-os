@@ -13,11 +13,10 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
 from power_web_os.application.live_radar_checkpoint_actions import RadarCheckpointActionExecutor
 from power_web_os.application.live_radar_checkpoints import RadarExecutionCheckpointPolicy, RadarExecutionCheckpointService
 from power_web_os.application.live_radar_cross_disambiguation import execute_cross_source_disambiguation
-from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget, budget_settings_from_context
+from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
 from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
 from power_web_os.application.live_radar_external_budget_context import (
     current_external_call_budget,
-    external_budget_settings_from_context,
     external_call_budget_context,
 )
 from power_web_os.application.radar.candidate_discovery.planning.retrieval_plan import retrieval_plan_from_execution_plan
@@ -29,6 +28,7 @@ from power_web_os.application.radar.candidate_discovery.execution.discovery impo
 from power_web_os.application.radar.candidate_discovery.execution.expansion import ExpansionPhaseExecutor
 from power_web_os.application.radar.candidate_discovery.execution.expansion_diagnostics import _search_expansion_variant_cap
 from power_web_os.application.radar.candidate_discovery.execution.finalization import FinalizationProjector
+from power_web_os.application.radar.candidate_discovery.execution.options import CandidateDiscoveryExecutionOptions
 from power_web_os.application.radar.candidate_discovery.execution.signals import SignalCompatibilityPhaseExecutor
 from power_web_os.application.radar.candidate_discovery.execution.state import (
     CandidateDiscoveryExecutionState,
@@ -36,7 +36,6 @@ from power_web_os.application.radar.candidate_discovery.execution.state import (
     SmokeLimitPolicy,
 )
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
-from power_web_os.application.live_radar_useful_budget import UsefulResultBudget
 from power_web_os.integrations.live_radar_source_verification import (
     SourceVerificationCache,
     source_verification_cache_context,
@@ -159,6 +158,7 @@ def run_staged_radar_execution(
     radar: dict[str, Any],
     execution_plan: RadarExecutionPlan,
     provider: WebSearchProvider,
+    options: CandidateDiscoveryExecutionOptions | None = None,
     task_context: dict[str, Any] | None = None,
     max_web_tasks_per_subject: int | None = None,
     max_discovery_tasks_per_rule: int | None = None,
@@ -187,24 +187,18 @@ def run_staged_radar_execution(
     semantic_task_reserve_limits: dict[str, int] | None = None,
     source_policy_decisions: list[dict[str, Any]] | None = None,
 ) -> tuple[WebSearchProviderResult, list[LiveRadarPipelineEvent], dict[str, Any]]:
-    if task_context:
-        radar = {
-            **radar,
-            "task_context": {
-                **(radar.get("task_context") if isinstance(radar.get("task_context"), dict) else {}),
-                **task_context,
-            },
-        }
-    budget_settings = budget_settings_from_context(
-        max_web_tasks_per_subject=max_web_tasks_per_subject,
-        max_discovery_tasks_per_rule=max_discovery_tasks_per_rule,
-        max_gate_tasks_per_candidate_rule=max_gate_tasks_per_candidate_rule,
-        max_signal_tasks_per_candidate_signal=max_signal_tasks_per_candidate_signal,
-        max_total_web_tasks_per_run=max_total_web_tasks_per_run,
-        semantic_task_reserve_limits=semantic_task_reserve_limits,
-    )
-    task_budget = RadarExecutionBudget(budget_settings)
-    external_budget = current_external_call_budget() or RadarExternalCallBudget(external_budget_settings_from_context({
+    legacy_options = {
+        "task_context": task_context,
+        "max_web_tasks_per_subject": max_web_tasks_per_subject,
+        "max_discovery_tasks_per_rule": max_discovery_tasks_per_rule,
+        "max_gate_tasks_per_candidate_rule": max_gate_tasks_per_candidate_rule,
+        "max_signal_tasks_per_candidate_signal": max_signal_tasks_per_candidate_signal,
+        "max_total_web_tasks_per_run": max_total_web_tasks_per_run,
+        "min_useful_sources_per_discovery_task": min_useful_sources_per_discovery_task,
+        "min_candidates_per_discovery_task": min_candidates_per_discovery_task,
+        "max_discovery_retries_per_task": max_discovery_retries_per_task,
+        "max_checkpoint_revisions_per_run": max_checkpoint_revisions_per_run,
+        "max_checkpoint_retries_per_stage": max_checkpoint_retries_per_stage,
         "run_profile": run_profile,
         "max_openrouter_calls_per_run": max_openrouter_calls_per_run,
         "max_openrouter_planner_calls_per_run": max_openrouter_planner_calls_per_run,
@@ -219,21 +213,23 @@ def run_staged_radar_execution(
         "smoke_max_candidates": smoke_max_candidates,
         "smoke_max_signals": smoke_max_signals,
         "budget_reserve_limits": budget_reserve_limits,
-    }))
-    useful_budget = UsefulResultBudget(
-        min_sources=min_useful_sources_per_discovery_task,
-        min_candidates=min_candidates_per_discovery_task,
-        max_retries=max_discovery_retries_per_task,
-    )
+        "semantic_task_reserve_limits": semantic_task_reserve_limits,
+        "source_policy_decisions": source_policy_decisions,
+    }
+    if options is not None and any(value is not None for value in legacy_options.values()):
+        raise ValueError("Pass staged execution options either as `options` or legacy keyword arguments, not both.")
+    options = options or CandidateDiscoveryExecutionOptions.from_legacy_kwargs(**legacy_options)
+    radar = options.apply_task_context(radar)
+    budget_settings = options.to_task_budget_settings()
+    task_budget = RadarExecutionBudget(budget_settings)
+    external_budget = current_external_call_budget() or RadarExternalCallBudget(options.to_external_budget_settings())
+    useful_budget = options.to_useful_budget()
     checkpoint_service = RadarExecutionCheckpointService(
-        RadarExecutionCheckpointPolicy(
-            max_revisions_per_run=2 if max_checkpoint_revisions_per_run is None else max_checkpoint_revisions_per_run,
-            max_retries_per_stage=1 if max_checkpoint_retries_per_stage is None else max_checkpoint_retries_per_stage,
-        )
+        RadarExecutionCheckpointPolicy(**options.checkpoint_policy_kwargs())
     )
     checkpoint_executor = RadarCheckpointActionExecutor()
     search_expansion_service = RadarSearchExpansionService(
-        max_variants=_search_expansion_variant_cap(run_profile=run_profile, radar=radar)
+        max_variants=_search_expansion_variant_cap(run_profile=options.run_profile, radar=radar)
     )
     work_scheduler = RadarWorkScheduler()
     retrieval_plan = retrieval_plan_from_execution_plan(execution_plan)
@@ -258,7 +254,7 @@ def run_staged_radar_execution(
         search_expansion_service=search_expansion_service,
         work_scheduler=work_scheduler,
         verification_cache=verification_cache,
-        source_policy_decisions=source_policy_decisions,
+        source_policy_decisions=options.source_policy_decisions,
         max_discovery_iterations=MAX_DISCOVERY_ITERATIONS,
         max_candidate_universe_size=MAX_CANDIDATE_UNIVERSE_SIZE,
     )

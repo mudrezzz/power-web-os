@@ -43,6 +43,7 @@ return shape unless a dedicated product slice explicitly changes them.
 
 ```text
 run_staged_radar_execution compatibility wrapper
+  -> normalizes legacy kwargs or named CandidateDiscoveryExecutionOptions
   -> builds CandidateDiscoveryExecutionContext
   -> creates CandidateDiscoveryExecutionState
   -> CandidateDiscoveryOrchestrator.run
@@ -113,6 +114,16 @@ cache, source policy decisions, and hard execution limits.
 
 Does not own mutable sources, observations, provider metadata, events, candidate
 scope, or checkpoint records.
+
+### `CandidateDiscoveryExecutionOptions`
+
+Owns provider-neutral staged execution options for one run: task-context
+overrides, semantic task budget limits, useful-result retry limits, checkpoint
+limits, external-call budget settings, smoke caps, reserve maps, run profile,
+and source policy decisions.
+
+Does not own provider ports, phase order, mutable execution state, budget
+counters, checkpoint decisions, or final artifact projection.
 
 ### `CandidateDiscoveryExecutionState`
 

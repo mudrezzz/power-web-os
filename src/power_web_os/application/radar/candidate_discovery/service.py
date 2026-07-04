@@ -127,8 +127,7 @@ class LiveRadarRunService:
             radar=radar,
             execution_plan=execution_plan,
             provider=self._provider,
-            task_context=state.task_context,
-            **LiveRadarTaskContextReader(state.task_context).staged_execution_options(state.discovery_plan),
+            options=LiveRadarTaskContextReader(state.task_context).staged_execution_options(state.discovery_plan),
         )
         execution_results = self._budget_metadata_merger.merge(state.execution_results, execution_results)
         result = LiveRadarCollectionResult(

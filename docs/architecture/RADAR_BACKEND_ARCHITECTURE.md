@@ -347,7 +347,7 @@ The rescue is complete, but the post-rescue refactor plan continues as small
 bounded slices:
 
 9. `0.7.6.4.13` replaces the broad `run_staged_radar_execution` kwargs
-   boundary with a named candidate-discovery execution-options contract.
+   boundary with a named `CandidateDiscoveryExecutionOptions` contract.
 10. `0.7.6.4.14` moves `LiveRadarRunService` collaborator assembly into a
     package-owned composition/factory component so the facade stays a use-case
     boundary.
