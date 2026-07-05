@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from power_web_os.application.live_radar_web_retrieval import (
+from power_web_os.application.radar.candidate_discovery.retrieval.web_retrieval import (
     RadarRetrievalSourceOutcome,
     RadarRetrievedSource,
     RadarWebRetrievalResult,

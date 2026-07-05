@@ -23,6 +23,9 @@ Provider-level external-call budget contracts live in `shared/budgets`.
 Candidate-discovery task budgets and useful-result retry budgets live in
 `candidate_discovery/execution` because they depend on candidate-discovery task
 stages and result semantics.
+Live mini Radar definition builders and provider-neutral web retrieval records
+live under `candidate_discovery/retrieval`; provider HTTP/SDK adapters remain
+outside this application package.
 
 Root-level Radar-prefixed files are transition debt, not package ownership.
 Some `live_radar_*` files are thin moved shims, while deferred

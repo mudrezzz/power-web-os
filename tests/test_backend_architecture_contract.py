@@ -164,6 +164,9 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
         "power_web_os.application.radar.candidate_discovery.checkpoints"
     ),
     "power_web_os.application.live_radar_contracts": "power_web_os.application.radar.candidate_discovery.contracts",
+    "power_web_os.application.live_radar_definition": (
+        "power_web_os.application.radar.candidate_discovery.retrieval.definition"
+    ),
     "power_web_os.application.live_radar_definition_runtime": (
         "power_web_os.application.radar.candidate_discovery.planning.definition_runtime"
     ),
@@ -220,6 +223,9 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
     ),
     "power_web_os.application.live_radar_useful_budget": (
         "power_web_os.application.radar.candidate_discovery.execution.useful_budget"
+    ),
+    "power_web_os.application.live_radar_web_retrieval": (
+        "power_web_os.application.radar.candidate_discovery.retrieval.web_retrieval"
     ),
     "power_web_os.application.radar_search_expansion": (
         "power_web_os.application.radar.candidate_discovery.search_expansion.service"

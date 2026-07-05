@@ -1103,13 +1103,14 @@ Historical/current ownership for the pre-rescue live Radar modules:
 
 ```text
 src/power_web_os/application/live_radar_contracts.py       Provider-neutral contracts and ports
-src/power_web_os/application/live_radar_definition.py      Live mini Radar definition and search plan
+src/power_web_os/application/radar/candidate_discovery/retrieval/definition.py Live mini Radar definition and search plan
 src/power_web_os/application/live_radar_execution_plan.py  Qualification-first execution plan compiler
 src/power_web_os/application/live_radar_staged_execution.py Compatibility shim for staged provider-call executor
 src/power_web_os/application/live_radar_normalization.py   Candidate, signal, evidence, and score normalization
 src/power_web_os/application/live_radar_service.py         Compatibility shim for the package-owned live run service
 src/power_web_os/application/radar/candidate_discovery/service.py One provider-neutral live run pass
 src/power_web_os/application/radar/candidate_discovery/diagnostics/live_run_artifact.py Product-safe live run artifact projection
+src/power_web_os/application/radar/candidate_discovery/retrieval/web_retrieval.py Provider-neutral web retrieval contracts
 src/power_web_os/integrations/openrouter_request_builder.py Bounded OpenRouter prompt/request shaping
 src/power_web_os/integrations/live_radar_openrouter.py     OpenRouter and recorded provider adapters
 src/power_web_os/workflows/live_icp_radar_workflow.py      Optional langgraph-dai wrapper and fallback runtime

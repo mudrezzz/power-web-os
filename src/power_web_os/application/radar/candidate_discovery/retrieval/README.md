@@ -2,7 +2,8 @@
 
 ## Ownership
 
-Owns provider-neutral retrieval task cards and retrieved source material.
+Owns live mini Radar definition builders, provider-neutral web retrieval
+contracts, retrieval task cards, and retrieved source material.
 
 ## Allowed imports
 
@@ -21,4 +22,8 @@ in integration adapters and phase executors.
 
 Current source-of-truth modules:
 
+- `definition.py`: live mini Radar definition, execution/search-plan builders,
+  and artifact projection for candidate-discovery runs.
 - `product_sources.py`: strict product-source projection for candidate rows.
+- `web_retrieval.py`: provider-neutral web retrieval request/result records,
+  source outcomes, retrieval provider port, and recorded provider test adapter.

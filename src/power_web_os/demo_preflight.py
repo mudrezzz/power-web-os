@@ -7,7 +7,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-from power_web_os.application.live_radar_definition import build_live_mini_radar_definition
+from power_web_os.application.radar.candidate_discovery.retrieval.definition import build_live_mini_radar_definition
 from power_web_os.application.radar.candidate_discovery.planning.definition_runtime import active_definition_to_live_radar_payload
 from power_web_os.application.radar.candidate_discovery.contracts import RadarSearchPlan, RadarSearchQuery
 from power_web_os.application.radar_preflight import RadarExecutionPreflightService, validate_provider_output_fixture

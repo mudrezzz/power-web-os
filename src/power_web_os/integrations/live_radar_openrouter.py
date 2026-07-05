@@ -22,7 +22,7 @@ from power_web_os.application.radar.shared.budgets.external_context import (
     reserve_openrouter_http_call,
 )
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
-from power_web_os.application.live_radar_web_retrieval import retrieval_request_from_search_plan
+from power_web_os.application.radar.candidate_discovery.retrieval.web_retrieval import retrieval_request_from_search_plan
 from power_web_os.application.radar_runtime_settings import effective_runtime_env
 from power_web_os.integrations.openrouter_request_builder import build_openrouter_request, openrouter_compiled_prompt_summary
 from power_web_os.integrations.openrouter_retrieval import retrieval_result_from_openrouter_response

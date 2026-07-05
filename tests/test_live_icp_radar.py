@@ -51,7 +51,7 @@ from power_web_os.application.radar.candidate_discovery.execution.finalization_u
     _append_review_needed_universe_entities,
 )
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
-from power_web_os.application.live_radar_web_retrieval import (
+from power_web_os.application.radar.candidate_discovery.retrieval.web_retrieval import (
     RadarWebRetrievalResult,
     RadarRetrievedSource,
     RecordedRadarWebRetrievalProvider,

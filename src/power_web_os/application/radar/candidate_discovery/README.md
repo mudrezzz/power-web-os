@@ -57,6 +57,12 @@ Current package-owned source-of-truth modules:
   policy for planner-node and staged-execution snapshots.
 - `service_events.py`: `LiveRadarEventStateProjector`, product-safe event state
   projection for the live run facade.
+- `retrieval/definition.py`: live mini Radar definition, execution/search-plan
+  builders, and artifact projection for candidate-discovery runs.
+- `retrieval/web_retrieval.py`: provider-neutral web retrieval request/result
+  contracts and recorded retrieval provider used by tests and demos.
+- `retrieval/product_sources.py`: strict product-source projection for
+  candidate rows.
 - `checkpoints/`: checkpoint models, deterministic policy, execution-state
   recording, and bounded recovery actions for candidate discovery.
 - `search_expansion/`: recall-first expansion target/variant planning,

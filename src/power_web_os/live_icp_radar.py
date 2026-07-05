@@ -35,7 +35,7 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     WebSearchProvider,
     WebSearchProviderResult,
 )
-from power_web_os.application.live_radar_definition import (
+from power_web_os.application.radar.candidate_discovery.retrieval.definition import (
     build_live_mini_radar_definition,
     build_live_mini_radar_search_plan,
     build_live_mini_radar_search_plan_artifact,

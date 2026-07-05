@@ -8231,13 +8231,13 @@ Principles:
 
 ### Slice 0.7.6.4.17.1: Candidate discovery retrieval and definition package migration
 
-- Status: Ready
-- Goal: Move remaining root-level candidate-discovery definition and retrieval primitives into package-owned `radar/shared` and `radar/candidate_discovery/retrieval` modules before product work resumes.
+- Status: Done
+- Goal: Move remaining root-level candidate-discovery definition and retrieval primitives into package-owned `radar/candidate_discovery/retrieval` modules before product work resumes.
 - User value: Developers no longer have to start from root-level definition/retrieval files to understand how a live Radar definition becomes provider-neutral retrieval work.
 - Problem statement: `live_radar_definition.py` and `live_radar_web_retrieval.py` still own real behavior in the flat application namespace even though planning/retrieval-plan modules have moved. That leaves the new package tree incomplete and keeps root imports alive in workflows, preflight, and demos.
 - Scope:
-  - Move or wrap live Radar definition-building behavior into `radar/shared` or a narrower candidate-discovery definition adapter.
-  - Move provider-neutral web retrieval request/result records and recorded retrieval provider into `radar/candidate_discovery/retrieval`.
+  - Move live Radar definition-building behavior into `radar/candidate_discovery/retrieval/definition.py`.
+  - Move provider-neutral web retrieval request/result records and recorded retrieval provider into `radar/candidate_discovery/retrieval/web_retrieval.py`.
   - Keep old root paths as thin compatibility shims only where hidden callers still need them.
   - Migrate production and behavior-test imports to package-owned paths.
   - Update root namespace debt inventory and architecture tests for the moved modules.
@@ -8249,7 +8249,7 @@ Principles:
 - Implementation notes:
   - Treat this as a behavior-preserving package migration.
   - Keep definition records and retrieval task cards provider-neutral.
-  - If a definition helper is shared across Radar pipelines, put only the shared value/object logic under `radar/shared`; candidate-discovery-specific adapters stay in candidate-discovery.
+  - Definition builders stay candidate-discovery-owned until another Radar pipeline proves a shared contract is needed.
 - Tests:
   - Backend architecture/package compatibility tests.
   - Live ICP and preflight tests that exercise definition-to-payload and retrieval-plan wiring.
@@ -8268,11 +8268,11 @@ Principles:
   - Existing preflight/live ICP behavior remains green.
   - Root namespace debt inventory points these files to completed migration status.
 - Risks:
-  - Definition helpers may be shared by multiple pipeline surfaces. Mitigate by separating shared value logic from candidate-discovery adapters instead of dumping everything into shared.
+  - Definition helpers may later be useful to another pipeline. Mitigate by introducing a shared contract only when concrete reuse appears, not in this migration slice.
 
 ### Slice 0.7.6.4.17.2: Candidate universe and entity resolution package migration
 
-- Status: Backlog
+- Status: Ready
 - Goal: Move candidate universe, retrieved-candidate extraction, entity resolution, candidate refs, and cross-source disambiguation out of root-level modules into candidate-discovery package services.
 - User value: The candidate universe becomes a visible package-owned concept rather than a cluster of root helper files, making future fallback and enrichment work safer.
 - Problem statement: `live_radar_candidate_refs.py`, `live_radar_entity_resolution.py`, `live_radar_retrieved_candidates.py`, `live_radar_universe.py`, and `live_radar_cross_disambiguation.py` still own core candidate-universe behavior in the flat namespace. Product work such as post-extraction fallback would otherwise keep extending that legacy cluster.

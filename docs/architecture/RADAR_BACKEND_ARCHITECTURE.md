@@ -61,7 +61,8 @@ when behavior has already moved to `application/radar`.
 | Current module group | Responsibility | Target package |
 |---|---|---|
 | `live_radar_contracts.py` | Provider-neutral DTOs and ports | `radar/shared/` and `radar/candidate_discovery/contracts.py` |
-| `live_radar_definition*.py` | Legacy live definition and persisted definition runtime mapping | `radar/shared/definition/` or candidate-discovery runtime adapters |
+| `live_radar_definition.py` | Live mini Radar definition and search-plan builders | `radar/candidate_discovery/retrieval/definition.py` |
+| `live_radar_definition_runtime.py` | Persisted definition runtime mapping | `radar/candidate_discovery/planning/definition_runtime.py` |
 | `live_radar_discovery_planning.py`, `live_radar_plan_acceptance.py`, `live_radar_planning_pipeline.py`, `live_radar_execution_plan.py`, `live_radar_retrieval_plan.py` | Planning, validation, acceptance, and executable plan projection | `radar/candidate_discovery/planning/` |
 | `live_radar_web_retrieval.py`, `live_radar_product_sources.py` | Provider-neutral retrieval/source material | `radar/candidate_discovery/retrieval/` |
 | `live_radar_extraction_contract.py`, `live_radar_extraction_diagnostics.py` | Extraction schema validation, repair, and diagnostics | `radar/candidate_discovery/extraction/` |
@@ -268,10 +269,22 @@ guaranteed-lane scheduling, checkpoint targeted expansion payloads, and
 recall-expansion work admission now live in the search-expansion package.
 Root files are compatibility shims and must not regain behavior.
 
-Deferred modules, including `live_radar_definition.py`,
-`live_radar_pipeline_support.py`, extraction, universe, and
-diagnostics helpers, remain legacy migration debt until their own slices move
-them. Moved search-expansion root files are not examples for new backend work.
+As of slice `0.7.6.4.17.1`, live mini Radar definition builders and
+provider-neutral web retrieval contracts have moved:
+
+| Legacy module | Source of truth |
+|---|---|
+| `live_radar_definition.py` | `radar/candidate_discovery/retrieval/definition.py` |
+| `live_radar_web_retrieval.py` | `radar/candidate_discovery/retrieval/web_retrieval.py` |
+
+Definition builders stay candidate-discovery-owned because they compile the
+live mini Radar payload, execution plan, retrieval plan, and artifact shape for
+this pipeline. Web retrieval records remain provider-neutral application
+contracts, while provider HTTP/SDK adapters stay outside `application/radar`.
+
+Deferred modules, including `live_radar_pipeline_support.py`, extraction,
+universe, and diagnostics helpers, remain legacy migration debt until their own
+slices move them. Moved root files are not examples for new backend work.
 
 As of slice `0.7.6.4.14.1`, the flat namespace closure policy is explicit:
 `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md` is the reviewable debt
@@ -310,7 +323,8 @@ review-needed sites, branches, assets, and other candidate-universe entities.
 Expected subpackages:
 
 - `planning`: planner input, validation, acceptance, execution-plan projection;
-- `retrieval`: retrieval task cards and retrieved source material;
+- `retrieval`: live mini Radar definition builders, provider-neutral web
+  retrieval contracts, retrieval task cards, and retrieved source material;
 - `extraction`: structured extraction validation, repair, and diagnostics;
 - `sources`: source obligations, registry/source orchestration, lookup terms;
 - `universe`: candidate universe, entity resolution, retrieved candidates;
@@ -437,8 +451,8 @@ bounded slices:
 15. `0.7.6.4.17` moved provider-level external-call budgets to
     `radar/shared/budgets` and kept candidate-discovery task/useful budgets
     pipeline-owned under `radar/candidate_discovery/execution`.
-16. `0.7.6.4.17.1` moves definition and retrieval primitives into package-owned
-    shared/retrieval modules.
+16. `0.7.6.4.17.1` moves live mini definition builders and web retrieval
+    contracts into package-owned candidate-discovery retrieval modules.
 17. `0.7.6.4.17.2` moves candidate universe, retrieved-candidate extraction,
     entity resolution, candidate refs, and cross-source disambiguation.
 18. `0.7.6.4.17.3` moves extraction, diagnostics, normalization,
