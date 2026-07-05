@@ -19,6 +19,16 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.checkpoints.policy",
     "power_web_os.application.radar.candidate_discovery.checkpoints.recording",
     "power_web_os.application.radar.candidate_discovery.checkpoints.recovery",
+    "power_web_os.application.radar.candidate_discovery.search_expansion",
+    "power_web_os.application.radar.candidate_discovery.search_expansion.models",
+    "power_web_os.application.radar.candidate_discovery.search_expansion.payloads",
+    "power_web_os.application.radar.candidate_discovery.search_expansion.scheduler",
+    "power_web_os.application.radar.candidate_discovery.search_expansion.selection",
+    "power_web_os.application.radar.candidate_discovery.search_expansion.service",
+    "power_web_os.application.radar.candidate_discovery.search_expansion.support",
+    "power_web_os.application.radar.candidate_discovery.search_expansion.targeted_execution",
+    "power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler",
+    "power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler_metadata",
     "power_web_os.application.radar.candidate_discovery.execution",
     "power_web_os.application.radar.candidate_discovery.diagnostics",
     "power_web_os.application.radar.signal_monitoring",
@@ -71,8 +81,17 @@ LEGACY_KEY_MODULES = [
     "power_web_os.application.live_radar_planning_pipeline",
     "power_web_os.application.live_radar_product_sources",
     "power_web_os.application.live_radar_retrieval_plan",
+    "power_web_os.application.live_radar_search_expansion_execution",
+    "power_web_os.application.live_radar_search_expansion_payloads",
     "power_web_os.application.live_radar_service",
     "power_web_os.application.live_radar_staged_execution",
+    "power_web_os.application.radar_search_expansion",
+    "power_web_os.application.radar_search_expansion_models",
+    "power_web_os.application.radar_search_expansion_scheduler",
+    "power_web_os.application.radar_search_expansion_selection",
+    "power_web_os.application.radar_search_expansion_support",
+    "power_web_os.application.radar_work_scheduler",
+    "power_web_os.application.radar_work_scheduler_metadata",
 ]
 
 MOVED_LEGACY_SHIMS = [
@@ -88,11 +107,20 @@ MOVED_LEGACY_SHIMS = [
     "live_radar_planning_pipeline.py",
     "live_radar_product_sources.py",
     "live_radar_retrieval_plan.py",
+    "live_radar_search_expansion_execution.py",
+    "live_radar_search_expansion_payloads.py",
     "live_radar_service.py",
     "live_radar_staged_execution.py",
     "live_radar_staged_helpers.py",
     "live_radar_staged_merge.py",
     "live_radar_staged_support.py",
+    "radar_search_expansion.py",
+    "radar_search_expansion_models.py",
+    "radar_search_expansion_scheduler.py",
+    "radar_search_expansion_selection.py",
+    "radar_search_expansion_support.py",
+    "radar_work_scheduler.py",
+    "radar_work_scheduler_metadata.py",
 ]
 
 
@@ -132,15 +160,32 @@ def test_candidate_discovery_compatibility_map_is_declarative() -> None:
     assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_source_cards"] == (
         "power_web_os.application.radar.shared.source_cards"
     )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_search_expansion_execution"] == (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.targeted_execution"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_search_expansion_payloads"] == (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.payloads"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.radar_search_expansion"] == (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.service"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.radar_work_scheduler"] == (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler"
+    )
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_checkpoint_actions"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_checkpoint_execution"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_checkpoints"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_contracts"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_search_expansion_execution"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_search_expansion_payloads"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_service"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_staged_execution"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.radar_search_expansion"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.radar_work_scheduler"] == "moved"
     assert "power_web_os.application.live_radar_service" not in module.LEGACY_HOTSPOTS
     assert "power_web_os.application.live_radar_staged_execution" not in module.LEGACY_HOTSPOTS
     assert "power_web_os.application.live_radar_checkpoint_actions" not in module.LEGACY_HOTSPOTS
+    assert "power_web_os.application.live_radar_search_expansion_execution" not in module.LEGACY_HOTSPOTS
 
     source = Path(module.__file__).read_text(encoding="utf-8")
     assert "import power_web_os.application.live_radar" not in source
@@ -311,6 +356,40 @@ def test_candidate_discovery_checkpoint_classes_are_importable() -> None:
             "RadarCheckpointActionExecutor",
             "RadarCheckpointRecoveryContext",
             "RadarCheckpointRecoveryState",
+        ],
+    }
+
+    for module_name, names in required.items():
+        module = importlib.import_module(module_name)
+        for name in names:
+            assert hasattr(module, name), f"{module_name} must export {name}"
+
+
+def test_candidate_discovery_search_expansion_classes_are_importable() -> None:
+    required = {
+        "power_web_os.application.radar.candidate_discovery.search_expansion.models": [
+            "RadarExpansionTarget",
+            "RadarSearchExpansionPlan",
+            "RadarSearchExpansionVariant",
+        ],
+        "power_web_os.application.radar.candidate_discovery.search_expansion.service": [
+            "RadarSearchExpansionService",
+        ],
+        "power_web_os.application.radar.candidate_discovery.search_expansion.selection": [
+            "RadarVariantSelection",
+            "select_guaranteed_variants",
+        ],
+        "power_web_os.application.radar.candidate_discovery.search_expansion.scheduler": [
+            "RadarExpansionSchedule",
+            "schedule_guaranteed_expansion_variants",
+        ],
+        "power_web_os.application.radar.candidate_discovery.search_expansion.targeted_execution": [
+            "TargetedSearchExpansionExecutionResult",
+            "execute_targeted_search_expansion",
+        ],
+        "power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler": [
+            "RadarWorkScheduler",
+            "RadarWorkPortfolio",
         ],
     }
 

@@ -20,8 +20,8 @@ from power_web_os.application.live_radar_external_budget_context import (
     external_call_budget_context,
 )
 from power_web_os.application.radar.candidate_discovery.planning.retrieval_plan import retrieval_plan_from_execution_plan
-from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
-from power_web_os.application.radar_work_scheduler import RadarWorkScheduler
+from power_web_os.application.radar.candidate_discovery.search_expansion.service import RadarSearchExpansionService
+from power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler import RadarWorkScheduler
 from power_web_os.application.radar.candidate_discovery.execution.context import CandidateDiscoveryExecutionContext
 from power_web_os.application.radar.candidate_discovery.execution.coverage import CoveragePhaseExecutor
 from power_web_os.application.radar.candidate_discovery.execution.discovery import DiscoveryPhaseExecutor

@@ -9,10 +9,10 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarExecutionTask,
     WebSearchProviderResult,
 )
-from power_web_os.application.live_radar_search_expansion_payloads import benchmark_target_probe_minimums, merge_selection_summary
-from power_web_os.application.radar_search_expansion_models import RadarSearchExpansionPlan
-from power_web_os.application.radar_search_expansion_scheduler import schedule_guaranteed_expansion_variants
-from power_web_os.application.radar_work_scheduler_metadata import merge_work_scheduler_metadata
+from power_web_os.application.radar.candidate_discovery.search_expansion.payloads import benchmark_target_probe_minimums, merge_selection_summary
+from power_web_os.application.radar.candidate_discovery.search_expansion.models import RadarSearchExpansionPlan
+from power_web_os.application.radar.candidate_discovery.search_expansion.scheduler import schedule_guaranteed_expansion_variants
+from power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler_metadata import merge_work_scheduler_metadata
 from power_web_os.application.radar.candidate_discovery.execution.context import (
     CandidateDiscoveryExecutionContext,
     PhaseResult,

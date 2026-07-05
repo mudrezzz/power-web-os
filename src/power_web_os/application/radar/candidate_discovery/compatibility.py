@@ -35,8 +35,12 @@ LEGACY_MODULE_TARGETS: dict[str, str] = {
     "power_web_os.application.live_radar_product_sources": "power_web_os.application.radar.candidate_discovery.retrieval",
     "power_web_os.application.live_radar_retrieval_plan": "power_web_os.application.radar.candidate_discovery.planning",
     "power_web_os.application.live_radar_retrieved_candidates": "power_web_os.application.radar.candidate_discovery.universe",
-    "power_web_os.application.live_radar_search_expansion_execution": "power_web_os.application.radar.candidate_discovery.execution",
-    "power_web_os.application.live_radar_search_expansion_payloads": "power_web_os.application.radar.candidate_discovery.execution",
+    "power_web_os.application.live_radar_search_expansion_execution": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.targeted_execution"
+    ),
+    "power_web_os.application.live_radar_search_expansion_payloads": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.payloads"
+    ),
     "power_web_os.application.live_radar_service": "power_web_os.application.radar.candidate_discovery.service",
     "power_web_os.application.live_radar_source_cards": "power_web_os.application.radar.shared.source_cards",
     "power_web_os.application.live_radar_source_risk": "power_web_os.application.radar.candidate_discovery.sources",
@@ -47,6 +51,27 @@ LEGACY_MODULE_TARGETS: dict[str, str] = {
     "power_web_os.application.live_radar_universe": "power_web_os.application.radar.candidate_discovery.universe",
     "power_web_os.application.live_radar_useful_budget": "power_web_os.application.radar.candidate_discovery.execution",
     "power_web_os.application.live_radar_web_retrieval": "power_web_os.application.radar.candidate_discovery.retrieval",
+    "power_web_os.application.radar_search_expansion": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.service"
+    ),
+    "power_web_os.application.radar_search_expansion_models": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.models"
+    ),
+    "power_web_os.application.radar_search_expansion_scheduler": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.scheduler"
+    ),
+    "power_web_os.application.radar_search_expansion_selection": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.selection"
+    ),
+    "power_web_os.application.radar_search_expansion_support": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.support"
+    ),
+    "power_web_os.application.radar_work_scheduler": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler"
+    ),
+    "power_web_os.application.radar_work_scheduler_metadata": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler_metadata"
+    ),
 }
 
 LEGACY_MODULE_MIGRATION_STATUS: dict[str, str] = {
@@ -65,12 +90,21 @@ for module_name in [
     "power_web_os.application.live_radar_planning_pipeline",
     "power_web_os.application.live_radar_product_sources",
     "power_web_os.application.live_radar_retrieval_plan",
+    "power_web_os.application.live_radar_search_expansion_execution",
+    "power_web_os.application.live_radar_search_expansion_payloads",
     "power_web_os.application.live_radar_service",
     "power_web_os.application.live_radar_source_cards",
     "power_web_os.application.live_radar_staged_execution",
     "power_web_os.application.live_radar_staged_helpers",
     "power_web_os.application.live_radar_staged_merge",
     "power_web_os.application.live_radar_staged_support",
+    "power_web_os.application.radar_search_expansion",
+    "power_web_os.application.radar_search_expansion_models",
+    "power_web_os.application.radar_search_expansion_scheduler",
+    "power_web_os.application.radar_search_expansion_selection",
+    "power_web_os.application.radar_search_expansion_support",
+    "power_web_os.application.radar_work_scheduler",
+    "power_web_os.application.radar_work_scheduler_metadata",
 ]:
     LEGACY_MODULE_MIGRATION_STATUS[module_name] = "moved"
 
@@ -80,9 +114,7 @@ LEGACY_SHIM_MODULES: tuple[str, ...] = tuple(
     if status == "moved"
 )
 
-LEGACY_HOTSPOTS: tuple[str, ...] = (
-    "power_web_os.application.live_radar_search_expansion_execution",
-)
+LEGACY_HOTSPOTS: tuple[str, ...] = ()
 
 __all__ = [
     "LEGACY_MODULE_TARGETS",

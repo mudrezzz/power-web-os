@@ -69,9 +69,7 @@ LEGACY_ROOT_LIVE_RADAR_MODULES = {
     Path("src/power_web_os/application/live_radar_web_retrieval.py"),
 }
 
-RADAR_APPLICATION_FANOUT_ALLOWLIST = {
-    Path("src/power_web_os/application/live_radar_search_expansion_execution.py"),
-}
+RADAR_APPLICATION_FANOUT_ALLOWLIST: set[Path] = set()
 
 RADAR_TARGET_PACKAGES = [
     RADAR_PACKAGE_ROOT,
@@ -83,6 +81,7 @@ RADAR_TARGET_PACKAGES = [
     RADAR_PACKAGE_ROOT / "candidate_discovery" / "sources",
     RADAR_PACKAGE_ROOT / "candidate_discovery" / "universe",
     RADAR_PACKAGE_ROOT / "candidate_discovery" / "checkpoints",
+    RADAR_PACKAGE_ROOT / "candidate_discovery" / "search_expansion",
     RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution",
     RADAR_PACKAGE_ROOT / "candidate_discovery" / "diagnostics",
     RADAR_PACKAGE_ROOT / "signal_monitoring",
@@ -161,6 +160,12 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
     "power_web_os.application.live_radar_retrieval_plan": (
         "power_web_os.application.radar.candidate_discovery.planning.retrieval_plan"
     ),
+    "power_web_os.application.live_radar_search_expansion_execution": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.targeted_execution"
+    ),
+    "power_web_os.application.live_radar_search_expansion_payloads": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.payloads"
+    ),
     "power_web_os.application.live_radar_source_cards": "power_web_os.application.radar.shared.source_cards",
     "power_web_os.application.live_radar_service": "power_web_os.application.radar.candidate_discovery.service",
     "power_web_os.application.live_radar_staged_execution": (
@@ -175,9 +180,30 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
     "power_web_os.application.live_radar_staged_support": (
         "power_web_os.application.radar.candidate_discovery.execution.projection"
     ),
+    "power_web_os.application.radar_search_expansion": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.service"
+    ),
+    "power_web_os.application.radar_search_expansion_models": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.models"
+    ),
+    "power_web_os.application.radar_search_expansion_scheduler": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.scheduler"
+    ),
+    "power_web_os.application.radar_search_expansion_selection": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.selection"
+    ),
+    "power_web_os.application.radar_search_expansion_support": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.support"
+    ),
+    "power_web_os.application.radar_work_scheduler": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler"
+    ),
+    "power_web_os.application.radar_work_scheduler_metadata": (
+        "power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler_metadata"
+    ),
 }
 MOVED_RADAR_LEGACY_MODULES = set(MOVED_RADAR_LEGACY_MODULE_TARGETS)
-RADAR_ROOT_DEBT_PREFIXES = ("live_radar_", "radar_search_", "signal_monitoring_")
+RADAR_ROOT_DEBT_PREFIXES = ("live_radar_", "radar_search_", "radar_work_scheduler", "signal_monitoring_")
 LEGACY_IMPORT_COMPATIBILITY_TESTS = {
     Path("tests/test_radar_backend_package_contract.py"),
 }
@@ -496,6 +522,7 @@ def test_radar_backend_architecture_doc_exists_and_defines_target_packages() -> 
         "signal_monitoring",
         "power_web_discovery",
         "shared",
+        "search_expansion",
         "planning",
         "retrieval",
         "extraction",
@@ -511,7 +538,7 @@ def test_radar_backend_architecture_doc_exists_and_defines_target_packages() -> 
 def test_radar_root_legacy_hotspots_are_documented_as_migration_debt() -> None:
     text = RADAR_BACKEND_ARCHITECTURE_PATH.read_text(encoding="utf-8")
 
-    for expected in ["live_radar_search_expansion_execution.py", "migration debt"]:
+    for expected in ["root-level", "migration debt"]:
         assert expected in text
 
 

@@ -25,8 +25,9 @@ Read it before changing this package.
   discovery and coverage.
 - `coverage.py`: `CoveragePhaseExecutor` for iterative coverage tasks and
   after-coverage checkpoint recovery.
-- `expansion.py`: `ExpansionPhaseExecutor` for search expansion execution
-  through scheduler/admission and budget guards.
+- `expansion.py`: `ExpansionPhaseExecutor` for expansion phase flow and
+  execution of admitted expansion tasks through package-owned
+  `search_expansion` planning, scheduling, payload, and admission services.
 - `expansion_diagnostics.py`: expansion target summaries, guarantee state, and
   report-safe diagnostics.
 - `signals.py`: `SignalCompatibilityPhaseExecutor` for the legacy
@@ -91,6 +92,12 @@ growing the executor.
 When changing staged execution, prefer adding a method or helper inside the
 phase that owns the behavior. Do not add new logic to root-level
 `live_radar_staged_*.py`; those files are compatibility shims only.
+
+Search-expansion strategy, target/variant records, deterministic selection,
+guaranteed-lane scheduling, checkpoint targeted expansion execution, payload
+helpers, and work admission belong in
+`candidate_discovery/search_expansion`, not in root-level `radar_search_*` or
+`radar_work_scheduler*` modules.
 
 Do not add public top-level phase functions. Public execution behavior belongs
 to `CandidateDiscoveryOrchestrator`, `DiscoveryPhaseExecutor`,

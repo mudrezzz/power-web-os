@@ -12,8 +12,9 @@ state, finalization, task running, or projection services.
 
 Root-level Radar namespace debt has its own inventory:
 `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md`. That file lists every
-root `live_radar_*`, `radar_search_*`, and `signal_monitoring_*` file, its
-current status, target package, and owning follow-up slice.
+root `live_radar_*`, `radar_search_*`, `radar_work_scheduler*`, and
+`signal_monitoring_*` file, its current status, target package, and owning
+follow-up slice.
 
 ## Purpose
 
@@ -29,8 +30,8 @@ Runtime behavior is unchanged by this architecture slice.
 
 Current candidate-discovery backend logic still has deferred behavior in
 root-level `src/power_web_os/application/live_radar_*.py` modules, and the
-root namespace also contains `radar_search_*` and `signal_monitoring_*`
-pipeline files.
+root namespace also contains `radar_search_*`, `radar_work_scheduler*`, and
+`signal_monitoring_*` pipeline files.
 
 Measured baseline:
 
@@ -54,7 +55,6 @@ when behavior has already moved to `application/radar`.
 |---|---|---|
 | `live_radar_staged_execution.py` | Former large phase executor with many helpers and high application import fan-out | Moved to candidate-discovery phase executors; root file is now a thin compatibility shim |
 | `live_radar_service.py` | Former large service facade that shaped a full live run artifact | Moved to `radar/candidate_discovery/service.py`; root file is now a thin compatibility shim |
-| `live_radar_search_expansion_execution.py` | Expansion execution imports many phase helpers | Move under candidate-discovery expansion/execution package |
 
 ### Current Responsibility Map
 
@@ -69,7 +69,7 @@ when behavior has already moved to `application/radar`.
 | `radar_source_providers.py`, registry lookup helpers, lookup term generators | Provider-neutral registry/source orchestration | `radar/candidate_discovery/sources/` |
 | `live_radar_entity_resolution.py`, `live_radar_universe.py`, `live_radar_retrieved_candidates.py`, `live_radar_candidate_refs.py`, `radar_upstream_disambiguation.py` | Candidate universe, entity resolution, retrieved candidate extraction | `radar/candidate_discovery/universe/` |
 | `live_radar_checkpoints.py`, `live_radar_checkpoint_actions.py`, `live_radar_checkpoint_execution.py` | Adaptive checkpoint decisions and action execution | `radar/candidate_discovery/checkpoints/` |
-| `radar_search_expansion*.py`, `radar_work_scheduler*.py`, external budget helpers | Search expansion, scheduler admission, and budget diagnostics | `radar/candidate_discovery/execution/` and `radar/shared/budgets/` |
+| `radar_search_expansion*.py`, `radar_work_scheduler*.py`, external budget helpers | Search expansion, scheduler admission, and budget diagnostics | `radar/candidate_discovery/search_expansion/` and `radar/shared/budgets/` |
 | `live_radar_staged_execution.py`, `live_radar_staged_helpers.py`, `live_radar_staged_merge.py`, `live_radar_staged_support.py`, `live_radar_cross_disambiguation.py`, `live_radar_useful_budget.py` | Candidate-discovery staged execution and phase helper logic | `radar/candidate_discovery/execution/` |
 | `live_radar_normalization.py`, `live_radar_collection_utils.py`, `live_radar_pipeline_support.py`, diagnostics helpers | Artifact shaping and product-safe projections | `radar/candidate_discovery/diagnostics/` or phase-owned projection modules |
 | `live_radar_service.py` | One live run application facade | `radar/candidate_discovery/service.py` after migration |
@@ -88,6 +88,7 @@ src/power_web_os/application/radar/
     sources/
     universe/
     checkpoints/
+    search_expansion/
     execution/
     diagnostics/
   signal_monitoring/
@@ -246,12 +247,30 @@ deferred root budget/search-expansion modules until the owning migration slices
 move those contracts, but it must not import provider SDKs, persistence, API
 routes, or direct HTTP clients.
 
+As of slice `0.7.6.4.16`, candidate-discovery search expansion has moved:
+
+| Legacy module | Source of truth |
+|---|---|
+| `radar_search_expansion.py` | `radar/candidate_discovery/search_expansion/service.py` |
+| `radar_search_expansion_models.py` | `radar/candidate_discovery/search_expansion/models.py` |
+| `radar_search_expansion_selection.py` | `radar/candidate_discovery/search_expansion/selection.py` |
+| `radar_search_expansion_scheduler.py` | `radar/candidate_discovery/search_expansion/scheduler.py` |
+| `radar_search_expansion_support.py` | `radar/candidate_discovery/search_expansion/support.py` |
+| `live_radar_search_expansion_payloads.py` | `radar/candidate_discovery/search_expansion/payloads.py` |
+| `live_radar_search_expansion_execution.py` | `radar/candidate_discovery/search_expansion/targeted_execution.py` |
+| `radar_work_scheduler.py` | `radar/candidate_discovery/search_expansion/work_scheduler.py` |
+| `radar_work_scheduler_metadata.py` | `radar/candidate_discovery/search_expansion/work_scheduler_metadata.py` |
+
+`ExpansionPhaseExecutor` still owns phase flow inside
+`candidate_discovery/execution`; search-expansion planning, selection,
+guaranteed-lane scheduling, checkpoint targeted expansion payloads, and
+recall-expansion work admission now live in the search-expansion package.
+Root files are compatibility shims and must not regain behavior.
+
 Deferred modules, including `live_radar_definition.py`,
 `live_radar_pipeline_support.py`, extraction, universe, and
 diagnostics helpers, remain legacy migration debt until their own slices move
-them. `live_radar_search_expansion_execution.py` and
-related search-expansion modules are the remaining documented Radar application
-hotspots; they are not examples for new backend work.
+them. Moved search-expansion root files are not examples for new backend work.
 
 As of slice `0.7.6.4.14.1`, the flat namespace closure policy is explicit:
 `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md` is the reviewable debt
@@ -285,7 +304,9 @@ Expected subpackages:
 - `sources`: source obligations, registry/source orchestration, lookup terms;
 - `universe`: candidate universe, entity resolution, retrieved candidates;
 - `checkpoints`: adaptive checkpoint policies and recovery actions;
-- `execution`: phase executors, search expansion, scheduler admission;
+- `search_expansion`: recall-first expansion planning, selection, scheduling,
+  targeted checkpoint expansion execution, payloads, and work admission;
+- `execution`: phase executors and phase order;
 - `diagnostics`: dossier/trace/journal-ready projection helpers.
 
 ### `radar/signal_monitoring`
@@ -400,8 +421,8 @@ bounded slices:
     corridor is complete.
 13. `0.7.6.4.15` moved checkpoint decision/action ownership into
     `radar/candidate_discovery/checkpoints`.
-14. `0.7.6.4.16` moves search-expansion execution/payload ownership into the
-    candidate-discovery package.
+14. `0.7.6.4.16` moved search-expansion execution/payload/work-admission
+    ownership into the candidate-discovery package.
 15. `0.7.6.4.17` assesses shared budget contracts and extracts only genuinely
     shared budget records/services to `radar/shared/budgets`.
 16. `0.7.6.4.17.1` moves definition and retrieval primitives into package-owned

@@ -8160,7 +8160,7 @@ Principles:
 
 ### Slice 0.7.6.4.16: Candidate discovery search expansion package migration
 
-- Status: Ready
+- Status: Done
 - Goal: Move search expansion execution and payload ownership into candidate-discovery package services without changing expansion scheduling behavior.
 - User value: Search expansion becomes a package-owned execution capability with visible admission, payload, and diagnostics contracts.
 - Problem statement: `live_radar_search_expansion_execution.py` and related payload modules remain documented Radar application hotspots. They should be migrated only after the options/composition cleanup and the next measured pipeline blocker work are not depending on root-level legacy shape.
@@ -8195,7 +8195,7 @@ Principles:
 
 ### Slice 0.7.6.4.17: Radar shared budget contracts assessment and extraction
 
-- Status: Backlog
+- Status: Ready
 - Goal: Decide and implement the minimal shared budget contract only if candidate discovery and signal monitoring both need the same budget semantics.
 - User value: Budget behavior stays consistent where it is genuinely shared while avoiding a premature shared abstraction that hides pipeline-specific rules.
 - Problem statement: Candidate discovery now has service-owned budget metadata merging, while signal monitoring has isolated budgets. Some budget records may belong in `radar/shared/budgets`, but moving them too early would couple pipelines that intentionally have different cadence and policy.

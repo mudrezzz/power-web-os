@@ -59,3 +59,6 @@ Current package-owned source-of-truth modules:
   projection for the live run facade.
 - `checkpoints/`: checkpoint models, deterministic policy, execution-state
   recording, and bounded recovery actions for candidate discovery.
+- `search_expansion/`: recall-first expansion target/variant planning,
+  selection, scheduling, targeted checkpoint expansion execution, and
+  work-admission contracts.

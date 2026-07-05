@@ -168,10 +168,15 @@ checkpoint recovery.
 
 ### `ExpansionPhaseExecutor`
 
-Owns recall expansion execution after weak discovery/coverage: expansion plan
-diagnostics, guaranteed target scheduling, work scheduler portfolio creation,
-admission skip records, execution of admitted expansion tasks, merge of returned
-sources/observations, and expansion events.
+Owns the candidate-discovery expansion phase flow after weak
+discovery/coverage: request an expansion plan, persist diagnostics, schedule
+approved variants, ask the work scheduler for admission, execute admitted
+provider tasks, merge returned sources/observations, and emit expansion events.
+
+Does not own search-expansion planning, target/variant records, deterministic
+selection, lane scheduling rules, targeted checkpoint expansion execution, or
+work-admission contracts. Those live in
+`radar/candidate_discovery/search_expansion`.
 
 ### `SignalCompatibilityPhaseExecutor`
 
@@ -262,9 +267,12 @@ Protocol for product-safe factories and payload builders.
 
 ### Change Expansion Behavior
 
-Change `ExpansionPhaseExecutor` only when the behavior is execution of already
-planned expansion work. Source-profile strategy, target generation, scheduler
-admission policy, and evaluation matching live outside this phase.
+Change `ExpansionPhaseExecutor` only when the behavior is phase flow or
+execution of already planned expansion work. Source-profile strategy, target
+generation, variant selection, guaranteed-lane scheduling, checkpoint targeted
+expansion execution, and work admission live in
+`radar/candidate_discovery/search_expansion`. Evaluation matching lives outside
+this phase.
 
 ### Change Candidate Universe Projection
 

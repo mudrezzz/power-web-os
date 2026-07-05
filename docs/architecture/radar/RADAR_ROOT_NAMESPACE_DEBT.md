@@ -50,8 +50,8 @@ that have an owning migration slice.
 | `live_radar_product_sources.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.retrieval` | `compatibility_only` |
 | `live_radar_retrieval_plan.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.planning` | `compatibility_only` |
 | `live_radar_retrieved_candidates.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.universe` | `0.7.6.4.17.2` |
-| `live_radar_search_expansion_execution.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.execution` | `0.7.6.4.16` |
-| `live_radar_search_expansion_payloads.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.execution` | `0.7.6.4.16` |
+| `live_radar_search_expansion_execution.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.targeted_execution` | `compatibility_only` |
+| `live_radar_search_expansion_payloads.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.payloads` | `compatibility_only` |
 | `live_radar_service.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.service` | `compatibility_only` |
 | `live_radar_source_cards.py` | `moved_shim` | `power_web_os.application.radar.shared.source_cards` | `compatibility_only` |
 | `live_radar_source_risk.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.sources` | `0.7.6.4.17.3` |
@@ -62,11 +62,13 @@ that have an owning migration slice.
 | `live_radar_universe.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.universe` | `0.7.6.4.17.2` |
 | `live_radar_useful_budget.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.execution` | `0.7.6.4.17` |
 | `live_radar_web_retrieval.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.retrieval` | `0.7.6.4.17.1` |
-| `radar_search_expansion.py` | `target_for_migration` | `power_web_os.application.radar.candidate_discovery.execution` | `0.7.6.4.16` |
-| `radar_search_expansion_models.py` | `target_for_migration` | `power_web_os.application.radar.candidate_discovery.execution` | `0.7.6.4.16` |
-| `radar_search_expansion_scheduler.py` | `target_for_migration` | `power_web_os.application.radar.candidate_discovery.execution` | `0.7.6.4.16` |
-| `radar_search_expansion_selection.py` | `target_for_migration` | `power_web_os.application.radar.candidate_discovery.execution` | `0.7.6.4.16` |
-| `radar_search_expansion_support.py` | `target_for_migration` | `power_web_os.application.radar.candidate_discovery.execution` | `0.7.6.4.16` |
+| `radar_search_expansion.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.service` | `compatibility_only` |
+| `radar_search_expansion_models.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.models` | `compatibility_only` |
+| `radar_search_expansion_scheduler.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.scheduler` | `compatibility_only` |
+| `radar_search_expansion_selection.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.selection` | `compatibility_only` |
+| `radar_search_expansion_support.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.support` | `compatibility_only` |
+| `radar_work_scheduler.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler` | `compatibility_only` |
+| `radar_work_scheduler_metadata.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler_metadata` | `compatibility_only` |
 | `signal_monitoring_contracts.py` | `target_for_migration` | `power_web_os.application.radar.signal_monitoring` | `0.7.6.4.18` |
 | `signal_monitoring_executor.py` | `target_for_migration` | `power_web_os.application.radar.signal_monitoring` | `0.7.6.4.18` |
 | `signal_monitoring_source_strategy.py` | `target_for_migration` | `power_web_os.application.radar.signal_monitoring` | `0.7.6.4.18` |
@@ -86,8 +88,8 @@ retrieval-plan, product-source, service, and staged-execution behavior.
 ## Closure Path
 
 - `0.7.6.4.15`: checkpoint behavior moved to candidate-discovery checkpoints.
-- `0.7.6.4.16`: move search-expansion execution/payload behavior to
-  candidate-discovery execution.
+- `0.7.6.4.16`: search-expansion and work-admission behavior moved to
+  candidate-discovery search expansion.
 - `0.7.6.4.17`: decide whether budget contracts belong in `radar/shared`.
 - `0.7.6.4.17.1`: move definition and retrieval primitives into shared and
   candidate-discovery retrieval packages.
