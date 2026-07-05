@@ -11,7 +11,7 @@ from typing import Any
 
 from power_web_os.application.live_radar_contracts import LiveICPRadarRunState, RadarDiscoveryPlanner, WebSearchProvider
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition
-from power_web_os.application.radar.candidate_discovery.service import LiveRadarRunService
+from power_web_os.application.radar.candidate_discovery.service_factory import LiveRadarRunServiceFactory
 from power_web_os.application.radar_runtime_settings import effective_runtime_env
 from power_web_os.application.radar_source_providers import RadarSourceRegistry
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTracer, technical_trace_context
@@ -163,7 +163,11 @@ class _FallbackLiveICPRadarRunWorkflow:
     ) -> None:
         self._provider = provider or RecordedWebSearchProvider({"sources": [], "candidate_observations": []})
         self._runtime_mode = "local_fallback"
-        self._service = LiveRadarRunService(self._provider, discovery_planner=discovery_planner, source_registry=source_registry)
+        self._service = LiveRadarRunServiceFactory().create(
+            self._provider,
+            discovery_planner=discovery_planner,
+            source_registry=source_registry,
+        )
 
     def compile(self) -> dict[str, Any]:
         return {

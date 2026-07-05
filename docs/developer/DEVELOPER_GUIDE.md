@@ -257,11 +257,12 @@ Old `live_radar_*` imports remain runtime-compatible until migration slices move
 behavior into package-owned services. The new package tree is the extension
 path; the old flat namespace is migration debt.
 
-Preferred Radar backend imports after `0.7.6.4.12`:
+Preferred Radar backend imports after `0.7.6.4.14`:
 
 ```text
 power_web_os.application.radar.shared.source_cards
 power_web_os.application.radar.candidate_discovery.service
+power_web_os.application.radar.candidate_discovery.service_factory
 power_web_os.application.radar.candidate_discovery.contracts
 power_web_os.application.radar.candidate_discovery.planning.definition_runtime
 power_web_os.application.radar.candidate_discovery.planning.discovery_planning
@@ -290,7 +291,10 @@ Execution behavior belongs in the phase modules under
 `candidate_discovery/execution/`; the orchestrator should stay thin and only
 order phases. The live run service facade belongs in
 `candidate_discovery/service.py`, while product-safe artifact shaping belongs in
-`candidate_discovery/diagnostics/live_run_artifact.py`.
+`candidate_discovery/diagnostics/live_run_artifact.py`. Production workflow
+wiring should create the facade through
+`candidate_discovery/service_factory.py`; the service constructor keeps legacy
+direct-call compatibility but should not own collaborator assembly.
 
 Candidate-discovery execution phases must use the service contract from
 `docs/architecture/RADAR_BACKEND_ARCHITECTURE.md` and the detailed handbook

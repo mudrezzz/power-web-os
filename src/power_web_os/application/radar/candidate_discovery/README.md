@@ -36,6 +36,9 @@ Current package-owned source-of-truth modules:
   ports.
 - `service.py`: `LiveRadarRunService`, the provider-neutral live run use-case
   facade used by workflow wrappers and legacy compatibility imports.
+- `service_factory.py`: `LiveRadarRunServiceFactory` and
+  `LiveRadarRunComposition`, the package-owned collaborator assembly boundary
+  for the live run facade.
 - `service_context.py`: `LiveRadarTaskContextReader`, typed task-context
   access that adapts live-run task context into
   `CandidateDiscoveryExecutionOptions`.

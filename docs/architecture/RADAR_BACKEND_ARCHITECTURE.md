@@ -208,11 +208,16 @@ As of slice `0.7.6.4.12`, the live Radar run service facade has also moved:
 `LiveRadarRunService` now owns only the provider-neutral use-case order:
 planning, staged execution, and delegation to artifact projection. Product-safe
 artifact shaping lives in
-`radar/candidate_discovery/diagnostics/live_run_artifact.py`. Service-adjacent
-runtime policies are named package-owned components:
-`LiveRadarTaskContextReader` owns typed task-context access for staged execution
-options, `ExternalBudgetMetadataMerger` owns planner/execution budget metadata
-merging, and `LiveRadarEventStateProjector` owns event-list projection. The old
+`radar/candidate_discovery/diagnostics/live_run_artifact.py`.
+`LiveRadarRunServiceFactory` owns collaborator assembly for that facade:
+provider wrapping through `SourceRegistryWebSearchProvider`, default planner
+selection, artifact projector construction, budget/event services, and
+task-context reader factory wiring. `LiveRadarRunComposition` carries the ready
+collaborators into the facade so the facade does not act as its own composition
+root. Service-adjacent runtime policies remain named package-owned components:
+`LiveRadarTaskContextReader` adapts task context to staged execution options,
+`ExternalBudgetMetadataMerger` owns planner/execution budget metadata merging,
+and `LiveRadarEventStateProjector` owns event-list projection. The old
 root-level `live_radar_service.py` file is a compatibility shim for existing
 imports and must not regain behavior.
 

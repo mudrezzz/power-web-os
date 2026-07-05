@@ -50,6 +50,7 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.service_budget",
     "power_web_os.application.radar.candidate_discovery.service_context",
     "power_web_os.application.radar.candidate_discovery.service_events",
+    "power_web_os.application.radar.candidate_discovery.service_factory",
     "power_web_os.application.radar.candidate_discovery.diagnostics.live_run_artifact",
 ]
 
@@ -165,6 +166,10 @@ def test_live_radar_run_service_support_components_are_importable() -> None:
         "power_web_os.application.radar.candidate_discovery.execution.options": [
             "CandidateDiscoveryExecutionOptions",
         ],
+        "power_web_os.application.radar.candidate_discovery.service_factory": [
+            "LiveRadarRunComposition",
+            "LiveRadarRunServiceFactory",
+        ],
     }
     for module_name, names in required.items():
         module = importlib.import_module(module_name)
@@ -186,6 +191,39 @@ def test_live_radar_run_service_uses_named_staged_execution_options() -> None:
     assert len(calls) == 1
     assert any(keyword.arg == "options" for keyword in calls[0].keywords)
     assert all(keyword.arg is not None for keyword in calls[0].keywords)
+
+
+def test_live_radar_run_service_facade_does_not_own_collaborator_assembly() -> None:
+    path = Path("src/power_web_os/application/radar/candidate_discovery/service.py")
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    forbidden_calls = {
+        "SourceRegistryWebSearchProvider",
+        "DeterministicRadarDiscoveryPlanner",
+        "LiveRadarRunArtifactProjector",
+        "ExternalBudgetMetadataMerger",
+        "LiveRadarEventStateProjector",
+    }
+    called_names = {
+        node.func.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    }
+
+    assert forbidden_calls.isdisjoint(called_names)
+    assert "LiveRadarRunServiceFactory" in called_names
+
+
+def test_live_icp_radar_workflow_uses_package_service_factory() -> None:
+    path = Path("src/power_web_os/workflows/live_icp_radar_workflow.py")
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    called_names = {
+        node.func.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    }
+
+    assert "LiveRadarRunServiceFactory" in called_names
+    assert "LiveRadarRunService" not in called_names
 
 
 def test_candidate_discovery_execution_service_classes_are_importable() -> None:

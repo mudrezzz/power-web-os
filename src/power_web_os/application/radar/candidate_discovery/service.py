@@ -24,22 +24,21 @@ from power_web_os.application.live_radar_external_budget_context import (
 from power_web_os.application.live_radar_pipeline_support import (
     trace_pipeline_step as _trace,
 )
-from power_web_os.application.radar.candidate_discovery.diagnostics.live_run_artifact import (
-    LiveRadarRunArtifactProjector,
-)
 from power_web_os.application.radar.candidate_discovery.execution.orchestrator import run_staged_radar_execution
-from power_web_os.application.radar.candidate_discovery.service_budget import ExternalBudgetMetadataMerger
-from power_web_os.application.radar.candidate_discovery.service_context import LiveRadarTaskContextReader
-from power_web_os.application.radar.candidate_discovery.service_events import LiveRadarEventStateProjector
-from power_web_os.application.radar.candidate_discovery.planning.discovery_planning import (
-    DeterministicRadarDiscoveryPlanner,
+from power_web_os.application.radar.candidate_discovery.service_context import (
+    LiveRadarTaskContextReader,
+)
+from power_web_os.application.radar.candidate_discovery.service_factory import (
+    LiveRadarRunComposition,
+    LiveRadarRunServiceFactory,
+    TaskContextReaderFactory,
 )
 from power_web_os.application.radar.candidate_discovery.planning.execution_plan import (
     compile_radar_execution_plan,
     execution_plan_to_search_plan,
 )
 from power_web_os.application.radar.candidate_discovery.planning.planning_pipeline import build_planned_state
-from power_web_os.application.radar_source_providers import RadarSourceRegistry, SourceRegistryWebSearchProvider
+from power_web_os.application.radar_source_providers import RadarSourceRegistry
 
 
 class LiveRadarRunService:
@@ -47,17 +46,29 @@ class LiveRadarRunService:
 
     def __init__(
         self,
-        provider: WebSearchProvider,
+        provider: WebSearchProvider | LiveRadarRunComposition,
         *,
         discovery_planner: RadarDiscoveryPlanner | None = None,
         source_registry: RadarSourceRegistry | None = None,
+        task_context_reader_factory: TaskContextReaderFactory = LiveRadarTaskContextReader,
     ) -> None:
-        self._source_registry = source_registry
-        self._provider = SourceRegistryWebSearchProvider(provider, source_registry) if source_registry is not None else provider
-        self._discovery_planner = discovery_planner or DeterministicRadarDiscoveryPlanner()
-        self._artifact_projector = LiveRadarRunArtifactProjector(self._provider)
-        self._budget_metadata_merger = ExternalBudgetMetadataMerger()
-        self._event_state_projector = LiveRadarEventStateProjector()
+        composition = (
+            provider
+            if isinstance(provider, LiveRadarRunComposition)
+            else LiveRadarRunServiceFactory().build_composition(
+                provider,
+                discovery_planner=discovery_planner,
+                source_registry=source_registry,
+                task_context_reader_factory=task_context_reader_factory,
+            )
+        )
+        self._provider = composition.provider
+        self._discovery_planner = composition.discovery_planner
+        self._connector_profile_registry = composition.connector_profile_registry
+        self._artifact_projector = composition.artifact_projector
+        self._budget_metadata_merger = composition.budget_metadata_merger
+        self._event_state_projector = composition.event_state_projector
+        self._task_context_reader_factory = composition.task_context_reader_factory
 
     def run(
         self,
@@ -90,9 +101,7 @@ class LiveRadarRunService:
             return build_planned_state(
                 state=state,
                 planner=self._discovery_planner,
-                connector_profile_registry=(
-                    self._source_registry.connector_profile_registry if self._source_registry is not None else None
-                ),
+                connector_profile_registry=self._connector_profile_registry,
             )
 
         # LangGraph executes workflow nodes independently, so the service-level
@@ -104,9 +113,7 @@ class LiveRadarRunService:
             planned_state = build_planned_state(
                 state=state,
                 planner=self._discovery_planner,
-                connector_profile_registry=(
-                    self._source_registry.connector_profile_registry if self._source_registry is not None else None
-                ),
+                connector_profile_registry=self._connector_profile_registry,
             )
         return planned_state.model_copy(update={
             "execution_results": self._budget_metadata_merger.merge(
@@ -127,7 +134,9 @@ class LiveRadarRunService:
             radar=radar,
             execution_plan=execution_plan,
             provider=self._provider,
-            options=LiveRadarTaskContextReader(state.task_context).staged_execution_options(state.discovery_plan),
+            options=self._task_context_reader_factory(state.task_context).staged_execution_options(
+                state.discovery_plan
+            ),
         )
         execution_results = self._budget_metadata_merger.merge(state.execution_results, execution_results)
         result = LiveRadarCollectionResult(

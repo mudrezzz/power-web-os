@@ -312,7 +312,9 @@ future Power Web discovery backend code should use the package contract under
 `src/power_web_os/application/radar/` as it is introduced by the rescue slices.
 The staged candidate-discovery executor and live run service facade have moved
 behind package-owned source-of-truth modules; their old root-level files are
-compatibility shims only.
+compatibility shims only. Production live-run wiring now goes through the
+candidate-discovery service factory so the facade owns use-case order, not
+collaborator assembly.
 
 Candidate universe execution is now iterative. Accepted discovery plans may
 contain executable `coverage_check` stages. The application service runs initial
