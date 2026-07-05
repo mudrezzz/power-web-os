@@ -11,7 +11,7 @@ from power_web_os.application.live_radar_extraction_diagnostics import (
     extraction_validation_event,
     extraction_validation_issues,
 )
-from power_web_os.application.live_radar_universe import (
+from power_web_os.application.radar.candidate_discovery.universe import (
     candidate_name,
     candidate_name_set,
     candidate_universe_entries,

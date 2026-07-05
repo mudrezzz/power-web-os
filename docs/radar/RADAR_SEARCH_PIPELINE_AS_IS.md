@@ -134,8 +134,8 @@ candidate state.
 | Extraction contract/repair | `src/power_web_os/application/live_radar_extraction_contract.py` | Validate and repair provider payload shape when deterministic repair is safe. | Silently converting unrecoverable output into success. |
 | Checkpoint service | `src/power_web_os/application/radar/candidate_discovery/checkpoints/policy.py` | Decide continue, retry, expand, repair, revise, stop, or fail. | Direct HTTP/provider calls. |
 | Checkpoint action executor | `src/power_web_os/application/radar/candidate_discovery/checkpoints/recovery.py` | Apply approved checkpoint actions under budgets and policy. | Unbounded loops. |
-| Entity resolution | `src/power_web_os/application/live_radar_entity_resolution.py` | Distinguish legal entity, branch, production site, project, asset, and unknown entity. | Provider transport. |
-| Candidate universe support | `src/power_web_os/application/live_radar_universe.py` and retrieved-candidate helpers | Preserve source-backed legal entities and review-needed upstream entities. | Product precision claims. |
+| Entity resolution | `src/power_web_os/application/radar/candidate_discovery/universe/entity_resolution.py` | Distinguish legal entity, branch, production site, project, asset, and unknown entity. | Provider transport. |
+| Candidate universe support | `src/power_web_os/application/radar/candidate_discovery/universe/` helpers | Preserve source-backed legal entities and review-needed upstream entities. | Product precision claims. |
 | Live artifact projection | `src/power_web_os/application/radar/candidate_discovery/diagnostics/live_run_artifact.py` | Shape product-safe live run artifacts from completed application state. | Provider execution, checkpoint decisions, or scheduler admission. |
 | Dossier projection | `src/power_web_os/api/radar_dossier_mappers.py` and related mappers | Explain lifecycle, diagnostics, checkpoints, budgets, candidates, and sources. | Mutating run behavior. |
 | Evaluation | `src/power_web_os/radar_evaluation.py` | Compare persisted run/dossier output to curated baseline. | Live provider calls. |

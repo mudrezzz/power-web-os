@@ -163,7 +163,13 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
     "power_web_os.application.live_radar_checkpoints": (
         "power_web_os.application.radar.candidate_discovery.checkpoints"
     ),
+    "power_web_os.application.live_radar_candidate_refs": (
+        "power_web_os.application.radar.candidate_discovery.universe.identity"
+    ),
     "power_web_os.application.live_radar_contracts": "power_web_os.application.radar.candidate_discovery.contracts",
+    "power_web_os.application.live_radar_cross_disambiguation": (
+        "power_web_os.application.radar.candidate_discovery.universe.cross_source_disambiguation"
+    ),
     "power_web_os.application.live_radar_definition": (
         "power_web_os.application.radar.candidate_discovery.retrieval.definition"
     ),
@@ -178,6 +184,9 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
     ),
     "power_web_os.application.live_radar_execution_plan": (
         "power_web_os.application.radar.candidate_discovery.planning.execution_plan"
+    ),
+    "power_web_os.application.live_radar_entity_resolution": (
+        "power_web_os.application.radar.candidate_discovery.universe.entity_resolution"
     ),
     "power_web_os.application.live_radar_external_budget": "power_web_os.application.radar.shared.budgets",
     "power_web_os.application.live_radar_external_budget_context": (
@@ -201,6 +210,9 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
     "power_web_os.application.live_radar_retrieval_plan": (
         "power_web_os.application.radar.candidate_discovery.planning.retrieval_plan"
     ),
+    "power_web_os.application.live_radar_retrieved_candidates": (
+        "power_web_os.application.radar.candidate_discovery.universe.retrieved_candidates"
+    ),
     "power_web_os.application.live_radar_search_expansion_execution": (
         "power_web_os.application.radar.candidate_discovery.search_expansion.targeted_execution"
     ),
@@ -223,6 +235,9 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
     ),
     "power_web_os.application.live_radar_useful_budget": (
         "power_web_os.application.radar.candidate_discovery.execution.useful_budget"
+    ),
+    "power_web_os.application.live_radar_universe": (
+        "power_web_os.application.radar.candidate_discovery.universe"
     ),
     "power_web_os.application.live_radar_web_retrieval": (
         "power_web_os.application.radar.candidate_discovery.retrieval.web_retrieval"
@@ -248,9 +263,18 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
     "power_web_os.application.radar_work_scheduler_metadata": (
         "power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler_metadata"
     ),
+    "power_web_os.application.radar_upstream_disambiguation": (
+        "power_web_os.application.radar.candidate_discovery.universe.upstream_disambiguation"
+    ),
 }
 MOVED_RADAR_LEGACY_MODULES = set(MOVED_RADAR_LEGACY_MODULE_TARGETS)
-RADAR_ROOT_DEBT_PREFIXES = ("live_radar_", "radar_search_", "radar_work_scheduler", "signal_monitoring_")
+RADAR_ROOT_DEBT_PREFIXES = (
+    "live_radar_",
+    "radar_search_",
+    "radar_upstream_disambiguation",
+    "radar_work_scheduler",
+    "signal_monitoring_",
+)
 LEGACY_IMPORT_COMPATIBILITY_TESTS = {
     Path("tests/test_radar_backend_package_contract.py"),
 }

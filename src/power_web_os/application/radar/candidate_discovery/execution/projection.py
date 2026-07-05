@@ -12,7 +12,7 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     WebSearchProviderResult,
 )
 from power_web_os.application.live_radar_normalization import normalize_live_candidate
-from power_web_os.application.live_radar_universe import candidate_name
+from power_web_os.application.radar.candidate_discovery.universe import candidate_name
 
 
 class CandidateProjectionService:

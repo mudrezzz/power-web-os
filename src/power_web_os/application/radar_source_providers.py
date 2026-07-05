@@ -26,7 +26,7 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     WebSearchProviderResult,
 )
 from power_web_os.application.radar.shared.budgets.external_context import reserve_budget_slice
-from power_web_os.application.live_radar_universe import merge_provider_metadata
+from power_web_os.application.radar.candidate_discovery.universe import merge_provider_metadata
 from power_web_os.application.radar_lookup_terms import (
     concrete_candidate_scope_terms as _concrete_candidate_scope_terms,
     is_concrete_lookup_term as _safe_is_concrete_lookup_term,
@@ -44,7 +44,7 @@ from power_web_os.application.radar_source_registry_helpers import (
     registry_ambiguity_fanout_limit as _registry_ambiguity_fanout_limit,
     structured_observations_from_registry as _structured_observations_from_registry,
 )
-from power_web_os.application.radar_upstream_disambiguation import (
+from power_web_os.application.radar.candidate_discovery.universe.upstream_disambiguation import (
     candidate_gap_from_review_entity as _candidate_gap_from_review_entity,
     cross_source_disambiguation_tasks as _cross_source_disambiguation_tasks,
     review_needed_ambiguous_registry_observations as _review_needed_ambiguous_registry_observations,

@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from power_web_os.application.radar.candidate_discovery.contracts import LiveRadarPipelineEvent, RadarSourceEvidence
-from power_web_os.application.live_radar_universe import dict_list
+from power_web_os.application.radar.candidate_discovery.universe import dict_list
 
 
 @dataclass

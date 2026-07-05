@@ -16,7 +16,7 @@ from power_web_os.application.radar.candidate_discovery.execution.task_budget im
 from power_web_os.application.radar.shared.budgets import (
     RadarExternalCallBudget,
 )
-from power_web_os.application.live_radar_universe import gap_items, gap_observations, gap_payloads, dict_list
+from power_web_os.application.radar.candidate_discovery.universe import gap_items, gap_observations, gap_payloads, dict_list
 from power_web_os.application.radar.candidate_discovery.execution.state import SmokeLimitPolicy
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 from power_web_os.application.radar.candidate_discovery.search_expansion.service import RadarSearchExpansionService

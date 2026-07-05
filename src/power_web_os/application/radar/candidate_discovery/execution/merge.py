@@ -6,9 +6,9 @@ import re
 from typing import Any
 
 from power_web_os.application.radar.candidate_discovery.contracts import RadarSourceEvidence, WebSearchProviderResult
-from power_web_os.application.live_radar_entity_resolution import RadarEntityResolutionService
+from power_web_os.application.radar.candidate_discovery.universe.entity_resolution import RadarEntityResolutionService
 from power_web_os.application.live_radar_normalization import _dedupe_sources
-from power_web_os.application.live_radar_universe import merge_provider_metadata
+from power_web_os.application.radar.candidate_discovery.universe import merge_provider_metadata
 
 class ExecutionResultMerger:
     """Owns provider-result merging and candidate-universe metadata projection.

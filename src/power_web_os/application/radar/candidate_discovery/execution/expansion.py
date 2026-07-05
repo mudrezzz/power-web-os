@@ -22,7 +22,7 @@ from power_web_os.application.radar.candidate_discovery.execution.state import (
     SmokeLimitPolicy,
 )
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
-from power_web_os.application.live_radar_universe import (
+from power_web_os.application.radar.candidate_discovery.universe import (
     dict_list,
     gap_items,
     gap_observations,

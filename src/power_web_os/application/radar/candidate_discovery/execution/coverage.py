@@ -6,7 +6,7 @@ from power_web_os.application.radar.candidate_discovery.checkpoints.recovery imp
     RadarCheckpointRecoveryContext,
     RadarCheckpointRecoveryState,
 )
-from power_web_os.application.live_radar_universe import (
+from power_web_os.application.radar.candidate_discovery.universe import (
     candidate_name_set,
     coverage_risk,
     coverage_warnings as coverage_warning_messages,

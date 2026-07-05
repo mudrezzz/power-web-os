@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from power_web_os.application.live_radar_universe import candidate_name, dict_list
+from power_web_os.application.radar.candidate_discovery.universe import candidate_name, dict_list
 from power_web_os.application.radar.candidate_discovery.contracts import LiveRadarPipelineEvent
 from power_web_os.application.radar.candidate_discovery.execution.expansion_diagnostics import _is_executed_expansion_result
 

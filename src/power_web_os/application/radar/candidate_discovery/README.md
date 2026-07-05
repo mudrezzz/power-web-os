@@ -63,6 +63,9 @@ Current package-owned source-of-truth modules:
   contracts and recorded retrieval provider used by tests and demos.
 - `retrieval/product_sources.py`: strict product-source projection for
   candidate rows.
+- `universe/`: candidate identity, metadata merge, gap payloads, coverage
+  helpers, entity resolution, retrieved-candidate extraction, final universe
+  projection, and upstream/cross-source disambiguation.
 - `checkpoints/`: checkpoint models, deterministic policy, execution-state
   recording, and bounded recovery actions for candidate discovery.
 - `search_expansion/`: recall-first expansion target/variant planning,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from power_web_os.application.radar.candidate_discovery.contracts import LiveRadarPipelineEvent
-from power_web_os.application.live_radar_universe import dict_list, stable_id
+from power_web_os.application.radar.candidate_discovery.universe import dict_list, stable_id
 
 
 def _append_review_needed_universe_entities(

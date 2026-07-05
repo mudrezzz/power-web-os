@@ -52,7 +52,7 @@ run_staged_radar_execution compatibility wrapper
        -> ExpansionPhaseExecutor.run
        -> CoveragePhaseExecutor.recover_after_coverage
        -> DiscoveryPhaseExecutor.extract_retrieved_candidates
-       -> cross-source disambiguation
+       -> universe cross-source disambiguation service
        -> SignalCompatibilityPhaseExecutor.review_before_search
        -> SignalCompatibilityPhaseExecutor.run
        -> FinalizationProjector.project
@@ -195,9 +195,9 @@ coverage iteration, candidate projection, or event payload creation.
 ### `DiscoveryPhaseExecutor`
 
 Owns the beginning of candidate discovery: discovery tasks, useful-result
-retries, retrieved-candidate extraction, cross-source disambiguation for early
-observations, first checkpoint recovery, initial qualification gates, and smoke
-candidate-scope capping.
+retries, invocation of universe-owned retrieved-candidate extraction and
+cross-source disambiguation services, first checkpoint recovery, initial
+qualification gates, and smoke candidate-scope capping.
 
 ### `GatePhaseExecutor`
 
@@ -254,6 +254,9 @@ final dossier projection.
 
 Owns source dedupe, provider metadata merge, entity-resolution merge, candidate
 observation consolidation, and candidate-universe metadata enrichment.
+
+It delegates entity-resolution rules and provider metadata merge semantics to
+`radar/candidate_discovery/universe`; it does not classify entity types itself.
 
 ### `CandidateProjectionService`
 

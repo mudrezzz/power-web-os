@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from power_web_os.application.radar.candidate_discovery.contracts import RadarExecutionTask, WebSearchProviderResult
-from power_web_os.application.live_radar_universe import gap_items
+from power_web_os.application.radar.candidate_discovery.universe import gap_items
 
 
 @dataclass(frozen=True, slots=True)

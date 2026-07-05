@@ -8272,14 +8272,14 @@ Principles:
 
 ### Slice 0.7.6.4.17.2: Candidate universe and entity resolution package migration
 
-- Status: Ready
-- Goal: Move candidate universe, retrieved-candidate extraction, entity resolution, candidate refs, and cross-source disambiguation out of root-level modules into candidate-discovery package services.
+- Status: Done
+- Goal: Move candidate universe, retrieved-candidate extraction, entity resolution, candidate refs, upstream disambiguation, and cross-source disambiguation out of root-level modules into candidate-discovery package services.
 - User value: The candidate universe becomes a visible package-owned concept rather than a cluster of root helper files, making future fallback and enrichment work safer.
-- Problem statement: `live_radar_candidate_refs.py`, `live_radar_entity_resolution.py`, `live_radar_retrieved_candidates.py`, `live_radar_universe.py`, and `live_radar_cross_disambiguation.py` still own core candidate-universe behavior in the flat namespace. Product work such as post-extraction fallback would otherwise keep extending that legacy cluster.
+- Problem statement: `live_radar_candidate_refs.py`, `live_radar_entity_resolution.py`, `live_radar_retrieved_candidates.py`, `live_radar_universe.py`, `live_radar_cross_disambiguation.py`, and `radar_upstream_disambiguation.py` still own core candidate-universe behavior in the flat namespace. Product work such as post-extraction fallback would otherwise keep extending that legacy cluster.
 - Scope:
   - Create package-owned universe/entity-resolution services and value/helper modules under `radar/candidate_discovery/universe`.
-  - Move retrieved-candidate extraction and candidate source-ref helpers behind package-owned APIs.
-  - Move or wrap cross-source disambiguation in an execution/universe-owned service boundary.
+  - Move retrieved-candidate extraction, candidate source-ref helpers, metadata/gap helpers, and candidate-universe projection behind package-owned APIs.
+  - Move upstream registry ambiguity retention and cross-source disambiguation into universe-owned modules.
   - Keep old root paths as thin compatibility shims.
   - Migrate production and behavior-test imports to package-owned paths.
   - Add architecture tests that prevent new universe/entity-resolution behavior in root-level modules.
@@ -8302,7 +8302,7 @@ Principles:
 - Demo impact:
   - None intended; live/demo candidate projections should remain shape-compatible.
 - Acceptance criteria:
-  - Root universe/entity-resolution files are thin shims or explicitly retired.
+  - Root universe/entity-resolution/disambiguation files are thin shims or explicitly retired.
   - Candidate universe behavior has package-owned source-of-truth modules/classes.
   - Existing artifact/dossier/API surfaces remain compatible.
   - Architecture tests fail if new universe behavior is added to root-level Radar files.
@@ -8311,7 +8311,7 @@ Principles:
 
 ### Slice 0.7.6.4.17.3: Candidate extraction and diagnostics package migration
 
-- Status: Backlog
+- Status: Ready
 - Goal: Move extraction contract, extraction diagnostics, normalization, collection utilities, pipeline support, and source-risk helpers into candidate-discovery extraction/diagnostics/source packages.
 - User value: Provider output repair, evidence normalization, diagnostics, and source-risk handling become discoverable package-owned responsibilities before product fallback work changes them.
 - Problem statement: `live_radar_extraction_contract.py`, `live_radar_extraction_diagnostics.py`, `live_radar_normalization.py`, `live_radar_pipeline_support.py`, `live_radar_collection_utils.py`, and `live_radar_source_risk.py` still form a root-level diagnostics/extraction cluster. These are exactly the files likely to be touched by post-extraction fallback work, so they should move first.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from power_web_os.application.live_radar_candidate_refs import candidate_source_refs
+from power_web_os.application.radar.candidate_discovery.universe.identity import candidate_source_refs
 from power_web_os.application.radar.candidate_discovery.contracts import RadarSourceEvidence
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from power_web_os.application.live_radar_universe import dict_list
+from power_web_os.application.radar.candidate_discovery.universe import dict_list
 
 
 def _results_by_target(value: object) -> dict[str, list[dict[str, Any]]]:
