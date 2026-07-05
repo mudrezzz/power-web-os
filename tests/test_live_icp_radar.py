@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 
 import power_web_os.live_icp_radar as live_facade
-from power_web_os.application.live_radar_service import LiveRadarRunService
-from power_web_os.application.live_radar_definition_runtime import active_definition_to_live_radar_payload
-from power_web_os.application.live_radar_contracts import (
+from power_web_os.application.radar.candidate_discovery.service import LiveRadarRunService
+from power_web_os.application.radar.candidate_discovery.planning.definition_runtime import active_definition_to_live_radar_payload
+from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarDiscoveryPlan,
     RadarDiscoveryPlanStep,
     RadarDiscoveryPlanValidationResult,
@@ -23,14 +23,14 @@ from power_web_os.application.live_radar_checkpoints import (
     RadarExecutionCheckpointInput,
     RadarExecutionCheckpointService,
 )
-from power_web_os.application.live_radar_discovery_planning import (
+from power_web_os.application.radar.candidate_discovery.planning.discovery_planning import (
     DeterministicRadarDiscoveryPlanner,
     RadarDiscoveryPlanValidator,
     build_discovery_planning_input,
     discovery_plan_to_execution_plan,
 )
-from power_web_os.application.live_radar_plan_acceptance import RadarDiscoveryPlanAcceptanceService
-from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_task_to_search_plan
+from power_web_os.application.radar.candidate_discovery.planning.plan_acceptance import RadarDiscoveryPlanAcceptanceService
+from power_web_os.application.radar.candidate_discovery.planning.execution_plan import compile_radar_execution_plan, execution_task_to_search_plan
 from power_web_os.application.live_radar_execution_budget import (
     RadarExecutionBudget,
     RadarExecutionBudgetSettings,
@@ -41,15 +41,15 @@ from power_web_os.application.live_radar_entity_resolution import RadarEntityRes
 from power_web_os.application.live_radar_normalization import normalize_live_candidate
 from power_web_os.application.live_radar_extraction_contract import validate_and_repair_extraction_payload
 from power_web_os.application.live_radar_retrieved_candidates import candidates_from_retrieved_sources
-from power_web_os.application.live_radar_product_sources import product_sources_for_candidates
-from power_web_os.application.live_radar_retrieval_plan import retrieval_plan_from_execution_plan, retrieval_plan_to_search_plan
-from power_web_os.application.live_radar_staged_execution import (
-    _append_review_needed_universe_entities,
-    _target_probe_guarantees,
-    run_staged_radar_execution,
-)
+from power_web_os.application.radar.candidate_discovery.retrieval.product_sources import product_sources_for_candidates
+from power_web_os.application.radar.candidate_discovery.planning.retrieval_plan import retrieval_plan_from_execution_plan, retrieval_plan_to_search_plan
 from power_web_os.application.radar.candidate_discovery.execution.merge import ExecutionResultMerger
 from power_web_os.application.radar.candidate_discovery.execution.options import CandidateDiscoveryExecutionOptions
+from power_web_os.application.radar.candidate_discovery.execution.orchestrator import run_staged_radar_execution
+from power_web_os.application.radar.candidate_discovery.execution.expansion_diagnostics import _target_probe_guarantees
+from power_web_os.application.radar.candidate_discovery.execution.finalization_universe import (
+    _append_review_needed_universe_entities,
+)
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 from power_web_os.application.live_radar_web_retrieval import (
     RadarWebRetrievalResult,

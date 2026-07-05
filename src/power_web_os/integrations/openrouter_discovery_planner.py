@@ -7,7 +7,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-from power_web_os.application.live_radar_contracts import (
+from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarDiscoveryPlanner,
     RadarDiscoveryPlanningInput,
     RadarDiscoveryPlan,

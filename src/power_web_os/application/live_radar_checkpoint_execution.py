@@ -8,7 +8,7 @@ from power_web_os.application.live_radar_checkpoints import (
     RadarExecutionCheckpointInput,
     RadarExecutionCheckpointService,
 )
-from power_web_os.application.live_radar_contracts import LiveRadarPipelineEvent, RadarSourceEvidence
+from power_web_os.application.radar.candidate_discovery.contracts import LiveRadarPipelineEvent, RadarSourceEvidence
 from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
 
 

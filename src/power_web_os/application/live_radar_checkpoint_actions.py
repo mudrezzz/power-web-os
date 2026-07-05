@@ -7,7 +7,7 @@ from typing import Any, Protocol
 
 from power_web_os.application.live_radar_checkpoint_execution import record_execution_checkpoint
 from power_web_os.application.live_radar_checkpoints import RadarExecutionCheckpointDecision, RadarExecutionCheckpointService
-from power_web_os.application.live_radar_contracts import (
+from power_web_os.application.radar.candidate_discovery.contracts import (
     LiveRadarPipelineEvent,
     RadarExecutionPlan,
     RadarExecutionTask,

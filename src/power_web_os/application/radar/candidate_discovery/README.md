@@ -9,6 +9,11 @@ Candidate discovery owns planning, retrieval, extraction, source routing,
 candidate universe construction, checkpoints, execution, and diagnostics for
 the "who should we monitor" pipeline.
 
+Moved candidate-discovery behavior is package-owned here, not in the old
+root-level shims. Remaining root `live_radar_*` and `radar_search_*` files are
+tracked in `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md` and must move
+through their owning slices before the root namespace can close.
+
 ## Allowed imports
 
 - Python standard library.
@@ -23,12 +28,18 @@ the "who should we monitor" pipeline.
 - FastAPI, SQLAlchemy, Celery, Redis, HTTP clients, provider SDKs, and dotenv.
 - Already-moved legacy shims from new package code. Deferred legacy imports are
   temporary migration debt and must be visible in `compatibility.py`.
+- Behavior-test imports through moved root shims. Use package-owned paths unless
+  the test explicitly asserts compatibility.
 
 ## How to extend
 
 Choose the smallest phase package that owns the behavior. If a change crosses
 multiple phases, introduce a narrow `Service` or `Decision` contract instead of
 adding broad helper functions or a new root-level module.
+
+If the code you need still lives in a deferred root module, keep the behavior
+move as a dedicated migration slice rather than copying root namespace patterns
+into new code.
 
 Current package-owned source-of-truth modules:
 

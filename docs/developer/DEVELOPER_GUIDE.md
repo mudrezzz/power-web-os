@@ -251,11 +251,21 @@ Before adding or moving Radar backend logic:
 6. Do not import or re-export legacy `live_radar_*` modules from new packages.
    During migration, keep compatibility in the declarative map at
    `src/power_web_os/application/radar/candidate_discovery/compatibility.py`.
-7. Add or update architecture tests when a package boundary changes.
+7. Check `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md` before touching
+   any root-level `live_radar_*`, `radar_search_*`, or
+   `signal_monitoring_*` file.
+8. Add or update architecture tests when a package boundary changes.
 
 Old `live_radar_*` imports remain runtime-compatible until migration slices move
 behavior into package-owned services. The new package tree is the extension
 path; the old flat namespace is migration debt.
+
+Behavior tests must use package-owned imports when behavior has already moved.
+Legacy root imports are allowed only in explicit compatibility tests such as
+`tests/test_radar_backend_package_contract.py`. If a test still needs a root
+module because that module owns deferred behavior, keep that import visible and
+link the root file to its owning migration slice in
+`docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md`.
 
 Preferred Radar backend imports after `0.7.6.4.14`:
 

@@ -7081,7 +7081,7 @@ Principles:
 
 ### Slice 0.7.6.3.6.6: Post-extraction fallback materialization and registry enrichment recheck
 
-- Status: Ready
+- Status: Backlog
 - Goal: Fix the next TOIR Docker smoke blocker: when extraction payloads fail but retrieved/analyzed sources contain source-backed candidates, materialize review-needed candidates, run bounded identity enrichment for concrete names, and re-review checkpoints before declaring a terminal policy stop.
 
 ### Slice 0.7.6.4.0: Radar pipeline split, model-profile separation, and documentation registry
@@ -8075,9 +8075,53 @@ Principles:
 - Risks:
   - Introducing a factory can become ceremonial. Keep only dependencies that already exist and are useful to test or replace.
 
+### Slice 0.7.6.4.14.1: Radar root namespace closure plan and test import migration
+
+- Status: Done
+- Goal: Create the explicit closure plan for root-level Radar namespace debt before product behavior work: inventory all root `live_radar_*`, `radar_search_*`, and `signal_monitoring_*` modules, migrate behavior tests to package-owned imports where behavior already moved, add guardrails against new production/test imports through legacy paths, and create the missing follow-up slices.
+- User value: A developer opening the repository can trust that `src/power_web_os/application` is a transition area with measured debt and a closure path, not the intended architecture.
+- Problem statement: `src/power_web_os/application` still contains dozens of similarly named root-level Radar files. Some are thin compatibility shims, some are deferred behavior owners, and some tests still import old paths. That makes the project look architecturally unfinished and can mislead contributors about where new code belongs.
+- Scope:
+  - Generate and commit a full root namespace debt inventory for `live_radar_*`, `radar_search_*`, and `signal_monitoring_*`, with each file classified as `moved_shim`, `deferred_behavior`, `test_only_compatibility`, or `candidate_for_delete`.
+  - Update `RADAR_BACKEND_ARCHITECTURE.md`, Developer Guide, and candidate/signal package READMEs with the inventory and closure policy.
+  - Migrate behavior tests to package-owned imports where behavior has already moved, leaving old root imports only in explicit compatibility tests.
+  - Add architecture tests that fail when new production code or new behavior tests import moved legacy paths.
+  - Add or confirm follow-up roadmap slices for checkpoint migration, search expansion migration, signal monitoring package migration, shared budget decision, and final root namespace closure.
+- Out of scope:
+  - No broad behavior migration in this slice.
+  - No checkpoint, search expansion, signal-monitoring algorithm, provider, scoring, dossier, API, DB, or UI behavior changes.
+  - No deletion of compatibility shims before compatibility coverage and production imports are updated.
+- Implementation notes:
+  - Treat old root imports in tests as technical debt unless the test name and location are explicitly about compatibility.
+  - Do not move a behavior-owning module by filename only; choose the package-owned service/contract first and keep old import compatibility only as a shim.
+  - If a behavior test cannot migrate because the source of truth still lives in a root module, record that module in the inventory and link it to the owning migration slice.
+  - This slice exists to make the architecture state honest before returning to product behavior work such as `0.7.6.3.6.6`.
+- Tests:
+  - `python -m pytest tests/test_backend_architecture_contract.py tests/test_radar_backend_package_contract.py -q`
+  - Targeted tests touched by import migration, especially live ICP, search expansion, adaptive execution, signal monitoring contracts/source strategy/recorded tests.
+  - `python -m power_web_os.roadmap check`
+  - `git diff --check`
+- Docs:
+  - Update `docs/architecture/RADAR_BACKEND_ARCHITECTURE.md` with the full root namespace debt inventory and closure policy.
+  - Update `docs/developer/DEVELOPER_GUIDE.md` with behavior-test import rules.
+  - Update `src/power_web_os/application/radar/README.md` and relevant package READMEs if ownership wording changes.
+  - Regenerate roadmap artifacts.
+- Demo impact:
+  - None intended. This is architecture and test-routing governance.
+- Acceptance criteria:
+  - The Roadmap and architecture docs list every root-level Radar-prefixed file and its migration status.
+  - Behavior tests for already moved modules import package-owned paths; old imports remain only in compatibility tests.
+  - Architecture tests prevent new behavior tests and production code from importing moved legacy paths.
+  - Missing follow-up slices for signal monitoring migration and final root namespace closure exist in the tracker.
+  - `0.7.6.3.6.6` can be resumed with an explicit understanding of remaining root namespace debt.
+- Risks:
+  - Over-tight guardrails can block legitimate compatibility tests. Mitigate with a small compatibility-test allowlist by test path/name.
+  - Inventory can become stale. Mitigate by generating/checking it from the filesystem in architecture tests.
+  - Migrating imports can accidentally alter behavior if old paths are not true shims. Mitigate by migrating only moved modules in this slice.
+
 ### Slice 0.7.6.4.15: Candidate discovery checkpoint package migration
 
-- Status: Backlog
+- Status: Ready
 - Goal: Move checkpoint decision/action ownership out of root-level legacy modules into `radar/candidate_discovery/checkpoints` behind service/decision contracts.
 - User value: Adaptive checkpoint behavior becomes easier to inspect and safer to change without editing root-level legacy files.
 - Problem statement: Architecture docs still identify checkpoint modules such as `live_radar_checkpoint_actions.py`, `live_radar_checkpoint_execution.py`, and `live_radar_checkpoints.py` as deferred migration debt. Checkpoint behavior is central to bounded fallback semantics and should not remain a legacy hotspot indefinitely.
@@ -8091,12 +8135,17 @@ Principles:
   - No hidden broad fallback, unbounded retry, or signal-before-pre-signal checkpoint behavior.
   - No scoring or provider quality tuning.
 - Implementation notes:
-  - Schedule after the next behavior corrective work unless checkpoint code must change for that correction.
+  - Run this before product corrective work resumes.
+  - Preserve checkpoint policy semantics exactly; this is a package-ownership migration.
   - Use AS IS verification gates because checkpoint ordering is high-risk.
+  - Keep old root imports only as thin compatibility shims or explicit compatibility assertions.
 - Tests:
-  - Adaptive execution and checkpoint-related recorded tests.
-  - Backend architecture/package compatibility tests.
-  - AS IS documentation contract if docs change.
+  - `python -m pytest tests/test_backend_architecture_contract.py tests/test_radar_backend_package_contract.py -q`
+  - `python -m pytest tests/test_radar_adaptive_execution.py tests/test_live_icp_radar.py -q`
+  - Checkpoint-related recorded/fake tests covering bounded fallback, retry limits, and no signal-before-pre-signal checkpoint behavior.
+  - AS IS documentation contract if backend-role/package ownership docs change.
+  - `python -m power_web_os.roadmap check`
+  - `git diff --check`
 - Docs:
   - Update Radar backend architecture migration table and checkpoint package README.
   - Update AS IS only if backend-role/package ownership wording changes.
@@ -8125,8 +8174,10 @@ Principles:
   - No benchmark quality claim.
   - No live-provider broad run as the first validation signal.
 - Implementation notes:
+  - Run after checkpoint ownership migration, before product corrective work resumes.
   - Do not combine migration with target-lane algorithm changes. If behavior must change, split that into a TO BE/AS IS pipeline slice.
   - Preserve expansion target coverage and budget metadata surfaces.
+  - Root `radar_search_*` files should become package-owned modules or thin shims, not remain normal imports.
 - Tests:
   - `tests/test_radar_search_expansion.py` and budget/adaptive/API regression.
   - Architecture/package compatibility tests.
@@ -8158,8 +8209,10 @@ Principles:
   - No signal-monitoring behavior change.
   - No provider/model selection change.
 - Implementation notes:
-  - This slice should happen after signal monitoring or candidate discovery actually needs shared budget reuse.
-  - It may remain Backlog if the assessment shows the current separation is correct.
+  - Run after search-expansion migration and before the remaining candidate-discovery root modules are moved.
+  - This is now part of the mandatory cleanup corridor before product corrective work resumes.
+  - Extract only truly shared budget contracts; keep pipeline-specific merge/projection behavior package-owned.
+  - If assessment says no shared extraction is justified, record the decision and tighten import guardrails accordingly.
 - Tests:
   - Shared package import tests.
   - Candidate-discovery and signal-monitoring budget isolation tests.
@@ -8175,6 +8228,207 @@ Principles:
   - Existing budget counters, reserve counters, exhaustion events, and source verification cache stats remain compatible.
 - Risks:
   - Premature sharing can blur candidate-discovery vs signal-monitoring boundaries. Require concrete reuse before extraction.
+
+### Slice 0.7.6.4.17.1: Candidate discovery retrieval and definition package migration
+
+- Status: Backlog
+- Goal: Move remaining root-level candidate-discovery definition and retrieval primitives into package-owned `radar/shared` and `radar/candidate_discovery/retrieval` modules before product work resumes.
+- User value: Developers no longer have to start from root-level definition/retrieval files to understand how a live Radar definition becomes provider-neutral retrieval work.
+- Problem statement: `live_radar_definition.py` and `live_radar_web_retrieval.py` still own real behavior in the flat application namespace even though planning/retrieval-plan modules have moved. That leaves the new package tree incomplete and keeps root imports alive in workflows, preflight, and demos.
+- Scope:
+  - Move or wrap live Radar definition-building behavior into `radar/shared` or a narrower candidate-discovery definition adapter.
+  - Move provider-neutral web retrieval request/result records and recorded retrieval provider into `radar/candidate_discovery/retrieval`.
+  - Keep old root paths as thin compatibility shims only where hidden callers still need them.
+  - Migrate production and behavior-test imports to package-owned paths.
+  - Update root namespace debt inventory and architecture tests for the moved modules.
+- Out of scope:
+  - No retrieval algorithm change.
+  - No provider SDK/HTTP integration change.
+  - No scoring, checkpoint, expansion, dossier, API, DB, or UI behavior change.
+  - No live-provider benchmark claim.
+- Implementation notes:
+  - Treat this as a behavior-preserving package migration.
+  - Keep definition records and retrieval task cards provider-neutral.
+  - If a definition helper is shared across Radar pipelines, put only the shared value/object logic under `radar/shared`; candidate-discovery-specific adapters stay in candidate-discovery.
+- Tests:
+  - Backend architecture/package compatibility tests.
+  - Live ICP and preflight tests that exercise definition-to-payload and retrieval-plan wiring.
+  - Import compatibility tests for old definition/retrieval paths.
+  - `python -m power_web_os.roadmap check`
+  - `git diff --check`
+- Docs:
+  - Update `RADAR_ROOT_NAMESPACE_DEBT.md` and `RADAR_BACKEND_ARCHITECTURE.md`.
+  - Update retrieval/package README ownership guidance.
+  - Update Developer Guide import examples if package-owned paths change.
+- Demo impact:
+  - None intended; demo commands should keep producing the same artifacts.
+- Acceptance criteria:
+  - `live_radar_definition.py` and `live_radar_web_retrieval.py` are thin shims or explicitly retired.
+  - Production and behavior tests import definition/retrieval behavior from package-owned paths.
+  - Existing preflight/live ICP behavior remains green.
+  - Root namespace debt inventory points these files to completed migration status.
+- Risks:
+  - Definition helpers may be shared by multiple pipeline surfaces. Mitigate by separating shared value logic from candidate-discovery adapters instead of dumping everything into shared.
+
+### Slice 0.7.6.4.17.2: Candidate universe and entity resolution package migration
+
+- Status: Backlog
+- Goal: Move candidate universe, retrieved-candidate extraction, entity resolution, candidate refs, and cross-source disambiguation out of root-level modules into candidate-discovery package services.
+- User value: The candidate universe becomes a visible package-owned concept rather than a cluster of root helper files, making future fallback and enrichment work safer.
+- Problem statement: `live_radar_candidate_refs.py`, `live_radar_entity_resolution.py`, `live_radar_retrieved_candidates.py`, `live_radar_universe.py`, and `live_radar_cross_disambiguation.py` still own core candidate-universe behavior in the flat namespace. Product work such as post-extraction fallback would otherwise keep extending that legacy cluster.
+- Scope:
+  - Create package-owned universe/entity-resolution services and value/helper modules under `radar/candidate_discovery/universe`.
+  - Move retrieved-candidate extraction and candidate source-ref helpers behind package-owned APIs.
+  - Move or wrap cross-source disambiguation in an execution/universe-owned service boundary.
+  - Keep old root paths as thin compatibility shims.
+  - Migrate production and behavior-test imports to package-owned paths.
+  - Add architecture tests that prevent new universe/entity-resolution behavior in root-level modules.
+- Out of scope:
+  - No new fallback materialization behavior.
+  - No registry enrichment algorithm change.
+  - No scoring, checkpoint, search expansion, provider, API, DB, or UI behavior change.
+- Implementation notes:
+  - This slice intentionally precedes `0.7.6.3.6.6` so fallback materialization can build on package-owned universe services.
+  - Preserve current candidate ids, source refs, provider metadata merge semantics, review-needed entity projection, and disambiguation events.
+  - Split service boundaries by role instead of replacing one root cluster with one large package module.
+- Tests:
+  - Existing live ICP, adaptive execution, search expansion, and API/job smoke tests that consume candidate universe metadata.
+  - Focused tests for retrieved-candidate extraction, source refs, provider metadata merge, and entity-resolution outcomes.
+  - Backend architecture/package compatibility tests.
+  - `git diff --check`
+- Docs:
+  - Update universe README, `RADAR_ROOT_NAMESPACE_DEBT.md`, and `RADAR_BACKEND_ARCHITECTURE.md`.
+  - Update AS IS only for backend-role/package ownership wording if needed.
+- Demo impact:
+  - None intended; live/demo candidate projections should remain shape-compatible.
+- Acceptance criteria:
+  - Root universe/entity-resolution files are thin shims or explicitly retired.
+  - Candidate universe behavior has package-owned source-of-truth modules/classes.
+  - Existing artifact/dossier/API surfaces remain compatible.
+  - Architecture tests fail if new universe behavior is added to root-level Radar files.
+- Risks:
+  - This touches metadata that many projections consume. Mitigate with artifact compatibility and API smoke tests, not only unit tests.
+
+### Slice 0.7.6.4.17.3: Candidate extraction and diagnostics package migration
+
+- Status: Backlog
+- Goal: Move extraction contract, extraction diagnostics, normalization, collection utilities, pipeline support, and source-risk helpers into candidate-discovery extraction/diagnostics/source packages.
+- User value: Provider output repair, evidence normalization, diagnostics, and source-risk handling become discoverable package-owned responsibilities before product fallback work changes them.
+- Problem statement: `live_radar_extraction_contract.py`, `live_radar_extraction_diagnostics.py`, `live_radar_normalization.py`, `live_radar_pipeline_support.py`, `live_radar_collection_utils.py`, and `live_radar_source_risk.py` still form a root-level diagnostics/extraction cluster. These are exactly the files likely to be touched by post-extraction fallback work, so they should move first.
+- Scope:
+  - Move extraction schema validation/repair and diagnostic-state helpers to `radar/candidate_discovery/extraction`.
+  - Move product-safe normalization, collection helpers, trace/pipeline support, and source-risk projection to `radar/candidate_discovery/diagnostics` or `sources` as appropriate.
+  - Keep root import paths as thin compatibility shims while hidden callers are supported.
+  - Migrate production and behavior-test imports to package-owned paths.
+  - Add guardrails against new root-level extraction/diagnostics behavior.
+- Out of scope:
+  - No new fallback behavior.
+  - No provider prompt/schema tuning.
+  - No scoring, checkpoint, expansion, signal-monitoring, API, DB, or UI behavior change.
+  - No live quality claim.
+- Implementation notes:
+  - Preserve sparse-provider-output handling, evidence-linking diagnostics, candidate normalization shape, source lifecycle metadata, and technical trace safety.
+  - Keep extraction repair policy separate from artifact/dossier projection.
+  - Avoid creating another large diagnostics module; split by extraction contract, normalization, source risk, and event/trace projection.
+- Tests:
+  - Extraction contract validation/repair tests.
+  - Live ICP and backend API regression that verify artifact/dossier shape.
+  - Radar pipeline documentation contract if AS IS backend-role wording changes.
+  - Backend architecture/package compatibility tests.
+  - `git diff --check`
+- Docs:
+  - Update extraction/diagnostics/source README guidance.
+  - Update `RADAR_ROOT_NAMESPACE_DEBT.md` and `RADAR_BACKEND_ARCHITECTURE.md`.
+  - Update AS IS only for backend-role/package ownership wording if needed.
+- Demo impact:
+  - None intended; visible candidate evidence/qualification/signal projections remain compatible.
+- Acceptance criteria:
+  - Root extraction/diagnostics/source-risk files are thin shims or explicitly retired.
+  - Package-owned extraction and diagnostics modules own the behavior.
+  - Existing dossier/API/technical trace surfaces remain compatible.
+  - Architecture tests prevent new root-level extraction/diagnostics behavior.
+- Risks:
+  - Normalization and diagnostics touch many output surfaces. Mitigate with API, persisted/job, live ICP, and artifact compatibility tests.
+
+### Slice 0.7.6.4.18: Signal monitoring package migration
+
+- Status: Backlog
+- Goal: Move root-level signal monitoring contracts, executor, and source strategy into `radar/signal_monitoring` package-owned modules before serious signal-monitoring development continues.
+- User value: Signal monitoring becomes a first-class Radar pipeline with clear package ownership instead of a root-level application add-on.
+- Problem statement: `signal_monitoring_contracts.py`, `signal_monitoring_executor.py`, and `signal_monitoring_source_strategy.py` still own real behavior in the root application namespace while `radar/signal_monitoring` is mostly a skeleton. That contradicts the pipeline split architecture and will confuse future monitoring work.
+- Scope:
+  - Move signal-monitoring contracts, executor, and source strategy behind package-owned modules under `src/power_web_os/application/radar/signal_monitoring`.
+  - Keep old root import paths as thin compatibility shims only where needed.
+  - Migrate signal-monitoring behavior tests to package-owned imports, leaving root-path tests only for compatibility.
+  - Add package README ownership guidance and import-direction guardrails.
+- Out of scope:
+  - No new signal-monitoring algorithm.
+  - No provider/live search implementation.
+  - No scheduling UI or persistence change.
+  - No candidate-discovery behavior change.
+- Implementation notes:
+  - Run after candidate-discovery root debt is migrated or explicitly shimmed.
+  - Preserve current recorded/no-network signal-monitoring behavior and product-safe report shape.
+  - Keep source strategy separate from candidate discovery internals except through shared source-card/known-candidate records.
+  - Run signal-monitoring recorded and contract tests before any live-provider work.
+- Tests:
+  - `python -m pytest tests/test_signal_monitoring_contracts.py tests/test_signal_monitoring_source_strategy.py tests/test_radar_signal_monitoring_recorded.py -q`
+  - `python -m pytest tests/test_radar_model_profiles.py tests/test_radar_runtime_config.py -q`
+  - Backend architecture/package import tests.
+  - `git diff --check`
+- Docs:
+  - Update `src/power_web_os/application/radar/signal_monitoring/README.md`.
+  - Update Radar backend architecture migration table.
+  - Update Developer Guide import examples if needed.
+- Demo impact:
+  - Recorded signal-monitoring demo output should remain identical except for technical trace/module ownership if exposed.
+- Acceptance criteria:
+  - Root `signal_monitoring_*` files are thin shims or removed.
+  - Production and behavior tests import signal-monitoring behavior from `radar/signal_monitoring`.
+  - Recorded signal-monitoring report and runtime config tests remain green.
+  - Architecture tests prevent new root-level signal-monitoring behavior modules.
+- Risks:
+  - Signal monitoring can accidentally start importing candidate-discovery internals. Mitigate with import-direction tests and shared contracts only.
+
+### Slice 0.7.6.4.19: Radar root namespace closure and compatibility sunset
+
+- Status: Backlog
+- Goal: Finish the migration so root-level Radar-prefixed application files are either deleted or thin documented compatibility shims, and architecture tests fail on any real root-level Radar behavior.
+- User value: A new developer can open `src/power_web_os/application` without seeing the old flat Radar namespace as the apparent architecture.
+- Problem statement: Even after individual migrations, old root-level Radar files can linger as real behavior owners or undocumented compatibility leftovers. The project needs a final closure slice that makes package-owned Radar architecture visibly true in the filesystem.
+- Scope:
+  - Verify every `live_radar_*`, `radar_search_*`, and `signal_monitoring_*` root file is either removed or a thin documented shim.
+  - Delete obsolete shims only when compatibility tests and public import policy allow it.
+  - Tighten architecture tests so root-level Radar-prefixed files above the shim threshold fail by default.
+  - Remove temporary allowlists for migrated modules.
+  - Update docs with final root namespace policy and any compatibility sunset notes.
+- Out of scope:
+  - No behavior change to candidate discovery, signal monitoring, or Power Web discovery.
+  - No provider quality claim.
+  - No broad live benchmark.
+- Implementation notes:
+  - Run only after checkpoint, search expansion, budget, definition/retrieval, universe/entity-resolution, extraction/diagnostics, and signal-monitoring migrations are complete or explicitly shimmed.
+  - Do not delete a public import path without an explicit compatibility decision.
+  - The end state should be obvious from the directory tree, not only from documentation.
+- Tests:
+  - Full backend architecture/package contract tests.
+  - Candidate-discovery regression relevant to any deleted compatibility paths.
+  - Signal-monitoring recorded/contract tests if signal paths are touched.
+  - `python -m power_web_os.roadmap check`
+  - `git diff --check`
+- Docs:
+  - Update Radar backend architecture doc to mark root namespace closure complete.
+  - Update Developer Guide and package READMEs.
+  - Update compatibility map and any ADR notes.
+- Demo impact:
+  - None intended.
+- Acceptance criteria:
+  - No root-level Radar-prefixed file owns real behavior unless it is explicitly documented as a temporary exception with a follow-up slice.
+  - Thin shims are under the documented line threshold and contain `Source of truth:`.
+  - Architecture tests fail on new root-level Radar behavior files.
+  - New package-owned paths are the only documented extension paths.
+- Risks:
+  - Hidden external callers may still import old paths. Mitigate with compatibility shims unless a removal decision is explicit.
 
 ### Slice 0.7: Human review queue loop
 
@@ -8723,4 +8977,4 @@ None.
 
 ## Next Recommended Task
 
-0.7.6.3.6.6: Post-extraction fallback materialization and registry enrichment recheck
+Slice 0.7.6.4.15: Candidate discovery checkpoint package migration

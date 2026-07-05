@@ -18,7 +18,7 @@ from power_web_os.application.connector_profiles import (
     ConnectorProfileRegistry,
     default_connector_profile_registry,
 )
-from power_web_os.application.live_radar_contracts import (
+from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarExecutionTask,
     RadarSearchPlan,
     RadarSourceEvidence,

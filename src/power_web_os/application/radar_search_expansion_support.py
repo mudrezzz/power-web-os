@@ -4,7 +4,7 @@ import re
 from typing import Any
 from urllib.parse import urlparse
 
-from power_web_os.application.live_radar_source_cards import RadarPlannerSourceCard, planner_source_cards_for_policy
+from power_web_os.application.radar.shared.source_cards import RadarPlannerSourceCard, planner_source_cards_for_policy
 from power_web_os.application.radar_search_expansion_models import (
     RadarExpansionTarget,
     RadarSearchExpansionVariant,

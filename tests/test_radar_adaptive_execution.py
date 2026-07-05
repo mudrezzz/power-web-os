@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import socket
 
-from power_web_os.application.live_radar_contracts import RadarExecutionPlan, RadarExecutionTask
+from power_web_os.application.radar.candidate_discovery.contracts import RadarExecutionPlan, RadarExecutionTask
 from power_web_os.application.live_radar_checkpoints import (
     RadarExecutionCheckpointInput,
     RadarExecutionCheckpointService,
 )
-from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
+from power_web_os.application.radar.candidate_discovery.execution.orchestrator import run_staged_radar_execution
 from support.radar_adaptive_harness import (
     ScriptedProvider,
     SourceExpansionProvider,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from power_web_os.application.live_radar_contracts import WebSearchProviderResult
+from power_web_os.application.radar.candidate_discovery.contracts import WebSearchProviderResult
 
 
 def radar_with_structured_observations(radar: dict[str, Any], result: WebSearchProviderResult) -> dict[str, Any]:

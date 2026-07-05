@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from power_web_os.application.live_radar_contracts import RadarExecutionTask
-from power_web_os.application.live_radar_source_cards import RadarPlannerSourceCard
+from power_web_os.application.radar.candidate_discovery.contracts import RadarExecutionTask
+from power_web_os.application.radar.shared.source_cards import RadarPlannerSourceCard
 from power_web_os.application.radar_registry_lookup_terms import RegistryLookupTermGenerator
 from power_web_os.application.radar_search_expansion_models import (
     RadarExpansionTarget,

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
-from power_web_os.application.live_radar_contracts import RadarSearchPlan, RadarSearchQuery, WebSearchProvider
+from power_web_os.application.radar.candidate_discovery.contracts import RadarSearchPlan, RadarSearchQuery, WebSearchProvider
 from power_web_os.application.live_radar_external_budget import (
     RadarExternalCallBudget,
     RadarExternalCallBudgetSettings,

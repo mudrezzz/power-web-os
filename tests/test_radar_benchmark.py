@@ -11,7 +11,7 @@ from power_web_os.radar_benchmark import (
     run_radar_benchmark,
 )
 from power_web_os.radar_coverage_probe import CoverageProbeTarget, run_coverage_probe
-from power_web_os.application.live_radar_contracts import RadarSourceEvidence, WebSearchProviderResult
+from power_web_os.application.radar.candidate_discovery.contracts import RadarSourceEvidence, WebSearchProviderResult
 
 
 def test_benchmark_task_context_uses_explicit_smoke_budgets() -> None:

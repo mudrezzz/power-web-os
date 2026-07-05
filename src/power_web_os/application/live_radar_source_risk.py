@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from power_web_os.application.live_radar_contracts import RadarSourceEvidence
+from power_web_os.application.radar.candidate_discovery.contracts import RadarSourceEvidence
 
 
 def source_supports_evidence(source: RadarSourceEvidence | None) -> bool:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from power_web_os.application.live_radar_contracts import RadarExecutionTask
+from power_web_os.application.radar.candidate_discovery.contracts import RadarExecutionTask
 from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget, RadarExternalCallBudgetSettings
 from power_web_os.application.radar_search_expansion_models import RadarSearchExpansionVariant
 from power_web_os.application.radar_search_expansion_scheduler import schedule_guaranteed_expansion_variants

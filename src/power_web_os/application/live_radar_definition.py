@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from power_web_os.application.live_radar_contracts import RadarSearchPlan
-from power_web_os.application.live_radar_execution_plan import compile_radar_execution_plan, execution_plan_to_search_plan
+from power_web_os.application.radar.candidate_discovery.contracts import RadarSearchPlan
+from power_web_os.application.radar.candidate_discovery.planning.execution_plan import compile_radar_execution_plan, execution_plan_to_search_plan
 
 def build_live_mini_radar_definition() -> dict[str, Any]:
     return {

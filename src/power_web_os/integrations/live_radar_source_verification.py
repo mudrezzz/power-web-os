@@ -13,7 +13,7 @@ from urllib.parse import urlsplit, urlunsplit
 from typing import Callable
 
 from power_web_os.application.live_radar_external_budget_context import reserve_external_call
-from power_web_os.application.live_radar_contracts import RadarSourceEvidence, SourceVerificationMode, SourceVerificationState
+from power_web_os.application.radar.candidate_discovery.contracts import RadarSourceEvidence, SourceVerificationMode, SourceVerificationState
 
 
 @dataclass(frozen=True, slots=True)

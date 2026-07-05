@@ -13,7 +13,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from power_web_os.application.live_radar_contracts import (
+from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarEntityResolutionStatus,
     RadarEntityType,
     RadarSourceEvidence,

@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from power_web_os.application.live_radar_contracts import QualificationContractIssue
+from power_web_os.application.radar.candidate_discovery.contracts import QualificationContractIssue
 
 
 ExtractionIssueSeverity = Literal["warning", "error"]

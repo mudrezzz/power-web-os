@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from power_web_os.application.live_radar_contracts import RadarSourceEvidence, WebSearchProviderResult
+from power_web_os.application.radar.candidate_discovery.contracts import RadarSourceEvidence, WebSearchProviderResult
 
 _METRIC_ROW_SUFFIX = re.compile(r"(?:,\s*\d+(?:\.\d+)?){2,}\s*$")
 _LEGAL_FORM = r"(?:АО|ПАО|ОАО|ЗАО|ООО|НАО|JSC|PJSC|LLC)"

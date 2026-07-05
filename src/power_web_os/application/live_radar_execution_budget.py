@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from power_web_os.application.live_radar_contracts import RadarExecutionTask
+from power_web_os.application.radar.candidate_discovery.contracts import RadarExecutionTask
 
 
 @dataclass(frozen=True, slots=True)

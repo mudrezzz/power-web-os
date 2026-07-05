@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from power_web_os.application.live_radar_contracts import LiveRadarPipelineEvent
+from power_web_os.application.radar.candidate_discovery.contracts import LiveRadarPipelineEvent
 
 
 def extraction_validation_issues(provider_metadata: dict[str, Any]) -> list[dict[str, Any]]:

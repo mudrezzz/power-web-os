@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from power_web_os.application.ports import LiveRadarArtifactExecutor, RadarRunTechnicalTraceRepository
-from power_web_os.application.live_radar_contracts import RadarDiscoveryPlanner, WebSearchProvider
+from power_web_os.application.radar.candidate_discovery.contracts import RadarDiscoveryPlanner, WebSearchProvider
 from power_web_os.application.radar_runtime_settings import effective_runtime_env
 from power_web_os.application.radar_source_providers import RadarSourceRegistry
 from power_web_os.application.radar_technical_trace import RadarRunTechnicalTracer

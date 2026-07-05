@@ -6,6 +6,9 @@ root-level `application/live_radar_*.py` modules.
 
 See `docs/architecture/RADAR_BACKEND_ARCHITECTURE.md` for the full migration
 contract.
+See `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md` for the complete
+root `live_radar_*`, `radar_search_*`, and `signal_monitoring_*` debt
+inventory.
 
 ## Ownership
 
@@ -16,8 +19,10 @@ pipelines:
 - candidate discovery phase packages;
 - reserved packages for signal monitoring and Power Web discovery.
 
-The current root-level `live_radar_*` modules remain legacy runtime modules
-until later migration slices move their code.
+Root-level Radar-prefixed files are transition debt, not package ownership.
+Some `live_radar_*` files are thin moved shims, while deferred
+`live_radar_*`, `radar_search_*`, and `signal_monitoring_*` files remain
+behavior owners only until their documented migration slices run.
 
 ## Allowed imports
 
@@ -46,3 +51,5 @@ until later migration slices move their code.
 5. Do not create a new root-level `live_radar_*.py` module.
 6. Prefer package-owned imports such as
    `power_web_os.application.radar.candidate_discovery.contracts`.
+7. Do not add behavior tests or production imports through moved root shims;
+   compatibility tests are the only allowed old-path assertions.

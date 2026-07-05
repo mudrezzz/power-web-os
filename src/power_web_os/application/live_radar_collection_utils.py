@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from power_web_os.application.live_radar_contracts import LiveRadarCandidate, RadarSourceEvidence
+from power_web_os.application.radar.candidate_discovery.contracts import LiveRadarCandidate, RadarSourceEvidence
 
 
 def rank_candidates(candidates: list[LiveRadarCandidate]) -> list[LiveRadarCandidate]:

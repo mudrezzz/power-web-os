@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, Literal, Mapping
 
 from power_web_os.application.connector_profiles import ConnectorProfileRegistry, default_connector_profile_registry
-from power_web_os.application.live_radar_definition_runtime import active_definition_to_live_radar_payload
+from power_web_os.application.radar.candidate_discovery.planning.definition_runtime import active_definition_to_live_radar_payload
 from power_web_os.application.live_radar_extraction_contract import (
     ExtractionValidationIssue,
     validate_and_repair_extraction_payload,

@@ -10,6 +10,11 @@ Candidate-discovery execution has a dedicated procedural handbook:
 Use it together with this document before changing phase executors, execution
 state, finalization, task running, or projection services.
 
+Root-level Radar namespace debt has its own inventory:
+`docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md`. That file lists every
+root `live_radar_*`, `radar_search_*`, and `signal_monitoring_*` file, its
+current status, target package, and owning follow-up slice.
+
 ## Purpose
 
 Radar backend code must remain understandable as candidate discovery, signal
@@ -22,8 +27,10 @@ Runtime behavior is unchanged by this architecture slice.
 
 ## AS IS Inventory
 
-Current candidate-discovery backend logic lives mostly in root-level
-`src/power_web_os/application/live_radar_*.py` modules.
+Current candidate-discovery backend logic still has deferred behavior in
+root-level `src/power_web_os/application/live_radar_*.py` modules, and the
+root namespace also contains `radar_search_*` and `signal_monitoring_*`
+pipeline files.
 
 Measured baseline:
 
@@ -38,7 +45,8 @@ Measured baseline:
 | Highest application import fan-out | `live_radar_staged_execution.py` |
 
 The root-level files are temporary migration debt. They are not examples for new
-backend work.
+backend work, and they are not the extension path for tests or production code
+when behavior has already moved to `application/radar`.
 
 ### Hotspots
 
@@ -105,6 +113,9 @@ Compatibility currently means:
 - old root-level import paths remain available only as compatibility shims for
   moved modules;
 - production code should import moved behavior from package-owned paths;
+- behavior tests should import moved behavior from package-owned paths;
+- old imports for moved modules are allowed only in explicit compatibility
+  assertions, currently `tests/test_radar_backend_package_contract.py`;
 - new packages do not re-export legacy symbols through broad compatibility
   layers;
 - `src/power_web_os/application/radar/candidate_discovery/compatibility.py`
@@ -228,6 +239,13 @@ them. `live_radar_search_expansion_execution.py` and
 `live_radar_checkpoint_actions.py` are the remaining documented Radar
 application hotspots; they are not examples for new backend work.
 
+As of slice `0.7.6.4.14.1`, the flat namespace closure policy is explicit:
+`docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md` is the reviewable debt
+inventory, behavior tests for moved modules use package-owned imports, and
+architecture tests fail when production code or non-compatibility tests import
+already moved legacy paths. Deferred root behavior remains honest debt, not a
+normal API.
+
 ### `radar/shared`
 
 Owns contracts and utilities that are genuinely common across Radar pipelines:
@@ -319,9 +337,14 @@ Architecture tests enforce this rescue plan:
 
 - no new root-level `src/power_web_os/application/live_radar_*.py` files outside
   the explicit migration allowlist;
+- all root-level `live_radar_*`, `radar_search_*`, and `signal_monitoring_*`
+  files must appear in
+  `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md`;
 - large/high-fan-out legacy modules must be documented as migration debt, and
   moved modules such as `live_radar_service.py` and
   `live_radar_staged_execution.py` must stay thin compatibility shims;
+- production code and behavior tests must not import moved legacy paths; the
+  failure message names the legacy import and the package-owned replacement;
 - target Radar packages and the component contract must be named in this
   document;
 - new backend Radar work should start from the package contract before adding
@@ -356,16 +379,30 @@ bounded slices:
 10. `0.7.6.4.14` moves `LiveRadarRunService` collaborator assembly into a
     package-owned composition/factory component so the facade stays a use-case
     boundary.
-11. Product corrective work resumes after that, starting with the already
-    planned `0.7.6.3.6.6` post-extraction fallback materialization and
-    `0.7.6.3.7` model-role evaluation slices, unless a blocking architecture
-    regression appears.
-12. `0.7.6.4.15` moves checkpoint decision/action ownership into
+11. `0.7.6.4.14.1` records the full root namespace debt inventory, migrates
+    behavior-test imports for moved modules, and adds guardrails against new
+    usage of moved root paths.
+12. Product corrective work stays deferred until the root namespace cleanup
+    corridor is complete.
+13. `0.7.6.4.15` moves checkpoint decision/action ownership into
     `radar/candidate_discovery/checkpoints`.
-13. `0.7.6.4.16` moves search-expansion execution/payload ownership into the
+14. `0.7.6.4.16` moves search-expansion execution/payload ownership into the
     candidate-discovery package.
-14. `0.7.6.4.17` assesses shared budget contracts and extracts only genuinely
+15. `0.7.6.4.17` assesses shared budget contracts and extracts only genuinely
     shared budget records/services to `radar/shared/budgets`.
+16. `0.7.6.4.17.1` moves definition and retrieval primitives into package-owned
+    shared/retrieval modules.
+17. `0.7.6.4.17.2` moves candidate universe, retrieved-candidate extraction,
+    entity resolution, candidate refs, and cross-source disambiguation.
+18. `0.7.6.4.17.3` moves extraction, diagnostics, normalization,
+    collection/pipeline support, and source-risk helpers.
+19. `0.7.6.4.18` moves root-level signal-monitoring behavior into
+    `radar/signal_monitoring`.
+20. `0.7.6.4.19` closes or sunsets remaining root Radar-prefixed files.
+21. Product corrective work resumes after the cleanup corridor, starting with
+    the already planned `0.7.6.3.6.6` post-extraction fallback materialization
+    and `0.7.6.3.7` model-role evaluation slices, unless a blocking
+    architecture regression appears.
 
 ## Remaining Migration Debt
 

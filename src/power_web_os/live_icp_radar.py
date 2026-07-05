@@ -7,7 +7,7 @@ and tests while `live_icp_radar.py` is removed from the legacy-large allowlist.
 
 from __future__ import annotations
 
-from power_web_os.application.live_radar_contracts import (
+from power_web_os.application.radar.candidate_discovery.contracts import (
     LiveICPRadarRunState,
     LiveRadarCandidate,
     LiveRadarQualificationResult,
@@ -46,7 +46,7 @@ from power_web_os.application.live_radar_normalization import (
     normalize_live_candidate,
     validate_live_radar_qualification_contract,
 )
-from power_web_os.application.live_radar_retrieval_plan import (
+from power_web_os.application.radar.candidate_discovery.planning.retrieval_plan import (
     RadarResponseContract,
     RadarRetrievalPlan,
     RadarRetrievalTask,

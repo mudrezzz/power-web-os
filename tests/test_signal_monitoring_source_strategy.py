@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from power_web_os.application.live_radar_source_cards import RadarPlannerSourceCard
+from power_web_os.application.radar.shared.source_cards import RadarPlannerSourceCard
 from power_web_os.application.signal_monitoring_contracts import (
     SignalAttemptRole,
     SignalMonitoringCandidate,

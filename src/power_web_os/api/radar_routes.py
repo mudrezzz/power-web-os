@@ -39,7 +39,7 @@ from power_web_os.application.radar_definition_update import (
     RadarDefinitionUpdateError,
     RadarDefinitionUpdateService,
 )
-from power_web_os.application.live_radar_definition_runtime import active_definition_to_live_radar_payload
+from power_web_os.application.radar.candidate_discovery.planning.definition_runtime import active_definition_to_live_radar_payload
 from power_web_os.application.radar_preflight import RadarExecutionPreflightService
 from power_web_os.application.radar_run_journal import RadarRunJournal
 from power_web_os.application.radar_review import (

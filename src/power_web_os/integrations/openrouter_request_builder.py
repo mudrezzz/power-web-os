@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from power_web_os.application.live_radar_contracts import RadarSearchPlan, RadarSearchQuery
-from power_web_os.application.live_radar_retrieval_plan import (
+from power_web_os.application.radar.candidate_discovery.contracts import RadarSearchPlan, RadarSearchQuery
+from power_web_os.application.radar.candidate_discovery.planning.retrieval_plan import (
     RadarRetrievalTaskPrompt,
     response_contract_for_stage,
     stage_task_label,

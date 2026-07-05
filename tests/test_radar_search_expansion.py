@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
-from power_web_os.application.live_radar_contracts import (
+from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarExecutionPlan,
     RadarExecutionTask,
     RadarSourceEvidence,
@@ -16,7 +16,7 @@ from power_web_os.application.live_radar_external_budget import (
 from power_web_os.application.live_radar_external_budget_context import (
     external_call_budget_context,
 )
-from power_web_os.application.live_radar_staged_execution import run_staged_radar_execution
+from power_web_os.application.radar.candidate_discovery.execution.orchestrator import run_staged_radar_execution
 from power_web_os.application.radar_registry_lookup_terms import RegistryLookupTermGenerator
 from power_web_os.application.radar_search_expansion import RadarSearchExpansionService
 from power_web_os.application.radar_search_expansion_models import RadarSearchExpansionVariant

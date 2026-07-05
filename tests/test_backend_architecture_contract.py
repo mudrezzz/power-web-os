@@ -9,6 +9,7 @@ ADR_PATH = Path("docs/adr/2026-06-16-backend-architecture-guardrails.md")
 ARCHITECTURE_PATH = Path("docs/architecture/SYSTEM_ARCHITECTURE_OVERVIEW.md")
 RADAR_BACKEND_ARCHITECTURE_PATH = Path("docs/architecture/RADAR_BACKEND_ARCHITECTURE.md")
 RADAR_EXECUTION_ARCHITECTURE_PATH = Path("docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md")
+RADAR_ROOT_NAMESPACE_DEBT_PATH = Path("docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md")
 DEVELOPER_GUIDE_PATH = Path("docs/developer/DEVELOPER_GUIDE.md")
 APPLICATION_README_PATH = Path("src/power_web_os/application/README.md")
 PERSISTENCE_README_PATH = Path("src/power_web_os/persistence/README.md")
@@ -128,21 +129,48 @@ RADAR_EXECUTION_SERVICE_CONTRACTS = {
     "CandidateDiscoveryFactory",
 }
 
-MOVED_RADAR_LEGACY_MODULES = {
-    "power_web_os.application.live_radar_contracts",
-    "power_web_os.application.live_radar_definition_runtime",
-    "power_web_os.application.live_radar_discovery_planning",
-    "power_web_os.application.live_radar_execution_plan",
-    "power_web_os.application.live_radar_plan_acceptance",
-    "power_web_os.application.live_radar_planning_pipeline",
-    "power_web_os.application.live_radar_product_sources",
-    "power_web_os.application.live_radar_retrieval_plan",
-    "power_web_os.application.live_radar_source_cards",
-    "power_web_os.application.live_radar_service",
-    "power_web_os.application.live_radar_staged_execution",
-    "power_web_os.application.live_radar_staged_helpers",
-    "power_web_os.application.live_radar_staged_merge",
-    "power_web_os.application.live_radar_staged_support",
+MOVED_RADAR_LEGACY_MODULE_TARGETS = {
+    "power_web_os.application.live_radar_contracts": "power_web_os.application.radar.candidate_discovery.contracts",
+    "power_web_os.application.live_radar_definition_runtime": (
+        "power_web_os.application.radar.candidate_discovery.planning.definition_runtime"
+    ),
+    "power_web_os.application.live_radar_discovery_planning": (
+        "power_web_os.application.radar.candidate_discovery.planning.discovery_planning"
+    ),
+    "power_web_os.application.live_radar_execution_plan": (
+        "power_web_os.application.radar.candidate_discovery.planning.execution_plan"
+    ),
+    "power_web_os.application.live_radar_plan_acceptance": (
+        "power_web_os.application.radar.candidate_discovery.planning.plan_acceptance"
+    ),
+    "power_web_os.application.live_radar_planning_pipeline": (
+        "power_web_os.application.radar.candidate_discovery.planning.planning_pipeline"
+    ),
+    "power_web_os.application.live_radar_product_sources": (
+        "power_web_os.application.radar.candidate_discovery.retrieval.product_sources"
+    ),
+    "power_web_os.application.live_radar_retrieval_plan": (
+        "power_web_os.application.radar.candidate_discovery.planning.retrieval_plan"
+    ),
+    "power_web_os.application.live_radar_source_cards": "power_web_os.application.radar.shared.source_cards",
+    "power_web_os.application.live_radar_service": "power_web_os.application.radar.candidate_discovery.service",
+    "power_web_os.application.live_radar_staged_execution": (
+        "power_web_os.application.radar.candidate_discovery.execution.orchestrator"
+    ),
+    "power_web_os.application.live_radar_staged_helpers": (
+        "power_web_os.application.radar.candidate_discovery.execution.task_runner"
+    ),
+    "power_web_os.application.live_radar_staged_merge": (
+        "power_web_os.application.radar.candidate_discovery.execution.merge"
+    ),
+    "power_web_os.application.live_radar_staged_support": (
+        "power_web_os.application.radar.candidate_discovery.execution.projection"
+    ),
+}
+MOVED_RADAR_LEGACY_MODULES = set(MOVED_RADAR_LEGACY_MODULE_TARGETS)
+RADAR_ROOT_DEBT_PREFIXES = ("live_radar_", "radar_search_", "signal_monitoring_")
+LEGACY_IMPORT_COMPATIBILITY_TESTS = {
+    Path("tests/test_radar_backend_package_contract.py"),
 }
 
 PURE_DOMAIN_MODULES = {
@@ -250,7 +278,7 @@ def line_count(path: Path) -> int:
 
 
 def imported_roots(path: Path) -> set[str]:
-    tree = ast.parse(path.read_text(encoding="utf-8"))
+    tree = ast.parse(path.read_text(encoding="utf-8-sig"))
     roots: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -262,7 +290,7 @@ def imported_roots(path: Path) -> set[str]:
 
 
 def application_imports(path: Path) -> set[str]:
-    tree = ast.parse(path.read_text(encoding="utf-8"))
+    tree = ast.parse(path.read_text(encoding="utf-8-sig"))
     imports: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("power_web_os.application"):
@@ -275,7 +303,7 @@ def application_imports(path: Path) -> set[str]:
 
 
 def imported_modules(path: Path) -> set[str]:
-    tree = ast.parse(path.read_text(encoding="utf-8"))
+    tree = ast.parse(path.read_text(encoding="utf-8-sig"))
     imports: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module:
@@ -389,6 +417,63 @@ def test_no_new_root_live_radar_modules_are_added() -> None:
         "Use src/power_web_os/application/radar/... package ownership instead."
     )
     assert missing == []
+
+
+def test_root_radar_namespace_debt_inventory_covers_all_root_prefixed_files() -> None:
+    root = BACKEND_ROOT / "application"
+    root_debt_files = sorted(
+        path
+        for path in root.glob("*.py")
+        if path.name.startswith(RADAR_ROOT_DEBT_PREFIXES)
+    )
+    inventory = RADAR_ROOT_NAMESPACE_DEBT_PATH.read_text(encoding="utf-8")
+    missing = [path.name for path in root_debt_files if f"`{path.name}`" not in inventory]
+    stale = [
+        path.name
+        for path in LEGACY_ROOT_LIVE_RADAR_MODULES
+        if path.name not in {item.name for item in root_debt_files}
+    ]
+
+    assert missing == [], (
+        "Every root Radar-prefixed file must be documented in "
+        f"{RADAR_ROOT_NAMESPACE_DEBT_PATH.as_posix()}. Missing: {missing}"
+    )
+    assert stale == []
+    for status in ["moved_shim", "deferred_behavior", "target_for_migration", "compatibility_only"]:
+        assert f"`{status}`" in inventory
+
+
+def test_behavior_tests_do_not_import_moved_legacy_radar_paths() -> None:
+    violations: list[str] = []
+    for path in sorted(Path("tests").rglob("*.py")):
+        if path in LEGACY_IMPORT_COMPATIBILITY_TESTS:
+            continue
+        imports = imported_modules(path)
+        for legacy_module, target_module in MOVED_RADAR_LEGACY_MODULE_TARGETS.items():
+            if legacy_module in imports:
+                violations.append(f"{path.as_posix()} imports {legacy_module}; use {target_module}")
+
+    assert violations == []
+
+
+def test_production_code_does_not_import_moved_legacy_radar_paths() -> None:
+    violations: list[str] = []
+    compatibility_paths = {
+        Path("src/power_web_os/application/radar/candidate_discovery/compatibility.py"),
+        *(
+            Path("src/power_web_os/application") / f"{module_name.rsplit('.', 1)[-1]}.py"
+            for module_name in MOVED_RADAR_LEGACY_MODULES
+        ),
+    }
+    for path in python_files():
+        if path in compatibility_paths:
+            continue
+        imports = imported_modules(path)
+        for legacy_module, target_module in MOVED_RADAR_LEGACY_MODULE_TARGETS.items():
+            if legacy_module in imports:
+                violations.append(f"{path.as_posix()} imports {legacy_module}; use {target_module}")
+
+    assert violations == []
 
 
 def test_radar_backend_architecture_doc_exists_and_defines_target_packages() -> None:

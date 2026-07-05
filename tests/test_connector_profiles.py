@@ -10,9 +10,9 @@ from power_web_os.application.connector_profiles import (
     load_connector_profile,
     validate_connector_profile,
 )
-from power_web_os.application.live_radar_discovery_planning import build_discovery_planning_input
-from power_web_os.application.live_radar_contracts import RadarExecutionTask
-from power_web_os.application.live_radar_source_cards import RadarPlannerSourceUse
+from power_web_os.application.radar.candidate_discovery.planning.discovery_planning import build_discovery_planning_input
+from power_web_os.application.radar.candidate_discovery.contracts import RadarExecutionTask
+from power_web_os.application.radar.shared.source_cards import RadarPlannerSourceUse
 from power_web_os.application.radar_source_providers import RadarSourceRegistry
 
 
