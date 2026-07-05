@@ -19,7 +19,7 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarPlannerSourceUse,
     RadarSourceEvidence,
 )
-from power_web_os.application.live_radar_checkpoints import (
+from power_web_os.application.radar.candidate_discovery.checkpoints import (
     RadarExecutionCheckpointInput,
     RadarExecutionCheckpointService,
 )

@@ -55,7 +55,6 @@ when behavior has already moved to `application/radar`.
 | `live_radar_staged_execution.py` | Former large phase executor with many helpers and high application import fan-out | Moved to candidate-discovery phase executors; root file is now a thin compatibility shim |
 | `live_radar_service.py` | Former large service facade that shaped a full live run artifact | Moved to `radar/candidate_discovery/service.py`; root file is now a thin compatibility shim |
 | `live_radar_search_expansion_execution.py` | Expansion execution imports many phase helpers | Move under candidate-discovery expansion/execution package |
-| `live_radar_checkpoint_actions.py` | Checkpoint action and recovery logic mixes phase execution concerns | Move under candidate-discovery checkpoint package |
 
 ### Current Responsibility Map
 
@@ -232,12 +231,27 @@ and `LiveRadarEventStateProjector` owns event-list projection. The old
 root-level `live_radar_service.py` file is a compatibility shim for existing
 imports and must not regain behavior.
 
+As of slice `0.7.6.4.15`, candidate-discovery checkpoints have moved:
+
+| Legacy module | Source of truth |
+|---|---|
+| `live_radar_checkpoints.py` | `radar/candidate_discovery/checkpoints/models.py` and `policy.py` |
+| `live_radar_checkpoint_execution.py` | `radar/candidate_discovery/checkpoints/recording.py` |
+| `live_radar_checkpoint_actions.py` | `radar/candidate_discovery/checkpoints/recovery.py` |
+
+The checkpoint package owns deterministic checkpoint policy, checkpoint
+recording, and bounded recovery actions. The root files are compatibility
+shims and must not regain behavior. The checkpoint package may temporarily call
+deferred root budget/search-expansion modules until the owning migration slices
+move those contracts, but it must not import provider SDKs, persistence, API
+routes, or direct HTTP clients.
+
 Deferred modules, including `live_radar_definition.py`,
-`live_radar_pipeline_support.py`, checkpoints, extraction, universe, and
+`live_radar_pipeline_support.py`, extraction, universe, and
 diagnostics helpers, remain legacy migration debt until their own slices move
 them. `live_radar_search_expansion_execution.py` and
-`live_radar_checkpoint_actions.py` are the remaining documented Radar
-application hotspots; they are not examples for new backend work.
+related search-expansion modules are the remaining documented Radar application
+hotspots; they are not examples for new backend work.
 
 As of slice `0.7.6.4.14.1`, the flat namespace closure policy is explicit:
 `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md` is the reviewable debt
@@ -384,7 +398,7 @@ bounded slices:
     usage of moved root paths.
 12. Product corrective work stays deferred until the root namespace cleanup
     corridor is complete.
-13. `0.7.6.4.15` moves checkpoint decision/action ownership into
+13. `0.7.6.4.15` moved checkpoint decision/action ownership into
     `radar/candidate_discovery/checkpoints`.
 14. `0.7.6.4.16` moves search-expansion execution/payload ownership into the
     candidate-discovery package.

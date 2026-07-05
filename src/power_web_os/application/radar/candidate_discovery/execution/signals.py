@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from power_web_os.application.live_radar_checkpoint_execution import record_execution_checkpoint
-from power_web_os.application.live_radar_checkpoints import RadarExecutionCheckpointDecision
+from power_web_os.application.radar.candidate_discovery.checkpoints.recording import record_execution_checkpoint
+from power_web_os.application.radar.candidate_discovery.checkpoints import RadarExecutionCheckpointDecision
 from power_web_os.application.live_radar_universe import filter_signal_result, gap_items, gap_payloads
 from power_web_os.application.radar.candidate_discovery.contracts import RadarExecutionTask
 from power_web_os.application.radar.candidate_discovery.execution.context import (

@@ -280,9 +280,12 @@ in `FinalizationProjector`.
 
 ### Change Checkpoint Behavior
 
-Checkpoint policy stays in checkpoint services. Execution phases may call
+Checkpoint policy stays in `radar/candidate_discovery/checkpoints`.
+`models.py` owns checkpoint records, `policy.py` owns deterministic review
+decisions, `recording.py` owns checkpoint event/state recording, and
+`recovery.py` owns bounded adaptive action execution. Execution phases may call
 checkpoint recovery/recording and persist the resulting decisions, but they
-should not invent new checkpoint policy inline.
+should not invent new checkpoint policy inline or import root checkpoint shims.
 
 ## Documentation Rules
 

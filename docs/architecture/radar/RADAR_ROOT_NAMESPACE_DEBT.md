@@ -25,9 +25,9 @@ that have an owning migration slice.
 | Root file | Status | Target package | Owning slice |
 |---|---|---|---|
 | `live_radar_candidate_refs.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.universe` | `0.7.6.4.17.2` |
-| `live_radar_checkpoint_actions.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.checkpoints` | `0.7.6.4.15` |
-| `live_radar_checkpoint_execution.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.checkpoints` | `0.7.6.4.15` |
-| `live_radar_checkpoints.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.checkpoints` | `0.7.6.4.15` |
+| `live_radar_checkpoint_actions.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.checkpoints.recovery` | `compatibility_only` |
+| `live_radar_checkpoint_execution.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.checkpoints.recording` | `compatibility_only` |
+| `live_radar_checkpoints.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.checkpoints` | `compatibility_only` |
 | `live_radar_collection_utils.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.diagnostics` | `0.7.6.4.17.3` |
 | `live_radar_contracts.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.contracts` | `compatibility_only` |
 | `live_radar_cross_disambiguation.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.execution` | `0.7.6.4.17.2` |
@@ -85,7 +85,7 @@ retrieval-plan, product-source, service, and staged-execution behavior.
 
 ## Closure Path
 
-- `0.7.6.4.15`: move checkpoint behavior to candidate-discovery checkpoints.
+- `0.7.6.4.15`: checkpoint behavior moved to candidate-discovery checkpoints.
 - `0.7.6.4.16`: move search-expansion execution/payload behavior to
   candidate-discovery execution.
 - `0.7.6.4.17`: decide whether budget contracts belong in `radar/shared`.

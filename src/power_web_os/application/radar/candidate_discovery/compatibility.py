@@ -10,8 +10,8 @@ from __future__ import annotations
 
 LEGACY_MODULE_TARGETS: dict[str, str] = {
     "power_web_os.application.live_radar_candidate_refs": "power_web_os.application.radar.candidate_discovery.universe",
-    "power_web_os.application.live_radar_checkpoint_actions": "power_web_os.application.radar.candidate_discovery.checkpoints",
-    "power_web_os.application.live_radar_checkpoint_execution": "power_web_os.application.radar.candidate_discovery.checkpoints",
+    "power_web_os.application.live_radar_checkpoint_actions": "power_web_os.application.radar.candidate_discovery.checkpoints.recovery",
+    "power_web_os.application.live_radar_checkpoint_execution": "power_web_os.application.radar.candidate_discovery.checkpoints.recording",
     "power_web_os.application.live_radar_checkpoints": "power_web_os.application.radar.candidate_discovery.checkpoints",
     "power_web_os.application.live_radar_collection_utils": "power_web_os.application.radar.candidate_discovery.diagnostics",
     "power_web_os.application.live_radar_contracts": "power_web_os.application.radar.candidate_discovery.contracts",
@@ -54,6 +54,9 @@ LEGACY_MODULE_MIGRATION_STATUS: dict[str, str] = {
     for module_name in LEGACY_MODULE_TARGETS
 }
 for module_name in [
+    "power_web_os.application.live_radar_checkpoint_actions",
+    "power_web_os.application.live_radar_checkpoint_execution",
+    "power_web_os.application.live_radar_checkpoints",
     "power_web_os.application.live_radar_contracts",
     "power_web_os.application.live_radar_definition_runtime",
     "power_web_os.application.live_radar_discovery_planning",
@@ -79,7 +82,6 @@ LEGACY_SHIM_MODULES: tuple[str, ...] = tuple(
 
 LEGACY_HOTSPOTS: tuple[str, ...] = (
     "power_web_os.application.live_radar_search_expansion_execution",
-    "power_web_os.application.live_radar_checkpoint_actions",
 )
 
 __all__ = [

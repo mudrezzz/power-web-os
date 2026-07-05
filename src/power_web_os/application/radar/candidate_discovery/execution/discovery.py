@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from power_web_os.application.live_radar_checkpoint_actions import (
+from power_web_os.application.radar.candidate_discovery.checkpoints.recovery import (
     RadarCheckpointRecoveryContext,
     RadarCheckpointRecoveryState,
 )
-from power_web_os.application.live_radar_checkpoint_execution import record_execution_checkpoint
+from power_web_os.application.radar.candidate_discovery.checkpoints.recording import record_execution_checkpoint
 from power_web_os.application.live_radar_cross_disambiguation import execute_cross_source_disambiguation
 from power_web_os.application.live_radar_retrieved_candidates import candidates_from_retrieved_sources
 from power_web_os.application.live_radar_useful_budget import run_task_with_useful_retries

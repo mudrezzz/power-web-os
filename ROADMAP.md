@@ -8121,7 +8121,7 @@ Principles:
 
 ### Slice 0.7.6.4.15: Candidate discovery checkpoint package migration
 
-- Status: Ready
+- Status: Done
 - Goal: Move checkpoint decision/action ownership out of root-level legacy modules into `radar/candidate_discovery/checkpoints` behind service/decision contracts.
 - User value: Adaptive checkpoint behavior becomes easier to inspect and safer to change without editing root-level legacy files.
 - Problem statement: Architecture docs still identify checkpoint modules such as `live_radar_checkpoint_actions.py`, `live_radar_checkpoint_execution.py`, and `live_radar_checkpoints.py` as deferred migration debt. Checkpoint behavior is central to bounded fallback semantics and should not remain a legacy hotspot indefinitely.
@@ -8160,7 +8160,7 @@ Principles:
 
 ### Slice 0.7.6.4.16: Candidate discovery search expansion package migration
 
-- Status: Backlog
+- Status: Ready
 - Goal: Move search expansion execution and payload ownership into candidate-discovery package services without changing expansion scheduling behavior.
 - User value: Search expansion becomes a package-owned execution capability with visible admission, payload, and diagnostics contracts.
 - Problem statement: `live_radar_search_expansion_execution.py` and related payload modules remain documented Radar application hotspots. They should be migrated only after the options/composition cleanup and the next measured pipeline blocker work are not depending on root-level legacy shape.

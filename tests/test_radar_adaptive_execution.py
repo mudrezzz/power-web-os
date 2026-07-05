@@ -10,7 +10,7 @@ from __future__ import annotations
 import socket
 
 from power_web_os.application.radar.candidate_discovery.contracts import RadarExecutionPlan, RadarExecutionTask
-from power_web_os.application.live_radar_checkpoints import (
+from power_web_os.application.radar.candidate_discovery.checkpoints import (
     RadarExecutionCheckpointInput,
     RadarExecutionCheckpointService,
 )

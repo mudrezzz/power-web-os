@@ -4,9 +4,9 @@ Status: AS IS
 
 Product area: Radar candidate discovery pipeline
 
-Updated after slice: 0.7.6.3.6.13
+Updated after slice: 0.7.6.4.15
 
-Last updated: 2026-06-30
+Last updated: 2026-07-05
 
 Canonical source: current implementation, tests, `ROADMAP.md`, and Radar run diagnostics
 
@@ -132,8 +132,8 @@ candidate state.
 | Central work scheduler | `src/power_web_os/application/radar_work_scheduler.py` | Admit application-approved work lanes, protect shared OpenRouter capacity for guaranteed recall expansion, and record accepted/rejected work. | Provider calls, source policy mutation, or checkpoint decision policy. |
 | Search expansion executor | `src/power_web_os/application/live_radar_search_expansion_execution.py` | Execute only scheduler-admitted checkpoint expansion tasks under source policy and budget guards. | Choosing checkpoint decisions or admitting work locally. |
 | Extraction contract/repair | `src/power_web_os/application/live_radar_extraction_contract.py` | Validate and repair provider payload shape when deterministic repair is safe. | Silently converting unrecoverable output into success. |
-| Checkpoint service | `src/power_web_os/application/live_radar_checkpoints.py` | Decide continue, retry, expand, repair, revise, stop, or fail. | Direct HTTP/provider calls. |
-| Checkpoint action executor | `src/power_web_os/application/live_radar_checkpoint_actions.py` | Apply approved checkpoint actions under budgets and policy. | Unbounded loops. |
+| Checkpoint service | `src/power_web_os/application/radar/candidate_discovery/checkpoints/policy.py` | Decide continue, retry, expand, repair, revise, stop, or fail. | Direct HTTP/provider calls. |
+| Checkpoint action executor | `src/power_web_os/application/radar/candidate_discovery/checkpoints/recovery.py` | Apply approved checkpoint actions under budgets and policy. | Unbounded loops. |
 | Entity resolution | `src/power_web_os/application/live_radar_entity_resolution.py` | Distinguish legal entity, branch, production site, project, asset, and unknown entity. | Provider transport. |
 | Candidate universe support | `src/power_web_os/application/live_radar_universe.py` and retrieved-candidate helpers | Preserve source-backed legal entities and review-needed upstream entities. | Product precision claims. |
 | Live artifact projection | `src/power_web_os/application/radar/candidate_discovery/diagnostics/live_run_artifact.py` | Shape product-safe live run artifacts from completed application state. | Provider execution, checkpoint decisions, or scheduler admission. |

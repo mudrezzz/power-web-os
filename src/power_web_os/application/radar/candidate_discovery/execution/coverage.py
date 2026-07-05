@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from power_web_os.application.live_radar_checkpoint_actions import (
+from power_web_os.application.radar.candidate_discovery.checkpoints.recovery import (
     RadarCheckpointRecoveryContext,
     RadarCheckpointRecoveryState,
 )

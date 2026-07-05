@@ -15,6 +15,10 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.sources",
     "power_web_os.application.radar.candidate_discovery.universe",
     "power_web_os.application.radar.candidate_discovery.checkpoints",
+    "power_web_os.application.radar.candidate_discovery.checkpoints.models",
+    "power_web_os.application.radar.candidate_discovery.checkpoints.policy",
+    "power_web_os.application.radar.candidate_discovery.checkpoints.recording",
+    "power_web_os.application.radar.candidate_discovery.checkpoints.recovery",
     "power_web_os.application.radar.candidate_discovery.execution",
     "power_web_os.application.radar.candidate_discovery.diagnostics",
     "power_web_os.application.radar.signal_monitoring",
@@ -56,6 +60,9 @@ NEW_RADAR_PACKAGES = [
 
 LEGACY_KEY_MODULES = [
     "power_web_os.application.live_radar_contracts",
+    "power_web_os.application.live_radar_checkpoint_actions",
+    "power_web_os.application.live_radar_checkpoint_execution",
+    "power_web_os.application.live_radar_checkpoints",
     "power_web_os.application.live_radar_source_cards",
     "power_web_os.application.live_radar_definition_runtime",
     "power_web_os.application.live_radar_discovery_planning",
@@ -70,6 +77,9 @@ LEGACY_KEY_MODULES = [
 
 MOVED_LEGACY_SHIMS = [
     "live_radar_contracts.py",
+    "live_radar_checkpoint_actions.py",
+    "live_radar_checkpoint_execution.py",
+    "live_radar_checkpoints.py",
     "live_radar_source_cards.py",
     "live_radar_definition_runtime.py",
     "live_radar_discovery_planning.py",
@@ -110,14 +120,27 @@ def test_candidate_discovery_compatibility_map_is_declarative() -> None:
     assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_contracts"] == (
         "power_web_os.application.radar.candidate_discovery.contracts"
     )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_checkpoints"] == (
+        "power_web_os.application.radar.candidate_discovery.checkpoints"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_checkpoint_execution"] == (
+        "power_web_os.application.radar.candidate_discovery.checkpoints.recording"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_checkpoint_actions"] == (
+        "power_web_os.application.radar.candidate_discovery.checkpoints.recovery"
+    )
     assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_source_cards"] == (
         "power_web_os.application.radar.shared.source_cards"
     )
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_checkpoint_actions"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_checkpoint_execution"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_checkpoints"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_contracts"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_service"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_staged_execution"] == "moved"
     assert "power_web_os.application.live_radar_service" not in module.LEGACY_HOTSPOTS
     assert "power_web_os.application.live_radar_staged_execution" not in module.LEGACY_HOTSPOTS
+    assert "power_web_os.application.live_radar_checkpoint_actions" not in module.LEGACY_HOTSPOTS
 
     source = Path(module.__file__).read_text(encoding="utf-8")
     assert "import power_web_os.application.live_radar" not in source
@@ -262,6 +285,33 @@ def test_candidate_discovery_execution_service_classes_are_importable() -> None:
             "SmokeLimitPolicy",
         ],
         "power_web_os.application.radar.candidate_discovery.execution.task_runner": ["TaskExecutionService"],
+    }
+
+    for module_name, names in required.items():
+        module = importlib.import_module(module_name)
+        for name in names:
+            assert hasattr(module, name), f"{module_name} must export {name}"
+
+
+def test_candidate_discovery_checkpoint_classes_are_importable() -> None:
+    required = {
+        "power_web_os.application.radar.candidate_discovery.checkpoints.models": [
+            "RadarExecutionCheckpointInput",
+            "RadarExecutionCheckpointDecision",
+            "RadarExecutionCheckpointPolicy",
+        ],
+        "power_web_os.application.radar.candidate_discovery.checkpoints.policy": [
+            "RadarExecutionCheckpointService",
+            "checkpoint_summary",
+        ],
+        "power_web_os.application.radar.candidate_discovery.checkpoints.recording": [
+            "record_execution_checkpoint",
+        ],
+        "power_web_os.application.radar.candidate_discovery.checkpoints.recovery": [
+            "RadarCheckpointActionExecutor",
+            "RadarCheckpointRecoveryContext",
+            "RadarCheckpointRecoveryState",
+        ],
     }
 
     for module_name, names in required.items():

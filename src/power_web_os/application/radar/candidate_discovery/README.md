@@ -57,3 +57,5 @@ Current package-owned source-of-truth modules:
   policy for planner-node and staged-execution snapshots.
 - `service_events.py`: `LiveRadarEventStateProjector`, product-safe event state
   projection for the live run facade.
+- `checkpoints/`: checkpoint models, deterministic policy, execution-state
+  recording, and bounded recovery actions for candidate discovery.

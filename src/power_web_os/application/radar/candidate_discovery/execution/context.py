@@ -9,8 +9,8 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarExecutionPlan,
     WebSearchProvider,
 )
-from power_web_os.application.live_radar_checkpoint_actions import RadarCheckpointActionExecutor
-from power_web_os.application.live_radar_checkpoints import RadarExecutionCheckpointService
+from power_web_os.application.radar.candidate_discovery.checkpoints.recovery import RadarCheckpointActionExecutor
+from power_web_os.application.radar.candidate_discovery.checkpoints import RadarExecutionCheckpointService
 from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget, RadarExecutionBudgetSettings
 from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
 from power_web_os.application.live_radar_useful_budget import UsefulResultBudget
