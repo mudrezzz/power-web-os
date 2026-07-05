@@ -1,8 +1,9 @@
 """Config-backed non-secret Radar runtime settings.
 
 The repository config is the source of truth for non-secret Radar defaults.
-Local `.env`, process environment, and explicit API overrides remain stronger
-deployment/emergency override layers.
+Process environment, local `.env`, and explicit API overrides remain stronger
+deployment/emergency override layers, in that order. Local `.env` intentionally
+overrides inherited process variables for Codex/manual live Radar runs.
 """
 
 from __future__ import annotations
@@ -126,10 +127,13 @@ def _load_env_file(path: Path | None) -> dict[str, str]:
     if path is None or not path.exists():
         return {}
     values: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#") or "=" not in stripped:
             continue
         key, value = stripped.split("=", 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
+        normalized_key = key.strip()
+        if normalized_key.startswith("export "):
+            normalized_key = normalized_key[7:].strip()
+        values[normalized_key] = value.strip().strip('"').strip("'")
     return values

@@ -19,7 +19,7 @@ from power_web_os.application.radar.candidate_discovery.planning.discovery_plann
 )
 from power_web_os.application.radar.candidate_discovery.planning.execution_plan import execution_plan_to_search_plan
 from power_web_os.application.radar.candidate_discovery.planning.plan_acceptance import RadarDiscoveryPlanAcceptanceService
-from power_web_os.application.live_radar_pipeline_support import planned_event_type, trace_pipeline_step
+from power_web_os.application.radar.candidate_discovery.diagnostics.pipeline_support import planned_event_type, trace_pipeline_step
 
 
 def build_planned_state(

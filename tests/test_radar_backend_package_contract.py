@@ -50,6 +50,12 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.retrieval.definition",
     "power_web_os.application.radar.candidate_discovery.retrieval.product_sources",
     "power_web_os.application.radar.candidate_discovery.retrieval.web_retrieval",
+    "power_web_os.application.radar.candidate_discovery.extraction.contract",
+    "power_web_os.application.radar.candidate_discovery.extraction.diagnostics",
+    "power_web_os.application.radar.candidate_discovery.diagnostics.collections",
+    "power_web_os.application.radar.candidate_discovery.diagnostics.normalization",
+    "power_web_os.application.radar.candidate_discovery.diagnostics.pipeline_support",
+    "power_web_os.application.radar.candidate_discovery.sources.risk",
     "power_web_os.application.radar.candidate_discovery.universe.coverage",
     "power_web_os.application.radar.candidate_discovery.universe.cross_source_disambiguation",
     "power_web_os.application.radar.candidate_discovery.universe.entity_resolution",
@@ -94,6 +100,7 @@ LEGACY_KEY_MODULES = [
     "power_web_os.application.live_radar_checkpoint_execution",
     "power_web_os.application.live_radar_checkpoints",
     "power_web_os.application.live_radar_candidate_refs",
+    "power_web_os.application.live_radar_collection_utils",
     "power_web_os.application.live_radar_source_cards",
     "power_web_os.application.live_radar_cross_disambiguation",
     "power_web_os.application.live_radar_definition",
@@ -105,7 +112,11 @@ LEGACY_KEY_MODULES = [
     "power_web_os.application.live_radar_external_budget_context",
     "power_web_os.application.live_radar_external_budget_reservations",
     "power_web_os.application.live_radar_external_budget_settings",
+    "power_web_os.application.live_radar_extraction_contract",
+    "power_web_os.application.live_radar_extraction_diagnostics",
     "power_web_os.application.live_radar_entity_resolution",
+    "power_web_os.application.live_radar_normalization",
+    "power_web_os.application.live_radar_pipeline_support",
     "power_web_os.application.live_radar_plan_acceptance",
     "power_web_os.application.live_radar_planning_pipeline",
     "power_web_os.application.live_radar_product_sources",
@@ -114,6 +125,7 @@ LEGACY_KEY_MODULES = [
     "power_web_os.application.live_radar_search_expansion_execution",
     "power_web_os.application.live_radar_search_expansion_payloads",
     "power_web_os.application.live_radar_service",
+    "power_web_os.application.live_radar_source_risk",
     "power_web_os.application.live_radar_staged_execution",
     "power_web_os.application.live_radar_universe",
     "power_web_os.application.live_radar_useful_budget",
@@ -134,6 +146,7 @@ MOVED_LEGACY_SHIMS = [
     "live_radar_checkpoint_execution.py",
     "live_radar_checkpoints.py",
     "live_radar_candidate_refs.py",
+    "live_radar_collection_utils.py",
     "live_radar_source_cards.py",
     "live_radar_cross_disambiguation.py",
     "live_radar_definition.py",
@@ -145,7 +158,11 @@ MOVED_LEGACY_SHIMS = [
     "live_radar_external_budget_context.py",
     "live_radar_external_budget_reservations.py",
     "live_radar_external_budget_settings.py",
+    "live_radar_extraction_contract.py",
+    "live_radar_extraction_diagnostics.py",
     "live_radar_entity_resolution.py",
+    "live_radar_normalization.py",
+    "live_radar_pipeline_support.py",
     "live_radar_plan_acceptance.py",
     "live_radar_planning_pipeline.py",
     "live_radar_product_sources.py",
@@ -154,6 +171,7 @@ MOVED_LEGACY_SHIMS = [
     "live_radar_search_expansion_execution.py",
     "live_radar_search_expansion_payloads.py",
     "live_radar_service.py",
+    "live_radar_source_risk.py",
     "live_radar_staged_execution.py",
     "live_radar_staged_helpers.py",
     "live_radar_staged_merge.py",
@@ -198,6 +216,9 @@ def test_candidate_discovery_compatibility_map_is_declarative() -> None:
     )
     assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_candidate_refs"] == (
         "power_web_os.application.radar.candidate_discovery.universe.identity"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_collection_utils"] == (
+        "power_web_os.application.radar.candidate_discovery.diagnostics.collections"
     )
     assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_cross_disambiguation"] == (
         "power_web_os.application.radar.candidate_discovery.universe.cross_source_disambiguation"
@@ -244,6 +265,18 @@ def test_candidate_discovery_compatibility_map_is_declarative() -> None:
     assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_external_budget_settings"] == (
         "power_web_os.application.radar.shared.budgets.external_settings"
     )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_extraction_contract"] == (
+        "power_web_os.application.radar.candidate_discovery.extraction.contract"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_extraction_diagnostics"] == (
+        "power_web_os.application.radar.candidate_discovery.extraction.diagnostics"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_normalization"] == (
+        "power_web_os.application.radar.candidate_discovery.diagnostics.normalization"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_pipeline_support"] == (
+        "power_web_os.application.radar.candidate_discovery.diagnostics.pipeline_support"
+    )
     assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_useful_budget"] == (
         "power_web_os.application.radar.candidate_discovery.execution.useful_budget"
     )
@@ -256,6 +289,9 @@ def test_candidate_discovery_compatibility_map_is_declarative() -> None:
     assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_search_expansion_payloads"] == (
         "power_web_os.application.radar.candidate_discovery.search_expansion.payloads"
     )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_source_risk"] == (
+        "power_web_os.application.radar.candidate_discovery.sources.risk"
+    )
     assert module.LEGACY_MODULE_TARGETS["power_web_os.application.radar_search_expansion"] == (
         "power_web_os.application.radar.candidate_discovery.search_expansion.service"
     )
@@ -266,6 +302,7 @@ def test_candidate_discovery_compatibility_map_is_declarative() -> None:
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_checkpoint_execution"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_checkpoints"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_candidate_refs"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_collection_utils"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_contracts"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_cross_disambiguation"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_definition"] == "moved"
@@ -275,10 +312,15 @@ def test_candidate_discovery_compatibility_map_is_declarative() -> None:
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_external_budget_context"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_external_budget_reservations"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_external_budget_settings"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_extraction_contract"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_extraction_diagnostics"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_search_expansion_execution"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_normalization"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_pipeline_support"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_search_expansion_payloads"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_retrieved_candidates"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_service"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_source_risk"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_staged_execution"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_universe"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_useful_budget"] == "moved"
@@ -361,6 +403,52 @@ def test_definition_and_retrieval_old_and_new_import_paths_are_compatible() -> N
     assert legacy_retrieval.retrieval_request_from_search_plan is (
         package_retrieval.retrieval_request_from_search_plan
     )
+
+
+def test_extraction_diagnostics_old_and_new_import_paths_are_compatible() -> None:
+    legacy_contract = importlib.import_module("power_web_os.application.live_radar_extraction_contract")
+    package_contract = importlib.import_module(
+        "power_web_os.application.radar.candidate_discovery.extraction.contract"
+    )
+    legacy_diagnostics = importlib.import_module("power_web_os.application.live_radar_extraction_diagnostics")
+    package_diagnostics = importlib.import_module(
+        "power_web_os.application.radar.candidate_discovery.extraction.diagnostics"
+    )
+    legacy_normalization = importlib.import_module("power_web_os.application.live_radar_normalization")
+    package_normalization = importlib.import_module(
+        "power_web_os.application.radar.candidate_discovery.diagnostics.normalization"
+    )
+    legacy_collections = importlib.import_module("power_web_os.application.live_radar_collection_utils")
+    package_collections = importlib.import_module(
+        "power_web_os.application.radar.candidate_discovery.diagnostics.collections"
+    )
+    legacy_pipeline_support = importlib.import_module("power_web_os.application.live_radar_pipeline_support")
+    package_pipeline_support = importlib.import_module(
+        "power_web_os.application.radar.candidate_discovery.diagnostics.pipeline_support"
+    )
+    legacy_source_risk = importlib.import_module("power_web_os.application.live_radar_source_risk")
+    package_source_risk = importlib.import_module(
+        "power_web_os.application.radar.candidate_discovery.sources.risk"
+    )
+
+    assert legacy_contract.ExtractionValidationIssue is package_contract.ExtractionValidationIssue
+    assert legacy_contract.ExtractionRepairResult is package_contract.ExtractionRepairResult
+    assert legacy_contract.validate_and_repair_extraction_payload is (
+        package_contract.validate_and_repair_extraction_payload
+    )
+    assert legacy_contract.extraction_validation_state is package_contract.extraction_validation_state
+    assert legacy_diagnostics.extraction_contract_state is package_diagnostics.extraction_contract_state
+    assert legacy_diagnostics.extraction_validation_event is package_diagnostics.extraction_validation_event
+    assert legacy_normalization.normalize_live_candidate is package_normalization.normalize_live_candidate
+    assert legacy_normalization.validate_live_radar_qualification_contract is (
+        package_normalization.validate_live_radar_qualification_contract
+    )
+    assert legacy_collections.dedupe_sources is package_collections.dedupe_sources
+    assert legacy_collections.rank_candidates is package_collections.rank_candidates
+    assert legacy_pipeline_support.trace_pipeline_step is package_pipeline_support.trace_pipeline_step
+    assert legacy_pipeline_support.planned_event_type is package_pipeline_support.planned_event_type
+    assert legacy_source_risk.source_supports_evidence is package_source_risk.source_supports_evidence
+    assert legacy_source_risk.refs_have_verification_risk is package_source_risk.refs_have_verification_risk
 
 
 def test_universe_old_and_new_import_paths_are_compatible() -> None:

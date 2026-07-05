@@ -119,6 +119,31 @@ def test_effective_runtime_env_keeps_secret_values_out_of_config() -> None:
     assert runtime_env["OPENROUTER_MODEL"] == "deepseek/deepseek-v4-pro"
 
 
+def test_effective_runtime_env_prefers_bom_dotenv_openrouter_key_over_process_env(tmp_path: Path) -> None:
+    dotenv = tmp_path / ".env"
+    dotenv.write_text(
+        "\ufeffOPENROUTER_API_KEY=sk-or-env-file\n"
+        "export OPENROUTER_MODEL=openai/gpt-5-mini\n",
+        encoding="utf-8",
+    )
+
+    runtime_env = effective_runtime_env(
+        env={"OPENROUTER_API_KEY": "sk-or-stale-process", "OPENROUTER_MODEL": "stale/model"},
+        dotenv_path=dotenv,
+    )
+    report = build_effective_runtime_config_report(
+        component="test",
+        env={"OPENROUTER_API_KEY": "sk-or-stale-process", "OPENROUTER_MODEL": "stale/model"},
+        dotenv_path=dotenv,
+    ).to_payload()
+    values = {item["name"]: item for item in report["values"]}
+
+    assert runtime_env["OPENROUTER_API_KEY"] == "sk-or-env-file"
+    assert runtime_env["OPENROUTER_MODEL"] == "openai/gpt-5-mini"
+    assert values["openrouter credential"]["source"] == ".env"
+    assert values["OPENROUTER_MODEL"]["source"] == ".env"
+
+
 def test_runtime_config_report_redacts_secrets_and_builds_fingerprint() -> None:
     report = build_effective_runtime_config_report(
         component="test",

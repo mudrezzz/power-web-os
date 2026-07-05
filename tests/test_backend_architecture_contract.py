@@ -166,6 +166,9 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
     "power_web_os.application.live_radar_candidate_refs": (
         "power_web_os.application.radar.candidate_discovery.universe.identity"
     ),
+    "power_web_os.application.live_radar_collection_utils": (
+        "power_web_os.application.radar.candidate_discovery.diagnostics.collections"
+    ),
     "power_web_os.application.live_radar_contracts": "power_web_os.application.radar.candidate_discovery.contracts",
     "power_web_os.application.live_radar_cross_disambiguation": (
         "power_web_os.application.radar.candidate_discovery.universe.cross_source_disambiguation"
@@ -198,6 +201,18 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
     "power_web_os.application.live_radar_external_budget_settings": (
         "power_web_os.application.radar.shared.budgets.external_settings"
     ),
+    "power_web_os.application.live_radar_extraction_contract": (
+        "power_web_os.application.radar.candidate_discovery.extraction.contract"
+    ),
+    "power_web_os.application.live_radar_extraction_diagnostics": (
+        "power_web_os.application.radar.candidate_discovery.extraction.diagnostics"
+    ),
+    "power_web_os.application.live_radar_normalization": (
+        "power_web_os.application.radar.candidate_discovery.diagnostics.normalization"
+    ),
+    "power_web_os.application.live_radar_pipeline_support": (
+        "power_web_os.application.radar.candidate_discovery.diagnostics.pipeline_support"
+    ),
     "power_web_os.application.live_radar_plan_acceptance": (
         "power_web_os.application.radar.candidate_discovery.planning.plan_acceptance"
     ),
@@ -220,6 +235,9 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
         "power_web_os.application.radar.candidate_discovery.search_expansion.payloads"
     ),
     "power_web_os.application.live_radar_source_cards": "power_web_os.application.radar.shared.source_cards",
+    "power_web_os.application.live_radar_source_risk": (
+        "power_web_os.application.radar.candidate_discovery.sources.risk"
+    ),
     "power_web_os.application.live_radar_service": "power_web_os.application.radar.candidate_discovery.service",
     "power_web_os.application.live_radar_staged_execution": (
         "power_web_os.application.radar.candidate_discovery.execution.orchestrator"

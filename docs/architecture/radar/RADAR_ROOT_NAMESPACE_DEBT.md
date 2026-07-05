@@ -28,7 +28,7 @@ that have an owning migration slice.
 | `live_radar_checkpoint_actions.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.checkpoints.recovery` | `compatibility_only` |
 | `live_radar_checkpoint_execution.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.checkpoints.recording` | `compatibility_only` |
 | `live_radar_checkpoints.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.checkpoints` | `compatibility_only` |
-| `live_radar_collection_utils.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.diagnostics` | `0.7.6.4.17.3` |
+| `live_radar_collection_utils.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.diagnostics.collections` | `compatibility_only` |
 | `live_radar_contracts.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.contracts` | `compatibility_only` |
 | `live_radar_cross_disambiguation.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.universe.cross_source_disambiguation` | `compatibility_only` |
 | `live_radar_definition.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.retrieval.definition` | `compatibility_only` |
@@ -41,10 +41,10 @@ that have an owning migration slice.
 | `live_radar_external_budget_context.py` | `moved_shim` | `power_web_os.application.radar.shared.budgets.external_context` | `compatibility_only` |
 | `live_radar_external_budget_reservations.py` | `moved_shim` | `power_web_os.application.radar.shared.budgets.external_reservations` | `compatibility_only` |
 | `live_radar_external_budget_settings.py` | `moved_shim` | `power_web_os.application.radar.shared.budgets.external_settings` | `compatibility_only` |
-| `live_radar_extraction_contract.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.extraction` | `0.7.6.4.17.3` |
-| `live_radar_extraction_diagnostics.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.extraction` | `0.7.6.4.17.3` |
-| `live_radar_normalization.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.diagnostics` | `0.7.6.4.17.3` |
-| `live_radar_pipeline_support.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.diagnostics` | `0.7.6.4.17.3` |
+| `live_radar_extraction_contract.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.extraction.contract` | `compatibility_only` |
+| `live_radar_extraction_diagnostics.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.extraction.diagnostics` | `compatibility_only` |
+| `live_radar_normalization.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.diagnostics.normalization` | `compatibility_only` |
+| `live_radar_pipeline_support.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.diagnostics.pipeline_support` | `compatibility_only` |
 | `live_radar_plan_acceptance.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.planning` | `compatibility_only` |
 | `live_radar_planning_pipeline.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.planning` | `compatibility_only` |
 | `live_radar_product_sources.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.retrieval` | `compatibility_only` |
@@ -54,7 +54,7 @@ that have an owning migration slice.
 | `live_radar_search_expansion_payloads.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.payloads` | `compatibility_only` |
 | `live_radar_service.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.service` | `compatibility_only` |
 | `live_radar_source_cards.py` | `moved_shim` | `power_web_os.application.radar.shared.source_cards` | `compatibility_only` |
-| `live_radar_source_risk.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.sources` | `0.7.6.4.17.3` |
+| `live_radar_source_risk.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.sources.risk` | `compatibility_only` |
 | `live_radar_staged_execution.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.execution` | `compatibility_only` |
 | `live_radar_staged_helpers.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.execution` | `compatibility_only` |
 | `live_radar_staged_merge.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.execution` | `compatibility_only` |
@@ -99,8 +99,9 @@ retrieval-plan, product-source, service, and staged-execution behavior.
 - `0.7.6.4.17.2`: candidate universe, retrieved-candidate extraction,
   entity resolution, candidate refs, and upstream/cross-source disambiguation
   moved to candidate-discovery universe modules.
-- `0.7.6.4.17.3`: move extraction contract, diagnostics, normalization,
-  collection utilities, pipeline support, and source-risk helpers.
+- `0.7.6.4.17.3`: extraction contract, diagnostics, normalization,
+  collection utilities, pipeline support, and source-risk helpers moved to
+  package-owned candidate-discovery modules.
 - `0.7.6.4.18`: move signal-monitoring behavior into `radar/signal_monitoring`.
 - `0.7.6.4.19`: verify that every root Radar-prefixed file is deleted, a thin
   documented shim, or an explicit remaining exception with its own follow-up.

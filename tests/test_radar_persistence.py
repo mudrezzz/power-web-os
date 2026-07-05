@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from alembic import command
@@ -7,6 +8,7 @@ from alembic.config import Config
 from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 
+import power_web_os.demo as demo
 from power_web_os.application.radar_run_journal import RadarRunEventCommand, RadarRunJournal
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
@@ -18,7 +20,7 @@ from power_web_os.application.radar_records import (
     RadarReviewDecisionRecord,
     RadarRunTechnicalTraceRecord,
 )
-from power_web_os.demo import build_icp_radar_catalog_from_workbook
+from power_web_os.demo import build_icp_radar_catalog_from_workbook, seed_icp_radar_catalog_database
 from power_web_os.persistence import (
     Base,
     SqlAlchemyRadarDefinitionRepository,
@@ -305,6 +307,41 @@ def test_seed_radar_catalog_upserts_current_demo_radars(tmp_path: Path) -> None:
             "benchmark-retail-energy-efficiency",
         ):
             assert definition_repository.get_active(radar_id) is not None
+
+
+def test_demo_seed_command_path_creates_sqlite_schema(tmp_path: Path) -> None:
+    result = seed_icp_radar_catalog_database(
+        input_path=Path("demo/fixtures/icp_radar/sibur_icp_pass1.xlsx"),
+        database_url=sqlite_url(tmp_path / "demo-seed-command.db"),
+    )
+
+    assert result["radar_count"] >= 1
+    assert result["definition_count"] >= 1
+
+
+def test_demo_persisted_live_command_path_seeds_sqlite_before_run(tmp_path: Path, monkeypatch) -> None:
+    db_url = sqlite_url(tmp_path / "demo-persisted-live-command.db")
+    observed: dict[str, bool] = {}
+
+    def fake_generate_persisted_live_mini_icp_radar_artifact(**kwargs: object) -> dict[str, str]:
+        engine = create_database_engine(database_url=str(kwargs["database_url"]))
+        assert {"radars", "radar_definitions", "radar_runs"} <= set(inspect(engine).get_table_names())
+        session_factory = create_session_factory(engine)
+        with session_scope(session_factory) as session:
+            assert SqlAlchemyRadarDefinitionRepository(session).get_active("toir-quick-live") is not None
+        observed["called"] = True
+        return {"artifact_type": "fake_persisted_live_radar"}
+
+    monkeypatch.setattr(demo, "generate_persisted_live_mini_icp_radar_artifact", fake_generate_persisted_live_mini_icp_radar_artifact)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["power-web-os-demo", "run-live-mini-icp-radar-persisted", "--live", "--database-url", db_url],
+    )
+
+    demo.main()
+
+    assert observed["called"] is True
 
 
 def test_alembic_initial_migration_creates_radar_tables(tmp_path: Path) -> None:

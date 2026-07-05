@@ -40,7 +40,7 @@ from power_web_os.application.radar.candidate_discovery.retrieval.definition imp
     build_live_mini_radar_search_plan,
     build_live_mini_radar_search_plan_artifact,
 )
-from power_web_os.application.live_radar_normalization import (
+from power_web_os.application.radar.candidate_discovery.diagnostics.normalization import (
     _dedupe_sources,
     _rank_candidates,
     normalize_live_candidate,

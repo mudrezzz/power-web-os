@@ -4,7 +4,7 @@ Status: AS IS
 
 Product area: Radar candidate discovery pipeline
 
-Updated after slice: 0.7.6.4.16
+Updated after slice: 0.7.6.4.17.3
 
 Last updated: 2026-07-05
 
@@ -131,7 +131,7 @@ candidate state.
 | Search expansion scheduler | `src/power_web_os/application/radar/candidate_discovery/search_expansion/scheduler.py` and `selection.py` | Select guaranteed target-lane variants, prioritize explicit benchmark completion targets over incidental targets, and order selected work before optional expansion. | Provider calls or changing source policy. |
 | Central work scheduler | `src/power_web_os/application/radar/candidate_discovery/search_expansion/work_scheduler.py` | Admit application-approved work lanes, protect shared OpenRouter capacity for guaranteed recall expansion, and record accepted/rejected work. | Provider calls, source policy mutation, or checkpoint decision policy. |
 | Search expansion executor | `src/power_web_os/application/radar/candidate_discovery/search_expansion/targeted_execution.py` | Execute only scheduler-admitted checkpoint expansion tasks under source policy and budget guards. | Choosing checkpoint decisions or admitting work locally. |
-| Extraction contract/repair | `src/power_web_os/application/live_radar_extraction_contract.py` | Validate and repair provider payload shape when deterministic repair is safe. | Silently converting unrecoverable output into success. |
+| Extraction contract/repair | `src/power_web_os/application/radar/candidate_discovery/extraction/contract.py` and `diagnostics.py` | Validate and repair provider payload shape when deterministic repair is safe. | Silently converting unrecoverable output into success. |
 | Checkpoint service | `src/power_web_os/application/radar/candidate_discovery/checkpoints/policy.py` | Decide continue, retry, expand, repair, revise, stop, or fail. | Direct HTTP/provider calls. |
 | Checkpoint action executor | `src/power_web_os/application/radar/candidate_discovery/checkpoints/recovery.py` | Apply approved checkpoint actions under budgets and policy. | Unbounded loops. |
 | Entity resolution | `src/power_web_os/application/radar/candidate_discovery/universe/entity_resolution.py` | Distinguish legal entity, branch, production site, project, asset, and unknown entity. | Provider transport. |
@@ -806,7 +806,7 @@ flowchart LR
 | Structured LLM role or model routing | role adapter, OpenRouter request builder, runtime config, universal LLM call contract ADR. | Non-JSON test, schema-invalid test, retry/backup budget test, no-secret trace test. |
 | Search expansion strategy | `RadarSearchExpansionService`. | Unit tests for query families, policy filtering, caps, dedupe. |
 | Registry lookup terms | `RegistryLookupTermGenerator`. | Unit tests for aliases, Russian/English/legal-form terms, identifiers, placeholders. |
-| Extraction schema repair | extraction contract and OpenRouter provider recovery path. | Malformed-output fixtures, retry/backup budget tests. |
+| Extraction schema repair | `radar/candidate_discovery/extraction` contract and OpenRouter provider recovery path. | Malformed-output fixtures, retry/backup budget tests. |
 | Entity resolution semantics | entity resolution and candidate universe projection. | Legal entity vs site/branch/project/asset tests. |
 | Checkpoint policy | checkpoint service/action executor. | Recorded/fake adaptive pipeline tests. |
 | Signal search behavior | retrieval task compiler and staged execution signal phase. | Not-searched vs not-observed tests. |

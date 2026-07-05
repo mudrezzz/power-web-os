@@ -21,7 +21,7 @@ from power_web_os.application.radar.shared.budgets.external_context import (
     external_budget_settings_from_context,
     external_call_budget_context,
 )
-from power_web_os.application.live_radar_pipeline_support import (
+from power_web_os.application.radar.candidate_discovery.diagnostics.pipeline_support import (
     trace_pipeline_step as _trace,
 )
 from power_web_os.application.radar.candidate_discovery.execution.orchestrator import run_staged_radar_execution

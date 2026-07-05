@@ -11,7 +11,7 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarSourceEvidence,
     WebSearchProviderResult,
 )
-from power_web_os.application.live_radar_normalization import normalize_live_candidate
+from power_web_os.application.radar.candidate_discovery.diagnostics.normalization import normalize_live_candidate
 from power_web_os.application.radar.candidate_discovery.universe import candidate_name
 
 

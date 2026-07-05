@@ -174,19 +174,19 @@ def generate_icp_radar_catalog_artifact(
     _write_json(frontend_output_path, artifact)
     return artifact
 
-
 def build_icp_radar_catalog_from_workbook(input_path: Path) -> dict[str, Any]:
     active_radar_artifact = icp_radar_artifact_to_payload(load_icp_radar_workbook(input_path))
     return build_icp_radar_catalog(active_radar_artifact)
 
-
 def seed_icp_radar_catalog_database(*, input_path: Path, database_url: str | None = None) -> dict[str, Any]:
     from power_web_os.persistence.config import DatabaseSettings
     from power_web_os.persistence.engine import create_database_engine, create_session_factory, session_scope
+    from power_web_os.persistence.models import Base
     from power_web_os.persistence.seed import seed_radar_catalog
 
     settings = DatabaseSettings.from_env(database_url=database_url)
     engine = create_database_engine(settings)
+    Base.metadata.create_all(engine)
     session_factory = create_session_factory(engine)
     catalog = build_icp_radar_catalog_from_workbook(input_path)
 
@@ -454,6 +454,7 @@ def main() -> None:
     elif args.command == "run-live-mini-icp-radar-persisted":
         if not args.live:
             parser.error("run-live-mini-icp-radar-persisted requires --live")
+        seed_icp_radar_catalog_database(input_path=args.icp_radar_input, database_url=args.database_url)
         artifact = generate_persisted_live_mini_icp_radar_artifact(
             output_path=args.live_mini_radar_output,
             frontend_output_path=args.frontend_live_mini_radar_output,
@@ -494,7 +495,6 @@ def main() -> None:
     else:
         artifact = build_demo_plan(args.input)
     print(json.dumps(artifact, ensure_ascii=False, indent=2))
-
 
 if __name__ == "__main__":
     main()

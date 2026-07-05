@@ -10,20 +10,20 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from power_web_os.application.live_radar_extraction_contract import (
+from power_web_os.application.radar.candidate_discovery.extraction.contract import (
     qualification_contract_issues_from_extraction_results,
 )
 from power_web_os.application.radar.candidate_discovery.retrieval.definition import (
     build_live_mini_radar_definition,
     build_live_mini_radar_search_plan,
 )
-from power_web_os.application.live_radar_normalization import (
+from power_web_os.application.radar.candidate_discovery.diagnostics.normalization import (
     _dedupe_sources,
     _rank_candidates,
     normalize_live_candidate,
     validate_live_radar_qualification_contract,
 )
-from power_web_os.application.live_radar_pipeline_support import (
+from power_web_os.application.radar.candidate_discovery.diagnostics.pipeline_support import (
     candidate_rejected as _candidate_rejected,
     rejected_candidate_payload as _rejected_candidate_payload,
     trace_pipeline_step as _trace,

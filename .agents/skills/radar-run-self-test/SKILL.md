@@ -27,6 +27,10 @@ Before starting a full run:
    explicitly asked to run despite the failure. Report the blocking checks.
 5. Never print `.env` or secrets. Only report secret presence/missing from
    redacted runtime config.
+6. For local OpenRouter live probes and runs, treat repository `.env` as the
+   credential source of truth. Do not rely on an inherited
+   `OPENROUTER_API_KEY` process variable; the runtime loader should read
+   `.env` and let it override stale process credentials.
 
 ## Preferred Run Path
 
@@ -93,4 +97,6 @@ The final answer must include:
   have queued a run; inspect run state first.
 - Do not treat a long live run as the first validation step. Use preflight,
   targeted probes, and recorded tests before full runs.
+- If OpenRouter returns `401` or `User not found`, first verify the effective
+  runtime is using `.env`, not a stale inherited process variable.
 - Never leak OpenRouter, DaData, Redis, database, or bearer credentials.

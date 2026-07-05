@@ -8311,7 +8311,7 @@ Principles:
 
 ### Slice 0.7.6.4.17.3: Candidate extraction and diagnostics package migration
 
-- Status: Ready
+- Status: Done
 - Goal: Move extraction contract, extraction diagnostics, normalization, collection utilities, pipeline support, and source-risk helpers into candidate-discovery extraction/diagnostics/source packages.
 - User value: Provider output repair, evidence normalization, diagnostics, and source-risk handling become discoverable package-owned responsibilities before product fallback work changes them.
 - Problem statement: `live_radar_extraction_contract.py`, `live_radar_extraction_diagnostics.py`, `live_radar_normalization.py`, `live_radar_pipeline_support.py`, `live_radar_collection_utils.py`, and `live_radar_source_risk.py` still form a root-level diagnostics/extraction cluster. These are exactly the files likely to be touched by post-extraction fallback work, so they should move first.
@@ -8352,7 +8352,7 @@ Principles:
 
 ### Slice 0.7.6.4.18: Signal monitoring package migration
 
-- Status: Backlog
+- Status: Ready
 - Goal: Move root-level signal monitoring contracts, executor, and source strategy into `radar/signal_monitoring` package-owned modules before serious signal-monitoring development continues.
 - User value: Signal monitoring becomes a first-class Radar pipeline with clear package ownership instead of a root-level application add-on.
 - Problem statement: `signal_monitoring_contracts.py`, `signal_monitoring_executor.py`, and `signal_monitoring_source_strategy.py` still own real behavior in the root application namespace while `radar/signal_monitoring` is mostly a skeleton. That contradicts the pipeline split architecture and will confuse future monitoring work.
@@ -8389,6 +8389,125 @@ Principles:
   - Architecture tests prevent new root-level signal-monitoring behavior modules.
 - Risks:
   - Signal monitoring can accidentally start importing candidate-discovery internals. Mitigate with import-direction tests and shared contracts only.
+
+### Slice 0.7.6.4.18.1: Candidate discovery and signal monitoring runtime split
+
+- Status: Backlog
+- Goal: Make candidate discovery and signal monitoring separate runtime products: candidate discovery stops owning inline signal search as the normal execution path, and signal monitoring owns signal execution semantics, budgets, and evaluation.
+- User value: Radar users and developers can run candidate discovery to build/review a candidate universe, then run signal monitoring separately on accepted or review-allowed candidates without confusing discovery budget exhaustion with signal quality.
+- Problem statement: The architecture says Radar is a family of pipelines, but candidate-discovery execution still plans and can run `signal_search` tasks inline. That legacy path makes live smoke diagnostics look like one monolithic Radar run and can project unsearched signals as if candidate discovery had evaluated them.
+- Scope:
+  - Introduce an explicit candidate-discovery execution mode that does not execute signal monitoring as the normal product path.
+  - Keep any inline `signal_search` behavior only as a documented compatibility/test path while migration completes.
+  - Move signal status projection for candidate discovery to honest handoff states such as `not_searched_pending_signal_monitoring` or `not_searched_policy_limited`, never `not_observed` unless a signal task actually ran.
+  - Add guardrails that candidate-discovery budgets do not own signal-monitoring budgets.
+  - Update AS IS docs to describe candidate discovery output as a handoff snapshot for signal monitoring.
+- Out of scope:
+  - No live signal-monitoring provider implementation.
+  - No scheduler or recurring job yet.
+  - No candidate-discovery quality tuning.
+  - No deletion of compatibility imports until the closure slice.
+- Implementation notes:
+  - Run after `0.7.6.4.18` package migration so signal-monitoring code has a package-owned home.
+  - Preserve existing candidate-discovery candidate/source/checkpoint behavior.
+  - Treat the live-smoke finding where S2/S3 became `searched/not_observed` after pre-signal stop as a regression test for this slice.
+  - Candidate discovery may still include intent signal definitions in the Radar definition, but it should not evaluate them as monitoring results.
+- Tests:
+  - Candidate-discovery regression proving pre-signal stop marks all unexecuted signals as `not_searched_*`.
+  - Architecture test proving candidate-discovery runtime does not import signal-monitoring implementation except through explicit handoff contracts.
+  - Existing live ICP/adaptive/API tests for candidate-discovery dossier shape.
+  - Signal-monitoring recorded tests to prove the separate pipeline still runs.
+- Docs:
+  - Update `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` for candidate-discovery handoff semantics.
+  - Update `docs/radar/pipelines/README.md` with the product/runtime split.
+  - Update Developer Guide runbook: candidate discovery run vs signal monitoring run.
+- Demo impact:
+  - Demo UI/copy should stop implying the candidate-discovery live run has completed recurring signal monitoring when no signal-monitoring run was launched.
+- Acceptance criteria:
+  - Candidate discovery can complete with candidate/source/checkpoint output without executing signal monitoring.
+  - Inline signal-search compatibility, if retained, is explicitly marked non-normal and tested separately.
+  - Unexecuted signals are never projected as `not_observed`.
+  - Candidate-discovery and signal-monitoring budget settings are visibly separate in runtime config/reporting.
+- Risks:
+  - Existing tests expect inline signal search in candidate discovery. Migrate those tests either to compatibility assertions or signal-monitoring tests rather than preserving the mixed product model.
+
+### Slice 0.7.6.4.18.2: Signal monitoring live runtime and API wiring
+
+- Status: Backlog
+- Goal: Add the first bounded live/scheduled signal-monitoring runtime over accepted candidate-discovery snapshots with independent signal budgets, provider calls, persistence/API surfaces, and no candidate-discovery budget coupling.
+- User value: A user can monitor intent changes for known candidates after discovery, with its own cadence, budget, and report, instead of rerunning full candidate discovery to refresh signals.
+- Problem statement: Signal monitoring currently has contracts, source strategy, budgets, model profile isolation, and a recorded demo loop, but no first-class live/API/job runtime equivalent to candidate discovery. Therefore the product cannot yet launch or evaluate signal monitoring independently.
+- Scope:
+  - Build a signal-monitoring application service under `radar/signal_monitoring`.
+  - Accept a candidate-discovery snapshot or persisted candidate set as input.
+  - Execute bounded signal tasks with signal-monitoring budgets and provider-attempt records.
+  - Persist/API expose a signal-monitoring run separately from candidate-discovery runs, or add an explicit pipeline discriminator if reusing generic run tables.
+  - Add live provider probe/smoke for one small monitoring run after recorded tests are green.
+- Out of scope:
+  - No broad benchmark or quality claim.
+  - No automatic recurring scheduler beyond the minimal job/API wiring needed for a manual run.
+  - No candidate universe expansion.
+  - No candidate-discovery scoring change.
+- Implementation notes:
+  - Reuse shared provider-level external-call contracts only where genuinely shared; keep signal task budgets signal-owned.
+  - The input contract should not depend on candidate-discovery internals beyond product-safe candidate/source snapshot records.
+  - Model profile should come from `signal_monitoring_default`, not candidate-discovery role settings.
+- Tests:
+  - Recorded signal-monitoring tests for observed, searched-negative, not-searched, budget-limited, and review-needed states.
+  - API/job smoke for starting and reading a signal-monitoring run.
+  - Runtime config tests proving signal model profile and signal budgets are used.
+  - One bounded live-provider probe only after recorded/API gates pass.
+- Docs:
+  - Update signal-monitoring AS IS docs.
+  - Update Developer Guide commands for manual signal-monitoring run.
+  - Update API/user docs if a new endpoint or pipeline discriminator is exposed.
+- Demo impact:
+  - Demo should show signal-monitoring output as a separate run/report over known candidates, not embedded as a completed part of candidate discovery.
+- Acceptance criteria:
+  - Signal monitoring can be launched independently from candidate discovery.
+  - It has independent task/external-call budget reporting.
+  - It stores or returns a separate signal-monitoring outcome/report.
+  - Candidate discovery does not need to run again to monitor signals for existing candidates.
+- Risks:
+  - Persistence/API may be tempted to reuse candidate-discovery fields ambiguously. Require explicit pipeline id/type in persisted/API surfaces.
+
+### Slice 0.7.6.4.18.3: Radar pipeline split validation and UI contract
+
+- Status: Backlog
+- Goal: Validate and document that candidate discovery and signal monitoring are launched, budgeted, evaluated, persisted, and displayed as two separate Radar pipelines.
+- User value: The product and codebase make it obvious which pipeline found candidates and which pipeline monitored signals, so users can trust budget/status explanations.
+- Problem statement: Even after runtime separation, tests/docs/UI can drift back to a monolithic mental model unless there is a dedicated validation and contract slice.
+- Scope:
+  - Add end-to-end recorded/fake tests that run candidate discovery first, then signal monitoring against its output.
+  - Verify separate budget summaries, statuses, timestamps, and report/dossier surfaces.
+  - Update frontend contract/copy so discovery and monitoring controls/results are clearly distinct.
+  - Add architecture tests preventing new code from treating candidate discovery as the owner of recurring signal evaluation.
+- Out of scope:
+  - No provider tuning.
+  - No scoring model redesign.
+  - No broad live benchmark.
+- Implementation notes:
+  - This is the acceptance gate before returning to product feature work.
+  - Use recorded/fake first; live smoke is optional and bounded.
+  - Keep root namespace closure `0.7.6.4.19` after this so final filesystem cleanup happens after both pipelines are package-owned and validated.
+- Tests:
+  - Candidate-discovery recorded/fake run.
+  - Signal-monitoring recorded/fake run over candidate-discovery output.
+  - API/job smoke for both pipeline ids.
+  - Frontend contract test for separated controls and labels.
+  - Architecture/package tests and `python -m power_web_os.roadmap check`.
+- Docs:
+  - Update pipeline registry, AS IS docs, Developer Guide, and relevant user/demo docs.
+  - Record any remaining compatibility exceptions before root namespace closure.
+- Demo impact:
+  - Demo should show two separate artifacts/reports or clearly separated tabs: candidate discovery result and signal monitoring result.
+- Acceptance criteria:
+  - A developer can run candidate discovery and signal monitoring separately from documented commands.
+  - API/UI/report surfaces identify the pipeline id.
+  - Budgets and evaluation statuses are not mixed between the two.
+  - Roadmap can safely move to root namespace closure and then product work.
+- Risks:
+  - UI and API may lag backend separation. Mitigate with contract tests that fail on ambiguous labels or merged budget/status fields.
 
 ### Slice 0.7.6.4.19: Radar root namespace closure and compatibility sunset
 

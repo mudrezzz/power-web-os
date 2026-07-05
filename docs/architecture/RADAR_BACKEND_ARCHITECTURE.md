@@ -65,7 +65,7 @@ when behavior has already moved to `application/radar`.
 | `live_radar_definition_runtime.py` | Persisted definition runtime mapping | `radar/candidate_discovery/planning/definition_runtime.py` |
 | `live_radar_discovery_planning.py`, `live_radar_plan_acceptance.py`, `live_radar_planning_pipeline.py`, `live_radar_execution_plan.py`, `live_radar_retrieval_plan.py` | Planning, validation, acceptance, and executable plan projection | `radar/candidate_discovery/planning/` |
 | `live_radar_web_retrieval.py`, `live_radar_product_sources.py` | Provider-neutral retrieval/source material | `radar/candidate_discovery/retrieval/` |
-| `live_radar_extraction_contract.py`, `live_radar_extraction_diagnostics.py` | Extraction schema validation, repair, and diagnostics | `radar/candidate_discovery/extraction/` |
+| `live_radar_extraction_contract.py`, `live_radar_extraction_diagnostics.py` | Extraction schema validation, repair, and diagnostics | `radar/candidate_discovery/extraction/contract.py` and `diagnostics.py` |
 | `live_radar_source_cards.py`, `radar_source_obligations.py`, connector/capability helpers | Source capability, source-card, and obligation rules | `radar/shared/sources/` and `radar/candidate_discovery/sources/` |
 | `radar_source_providers.py`, registry lookup helpers, lookup term generators | Provider-neutral registry/source orchestration | `radar/candidate_discovery/sources/` |
 | `live_radar_entity_resolution.py`, `live_radar_universe.py`, `live_radar_retrieved_candidates.py`, `live_radar_candidate_refs.py`, `live_radar_cross_disambiguation.py`, `radar_upstream_disambiguation.py` | Candidate universe, entity resolution, retrieved candidate extraction, upstream/cross-source disambiguation | `radar/candidate_discovery/universe/` |
@@ -73,7 +73,7 @@ when behavior has already moved to `application/radar`.
 | `radar_search_expansion*.py`, `radar_work_scheduler*.py` | Search expansion, scheduler admission, and budget diagnostics | `radar/candidate_discovery/search_expansion/` |
 | `live_radar_external_budget*.py` | Provider-level external-call budget settings, decisions, counters, source-verification budget accounting, retry records, and reserve metadata | `radar/shared/budgets/` |
 | `live_radar_staged_execution.py`, `live_radar_staged_helpers.py`, `live_radar_staged_merge.py`, `live_radar_staged_support.py`, `live_radar_execution_budget.py`, `live_radar_useful_budget.py` | Candidate-discovery staged execution, task budgets, useful-result budgets, and phase helper logic | `radar/candidate_discovery/execution/` |
-| `live_radar_normalization.py`, `live_radar_collection_utils.py`, `live_radar_pipeline_support.py`, diagnostics helpers | Artifact shaping and product-safe projections | `radar/candidate_discovery/diagnostics/` or phase-owned projection modules |
+| `live_radar_normalization.py`, `live_radar_collection_utils.py`, `live_radar_pipeline_support.py`, diagnostics helpers | Candidate normalization, collection helpers, trace/event support, and product-safe projections | `radar/candidate_discovery/diagnostics/` |
 | `live_radar_service.py` | One live run application facade | `radar/candidate_discovery/service.py` after migration |
 
 ## TO BE Package Map
@@ -299,9 +299,23 @@ retrieved-source candidate extraction, entity resolution, and upstream/cross-
 source disambiguation. Execution phases may invoke these services, but they do
 not own the candidate-universe rules.
 
-Deferred modules, including `live_radar_pipeline_support.py`, extraction, and
-diagnostics helpers, remain legacy migration debt until their own slices move
-them. Moved root files are not examples for new backend work.
+As of slice `0.7.6.4.17.3`, candidate extraction and diagnostics behavior has
+moved:
+
+| Legacy module | Source of truth |
+|---|---|
+| `live_radar_extraction_contract.py` | `radar/candidate_discovery/extraction/contract.py` |
+| `live_radar_extraction_diagnostics.py` | `radar/candidate_discovery/extraction/diagnostics.py` |
+| `live_radar_normalization.py` | `radar/candidate_discovery/diagnostics/normalization.py` |
+| `live_radar_collection_utils.py` | `radar/candidate_discovery/diagnostics/collections.py` |
+| `live_radar_pipeline_support.py` | `radar/candidate_discovery/diagnostics/pipeline_support.py` |
+| `live_radar_source_risk.py` | `radar/candidate_discovery/sources/risk.py` |
+
+The extraction package owns provider payload validation, deterministic repair
+and extraction diagnostic states. The diagnostics package owns candidate
+normalization, collection helpers, and trace/event support used by product-safe
+artifact projection. The sources package owns source verification-risk helpers.
+Root files are compatibility shims and must not regain behavior.
 
 As of slice `0.7.6.4.14.1`, the flat namespace closure policy is explicit:
 `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md` is the reviewable debt
@@ -474,7 +488,7 @@ bounded slices:
 17. `0.7.6.4.17.2` moves candidate universe, retrieved-candidate extraction,
     entity resolution, candidate refs, and upstream/cross-source
     disambiguation into package-owned universe modules.
-18. `0.7.6.4.17.3` moves extraction, diagnostics, normalization,
+18. `0.7.6.4.17.3` moved extraction, diagnostics, normalization,
     collection/pipeline support, and source-risk helpers.
 19. `0.7.6.4.18` moves root-level signal-monitoring behavior into
     `radar/signal_monitoring`.

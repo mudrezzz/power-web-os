@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from power_web_os.application.radar.candidate_discovery.checkpoints import checkpoint_summary
-from power_web_os.application.live_radar_extraction_diagnostics import (
+from power_web_os.application.radar.candidate_discovery.extraction.diagnostics import (
     extraction_contract_state,
     extraction_repair_results,
     extraction_validation_event,

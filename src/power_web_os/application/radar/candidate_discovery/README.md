@@ -66,6 +66,12 @@ Current package-owned source-of-truth modules:
 - `universe/`: candidate identity, metadata merge, gap payloads, coverage
   helpers, entity resolution, retrieved-candidate extraction, final universe
   projection, and upstream/cross-source disambiguation.
+- `extraction/`: provider payload validation, deterministic extraction repair,
+  extraction validation states, and validation event projection.
+- `diagnostics/`: live artifact shaping, candidate normalization, collection
+  helpers, and trace/event support.
+- `sources/risk.py`: source verification-risk helpers used by evidence
+  projection.
 - `checkpoints/`: checkpoint models, deterministic policy, execution-state
   recording, and bounded recovery actions for candidate discovery.
 - `search_expansion/`: recall-first expansion target/variant planning,

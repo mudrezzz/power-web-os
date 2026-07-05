@@ -241,6 +241,14 @@ coverage metadata, final `WebSearchProviderResult`, and events.
 It does not own provider task execution, checkpoint decisions, or expansion
 target selection.
 
+Extraction validation and diagnostic-state rules live in
+`radar/candidate_discovery/extraction`. Candidate normalization, collection
+helpers, and product-safe pipeline trace/event helpers live in
+`radar/candidate_discovery/diagnostics`. Source verification-risk helpers live
+in `radar/candidate_discovery/sources/risk.py`. Execution services invoke these
+contracts but should not recreate extraction repair, normalization, or source
+risk policy inline.
+
 ### `TaskExecutionService`
 
 Owns provider-port task execution, task budget reservation, schema-invalid
@@ -341,6 +349,15 @@ decisions, `recording.py` owns checkpoint event/state recording, and
 `recovery.py` owns bounded adaptive action execution. Execution phases may call
 checkpoint recovery/recording and persist the resulting decisions, but they
 should not invent new checkpoint policy inline or import root checkpoint shims.
+
+### Change Extraction Or Diagnostics Behavior
+
+Extraction payload validation and deterministic repair belong in
+`radar/candidate_discovery/extraction`. Candidate normalization, collection
+helpers, trace/event support, and product-safe artifact helpers belong in
+`radar/candidate_discovery/diagnostics`. Source verification-risk helpers belong
+in `radar/candidate_discovery/sources/risk.py`. Do not import root
+`live_radar_*` shims from execution code.
 
 ## Documentation Rules
 

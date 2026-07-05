@@ -1148,6 +1148,12 @@ environment -> local `.env` -> explicit API/runtime overrides. This keeps the
 checked-in non-secret defaults reviewable while preserving local override
 compatibility.
 
+For local OpenRouter probes and live Radar runs, `OPENROUTER_API_KEY` in the
+repository `.env` is the credential source of truth. It intentionally overrides
+an inherited process variable so stale shell credentials do not mask the local
+project key. Do not print the key; use redacted runtime config or a bounded
+OpenRouter probe to verify it.
+
 Model routing is role-specific and config-backed. Candidate discovery and
 signal monitoring have separate model profile JSON files, so tuning one
 pipeline does not silently change the other. The current candidate-discovery

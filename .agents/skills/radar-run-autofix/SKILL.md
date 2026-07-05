@@ -45,6 +45,9 @@ Before the first run:
 5. Run static/offline preflight when available.
 6. Never print `.env`, secrets, request headers, bearer tokens, provider API
    keys, or raw hidden reasoning fields.
+7. For local OpenRouter live probes and runs, use repository `.env` as the
+   credential source of truth. Do not trust an inherited `OPENROUTER_API_KEY`
+   process variable when diagnosing provider auth failures.
 
 ## Run And Diagnose
 
@@ -89,6 +92,8 @@ current architecture, for example:
 - source capability validation not wired into one existing path;
 - malformed fixture or test gap;
 - docs missing for already implemented behavior.
+- stale inherited provider credentials when `.env` contains the intended local
+  key and the runtime loader should prefer `.env`;
 
 For small defects:
 

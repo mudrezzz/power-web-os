@@ -15,7 +15,9 @@ LEGACY_MODULE_TARGETS: dict[str, str] = {
     "power_web_os.application.live_radar_checkpoint_actions": "power_web_os.application.radar.candidate_discovery.checkpoints.recovery",
     "power_web_os.application.live_radar_checkpoint_execution": "power_web_os.application.radar.candidate_discovery.checkpoints.recording",
     "power_web_os.application.live_radar_checkpoints": "power_web_os.application.radar.candidate_discovery.checkpoints",
-    "power_web_os.application.live_radar_collection_utils": "power_web_os.application.radar.candidate_discovery.diagnostics",
+    "power_web_os.application.live_radar_collection_utils": (
+        "power_web_os.application.radar.candidate_discovery.diagnostics.collections"
+    ),
     "power_web_os.application.live_radar_contracts": "power_web_os.application.radar.candidate_discovery.contracts",
     "power_web_os.application.live_radar_cross_disambiguation": (
         "power_web_os.application.radar.candidate_discovery.universe.cross_source_disambiguation"
@@ -42,10 +44,18 @@ LEGACY_MODULE_TARGETS: dict[str, str] = {
     "power_web_os.application.live_radar_external_budget_settings": (
         "power_web_os.application.radar.shared.budgets.external_settings"
     ),
-    "power_web_os.application.live_radar_extraction_contract": "power_web_os.application.radar.candidate_discovery.extraction",
-    "power_web_os.application.live_radar_extraction_diagnostics": "power_web_os.application.radar.candidate_discovery.extraction",
-    "power_web_os.application.live_radar_normalization": "power_web_os.application.radar.candidate_discovery.diagnostics",
-    "power_web_os.application.live_radar_pipeline_support": "power_web_os.application.radar.candidate_discovery.diagnostics",
+    "power_web_os.application.live_radar_extraction_contract": (
+        "power_web_os.application.radar.candidate_discovery.extraction.contract"
+    ),
+    "power_web_os.application.live_radar_extraction_diagnostics": (
+        "power_web_os.application.radar.candidate_discovery.extraction.diagnostics"
+    ),
+    "power_web_os.application.live_radar_normalization": (
+        "power_web_os.application.radar.candidate_discovery.diagnostics.normalization"
+    ),
+    "power_web_os.application.live_radar_pipeline_support": (
+        "power_web_os.application.radar.candidate_discovery.diagnostics.pipeline_support"
+    ),
     "power_web_os.application.live_radar_plan_acceptance": "power_web_os.application.radar.candidate_discovery.planning",
     "power_web_os.application.live_radar_planning_pipeline": "power_web_os.application.radar.candidate_discovery.planning",
     "power_web_os.application.live_radar_product_sources": "power_web_os.application.radar.candidate_discovery.retrieval",
@@ -61,7 +71,9 @@ LEGACY_MODULE_TARGETS: dict[str, str] = {
     ),
     "power_web_os.application.live_radar_service": "power_web_os.application.radar.candidate_discovery.service",
     "power_web_os.application.live_radar_source_cards": "power_web_os.application.radar.shared.source_cards",
-    "power_web_os.application.live_radar_source_risk": "power_web_os.application.radar.candidate_discovery.sources",
+    "power_web_os.application.live_radar_source_risk": (
+        "power_web_os.application.radar.candidate_discovery.sources.risk"
+    ),
     "power_web_os.application.live_radar_staged_execution": "power_web_os.application.radar.candidate_discovery.execution",
     "power_web_os.application.live_radar_staged_helpers": "power_web_os.application.radar.candidate_discovery.execution",
     "power_web_os.application.live_radar_staged_merge": "power_web_os.application.radar.candidate_discovery.execution",
@@ -108,6 +120,7 @@ for module_name in [
     "power_web_os.application.live_radar_checkpoint_execution",
     "power_web_os.application.live_radar_checkpoints",
     "power_web_os.application.live_radar_candidate_refs",
+    "power_web_os.application.live_radar_collection_utils",
     "power_web_os.application.live_radar_contracts",
     "power_web_os.application.live_radar_cross_disambiguation",
     "power_web_os.application.live_radar_definition",
@@ -119,7 +132,11 @@ for module_name in [
     "power_web_os.application.live_radar_external_budget_context",
     "power_web_os.application.live_radar_external_budget_reservations",
     "power_web_os.application.live_radar_external_budget_settings",
+    "power_web_os.application.live_radar_extraction_contract",
+    "power_web_os.application.live_radar_extraction_diagnostics",
     "power_web_os.application.live_radar_entity_resolution",
+    "power_web_os.application.live_radar_normalization",
+    "power_web_os.application.live_radar_pipeline_support",
     "power_web_os.application.live_radar_plan_acceptance",
     "power_web_os.application.live_radar_planning_pipeline",
     "power_web_os.application.live_radar_product_sources",
@@ -129,6 +146,7 @@ for module_name in [
     "power_web_os.application.live_radar_search_expansion_payloads",
     "power_web_os.application.live_radar_service",
     "power_web_os.application.live_radar_source_cards",
+    "power_web_os.application.live_radar_source_risk",
     "power_web_os.application.live_radar_staged_execution",
     "power_web_os.application.live_radar_staged_helpers",
     "power_web_os.application.live_radar_staged_merge",
