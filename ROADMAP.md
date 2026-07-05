@@ -8195,7 +8195,7 @@ Principles:
 
 ### Slice 0.7.6.4.17: Radar shared budget contracts assessment and extraction
 
-- Status: Ready
+- Status: Done
 - Goal: Decide and implement the minimal shared budget contract only if candidate discovery and signal monitoring both need the same budget semantics.
 - User value: Budget behavior stays consistent where it is genuinely shared while avoiding a premature shared abstraction that hides pipeline-specific rules.
 - Problem statement: Candidate discovery now has service-owned budget metadata merging, while signal monitoring has isolated budgets. Some budget records may belong in `radar/shared/budgets`, but moving them too early would couple pipelines that intentionally have different cadence and policy.
@@ -8231,7 +8231,7 @@ Principles:
 
 ### Slice 0.7.6.4.17.1: Candidate discovery retrieval and definition package migration
 
-- Status: Backlog
+- Status: Ready
 - Goal: Move remaining root-level candidate-discovery definition and retrieval primitives into package-owned `radar/shared` and `radar/candidate_discovery/retrieval` modules before product work resumes.
 - User value: Developers no longer have to start from root-level definition/retrieval files to understand how a live Radar definition becomes provider-neutral retrieval work.
 - Problem statement: `live_radar_definition.py` and `live_radar_web_retrieval.py` still own real behavior in the flat application namespace even though planning/retrieval-plan modules have moved. That leaves the new package tree incomplete and keeps root imports alive in workflows, preflight, and demos.

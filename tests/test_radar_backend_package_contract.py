@@ -8,6 +8,12 @@ from pathlib import Path
 NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar",
     "power_web_os.application.radar.shared",
+    "power_web_os.application.radar.shared.budgets",
+    "power_web_os.application.radar.shared.budgets.external_budget",
+    "power_web_os.application.radar.shared.budgets.external_context",
+    "power_web_os.application.radar.shared.budgets.external_models",
+    "power_web_os.application.radar.shared.budgets.external_reservations",
+    "power_web_os.application.radar.shared.budgets.external_settings",
     "power_web_os.application.radar.candidate_discovery",
     "power_web_os.application.radar.candidate_discovery.planning",
     "power_web_os.application.radar.candidate_discovery.retrieval",
@@ -58,8 +64,10 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.execution.service_contracts",
     "power_web_os.application.radar.candidate_discovery.execution.signals",
     "power_web_os.application.radar.candidate_discovery.execution.state",
+    "power_web_os.application.radar.candidate_discovery.execution.task_budget",
     "power_web_os.application.radar.candidate_discovery.execution.task_runner",
     "power_web_os.application.radar.candidate_discovery.execution.task_runner_payloads",
+    "power_web_os.application.radar.candidate_discovery.execution.useful_budget",
     "power_web_os.application.radar.candidate_discovery.service",
     "power_web_os.application.radar.candidate_discovery.service_budget",
     "power_web_os.application.radar.candidate_discovery.service_context",
@@ -76,7 +84,12 @@ LEGACY_KEY_MODULES = [
     "power_web_os.application.live_radar_source_cards",
     "power_web_os.application.live_radar_definition_runtime",
     "power_web_os.application.live_radar_discovery_planning",
+    "power_web_os.application.live_radar_execution_budget",
     "power_web_os.application.live_radar_execution_plan",
+    "power_web_os.application.live_radar_external_budget",
+    "power_web_os.application.live_radar_external_budget_context",
+    "power_web_os.application.live_radar_external_budget_reservations",
+    "power_web_os.application.live_radar_external_budget_settings",
     "power_web_os.application.live_radar_plan_acceptance",
     "power_web_os.application.live_radar_planning_pipeline",
     "power_web_os.application.live_radar_product_sources",
@@ -85,6 +98,7 @@ LEGACY_KEY_MODULES = [
     "power_web_os.application.live_radar_search_expansion_payloads",
     "power_web_os.application.live_radar_service",
     "power_web_os.application.live_radar_staged_execution",
+    "power_web_os.application.live_radar_useful_budget",
     "power_web_os.application.radar_search_expansion",
     "power_web_os.application.radar_search_expansion_models",
     "power_web_os.application.radar_search_expansion_scheduler",
@@ -102,7 +116,12 @@ MOVED_LEGACY_SHIMS = [
     "live_radar_source_cards.py",
     "live_radar_definition_runtime.py",
     "live_radar_discovery_planning.py",
+    "live_radar_execution_budget.py",
     "live_radar_execution_plan.py",
+    "live_radar_external_budget.py",
+    "live_radar_external_budget_context.py",
+    "live_radar_external_budget_reservations.py",
+    "live_radar_external_budget_settings.py",
     "live_radar_plan_acceptance.py",
     "live_radar_planning_pipeline.py",
     "live_radar_product_sources.py",
@@ -114,6 +133,7 @@ MOVED_LEGACY_SHIMS = [
     "live_radar_staged_helpers.py",
     "live_radar_staged_merge.py",
     "live_radar_staged_support.py",
+    "live_radar_useful_budget.py",
     "radar_search_expansion.py",
     "radar_search_expansion_models.py",
     "radar_search_expansion_scheduler.py",
@@ -160,6 +180,24 @@ def test_candidate_discovery_compatibility_map_is_declarative() -> None:
     assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_source_cards"] == (
         "power_web_os.application.radar.shared.source_cards"
     )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_execution_budget"] == (
+        "power_web_os.application.radar.candidate_discovery.execution.task_budget"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_external_budget"] == (
+        "power_web_os.application.radar.shared.budgets"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_external_budget_context"] == (
+        "power_web_os.application.radar.shared.budgets.external_context"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_external_budget_reservations"] == (
+        "power_web_os.application.radar.shared.budgets.external_reservations"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_external_budget_settings"] == (
+        "power_web_os.application.radar.shared.budgets.external_settings"
+    )
+    assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_useful_budget"] == (
+        "power_web_os.application.radar.candidate_discovery.execution.useful_budget"
+    )
     assert module.LEGACY_MODULE_TARGETS["power_web_os.application.live_radar_search_expansion_execution"] == (
         "power_web_os.application.radar.candidate_discovery.search_expansion.targeted_execution"
     )
@@ -176,10 +214,16 @@ def test_candidate_discovery_compatibility_map_is_declarative() -> None:
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_checkpoint_execution"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_checkpoints"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_contracts"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_execution_budget"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_external_budget"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_external_budget_context"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_external_budget_reservations"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_external_budget_settings"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_search_expansion_execution"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_search_expansion_payloads"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_service"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_staged_execution"] == "moved"
+    assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.live_radar_useful_budget"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.radar_search_expansion"] == "moved"
     assert module.LEGACY_MODULE_MIGRATION_STATUS["power_web_os.application.radar_work_scheduler"] == "moved"
     assert "power_web_os.application.live_radar_service" not in module.LEGACY_HOTSPOTS
@@ -206,6 +250,25 @@ def test_live_radar_service_old_and_new_import_paths_are_compatible() -> None:
     package_owned = importlib.import_module("power_web_os.application.radar.candidate_discovery.service")
 
     assert legacy.LiveRadarRunService is package_owned.LiveRadarRunService
+
+
+def test_budget_old_and_new_import_paths_are_compatible() -> None:
+    legacy_external = importlib.import_module("power_web_os.application.live_radar_external_budget")
+    shared_external = importlib.import_module("power_web_os.application.radar.shared.budgets")
+    legacy_context = importlib.import_module("power_web_os.application.live_radar_external_budget_context")
+    shared_context = importlib.import_module("power_web_os.application.radar.shared.budgets.external_context")
+    legacy_task = importlib.import_module("power_web_os.application.live_radar_execution_budget")
+    package_task = importlib.import_module("power_web_os.application.radar.candidate_discovery.execution.task_budget")
+    legacy_useful = importlib.import_module("power_web_os.application.live_radar_useful_budget")
+    package_useful = importlib.import_module("power_web_os.application.radar.candidate_discovery.execution.useful_budget")
+
+    assert legacy_external.RadarExternalCallBudget is shared_external.RadarExternalCallBudget
+    assert legacy_external.RadarExternalCallBudgetSettings is shared_external.RadarExternalCallBudgetSettings
+    assert legacy_context.reserve_external_call is shared_context.reserve_external_call
+    assert legacy_task.RadarExecutionBudget is package_task.RadarExecutionBudget
+    assert legacy_task.budget_settings_from_context is package_task.budget_settings_from_context
+    assert legacy_useful.UsefulResultBudget is package_useful.UsefulResultBudget
+    assert legacy_useful.run_task_with_useful_retries is package_useful.run_task_with_useful_retries
 
 
 def test_live_radar_run_service_does_not_expose_module_level_helpers() -> None:

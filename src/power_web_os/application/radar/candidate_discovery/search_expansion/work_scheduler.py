@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from power_web_os.application.radar.candidate_discovery.contracts import RadarExecutionTask
-from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget, RadarExternalCallBudgetDecision
+from power_web_os.application.radar.shared.budgets import RadarExternalCallBudget, RadarExternalCallBudgetDecision
 from power_web_os.application.radar.candidate_discovery.search_expansion.scheduler import RadarScheduledExpansionVariant
 from power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler_metadata import count_by_lane, guarantee_failures, lane_summary
 

@@ -29,5 +29,9 @@ same concept. If only candidate discovery needs it, keep it under
 
 Current source-of-truth modules:
 
+- `budgets/`: provider-level external-call budget settings, decisions,
+  counters, exhaustion records, retry records, source-verification budget
+  accounting, context-local reservation helpers, and recall-expansion
+  reservation metadata.
 - `source_cards.py`: planner-facing source cards and source capability
   validation.

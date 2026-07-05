@@ -9,7 +9,7 @@ from power_web_os.application.radar.candidate_discovery.checkpoints.recovery imp
 from power_web_os.application.radar.candidate_discovery.checkpoints.recording import record_execution_checkpoint
 from power_web_os.application.live_radar_cross_disambiguation import execute_cross_source_disambiguation
 from power_web_os.application.live_radar_retrieved_candidates import candidates_from_retrieved_sources
-from power_web_os.application.live_radar_useful_budget import run_task_with_useful_retries
+from power_web_os.application.radar.candidate_discovery.execution.useful_budget import run_task_with_useful_retries
 from power_web_os.application.live_radar_universe import candidate_name_set
 from power_web_os.application.radar.candidate_discovery.contracts import (
     LiveRadarPipelineEvent,

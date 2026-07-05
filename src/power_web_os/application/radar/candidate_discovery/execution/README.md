@@ -16,6 +16,10 @@ Read it before changing this package.
 - `options.py`: `CandidateDiscoveryExecutionOptions`, the named staged
   execution option contract used by the compatibility wrapper and live service.
 - `state.py`: `CandidateDiscoveryExecutionState`, the mutable cross-phase state.
+- `task_budget.py`: candidate-discovery task budget settings, semantic task
+  reserve admission, counters, warnings, and exhaustion event payloads.
+- `useful_budget.py`: useful-result retry budget, result assessment, and retry
+  task shaping for discovery/coverage tasks.
 - `orchestrator.py`: public `run_staged_radar_execution` wrapper and
   `CandidateDiscoveryOrchestrator` phase order only.
 - `discovery.py`: `DiscoveryPhaseExecutor` for discovery tasks,
@@ -74,6 +78,8 @@ Every public class must have a docstring that states:
 ## Allowed imports
 
 - `power_web_os.application.radar.shared`.
+- `power_web_os.application.radar.shared.budgets` for provider-level
+  external-call budget accounting.
 - Candidate-discovery phase packages.
 - Provider ports and provider-neutral task/result records.
 

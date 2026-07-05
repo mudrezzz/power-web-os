@@ -19,6 +19,11 @@ pipelines:
 - candidate discovery phase packages;
 - reserved packages for signal monitoring and Power Web discovery.
 
+Provider-level external-call budget contracts live in `shared/budgets`.
+Candidate-discovery task budgets and useful-result retry budgets live in
+`candidate_discovery/execution` because they depend on candidate-discovery task
+stages and result semantics.
+
 Root-level Radar-prefixed files are transition debt, not package ownership.
 Some `live_radar_*` files are thin moved shims, while deferred
 `live_radar_*`, `radar_search_*`, and `signal_monitoring_*` files remain

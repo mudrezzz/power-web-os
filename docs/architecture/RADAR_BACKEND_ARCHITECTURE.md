@@ -69,8 +69,9 @@ when behavior has already moved to `application/radar`.
 | `radar_source_providers.py`, registry lookup helpers, lookup term generators | Provider-neutral registry/source orchestration | `radar/candidate_discovery/sources/` |
 | `live_radar_entity_resolution.py`, `live_radar_universe.py`, `live_radar_retrieved_candidates.py`, `live_radar_candidate_refs.py`, `radar_upstream_disambiguation.py` | Candidate universe, entity resolution, retrieved candidate extraction | `radar/candidate_discovery/universe/` |
 | `live_radar_checkpoints.py`, `live_radar_checkpoint_actions.py`, `live_radar_checkpoint_execution.py` | Adaptive checkpoint decisions and action execution | `radar/candidate_discovery/checkpoints/` |
-| `radar_search_expansion*.py`, `radar_work_scheduler*.py`, external budget helpers | Search expansion, scheduler admission, and budget diagnostics | `radar/candidate_discovery/search_expansion/` and `radar/shared/budgets/` |
-| `live_radar_staged_execution.py`, `live_radar_staged_helpers.py`, `live_radar_staged_merge.py`, `live_radar_staged_support.py`, `live_radar_cross_disambiguation.py`, `live_radar_useful_budget.py` | Candidate-discovery staged execution and phase helper logic | `radar/candidate_discovery/execution/` |
+| `radar_search_expansion*.py`, `radar_work_scheduler*.py` | Search expansion, scheduler admission, and budget diagnostics | `radar/candidate_discovery/search_expansion/` |
+| `live_radar_external_budget*.py` | Provider-level external-call budget settings, decisions, counters, source-verification budget accounting, retry records, and reserve metadata | `radar/shared/budgets/` |
+| `live_radar_staged_execution.py`, `live_radar_staged_helpers.py`, `live_radar_staged_merge.py`, `live_radar_staged_support.py`, `live_radar_cross_disambiguation.py`, `live_radar_execution_budget.py`, `live_radar_useful_budget.py` | Candidate-discovery staged execution, task budgets, useful-result budgets, and phase helper logic | `radar/candidate_discovery/execution/` |
 | `live_radar_normalization.py`, `live_radar_collection_utils.py`, `live_radar_pipeline_support.py`, diagnostics helpers | Artifact shaping and product-safe projections | `radar/candidate_discovery/diagnostics/` or phase-owned projection modules |
 | `live_radar_service.py` | One live run application facade | `radar/candidate_discovery/service.py` after migration |
 
@@ -285,11 +286,21 @@ Owns contracts and utilities that are genuinely common across Radar pipelines:
 
 - source capability cards and source eligibility primitives;
 - model/runtime profile summaries;
-- budget records that are not candidate-discovery-specific;
+- provider-level external-call budget records under `shared/budgets`, including
+  settings, decisions, counters, exhaustion records, source-verification budget
+  accounting, retry records, and reserve metadata;
 - product-safe event/issue shapes reused by multiple pipelines.
 
 It must not import candidate discovery, signal monitoring, or Power Web
 discovery packages.
+
+Shared budget ownership is intentionally narrow. Candidate-discovery task
+budgets and useful-result retry budgets stay in
+`radar/candidate_discovery/execution` because they depend on
+`RadarExecutionTask`, candidate-discovery stages, semantic task reserves, and
+discovery/coverage usefulness thresholds. Signal monitoring keeps its own
+budget contract until the signal-monitoring package migration proves a shared
+provider-level budget is needed there.
 
 ### `radar/candidate_discovery`
 
@@ -423,8 +434,9 @@ bounded slices:
     `radar/candidate_discovery/checkpoints`.
 14. `0.7.6.4.16` moved search-expansion execution/payload/work-admission
     ownership into the candidate-discovery package.
-15. `0.7.6.4.17` assesses shared budget contracts and extracts only genuinely
-    shared budget records/services to `radar/shared/budgets`.
+15. `0.7.6.4.17` moved provider-level external-call budgets to
+    `radar/shared/budgets` and kept candidate-discovery task/useful budgets
+    pipeline-owned under `radar/candidate_discovery/execution`.
 16. `0.7.6.4.17.1` moves definition and retrieval primitives into package-owned
     shared/retrieval modules.
 17. `0.7.6.4.17.2` moves candidate universe, retrieved-candidate extraction,

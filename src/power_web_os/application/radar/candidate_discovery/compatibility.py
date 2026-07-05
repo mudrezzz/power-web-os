@@ -20,12 +20,20 @@ LEGACY_MODULE_TARGETS: dict[str, str] = {
     "power_web_os.application.live_radar_definition_runtime": "power_web_os.application.radar.candidate_discovery.planning",
     "power_web_os.application.live_radar_discovery_planning": "power_web_os.application.radar.candidate_discovery.planning",
     "power_web_os.application.live_radar_entity_resolution": "power_web_os.application.radar.candidate_discovery.universe",
-    "power_web_os.application.live_radar_execution_budget": "power_web_os.application.radar.shared",
+    "power_web_os.application.live_radar_execution_budget": (
+        "power_web_os.application.radar.candidate_discovery.execution.task_budget"
+    ),
     "power_web_os.application.live_radar_execution_plan": "power_web_os.application.radar.candidate_discovery.planning",
-    "power_web_os.application.live_radar_external_budget": "power_web_os.application.radar.shared",
-    "power_web_os.application.live_radar_external_budget_context": "power_web_os.application.radar.shared",
-    "power_web_os.application.live_radar_external_budget_reservations": "power_web_os.application.radar.shared",
-    "power_web_os.application.live_radar_external_budget_settings": "power_web_os.application.radar.shared",
+    "power_web_os.application.live_radar_external_budget": "power_web_os.application.radar.shared.budgets",
+    "power_web_os.application.live_radar_external_budget_context": (
+        "power_web_os.application.radar.shared.budgets.external_context"
+    ),
+    "power_web_os.application.live_radar_external_budget_reservations": (
+        "power_web_os.application.radar.shared.budgets.external_reservations"
+    ),
+    "power_web_os.application.live_radar_external_budget_settings": (
+        "power_web_os.application.radar.shared.budgets.external_settings"
+    ),
     "power_web_os.application.live_radar_extraction_contract": "power_web_os.application.radar.candidate_discovery.extraction",
     "power_web_os.application.live_radar_extraction_diagnostics": "power_web_os.application.radar.candidate_discovery.extraction",
     "power_web_os.application.live_radar_normalization": "power_web_os.application.radar.candidate_discovery.diagnostics",
@@ -49,7 +57,9 @@ LEGACY_MODULE_TARGETS: dict[str, str] = {
     "power_web_os.application.live_radar_staged_merge": "power_web_os.application.radar.candidate_discovery.execution",
     "power_web_os.application.live_radar_staged_support": "power_web_os.application.radar.candidate_discovery.execution",
     "power_web_os.application.live_radar_universe": "power_web_os.application.radar.candidate_discovery.universe",
-    "power_web_os.application.live_radar_useful_budget": "power_web_os.application.radar.candidate_discovery.execution",
+    "power_web_os.application.live_radar_useful_budget": (
+        "power_web_os.application.radar.candidate_discovery.execution.useful_budget"
+    ),
     "power_web_os.application.live_radar_web_retrieval": "power_web_os.application.radar.candidate_discovery.retrieval",
     "power_web_os.application.radar_search_expansion": (
         "power_web_os.application.radar.candidate_discovery.search_expansion.service"
@@ -85,7 +95,12 @@ for module_name in [
     "power_web_os.application.live_radar_contracts",
     "power_web_os.application.live_radar_definition_runtime",
     "power_web_os.application.live_radar_discovery_planning",
+    "power_web_os.application.live_radar_execution_budget",
     "power_web_os.application.live_radar_execution_plan",
+    "power_web_os.application.live_radar_external_budget",
+    "power_web_os.application.live_radar_external_budget_context",
+    "power_web_os.application.live_radar_external_budget_reservations",
+    "power_web_os.application.live_radar_external_budget_settings",
     "power_web_os.application.live_radar_plan_acceptance",
     "power_web_os.application.live_radar_planning_pipeline",
     "power_web_os.application.live_radar_product_sources",
@@ -98,6 +113,7 @@ for module_name in [
     "power_web_os.application.live_radar_staged_helpers",
     "power_web_os.application.live_radar_staged_merge",
     "power_web_os.application.live_radar_staged_support",
+    "power_web_os.application.live_radar_useful_budget",
     "power_web_os.application.radar_search_expansion",
     "power_web_os.application.radar_search_expansion_models",
     "power_web_os.application.radar_search_expansion_scheduler",

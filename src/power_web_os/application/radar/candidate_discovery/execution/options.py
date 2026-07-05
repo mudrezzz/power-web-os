@@ -5,13 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-from power_web_os.application.live_radar_execution_budget import (
+from power_web_os.application.radar.candidate_discovery.execution.task_budget import (
     RadarExecutionBudgetSettings,
     budget_settings_from_context,
 )
-from power_web_os.application.live_radar_external_budget import RadarExternalCallBudgetSettings
-from power_web_os.application.live_radar_external_budget_context import external_budget_settings_from_context
-from power_web_os.application.live_radar_useful_budget import UsefulResultBudget
+from power_web_os.application.radar.shared.budgets import RadarExternalCallBudgetSettings
+from power_web_os.application.radar.shared.budgets.external_context import external_budget_settings_from_context
+from power_web_os.application.radar.candidate_discovery.execution.useful_budget import UsefulResultBudget
 
 
 @dataclass(frozen=True, slots=True)

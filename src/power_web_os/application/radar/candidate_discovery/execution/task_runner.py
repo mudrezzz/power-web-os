@@ -13,8 +13,8 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     WebSearchProvider,
     WebSearchProviderResult,
 )
-from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
-from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
+from power_web_os.application.radar.candidate_discovery.execution.task_budget import RadarExecutionBudget
+from power_web_os.application.radar.shared.budgets import RadarExternalCallBudget
 from power_web_os.application.radar.candidate_discovery.planning.execution_plan import execution_task_to_search_plan, scoped_execution_task
 from power_web_os.application.live_radar_normalization import _dedupe_sources
 from power_web_os.application.radar.candidate_discovery.execution.merge import ExecutionResultMerger

@@ -11,8 +11,8 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarSourceEvidence,
     WebSearchProvider,
 )
-from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
-from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
+from power_web_os.application.radar.candidate_discovery.execution.task_budget import RadarExecutionBudget
+from power_web_os.application.radar.shared.budgets import RadarExternalCallBudget
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 
 

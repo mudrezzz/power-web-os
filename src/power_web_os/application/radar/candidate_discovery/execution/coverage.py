@@ -14,7 +14,7 @@ from power_web_os.application.live_radar_universe import (
     gap_observations,
     gap_payloads,
 )
-from power_web_os.application.live_radar_useful_budget import run_task_with_useful_retries
+from power_web_os.application.radar.candidate_discovery.execution.useful_budget import run_task_with_useful_retries
 from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarCoverageCheckRecord,
     RadarExecutionTask,

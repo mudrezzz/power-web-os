@@ -15,8 +15,8 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     WebSearchProvider,
 )
 from power_web_os.application.live_radar_definition import build_live_mini_radar_definition
-from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
-from power_web_os.application.live_radar_external_budget_context import (
+from power_web_os.application.radar.shared.budgets import RadarExternalCallBudget
+from power_web_os.application.radar.shared.budgets.external_context import (
     current_external_call_budget,
     external_budget_settings_from_context,
     external_call_budget_context,

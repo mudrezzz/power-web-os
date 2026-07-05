@@ -13,9 +13,9 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
 from power_web_os.application.radar.candidate_discovery.checkpoints.recovery import RadarCheckpointActionExecutor
 from power_web_os.application.radar.candidate_discovery.checkpoints import RadarExecutionCheckpointPolicy, RadarExecutionCheckpointService
 from power_web_os.application.live_radar_cross_disambiguation import execute_cross_source_disambiguation
-from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
-from power_web_os.application.live_radar_external_budget import RadarExternalCallBudget
-from power_web_os.application.live_radar_external_budget_context import (
+from power_web_os.application.radar.candidate_discovery.execution.task_budget import RadarExecutionBudget
+from power_web_os.application.radar.shared.budgets import RadarExternalCallBudget
+from power_web_os.application.radar.shared.budgets.external_context import (
     current_external_call_budget,
     external_call_budget_context,
 )

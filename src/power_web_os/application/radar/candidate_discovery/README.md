@@ -62,3 +62,7 @@ Current package-owned source-of-truth modules:
 - `search_expansion/`: recall-first expansion target/variant planning,
   selection, scheduling, targeted checkpoint expansion execution, and
   work-admission contracts.
+- `execution/task_budget.py`: candidate-discovery task budget settings,
+  semantic task reserve decisions, counters, warnings, and exhaustion events.
+- `execution/useful_budget.py`: useful-result retry budget and retry task
+  shaping for candidate-discovery discovery/coverage tasks.

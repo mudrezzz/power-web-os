@@ -7,7 +7,7 @@ from typing import Any
 from .models import RadarExecutionCheckpointInput
 from .policy import RadarExecutionCheckpointService
 from power_web_os.application.radar.candidate_discovery.contracts import LiveRadarPipelineEvent, RadarSourceEvidence
-from power_web_os.application.live_radar_execution_budget import RadarExecutionBudget
+from power_web_os.application.radar.candidate_discovery.execution.task_budget import RadarExecutionBudget
 
 
 def record_execution_checkpoint(

@@ -31,12 +31,12 @@ from power_web_os.application.radar.candidate_discovery.planning.discovery_plann
 )
 from power_web_os.application.radar.candidate_discovery.planning.plan_acceptance import RadarDiscoveryPlanAcceptanceService
 from power_web_os.application.radar.candidate_discovery.planning.execution_plan import compile_radar_execution_plan, execution_task_to_search_plan
-from power_web_os.application.live_radar_execution_budget import (
+from power_web_os.application.radar.candidate_discovery.execution.task_budget import (
     RadarExecutionBudget,
     RadarExecutionBudgetSettings,
     budget_key,
 )
-from power_web_os.application.live_radar_external_budget_context import reserve_openrouter_http_call
+from power_web_os.application.radar.shared.budgets.external_context import reserve_openrouter_http_call
 from power_web_os.application.live_radar_entity_resolution import RadarEntityResolutionService
 from power_web_os.application.live_radar_normalization import normalize_live_candidate
 from power_web_os.application.live_radar_extraction_contract import validate_and_repair_extraction_payload

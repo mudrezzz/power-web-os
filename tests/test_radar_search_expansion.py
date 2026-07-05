@@ -9,11 +9,11 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarSourceEvidence,
     WebSearchProviderResult,
 )
-from power_web_os.application.live_radar_external_budget import (
+from power_web_os.application.radar.shared.budgets import (
     RadarExternalCallBudget,
     RadarExternalCallBudgetSettings,
 )
-from power_web_os.application.live_radar_external_budget_context import (
+from power_web_os.application.radar.shared.budgets.external_context import (
     external_call_budget_context,
 )
 from power_web_os.application.radar.candidate_discovery.execution.orchestrator import run_staged_radar_execution

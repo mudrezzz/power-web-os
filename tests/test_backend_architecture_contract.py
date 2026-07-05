@@ -74,6 +74,7 @@ RADAR_APPLICATION_FANOUT_ALLOWLIST: set[Path] = set()
 RADAR_TARGET_PACKAGES = [
     RADAR_PACKAGE_ROOT,
     RADAR_PACKAGE_ROOT / "shared",
+    RADAR_PACKAGE_ROOT / "shared" / "budgets",
     RADAR_PACKAGE_ROOT / "candidate_discovery",
     RADAR_PACKAGE_ROOT / "candidate_discovery" / "planning",
     RADAR_PACKAGE_ROOT / "candidate_discovery" / "retrieval",
@@ -111,6 +112,30 @@ RADAR_EXECUTION_PUBLIC_FUNCTION_ALLOWLIST = {
         RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "orchestrator.py",
         "run_staged_radar_execution",
     ),
+    (
+        RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "task_budget.py",
+        "budget_key",
+    ),
+    (
+        RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "task_budget.py",
+        "budget_settings_from_context",
+    ),
+    (
+        RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "useful_budget.py",
+        "run_task_with_useful_retries",
+    ),
+    (
+        RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "useful_budget.py",
+        "useful_result_assessment",
+    ),
+    (
+        RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "useful_budget.py",
+        "useful_result_reason",
+    ),
+    (
+        RADAR_PACKAGE_ROOT / "candidate_discovery" / "execution" / "useful_budget.py",
+        "retry_task",
+    ),
 }
 
 RADAR_PHASE_EXECUTOR_CLASSES = {
@@ -145,8 +170,21 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
     "power_web_os.application.live_radar_discovery_planning": (
         "power_web_os.application.radar.candidate_discovery.planning.discovery_planning"
     ),
+    "power_web_os.application.live_radar_execution_budget": (
+        "power_web_os.application.radar.candidate_discovery.execution.task_budget"
+    ),
     "power_web_os.application.live_radar_execution_plan": (
         "power_web_os.application.radar.candidate_discovery.planning.execution_plan"
+    ),
+    "power_web_os.application.live_radar_external_budget": "power_web_os.application.radar.shared.budgets",
+    "power_web_os.application.live_radar_external_budget_context": (
+        "power_web_os.application.radar.shared.budgets.external_context"
+    ),
+    "power_web_os.application.live_radar_external_budget_reservations": (
+        "power_web_os.application.radar.shared.budgets.external_reservations"
+    ),
+    "power_web_os.application.live_radar_external_budget_settings": (
+        "power_web_os.application.radar.shared.budgets.external_settings"
     ),
     "power_web_os.application.live_radar_plan_acceptance": (
         "power_web_os.application.radar.candidate_discovery.planning.plan_acceptance"
@@ -179,6 +217,9 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
     ),
     "power_web_os.application.live_radar_staged_support": (
         "power_web_os.application.radar.candidate_discovery.execution.projection"
+    ),
+    "power_web_os.application.live_radar_useful_budget": (
+        "power_web_os.application.radar.candidate_discovery.execution.useful_budget"
     ),
     "power_web_os.application.radar_search_expansion": (
         "power_web_os.application.radar.candidate_discovery.search_expansion.service"
@@ -777,6 +818,25 @@ def test_radar_candidate_discovery_does_not_import_other_pipeline_packages() -> 
     for path in sorted(candidate_root.rglob("*.py")):
         imports = imported_modules(path)
         found = sorted(module for module in imports for prefix in forbidden if module.startswith(prefix))
+        if found:
+            violations[path.as_posix()] = found
+
+    assert violations == {}
+
+
+def test_radar_signal_monitoring_does_not_import_candidate_discovery_budget_modules() -> None:
+    forbidden = {
+        "power_web_os.application.radar.candidate_discovery.execution.task_budget",
+        "power_web_os.application.radar.candidate_discovery.execution.useful_budget",
+    }
+    paths = [
+        *sorted((BACKEND_ROOT / "application" / "radar" / "signal_monitoring").glob("*.py")),
+        *sorted((BACKEND_ROOT / "application").glob("signal_monitoring_*.py")),
+    ]
+    violations: dict[str, list[str]] = {}
+    for path in paths:
+        imports = imported_modules(path)
+        found = sorted(module for module in imports if module in forbidden)
         if found:
             violations[path.as_posix()] = found
 

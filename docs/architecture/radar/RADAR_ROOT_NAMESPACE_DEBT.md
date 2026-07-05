@@ -35,12 +35,12 @@ that have an owning migration slice.
 | `live_radar_definition_runtime.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.planning` | `compatibility_only` |
 | `live_radar_discovery_planning.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.planning` | `compatibility_only` |
 | `live_radar_entity_resolution.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.universe` | `0.7.6.4.17.2` |
-| `live_radar_execution_budget.py` | `deferred_behavior` | `power_web_os.application.radar.shared` | `0.7.6.4.17` |
+| `live_radar_execution_budget.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.execution.task_budget` | `compatibility_only` |
 | `live_radar_execution_plan.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.planning` | `compatibility_only` |
-| `live_radar_external_budget.py` | `deferred_behavior` | `power_web_os.application.radar.shared` | `0.7.6.4.17` |
-| `live_radar_external_budget_context.py` | `deferred_behavior` | `power_web_os.application.radar.shared` | `0.7.6.4.17` |
-| `live_radar_external_budget_reservations.py` | `deferred_behavior` | `power_web_os.application.radar.shared` | `0.7.6.4.17` |
-| `live_radar_external_budget_settings.py` | `deferred_behavior` | `power_web_os.application.radar.shared` | `0.7.6.4.17` |
+| `live_radar_external_budget.py` | `moved_shim` | `power_web_os.application.radar.shared.budgets` | `compatibility_only` |
+| `live_radar_external_budget_context.py` | `moved_shim` | `power_web_os.application.radar.shared.budgets.external_context` | `compatibility_only` |
+| `live_radar_external_budget_reservations.py` | `moved_shim` | `power_web_os.application.radar.shared.budgets.external_reservations` | `compatibility_only` |
+| `live_radar_external_budget_settings.py` | `moved_shim` | `power_web_os.application.radar.shared.budgets.external_settings` | `compatibility_only` |
 | `live_radar_extraction_contract.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.extraction` | `0.7.6.4.17.3` |
 | `live_radar_extraction_diagnostics.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.extraction` | `0.7.6.4.17.3` |
 | `live_radar_normalization.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.diagnostics` | `0.7.6.4.17.3` |
@@ -60,7 +60,7 @@ that have an owning migration slice.
 | `live_radar_staged_merge.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.execution` | `compatibility_only` |
 | `live_radar_staged_support.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.execution` | `compatibility_only` |
 | `live_radar_universe.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.universe` | `0.7.6.4.17.2` |
-| `live_radar_useful_budget.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.execution` | `0.7.6.4.17` |
+| `live_radar_useful_budget.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.execution.useful_budget` | `compatibility_only` |
 | `live_radar_web_retrieval.py` | `deferred_behavior` | `power_web_os.application.radar.candidate_discovery.retrieval` | `0.7.6.4.17.1` |
 | `radar_search_expansion.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.service` | `compatibility_only` |
 | `radar_search_expansion_models.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.models` | `compatibility_only` |
@@ -90,7 +90,9 @@ retrieval-plan, product-source, service, and staged-execution behavior.
 - `0.7.6.4.15`: checkpoint behavior moved to candidate-discovery checkpoints.
 - `0.7.6.4.16`: search-expansion and work-admission behavior moved to
   candidate-discovery search expansion.
-- `0.7.6.4.17`: decide whether budget contracts belong in `radar/shared`.
+- `0.7.6.4.17`: provider-level external-call budgets moved to
+  `radar/shared/budgets`; candidate-discovery task/useful budgets moved to
+  `radar/candidate_discovery/execution`.
 - `0.7.6.4.17.1`: move definition and retrieval primitives into shared and
   candidate-discovery retrieval packages.
 - `0.7.6.4.17.2`: move candidate universe, retrieved-candidate extraction,

@@ -125,6 +125,50 @@ and source policy decisions.
 Does not own provider ports, phase order, mutable execution state, budget
 counters, checkpoint decisions, or final artifact projection.
 
+### `RadarExecutionBudgetSettings`
+
+Owns candidate-discovery hard task limits and semantic task reserve limits for
+one staged run.
+
+Does not own provider-level external-call settings or signal-monitoring budget
+policy.
+
+### `RadarBudgetDecision`
+
+Owns candidate-discovery task admission state: accepted/rejected result,
+budget key, limit, current count, reason, message, reserve key, and semantic
+reserve flag.
+
+Does not own provider-call counters, checkpoint decisions, or final artifact
+projection.
+
+### `RadarExecutionBudget`
+
+Owns candidate-discovery task admission, semantic task reserve decisions,
+per-stage/per-subject counters, budget warnings, and exhaustion event payloads.
+It lives in `execution/task_budget.py` because its keys are derived from
+`RadarExecutionTask` stages and candidate-discovery candidate scope.
+
+Does not own provider-level external-call accounting, source-verification
+request accounting, retry records, or reserve metadata. Those live in
+`radar/shared/budgets`.
+
+### `SubjectTaskBudget`
+
+Owns compatibility construction of candidate-discovery task budgets from the
+old single subject limit.
+
+Does not own new task-budget policy, external budgets, or signal-monitoring
+budgets.
+
+### `UsefulResultBudget`
+
+Owns discovery/coverage useful-result thresholds and bounded retry task
+shaping for candidate-discovery provider results.
+
+Does not own hard task admission, external-call limits, checkpoint recovery, or
+signal-monitoring budgets.
+
 ### `CandidateDiscoveryExecutionState`
 
 Owns mutable cross-phase data: sources, observations, provider metadata, events,
