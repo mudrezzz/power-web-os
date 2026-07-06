@@ -184,14 +184,14 @@ Signal monitoring has its own model-role profile and budget rules so tuning the
 frequent monitoring loop does not silently change candidate discovery.
 
 The current `signal-monitoring` implementation is still no-network. Its
-application contracts and recorded executor live in
-`src/power_web_os/application/signal_monitoring_contracts.py` and
-`src/power_web_os/application/signal_monitoring_executor.py`. Source selection
-is handled by `signal_monitoring_source_strategy.py`: it reuses known
-candidate-discovery source refs first, then selects official/company,
-signal-specific, and open-web lanes only when source policy and source cards
-allow signal evidence. Do not add provider-name branches for DaData/SPARK-like
-sources; change connector capabilities instead.
+package-owned contracts, source strategy, support components, and recorded
+executor live under
+`src/power_web_os/application/radar/signal_monitoring`. Root-level
+`signal_monitoring_*` files are compatibility shims only. Source selection
+reuses known candidate-discovery source refs first, then selects
+official/company, signal-specific, and open-web lanes only when source policy
+and source cards allow signal evidence. Do not add provider-name branches for
+DaData/SPARK-like sources; change connector capabilities instead.
 
 Run the first recorded TOIR signal-monitoring loop without live providers:
 

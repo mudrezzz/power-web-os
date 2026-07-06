@@ -8352,7 +8352,7 @@ Principles:
 
 ### Slice 0.7.6.4.18: Signal monitoring package migration
 
-- Status: Ready
+- Status: Done
 - Goal: Move root-level signal monitoring contracts, executor, and source strategy into `radar/signal_monitoring` package-owned modules before serious signal-monitoring development continues.
 - User value: Signal monitoring becomes a first-class Radar pipeline with clear package ownership instead of a root-level application add-on.
 - Problem statement: `signal_monitoring_contracts.py`, `signal_monitoring_executor.py`, and `signal_monitoring_source_strategy.py` still own real behavior in the root application namespace while `radar/signal_monitoring` is mostly a skeleton. That contradicts the pipeline split architecture and will confuse future monitoring work.
@@ -8392,7 +8392,7 @@ Principles:
 
 ### Slice 0.7.6.4.18.1: Candidate discovery and signal monitoring runtime split
 
-- Status: Backlog
+- Status: Ready
 - Goal: Make candidate discovery and signal monitoring separate runtime products: candidate discovery stops owning inline signal search as the normal execution path, and signal monitoring owns signal execution semantics, budgets, and evaluation.
 - User value: Radar users and developers can run candidate discovery to build/review a candidate universe, then run signal monitoring separately on accepted or review-allowed candidates without confusing discovery budget exhaustion with signal quality.
 - Problem statement: The architecture says Radar is a family of pipelines, but candidate-discovery execution still plans and can run `signal_search` tasks inline. That legacy path makes live smoke diagnostics look like one monolithic Radar run and can project unsearched signals as if candidate discovery had evaluated them.

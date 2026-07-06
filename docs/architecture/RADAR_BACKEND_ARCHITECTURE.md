@@ -317,6 +317,21 @@ normalization, collection helpers, and trace/event support used by product-safe
 artifact projection. The sources package owns source verification-risk helpers.
 Root files are compatibility shims and must not regain behavior.
 
+As of slice `0.7.6.4.18`, recorded/no-network signal-monitoring behavior has
+moved:
+
+| Legacy module | Source of truth |
+|---|---|
+| `signal_monitoring_contracts.py` | `radar/signal_monitoring/contracts.py` |
+| `signal_monitoring_executor.py` | `radar/signal_monitoring/executor.py` |
+| `signal_monitoring_source_strategy.py` | `radar/signal_monitoring/source_strategy.py` |
+
+The signal-monitoring package owns contracts, source-lane strategy, task
+planning, signal-specific budget counters, payload parsing/repair, observation
+projection, and the recorded executor. Root files are compatibility shims and
+must not regain behavior. This migration does not add live providers,
+persistence, API/job lifecycle, or UI scheduling.
+
 As of slice `0.7.6.4.14.1`, the flat namespace closure policy is explicit:
 `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md` is the reviewable debt
 inventory, behavior tests for moved modules use package-owned imports, and
@@ -343,7 +358,8 @@ budgets and useful-result retry budgets stay in
 `radar/candidate_discovery/execution` because they depend on
 `RadarExecutionTask`, candidate-discovery stages, semantic task reserves, and
 discovery/coverage usefulness thresholds. Signal monitoring keeps its own
-budget contract until the signal-monitoring package migration proves a shared
+signal task, provider-call, retry, and lookback counters in
+`radar/signal_monitoring/budgets.py` until a later runtime slice proves a shared
 provider-level budget is needed there.
 
 ### `radar/candidate_discovery`
@@ -371,6 +387,21 @@ Expected subpackages:
 Owns recurring checks over known candidates. It must stay separate from
 candidate discovery because it has different cadence, budgets, source strategy,
 model profile, and output states.
+
+Current package-owned submodules:
+
+- `contracts`: monitoring input/plan/task/observation/outcome records and the
+  provider port.
+- `source_strategy`: source-lane decisions for known, official, signal-specific,
+  and open-web evidence lanes.
+- `planning`, `budgets`, `payloads`, and `projection`: executor support
+  components for task construction, bounded counters, payload repair, and
+  product-safe observation shaping.
+- `executor`: recorded/no-network orchestration facade.
+
+It must not import candidate-discovery internals; data shared between candidate
+discovery and signal monitoring must cross through shared contracts or explicit
+source/candidate records.
 
 ### `radar/power_web_discovery`
 
@@ -490,7 +521,7 @@ bounded slices:
     disambiguation into package-owned universe modules.
 18. `0.7.6.4.17.3` moved extraction, diagnostics, normalization,
     collection/pipeline support, and source-risk helpers.
-19. `0.7.6.4.18` moves root-level signal-monitoring behavior into
+19. `0.7.6.4.18` moved root-level signal-monitoring behavior into
     `radar/signal_monitoring`.
 20. `0.7.6.4.19` closes or sunsets remaining root Radar-prefixed files.
 21. Product corrective work resumes after the cleanup corridor, starting with

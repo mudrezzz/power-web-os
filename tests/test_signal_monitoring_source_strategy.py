@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from power_web_os.application.radar.shared.source_cards import RadarPlannerSourceCard
-from power_web_os.application.signal_monitoring_contracts import (
+from power_web_os.application.radar.signal_monitoring.contracts import (
     SignalAttemptRole,
     SignalMonitoringCandidate,
     SignalMonitoringProviderResult,
@@ -14,8 +14,8 @@ from power_web_os.application.signal_monitoring_contracts import (
     SignalSearchTask,
     SignalSourceRef,
 )
-from power_web_os.application.signal_monitoring_executor import SignalMonitoringExecutor
-from power_web_os.application.signal_monitoring_source_strategy import SignalMonitoringSourceStrategy
+from power_web_os.application.radar.signal_monitoring.executor import SignalMonitoringExecutor
+from power_web_os.application.radar.signal_monitoring.source_strategy import SignalMonitoringSourceStrategy
 
 
 class ScriptedSignalProvider:

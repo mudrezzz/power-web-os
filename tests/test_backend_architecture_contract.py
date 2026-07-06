@@ -284,6 +284,15 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
     "power_web_os.application.radar_upstream_disambiguation": (
         "power_web_os.application.radar.candidate_discovery.universe.upstream_disambiguation"
     ),
+    "power_web_os.application.signal_monitoring_contracts": (
+        "power_web_os.application.radar.signal_monitoring.contracts"
+    ),
+    "power_web_os.application.signal_monitoring_executor": (
+        "power_web_os.application.radar.signal_monitoring.executor"
+    ),
+    "power_web_os.application.signal_monitoring_source_strategy": (
+        "power_web_os.application.radar.signal_monitoring.source_strategy"
+    ),
 }
 MOVED_RADAR_LEGACY_MODULES = set(MOVED_RADAR_LEGACY_MODULE_TARGETS)
 RADAR_ROOT_DEBT_PREFIXES = (

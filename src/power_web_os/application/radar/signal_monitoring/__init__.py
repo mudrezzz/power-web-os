@@ -1,3 +1,51 @@
-"""Signal monitoring pipeline package skeleton."""
+"""Package-owned Radar signal-monitoring pipeline."""
 
-__all__: list[str] = []
+from power_web_os.application.radar.signal_monitoring.contracts import (
+    SignalAttemptRole,
+    SignalEvidence,
+    SignalMonitoringBudget,
+    SignalMonitoringCandidate,
+    SignalMonitoringDiagnostic,
+    SignalMonitoringEvidenceProvider,
+    SignalMonitoringInput,
+    SignalMonitoringOutcome,
+    SignalMonitoringPlan,
+    SignalMonitoringProviderResult,
+    SignalMonitoringRun,
+    SignalMonitoringSignalRule,
+    SignalMonitoringSourceDecision,
+    SignalMonitoringSourceHint,
+    SignalMonitoringSourcePolicy,
+    SignalMonitoringSourceStrategyResult,
+    SignalObservation,
+    SignalProviderAttemptRecord,
+    SignalSearchTask,
+    SignalSourceRef,
+)
+from power_web_os.application.radar.signal_monitoring.executor import SignalMonitoringExecutor
+from power_web_os.application.radar.signal_monitoring.source_strategy import SignalMonitoringSourceStrategy
+
+__all__ = [
+    "SignalAttemptRole",
+    "SignalEvidence",
+    "SignalMonitoringBudget",
+    "SignalMonitoringCandidate",
+    "SignalMonitoringDiagnostic",
+    "SignalMonitoringEvidenceProvider",
+    "SignalMonitoringExecutor",
+    "SignalMonitoringInput",
+    "SignalMonitoringOutcome",
+    "SignalMonitoringPlan",
+    "SignalMonitoringProviderResult",
+    "SignalMonitoringRun",
+    "SignalMonitoringSignalRule",
+    "SignalMonitoringSourceDecision",
+    "SignalMonitoringSourceHint",
+    "SignalMonitoringSourcePolicy",
+    "SignalMonitoringSourceStrategy",
+    "SignalMonitoringSourceStrategyResult",
+    "SignalObservation",
+    "SignalProviderAttemptRecord",
+    "SignalSearchTask",
+    "SignalSourceRef",
+]

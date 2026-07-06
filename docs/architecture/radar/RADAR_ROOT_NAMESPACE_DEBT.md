@@ -70,9 +70,9 @@ that have an owning migration slice.
 | `radar_upstream_disambiguation.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.universe.upstream_disambiguation` | `compatibility_only` |
 | `radar_work_scheduler.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler` | `compatibility_only` |
 | `radar_work_scheduler_metadata.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler_metadata` | `compatibility_only` |
-| `signal_monitoring_contracts.py` | `target_for_migration` | `power_web_os.application.radar.signal_monitoring` | `0.7.6.4.18` |
-| `signal_monitoring_executor.py` | `target_for_migration` | `power_web_os.application.radar.signal_monitoring` | `0.7.6.4.18` |
-| `signal_monitoring_source_strategy.py` | `target_for_migration` | `power_web_os.application.radar.signal_monitoring` | `0.7.6.4.18` |
+| `signal_monitoring_contracts.py` | `moved_shim` | `power_web_os.application.radar.signal_monitoring.contracts` | `compatibility_only` |
+| `signal_monitoring_executor.py` | `moved_shim` | `power_web_os.application.radar.signal_monitoring.executor` | `compatibility_only` |
+| `signal_monitoring_source_strategy.py` | `moved_shim` | `power_web_os.application.radar.signal_monitoring.source_strategy` | `compatibility_only` |
 
 ## Import Policy
 
@@ -102,6 +102,8 @@ retrieval-plan, product-source, service, and staged-execution behavior.
 - `0.7.6.4.17.3`: extraction contract, diagnostics, normalization,
   collection utilities, pipeline support, and source-risk helpers moved to
   package-owned candidate-discovery modules.
-- `0.7.6.4.18`: move signal-monitoring behavior into `radar/signal_monitoring`.
+- `0.7.6.4.18`: signal-monitoring contracts, source strategy, task planning,
+  budgets, payload parsing, projection, and recorded executor moved to
+  `radar/signal_monitoring`.
 - `0.7.6.4.19`: verify that every root Radar-prefixed file is deleted, a thin
   documented shim, or an explicit remaining exception with its own follow-up.

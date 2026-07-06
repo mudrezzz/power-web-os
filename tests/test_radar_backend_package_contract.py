@@ -66,6 +66,13 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.universe.retrieved_candidates",
     "power_web_os.application.radar.candidate_discovery.universe.signal_scope",
     "power_web_os.application.radar.candidate_discovery.universe.upstream_disambiguation",
+    "power_web_os.application.radar.signal_monitoring.contracts",
+    "power_web_os.application.radar.signal_monitoring.source_strategy",
+    "power_web_os.application.radar.signal_monitoring.planning",
+    "power_web_os.application.radar.signal_monitoring.budgets",
+    "power_web_os.application.radar.signal_monitoring.payloads",
+    "power_web_os.application.radar.signal_monitoring.projection",
+    "power_web_os.application.radar.signal_monitoring.executor",
     "power_web_os.application.radar.candidate_discovery.execution.coverage",
     "power_web_os.application.radar.candidate_discovery.execution.context",
     "power_web_os.application.radar.candidate_discovery.execution.discovery",
@@ -138,6 +145,9 @@ LEGACY_KEY_MODULES = [
     "power_web_os.application.radar_work_scheduler",
     "power_web_os.application.radar_work_scheduler_metadata",
     "power_web_os.application.radar_upstream_disambiguation",
+    "power_web_os.application.signal_monitoring_contracts",
+    "power_web_os.application.signal_monitoring_executor",
+    "power_web_os.application.signal_monitoring_source_strategy",
 ]
 
 MOVED_LEGACY_SHIMS = [
@@ -187,6 +197,9 @@ MOVED_LEGACY_SHIMS = [
     "radar_work_scheduler.py",
     "radar_work_scheduler_metadata.py",
     "radar_upstream_disambiguation.py",
+    "signal_monitoring_contracts.py",
+    "signal_monitoring_executor.py",
+    "signal_monitoring_source_strategy.py",
 ]
 
 
@@ -496,6 +509,21 @@ def test_universe_old_and_new_import_paths_are_compatible() -> None:
     assert legacy_upstream.cross_source_disambiguation_tasks is (
         package_upstream.cross_source_disambiguation_tasks
     )
+
+
+def test_signal_monitoring_old_and_new_import_paths_are_compatible() -> None:
+    legacy_contracts = importlib.import_module("power_web_os.application.signal_monitoring_contracts")
+    package_contracts = importlib.import_module("power_web_os.application.radar.signal_monitoring.contracts")
+    legacy_executor = importlib.import_module("power_web_os.application.signal_monitoring_executor")
+    package_executor = importlib.import_module("power_web_os.application.radar.signal_monitoring.executor")
+    legacy_strategy = importlib.import_module("power_web_os.application.signal_monitoring_source_strategy")
+    package_strategy = importlib.import_module("power_web_os.application.radar.signal_monitoring.source_strategy")
+
+    assert legacy_contracts.SignalMonitoringInput is package_contracts.SignalMonitoringInput
+    assert legacy_contracts.SignalMonitoringOutcome is package_contracts.SignalMonitoringOutcome
+    assert legacy_contracts.SignalMonitoringProviderResult is package_contracts.SignalMonitoringProviderResult
+    assert legacy_executor.SignalMonitoringExecutor is package_executor.SignalMonitoringExecutor
+    assert legacy_strategy.SignalMonitoringSourceStrategy is package_strategy.SignalMonitoringSourceStrategy
 
 
 def test_live_radar_run_service_does_not_expose_module_level_helpers() -> None:
