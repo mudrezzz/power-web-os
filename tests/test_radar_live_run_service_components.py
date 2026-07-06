@@ -36,6 +36,7 @@ def test_candidate_discovery_execution_options_parse_task_context() -> None:
             "max_web_tasks_per_subject": "3",
             "max_discovery_tasks_per_rule": True,
             "max_gate_tasks_per_candidate_rule": -1,
+            "signal_execution_mode": "inline_compatibility",
             "run_profile": " smoke ",
             "budget_reserve_limits": {"planner": "2", "bad": True, 3: 4, "negative": -1},
             "semantic_task_reserve_limits": {"signal": 5},
@@ -52,6 +53,18 @@ def test_candidate_discovery_execution_options_parse_task_context() -> None:
     assert options.budget_reserve_limits == {"planner": 2}
     assert options.semantic_task_reserve_limits == {"signal": 5}
     assert options.source_policy_decisions == [{"source": "registry"}]
+    assert options.signal_execution_mode == "inline_compatibility"
+
+
+def test_candidate_discovery_execution_options_default_signal_mode_is_handoff() -> None:
+    assert CandidateDiscoveryExecutionOptions().signal_execution_mode == "handoff"
+    assert CandidateDiscoveryExecutionOptions.from_task_context(
+        {"signal_execution_mode": "legacy_inline"},
+        {},
+    ).signal_execution_mode == "handoff"
+    assert CandidateDiscoveryExecutionOptions.from_legacy_kwargs(
+        signal_execution_mode="inline_compatibility",
+    ).signal_execution_mode == "inline_compatibility"
 
 
 def test_live_radar_task_context_reader_returns_staged_execution_options() -> None:
@@ -59,6 +72,7 @@ def test_live_radar_task_context_reader_returns_staged_execution_options() -> No
         "max_web_tasks_per_subject": "3",
         "max_discovery_tasks_per_rule": True,
         "max_gate_tasks_per_candidate_rule": -1,
+        "signal_execution_mode": "inline_compatibility",
         "run_profile": " smoke ",
         "budget_reserve_limits": {"planner": "2", "bad": True, 3: 4, "negative": -1},
         "semantic_task_reserve_limits": {"signal": 5},
@@ -74,6 +88,7 @@ def test_live_radar_task_context_reader_returns_staged_execution_options() -> No
     assert options.budget_reserve_limits == {"planner": 2}
     assert options.semantic_task_reserve_limits == {"signal": 5}
     assert options.source_policy_decisions == [{"source": "registry"}]
+    assert options.signal_execution_mode == "inline_compatibility"
 
 
 def test_candidate_discovery_execution_options_project_budget_contracts() -> None:

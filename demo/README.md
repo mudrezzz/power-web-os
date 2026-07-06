@@ -201,11 +201,14 @@ registry lookup cannot enumerate a universe, expect `attempted_insufficient`;
 if web coverage retrieved sources but linked none to evidence, expect
 `attempted_unlinked`.
 
-For the running API process, use:
+For the running Docker API process, use:
 
 ```bash
-curl http://127.0.0.1:8000/api/runtime-config
+curl http://127.0.0.1:8001/api/runtime-config
 ```
+
+For a manually started local `power-web-os-api` process, use the same path on
+`8000` unless `POWER_WEB_OS_API_PORT` changed the uvicorn port.
 
 When a Radar run is started through the API, the API runtime config is stored at
 queue time and the worker runtime config is stored when execution starts. If the

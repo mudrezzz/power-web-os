@@ -44,6 +44,11 @@ from power_web_os.application.radar.candidate_discovery.execution.finalization_m
     _external_budget_events,
     _legal_subsidiary_completion_summary,
 )
+from power_web_os.application.radar.candidate_discovery.execution.finalization_signals import (
+    _signal_projection_observations,
+    _signal_handoff_status,
+    _signal_monitoring_pending_count,
+)
 from power_web_os.application.radar.candidate_discovery.execution.state import CandidateDiscoveryExecutionState
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 from power_web_os.application.radar_source_obligations import obligation_decisions_from_plan, source_obligation_summary
@@ -74,14 +79,15 @@ class FinalizationProjector:
     ) -> tuple[WebSearchProviderResult, list[LiveRadarPipelineEvent], dict[str, Any]]:
         self._record_warnings(context, state)
         extraction_issues, repair_results = self._record_extraction_issues(state)
+        signal_projected_observations = _signal_projection_observations(context, state, state.observations)
         normalized_candidates = self._task_service.normalized_candidates(
             radar=context.radar,
             sources=state.sources,
-            observations=state.observations,
+            observations=signal_projected_observations,
         )
         normalized_candidates, observations, smoke_gaps, smoke_metadata = _apply_smoke_candidate_promotion_cap(
             candidates=normalized_candidates,
-            observations=state.observations,
+            observations=signal_projected_observations,
             smoke_candidate_limit=context.external_budget.settings.smoke_max_candidates,
         )
         unresolved_gaps = self._unresolved_gaps(state, smoke_gaps)
@@ -290,6 +296,9 @@ class FinalizationProjector:
             "executed_task_ids": state.executed_task_ids,
             "gate_results": state.gate_results,
             "signal_task_count": state.signal_task_count,
+            "signal_execution_mode": context.signal_execution_mode,
+            "signal_monitoring_handoff_status": _signal_handoff_status(context, state),
+            "signal_monitoring_pending_count": _signal_monitoring_pending_count(state),
             "candidate_scope": state.candidate_scope,
             "signal_candidate_scope": state.signal_candidate_scope,
             "signal_search_statuses": state.signal_search_statuses,

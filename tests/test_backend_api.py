@@ -8,6 +8,7 @@ from typing import Any
 from fastapi.testclient import TestClient
 
 from power_web_os.api import create_app
+from power_web_os.api.__main__ import _api_port_from_env
 from power_web_os.api.config import ApiSettings
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
@@ -51,6 +52,22 @@ def test_api_health_alias_matches_root_health_contract(tmp_path: Path) -> None:
     client = TestClient(_app(tmp_path))
 
     assert client.get("/api/health").json() == client.get("/health").json()
+
+
+def test_manual_api_port_can_be_overridden(monkeypatch) -> None:
+    monkeypatch.delenv("POWER_WEB_OS_API_PORT", raising=False)
+    assert _api_port_from_env() == 8000
+
+    monkeypatch.setenv("POWER_WEB_OS_API_PORT", "8010")
+    assert _api_port_from_env() == 8010
+
+    monkeypatch.setenv("POWER_WEB_OS_API_PORT", "not-a-port")
+    try:
+        _api_port_from_env()
+    except SystemExit as exc:
+        assert "integer" in str(exc)
+    else:
+        raise AssertionError("POWER_WEB_OS_API_PORT must reject non-integer values.")
 
 
 def test_openapi_contains_system_and_radar_contracts(tmp_path: Path) -> None:

@@ -31,7 +31,7 @@ REQUIRED_SECTIONS = [
     "## 10. Registry Lookup Loop",
     "## 11. Search Expansion Loop",
     "## 13. Checkpoints And Adaptive Actions",
-    "## 14. Signal Search",
+    "## 14. Signal-Monitoring Handoff",
     "## 15. Budget Model",
     "## 16. Source Lifecycle",
     "## 19. Context Management",

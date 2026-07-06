@@ -29,7 +29,10 @@ from power_web_os.application.radar.candidate_discovery.execution.expansion impo
 from power_web_os.application.radar.candidate_discovery.execution.expansion_diagnostics import _search_expansion_variant_cap
 from power_web_os.application.radar.candidate_discovery.execution.finalization import FinalizationProjector
 from power_web_os.application.radar.candidate_discovery.execution.options import CandidateDiscoveryExecutionOptions
-from power_web_os.application.radar.candidate_discovery.execution.signals import SignalCompatibilityPhaseExecutor
+from power_web_os.application.radar.candidate_discovery.execution.signals import (
+    CandidateDiscoverySignalHandoffProjector,
+    SignalCompatibilityPhaseExecutor,
+)
 from power_web_os.application.radar.candidate_discovery.execution.state import (
     CandidateDiscoveryExecutionState,
     ExecutionMetadataFactory,
@@ -68,6 +71,7 @@ class CandidateDiscoveryOrchestrator:
         coverage: CoveragePhaseExecutor | None = None,
         expansion: ExpansionPhaseExecutor | None = None,
         signals: SignalCompatibilityPhaseExecutor | None = None,
+        signal_handoff: CandidateDiscoverySignalHandoffProjector | None = None,
         finalization: FinalizationProjector | None = None,
     ) -> None:
         self._task_service = task_service or TaskExecutionService()
@@ -85,6 +89,7 @@ class CandidateDiscoveryOrchestrator:
             smoke_policy=self._smoke_policy,
         )
         self._signals = signals or SignalCompatibilityPhaseExecutor(self._task_service)
+        self._signal_handoff = signal_handoff or CandidateDiscoverySignalHandoffProjector(self._task_service)
         self._finalization = finalization or FinalizationProjector(self._task_service)
 
     def run(
@@ -145,14 +150,24 @@ class CandidateDiscoveryOrchestrator:
             self._task_service.tasks_for_stage(context.execution_plan, "signal_search"),
             context.external_budget.settings.smoke_max_signals,
         )
-        self._signals.run(
-            context,
-            state,
-            tasks=signal_tasks,
-            can_run_signal_search=can_run_signal_search,
-            pre_signal_decision=pre_signal_decision,
-        )
+        if context.signal_execution_mode == "inline_compatibility":
+            self._signals.run(
+                context,
+                state,
+                tasks=signal_tasks,
+                can_run_signal_search=can_run_signal_search,
+                pre_signal_decision=pre_signal_decision,
+            )
+        else:
+            self._signal_handoff.run(
+                state,
+                tasks=signal_tasks,
+                can_run_signal_search=can_run_signal_search,
+                pre_signal_decision=pre_signal_decision,
+            )
         return self._finalization.project(context, state)
+
+
 def run_staged_radar_execution(
     *,
     radar: dict[str, Any],
@@ -186,6 +201,7 @@ def run_staged_radar_execution(
     budget_reserve_limits: dict[str, int] | None = None,
     semantic_task_reserve_limits: dict[str, int] | None = None,
     source_policy_decisions: list[dict[str, Any]] | None = None,
+    signal_execution_mode: str | None = None,
 ) -> tuple[WebSearchProviderResult, list[LiveRadarPipelineEvent], dict[str, Any]]:
     legacy_options = {
         "task_context": task_context,
@@ -215,6 +231,7 @@ def run_staged_radar_execution(
         "budget_reserve_limits": budget_reserve_limits,
         "semantic_task_reserve_limits": semantic_task_reserve_limits,
         "source_policy_decisions": source_policy_decisions,
+        "signal_execution_mode": signal_execution_mode,
     }
     if options is not None and any(value is not None for value in legacy_options.values()):
         raise ValueError("Pass staged execution options either as `options` or legacy keyword arguments, not both.")
@@ -255,6 +272,7 @@ def run_staged_radar_execution(
         work_scheduler=work_scheduler,
         verification_cache=verification_cache,
         source_policy_decisions=options.source_policy_decisions,
+        signal_execution_mode=options.signal_execution_mode,
         max_discovery_iterations=MAX_DISCOVERY_ITERATIONS,
         max_candidate_universe_size=MAX_CANDIDATE_UNIVERSE_SIZE,
     )

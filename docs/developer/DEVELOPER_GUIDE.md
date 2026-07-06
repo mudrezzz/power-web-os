@@ -91,6 +91,12 @@ without exposing `.env` secrets.
 Useful local API URLs:
 
 ```text
+Docker stack:
+http://127.0.0.1:8001/health
+http://127.0.0.1:8001/api/health
+http://127.0.0.1:8001/docs
+
+Manual local uvicorn:
 http://127.0.0.1:8000/health
 http://127.0.0.1:8000/api/health
 http://127.0.0.1:8000/docs
@@ -99,7 +105,10 @@ http://127.0.0.1:8000/docs
 The browser frontend reads this API from `VITE_POWER_WEB_OS_API_BASE_URL`.
 For the Docker stack the default is `http://127.0.0.1:8001`; for manual local
 processes use `http://127.0.0.1:8000` unless you started uvicorn on another
-port. The API allows local Vite origins by default; set
+port. `python -m power_web_os.api` and `power-web-os-api` read
+`POWER_WEB_OS_API_PORT`, so a conflict-free manual API can be started with
+`POWER_WEB_OS_API_PORT=8010 python -m power_web_os.api`. The API allows local
+Vite origins by default; set
 `POWER_WEB_OS_CORS_ORIGINS` to a comma-separated list when using a different
 frontend host.
 
@@ -289,6 +298,7 @@ power_web_os.application.radar.candidate_discovery.execution.gates
 power_web_os.application.radar.candidate_discovery.execution.coverage
 power_web_os.application.radar.candidate_discovery.execution.expansion
 power_web_os.application.radar.candidate_discovery.execution.signals
+power_web_os.application.radar.candidate_discovery.execution.signal_modes
 power_web_os.application.radar.candidate_discovery.execution.finalization
 power_web_os.application.radar.candidate_discovery.execution.task_runner
 power_web_os.application.radar.candidate_discovery.execution.merge
@@ -318,6 +328,7 @@ Candidate-discovery execution phases must use the service contract from
 - Phase behavior belongs to service/projector classes:
   `CandidateDiscoveryOrchestrator`, `DiscoveryPhaseExecutor`,
   `GatePhaseExecutor`, `CoveragePhaseExecutor`, `ExpansionPhaseExecutor`,
+  `CandidateDiscoverySignalHandoffProjector`,
   `SignalCompatibilityPhaseExecutor`, and `FinalizationProjector`.
 - Public top-level phase functions are forbidden except
   `run_staged_radar_execution`, which remains the compatibility wrapper for old
@@ -482,7 +493,7 @@ python -m power_web_os.demo seed-radar-db
 power-web-os-api
 ```
 
-Useful Radar API URLs:
+Useful Radar API URLs for this manual process:
 
 ```text
 http://127.0.0.1:8000/api/radars
@@ -493,6 +504,8 @@ http://127.0.0.1:8000/api/radar-runs/{run_id}/dossier
 http://127.0.0.1:8000/api/radar-runs/{run_id}/technical-trace
 http://127.0.0.1:8000/docs
 ```
+
+For Docker, use the same paths on `http://127.0.0.1:8001`.
 
 Validation:
 
@@ -519,7 +532,7 @@ python -m alembic upgrade head
 python -m power_web_os.demo seed-radar-db
 celery -A power_web_os.jobs.radar_jobs.radar_celery_app worker --loglevel=INFO --pool=solo
 power-web-os-api
-$env:VITE_POWER_WEB_OS_API_BASE_URL="http://127.0.0.1:8000"
+$env:VITE_POWER_WEB_OS_API_BASE_URL="http://127.0.0.1:8000"  # manual API
 npm --prefix ./frontend run dev
 ```
 
@@ -538,12 +551,15 @@ OpenRouter probes. Then click `Run radar`. The UI posts a queued run, polls
 context, definition version, task context, persisted qualification-first search
 plan, source usage, validation warnings, and non-debug timeline events. The
 dossier also exposes checkpoint metadata: after discovery, gates, coverage, and
-before signal search the application records whether execution continued,
+before signal-monitoring handoff the application records whether execution continued,
 retried a bounded task, expanded to an allowed source scope, attempted a compact
 revision-style recovery, stopped for review, or recommended hard failure. The
 first adaptive recovery loop runs after discovery and coverage checkpoints; it
-does not start signal search until the latest pre-signal checkpoint returns
-`continue`. Treat `stopped_for_review_reason`, `checkpoint_warnings`, and
+does not start signal search in the normal candidate-discovery runtime. After
+the latest pre-signal checkpoint returns `continue`, candidate discovery
+projects `not_searched_pending_signal_monitoring` handoff rows and leaves
+provider-backed signal evaluation to the separate signal-monitoring pipeline.
+Treat `stopped_for_review_reason`, `checkpoint_warnings`, and
 `adaptive_actions` as the first place to inspect why a run did or did not
 recover from weak discovery. The dossier is safe for the normal product UI.
 Schema recovery is separate from plan revision: `extraction_schema_invalid`
@@ -850,11 +866,14 @@ Rules:
   execute one bounded task at a time; application services own stage ordering
   and rejected-candidate signal suppression.
 - Candidate discovery is iterative. Application services execute coverage
-  checks before signal search, merge source-backed gap candidates into the
-  universe, re-run qualification gates for new candidates, and freeze the final
-  universe before any signal task starts. Signal tasks must not add candidates;
-  late-mentioned entities become `candidate_universe_gap` metadata for dossier
-  and trace inspection.
+  checks before signal-monitoring handoff, merge source-backed gap candidates
+  into the universe, re-run qualification gates for new candidates, and freeze
+  the final universe before the handoff snapshot. The default
+  `signal_execution_mode` is `handoff`, so candidate discovery must not call
+  provider `signal_search` tasks. Explicit `inline_compatibility` is retained
+  only for legacy compatibility tests; signal tasks in that mode must not add
+  candidates, and late-mentioned entities become `candidate_universe_gap`
+  metadata for dossier and trace inspection.
 - Product source lists must contain only evidence-bearing used sources. Keep
   analyzed/skipped sources in execution metadata or sanitized technical trace so
   users see clean evidence while developers can debug source selection.
@@ -864,7 +883,7 @@ Rules:
   risk. The first recovery loop can run bounded retry, allowed source expansion,
   and compact revision-style attempts under explicit budgets; if recovery does
   not improve the result, execution stops as review-needed instead of silently
-  freezing a weak candidate universe and proceeding to signal search.
+  freezing a weak candidate universe and projecting a signal-monitoring handoff.
 - DaData and future structured registries are backend source providers. The
   backend should call them, normalize typed observations, and pass facts into
   extraction/evaluation. Do not ask the LLM to "use DaData" as if it were a
@@ -1479,8 +1498,9 @@ fake/recorded tests prove:
 - planner revision is called with compact checkpoint facts and the validated
   revision is applied;
 - retry/revision limits stop as review-needed instead of continuing blindly;
-- signal search starts only after the final pre-signal checkpoint returns
-  `continue`.
+- signal-monitoring handoff happens only after the final pre-signal checkpoint
+  returns `continue`; inline signal search exists only in explicit compatibility
+  mode.
 
 The adaptive execution harness lives in `tests/test_radar_adaptive_execution.py`:
 
@@ -1492,10 +1512,10 @@ The expected result is a fully green suite. It runs without OpenRouter, DaData,
 Redis, Celery, a database, or a local API server. It verifies weak-discovery
 retry, allowed source expansion, required-source failures, compact
 revision-style recovery, evidence-linking failures, high coverage risk,
-retry/revision caps, budget exhaustion, and the rule that signal search starts
-only after the final pre-signal checkpoint returns `continue`. Treat this suite
-as the fast gate between static preflight/live probes and a long manual Radar
-run.
+retry/revision caps, budget exhaustion, and the rule that normal candidate
+discovery projects signal-monitoring handoff only after the final pre-signal
+checkpoint returns `continue`. Treat this suite as the fast gate between static
+preflight/live probes and a long manual Radar run.
 
 After the offline gates are green, use the Radar smoke profile before a broad
 live run. Smoke does not judge discovery quality. It proves that the live path
@@ -1557,7 +1577,7 @@ python -m power_web_os.demo preflight-radar --radar-id toir-quick-live --json --
 The API exposes the current API-process config at:
 
 ```bash
-curl http://127.0.0.1:8000/api/runtime-config
+curl http://127.0.0.1:8001/api/runtime-config
 ```
 
 When a run is queued, the API config snapshot and fingerprint are stored in

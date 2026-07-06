@@ -12,7 +12,7 @@ the current candidate-discovery default.
 
 | Pipeline id | Purpose | Cadence | Current state |
 |---|---|---|---|
-| `candidate-discovery` | Find and qualify legal entities, sites, branches, projects, and review-needed upstream entities. | Infrequent: manual, monthly, quarterly, or after Radar settings change. | Implemented through the current Radar search pipeline; docs still live at `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` until the migration slice splits the file. |
+| `candidate-discovery` | Find and qualify legal entities, sites, branches, projects, and review-needed upstream entities. | Infrequent: manual, monthly, quarterly, or after Radar settings change. | Implemented through the current Radar search pipeline with signal-monitoring handoff by default; docs still live at `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` until the migration slice splits the file. |
 | `signal-monitoring` | Monitor configured intent signals for known candidates over a recent time window. | Frequent: weekly or another product-configured monitoring cadence. | No-network application contracts, recorded TOIR loop, capability-driven source strategy, independent signal budgets, config-backed signal model profile, AS IS docs, and recorded UI preview exist. Live runtime, scheduler, and production UI execution are still planned. |
 | `power-web-discovery` | Discover people, roles, relationships, partner paths, buying committee structure, and access routes for accepted accounts. | Event-driven or account-workflow driven. | Planned. |
 
@@ -61,6 +61,12 @@ checked first, then official/company, signal-specific, and open-web lanes are
 selected only when source policy and source cards allow signal evidence.
 Signal budgets and model-role defaults are isolated from candidate-discovery
 through `config/radar/model_profiles/signal_monitoring.json`.
+
+As of slice `0.7.6.4.18.1`, candidate discovery does not run provider
+`signal_search` tasks by default. It records the pre-signal checkpoint and
+projects `not_searched_pending_signal_monitoring` handoff rows. The old inline
+signal-search path remains only as explicit `inline_compatibility` behavior for
+compatibility tests and hidden callers until final closure.
 
 ## Skill invocation examples
 
@@ -131,3 +137,4 @@ The roadmap currently tracks the pipeline split through these slices:
 | `0.7.6.4.4` | Add signal-monitoring budgets and isolate signal model profiles from candidate-discovery profiles. |
 | `0.7.6.4.5` | Build the first recorded TOIR signal-monitoring loop over known candidates. |
 | `0.7.6.4.6` | Add UI controls for candidate discovery versus signal monitoring. |
+| `0.7.6.4.18.1` | Make candidate discovery the handoff producer by default and keep inline signal search as explicit compatibility mode. |

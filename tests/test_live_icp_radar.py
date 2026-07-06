@@ -789,8 +789,8 @@ def test_recorded_response_normalizes_sources_candidates_and_scores() -> None:
     assert len(artifact["sources"]) == 1
     assert artifact["candidates"][0]["legal_name"] == "ПАО «Нижнекамскнефтехим»"
     assert artifact["candidates"][0]["score"]["fit_score"] == 2
-    assert artifact["candidates"][0]["score"]["intent_score"] == 3
-    assert artifact["candidates"][0]["score"]["tier"] == "Tier 1"
+    assert artifact["candidates"][0]["score"]["intent_score"] == 0
+    assert artifact["candidates"][0]["score"]["tier"] == "Monitor"
     assert "signal_requires_human_review" in artifact["candidates"][0]["review_flags"]
     qualification = artifact["candidates"][0]["qualification"][0]
     assert qualification["operator"] == "AND"
@@ -809,7 +809,9 @@ def test_recorded_response_normalizes_sources_candidates_and_scores() -> None:
     assert signal["evidence_findings"][0]["source_ref"] == "src_1"
     assert signal["evidence_findings"][0]["excerpt_type"] == "quote"
     assert signal["evidence_findings"][0]["why_score_applies"]
-    assert signal["score_evaluation"]["applied_score"] == 1
+    assert signal["score_evaluation"]["applied_score"] == 0
+    assert signal["search_status"] == "not_searched_pending_signal_monitoring"
+    assert signal["not_searched_reason"] == "pending_signal_monitoring"
     fallback_signal = artifact["candidates"][0]["signals"][1]
     assert fallback_signal["evidence_findings"][0]["excerpt_type"] == "not_available"
     assert fallback_signal["score_evaluation"]["scale"] == "0-2"
@@ -982,6 +984,7 @@ def test_checkpoint_service_stops_before_signal_search_without_candidate_scope()
     assert decision.action == "stop_review_needed"
     assert decision.reason_code == "no_candidate_scope"
     assert not decision.should_run_signal_search
+    assert "signal-monitoring handoff" in decision.message
 
 
 def test_checkpoint_service_recommends_extraction_repair_for_extraction_schema_failure() -> None:
@@ -1152,13 +1155,14 @@ def test_live_radar_service_executes_explicit_pipeline_phases() -> None:
         "qualification_discovery",
         "qualification_gate",
         "coverage_check",
-        "signal_search",
-        "signal_search",
-        "signal_search",
     ]
+    assert collected.execution_results["signal_execution_mode"] == "handoff"
+    assert collected.execution_results["signal_task_count"] == 0
+    assert collected.execution_results["signal_monitoring_handoff_status"] == "pending_signal_monitoring"
+    assert collected.execution_results["signal_monitoring_pending_count"] == 3
     assert len(normalized.sources) == 1
     assert extracted.candidates[0]["legal_name"] == payload["candidate_observations"][0]["legal_name"]
-    assert evaluated.candidates[0]["score"]["tier"] == "Tier 1"
+    assert evaluated.candidates[0]["score"]["tier"] == "Monitor"
     assert validated.contract_validation == []
     assert shaped.artifact is not None
     assert shaped.artifact["artifact_type"] == "icp_radar_live_run"
@@ -2762,7 +2766,12 @@ def test_staged_execution_expands_candidate_universe_through_coverage_before_sig
     discovery_scopes = [call.queries[0].candidate_scope for call in provider.calls if call.queries[0].stage == "qualification_discovery"]
     assert discovery_scopes == [[], ["Candidate B"]]
     assert any(call.queries[0].stage == "qualification_gate" and "Candidate B" in call.queries[0].candidate_scope for call in provider.calls)
-    assert "Candidate B" in [name for call in signal_calls for name in call.queries[0].candidate_scope]
+    assert signal_calls == []
+    assert "Candidate B" in [
+        item["candidate_name"]
+        for item in collected.execution_results["signal_search_statuses"]
+        if item["search_status"] == "not_searched_pending_signal_monitoring"
+    ]
     assert universe["Candidate B"]["status"] == "qualified"
     assert collected.execution_results["coverage_checks"][0]["new_candidate_count"] == 1
     assert collected.execution_results["unresolved_candidate_gaps"] == []
@@ -2772,7 +2781,11 @@ def test_staged_execution_expands_candidate_universe_through_coverage_before_sig
 def test_signal_stage_new_entities_become_gaps_not_candidates() -> None:
     provider = _SignalGapProvider()
     service = LiveRadarRunService(provider)
-    state = LiveICPRadarRunState(radar=build_live_mini_radar_definition(), live=False)
+    state = LiveICPRadarRunState(
+        radar=build_live_mini_radar_definition(),
+        live=False,
+        task_context={"signal_execution_mode": "inline_compatibility"},
+    )
 
     collected = service.run_web_search(service.build_search_plan(state))
     extracted = service.extract_candidates(service.normalize_sources(collected))
@@ -3012,13 +3025,15 @@ def test_staged_execution_extracts_review_candidate_from_retrieved_source_before
     result, events, execution_results = run_staged_radar_execution(radar=radar, execution_plan=plan, provider=provider)
 
     assert result.candidate_observations[0]["legal_name"] == "АО Красноярский завод синтетического каучука"
-    assert result.candidate_observations[0]["review_flags"] == [
+    assert set(result.candidate_observations[0]["review_flags"]) == {
         "candidate_universe_from_retrieved_source",
+        "not_searched_pending_signal_monitoring",
         "retrieved_source_candidate_requires_review",
-    ]
+    }
     assert result.sources[0].evidence_ref == "retrieved_kzsk"
     assert execution_results["candidate_scope"] == ["АО Красноярский завод синтетического каучука"]
-    assert execution_results["signal_task_count"] == 1
+    assert execution_results["signal_task_count"] == 0
+    assert execution_results["signal_monitoring_pending_count"] == 1
     assert execution_results["checkpoint_summary"]["stopped_for_review"] is False
     assert "candidate_universe_extracted_from_retrieval" in [event.event_type for event in events]
 
@@ -3106,7 +3121,12 @@ def test_staged_execution_checkpoint_allows_signal_search_for_linked_candidates(
         ],
     )
 
-    result, _, execution_results = run_staged_radar_execution(radar=radar, execution_plan=plan, provider=provider)
+    result, _, execution_results = run_staged_radar_execution(
+        radar=radar,
+        execution_plan=plan,
+        provider=provider,
+        signal_execution_mode="inline_compatibility",
+    )
 
     assert [call.queries[0].stage for call in provider.calls] == ["qualification_discovery", "signal_search"]
     assert execution_results["signal_task_count"] == 1
@@ -3124,7 +3144,11 @@ def test_staged_execution_searches_each_candidate_signal_when_total_budget_allow
         {"code": "S3", "label": "Signal 3", "rule": "Find signal 3."},
     ]
     service = LiveRadarRunService(provider)
-    state = LiveICPRadarRunState(radar=radar, live=False)
+    state = LiveICPRadarRunState(
+        radar=radar,
+        live=False,
+        task_context={"signal_execution_mode": "inline_compatibility"},
+    )
 
     collected = service.run_web_search(service.build_search_plan(state))
     signal_calls = [call for call in provider.calls if call.queries[0].stage == "signal_search"]
@@ -3149,7 +3173,7 @@ def test_compatibility_budget_is_candidate_signal_scoped_not_signal_global() -> 
     state = LiveICPRadarRunState(
         radar=radar,
         live=False,
-        task_context={"max_web_tasks_per_subject": 4},
+        task_context={"max_web_tasks_per_subject": 4, "signal_execution_mode": "inline_compatibility"},
     )
 
     collected = service.run_web_search(service.build_search_plan(state))
@@ -3177,7 +3201,7 @@ def test_total_budget_marks_remaining_signals_as_not_searched() -> None:
     state = LiveICPRadarRunState(
         radar=radar,
         live=False,
-        task_context={"max_total_web_tasks_per_run": 20},
+        task_context={"max_total_web_tasks_per_run": 20, "signal_execution_mode": "inline_compatibility"},
     )
 
     collected = service.run_web_search(service.build_search_plan(state))

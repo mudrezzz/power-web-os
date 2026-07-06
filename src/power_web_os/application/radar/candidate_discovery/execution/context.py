@@ -12,6 +12,7 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
 from power_web_os.application.radar.candidate_discovery.checkpoints.recovery import RadarCheckpointActionExecutor
 from power_web_os.application.radar.candidate_discovery.checkpoints import RadarExecutionCheckpointService
 from power_web_os.application.radar.candidate_discovery.execution.task_budget import RadarExecutionBudget, RadarExecutionBudgetSettings
+from power_web_os.application.radar.candidate_discovery.execution.signal_modes import CandidateDiscoverySignalExecutionMode
 from power_web_os.application.radar.shared.budgets import RadarExternalCallBudget
 from power_web_os.application.radar.candidate_discovery.execution.useful_budget import UsefulResultBudget
 from power_web_os.application.radar.candidate_discovery.search_expansion.service import RadarSearchExpansionService
@@ -49,6 +50,7 @@ class CandidateDiscoveryExecutionContext:
     work_scheduler: RadarWorkScheduler
     verification_cache: SourceVerificationCache
     source_policy_decisions: list[dict[str, Any]] | None
+    signal_execution_mode: CandidateDiscoverySignalExecutionMode
     max_discovery_iterations: int
     max_candidate_universe_size: int
 

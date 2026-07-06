@@ -15,6 +15,8 @@ Read it before changing this package.
 - `context.py`: `CandidateDiscoveryExecutionContext` and `PhaseResult`.
 - `options.py`: `CandidateDiscoveryExecutionOptions`, the named staged
   execution option contract used by the compatibility wrapper and live service.
+- `signal_modes.py`: private normalization and type contract for candidate
+  discovery signal execution mode (`handoff` or explicit inline compatibility).
 - `state.py`: `CandidateDiscoveryExecutionState`, the mutable cross-phase state.
 - `task_budget.py`: candidate-discovery task budget settings, semantic task
   reserve admission, counters, warnings, and exhaustion event payloads.
@@ -34,12 +36,15 @@ Read it before changing this package.
   `search_expansion` planning, scheduling, payload, and admission services.
 - `expansion_diagnostics.py`: expansion target summaries, guarantee state, and
   report-safe diagnostics.
-- `signals.py`: `SignalCompatibilityPhaseExecutor` for the legacy
-  candidate-discovery signal-search projection.
+- `signals.py`: `CandidateDiscoverySignalHandoffProjector` for normal
+  signal-monitoring handoff projection and `SignalCompatibilityPhaseExecutor`
+  for explicit legacy inline signal-search compatibility.
 - `finalization.py`: `FinalizationProjector` for final provider result,
   events, candidate universe, budget metadata, source obligations, and
   dossier/report payload.
 - `finalization_metadata.py`: private small summary helpers used by finalization.
+- `finalization_signals.py`: private signal handoff metadata helpers used by
+  finalization.
 - `finalization_universe.py`: review-needed upstream entity projection.
 - `task_runner.py`: `TaskExecutionService` for provider-neutral task execution,
   gate passes, retries, and candidate task utilities.
@@ -66,6 +71,8 @@ copy of all sources, observations, events, budgets, and metadata.
 `run_staged_radar_execution` remains the public compatibility wrapper for old
 callers, but package-owned code should pass a
 `CandidateDiscoveryExecutionOptions` instance instead of broad execution kwargs.
+The default `signal_execution_mode` is `handoff`; old inline signal-search
+execution must be requested explicitly with `inline_compatibility`.
 
 Every public class must have a docstring that states:
 
@@ -108,6 +115,7 @@ helpers, and work admission belong in
 Do not add public top-level phase functions. Public execution behavior belongs
 to `CandidateDiscoveryOrchestrator`, `DiscoveryPhaseExecutor`,
 `GatePhaseExecutor`, `CoveragePhaseExecutor`, `ExpansionPhaseExecutor`,
+`CandidateDiscoverySignalHandoffProjector`,
 `SignalCompatibilityPhaseExecutor`, `FinalizationProjector`,
 `TaskExecutionService`, `ExecutionResultMerger`,
 `CandidateProjectionService`, `PipelineEventFactory`, `SmokeLimitPolicy`, or

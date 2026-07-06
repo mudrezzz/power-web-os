@@ -16,7 +16,7 @@ Candidate discovery execution turns an accepted Radar execution plan into:
 - review-needed upstream universe rows;
 - checkpoint decisions;
 - search expansion diagnostics;
-- signal compatibility statuses;
+- signal-monitoring handoff statuses;
 - final provider result, events, and metadata used by dossier/report mappers.
 
 The package is an application-layer use case. It may depend on provider ports
@@ -54,7 +54,8 @@ run_staged_radar_execution compatibility wrapper
        -> DiscoveryPhaseExecutor.extract_retrieved_candidates
        -> universe cross-source disambiguation service
        -> SignalCompatibilityPhaseExecutor.review_before_search
-       -> SignalCompatibilityPhaseExecutor.run
+       -> CandidateDiscoverySignalHandoffProjector.run
+          or explicit inline_compatibility SignalCompatibilityPhaseExecutor.run
        -> FinalizationProjector.project
 ```
 
@@ -124,6 +125,12 @@ and source policy decisions.
 
 Does not own provider ports, phase order, mutable execution state, budget
 counters, checkpoint decisions, or final artifact projection.
+
+The default `signal_execution_mode` is `handoff`. Candidate discovery therefore
+projects `not_searched_pending_signal_monitoring` statuses after the pre-signal
+checkpoint instead of executing signal provider tasks. The legacy
+`inline_compatibility` mode is explicit and exists only for old callers and
+tests while runtime split closure continues.
 
 ### `RadarExecutionBudgetSettings`
 
@@ -224,12 +231,23 @@ work-admission contracts. Those live in
 
 ### `SignalCompatibilityPhaseExecutor`
 
-Owns the legacy signal-search stage still embedded inside candidate discovery.
-It records the pre-signal checkpoint, runs compatibility signal tasks when
-allowed, and projects `not_searched_*` statuses when candidate discovery is
-stopped or policy-limited.
+Owns the legacy signal-search stage still embedded inside candidate discovery
+for explicit `inline_compatibility` runs. It records the pre-signal checkpoint,
+runs compatibility signal tasks when allowed, and projects `not_searched_*`
+statuses when candidate discovery is stopped or policy-limited.
 
 It does not own the standalone `signal-monitoring` pipeline.
+
+### `CandidateDiscoverySignalHandoffProjector`
+
+Owns normal candidate-discovery signal handoff projection after the pre-signal
+checkpoint. It sets `signal_task_count` to zero, preserves candidate/signal
+scope visibility, and projects `not_searched_pending_signal_monitoring` records
+for signal tasks that must be evaluated by a separate signal-monitoring run.
+
+It does not call providers, count signal-monitoring budgets, or project
+`not_observed`. If the pre-signal checkpoint blocks the run, it preserves the
+existing policy-limited/stopped-for-review not-searched status.
 
 ### `FinalizationProjector`
 

@@ -52,11 +52,12 @@ One-command local Radar stack with Docker:
 ```bash
 docker compose up --build
 # UI:  http://127.0.0.1:5173
-# API: http://127.0.0.1:8000/health
+# API: http://127.0.0.1:8001/health
 ```
 
 This starts Redis, FastAPI, Celery worker, Vite frontend, and the Radar DB
-init step using shared SQLite state under `demo/output/`.
+init step using shared SQLite state under `demo/output/`. The Docker API host
+port defaults to `8001` so it can run next to other projects that use `8000`.
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -104,6 +105,13 @@ To run the first local backend API boundary:
 python -m pip install -e ".[api,dev]"
 power-web-os-api
 # Open http://127.0.0.1:8000/health or http://127.0.0.1:8000/docs
+```
+
+If another local project already uses `8000`, start the manual API on another
+port:
+
+```bash
+POWER_WEB_OS_API_PORT=8010 python -m power_web_os.api
 ```
 
 Optional live mini ICP Radar run:

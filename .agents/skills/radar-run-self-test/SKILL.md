@@ -34,18 +34,23 @@ Before starting a full run:
 
 ## Preferred Run Path
 
-Use the API/worker path because it matches the UI:
+Use the API/worker path because it matches the UI. In this repository the
+Docker dev stack publishes the API on host port `8001` and keeps container port
+`8000` internal. Try `http://127.0.0.1:8001` first. Use
+`http://127.0.0.1:8000` only for a manually started local uvicorn process
+(`power-web-os-api` / `python -m power_web_os.api`), and verify `/health`
+belongs to Power Web OS before queuing a run.
 
 1. Verify API health:
 
    ```powershell
-   Invoke-RestMethod http://127.0.0.1:8000/health
+   Invoke-RestMethod http://127.0.0.1:8001/health
    ```
 
 2. Verify Radar catalog:
 
    ```powershell
-   Invoke-RestMethod http://127.0.0.1:8000/api/radars
+   Invoke-RestMethod http://127.0.0.1:8001/api/radars
    ```
 
 3. Queue a run:
@@ -56,7 +61,7 @@ Use the API/worker path because it matches the UI:
      requester = "codex-self-test"
      task_context = @{ source = "codex_self_test" }
    } | ConvertTo-Json -Depth 5
-   Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/radars/toir-quick-live/runs -ContentType "application/json" -Body $body
+   Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8001/api/radars/toir-quick-live/runs -ContentType "application/json" -Body $body
    ```
 
 4. Poll `GET /api/radar-runs/{run_id}` every 10-15 seconds.
@@ -66,9 +71,11 @@ Use the API/worker path because it matches the UI:
    worker/runtime config if available, and useful log commands instead of
    pretending the run completed.
 
-If the API stack is not running, either ask whether to start the Docker stack or
-use the documented CLI/demo path only when it exercises the same code path the
-user wants tested.
+If `8001` is not running but `8000` answers, do not assume it is this project:
+check that `/health` reports Power Web OS and `/api/radars` exists. If the API
+stack is not running, either ask whether to start the Docker stack or use the
+documented CLI/demo path only when it exercises the same code path the user
+wants tested.
 
 ## After Terminal State
 

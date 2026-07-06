@@ -4,9 +4,9 @@ Status: AS IS
 
 Product area: Radar candidate discovery pipeline
 
-Updated after slice: 0.7.6.4.17.3
+Updated after slice: 0.7.6.4.18.1
 
-Last updated: 2026-07-05
+Last updated: 2026-07-06
 
 Canonical source: current implementation, tests, `ROADMAP.md`, and Radar run diagnostics
 
@@ -29,7 +29,7 @@ The document has two jobs:
 
 - help a user or new developer understand how Radar search currently works;
 - help agents and developers find the correct extension point before changing
-  planner, retrieval, extraction, registry lookup, checkpoints, signal search,
+  planner, retrieval, extraction, registry lookup, checkpoints, signal handoff,
   dossier projection, or evaluation.
 
 The Markdown file is the source of truth. The PDF is a generated review artifact.
@@ -70,16 +70,16 @@ merged into this AS IS document and the PDF is regenerated.
 | Used source | Evidence-bearing source linked to a product candidate or finding. |
 | Evidence ref | Stable source reference used to link extracted candidate/finding rows to normalized source records. |
 | Checkpoint | Application-owned review point that decides whether execution continues, retries, expands, revises, stops for review, or fails hard. |
-| Execution budget | Radar task budget for discovery, gate, signal, provider, and run-total work. |
+| Execution budget | Radar task budget for discovery, gate, compatibility signal tasks, provider, and run-total work. |
 | External-call budget | Budget for external actions such as OpenRouter calls, DaData lookups, provider retries, and source verification requests. |
-| Budget reserve | A sub-allocation inside the run budget for registry identity, recall expansion, official coverage, open-web coverage, extraction recovery, or signal search. |
+| Budget reserve | A sub-allocation inside the run budget for registry identity, recall expansion, official coverage, open-web coverage, extraction recovery, or legacy inline signal search. |
 | Semantic task reserve | Application-level protected task slot for approved recall/coverage expansion tasks after the regular web-task budget is exhausted. It does not bypass external-call budgets. |
 | Expansion target | A prioritized source-backed target that weak discovery should search next, such as a holding, legal entity, production site, branch, alias/language variant, or explicit benchmark target. |
 | Expansion scheduler | Application-layer selector that orders guaranteed target-lane expansion probes, origin-aware completion probes, and optional expansion variants while recording scheduled/not-scheduled states. |
 | Work scheduler | Central application-layer admission controller that decides which approved work items can consume shared budget and which must be rejected before provider execution. |
 | Projection type loss | Diagnostic state where a source-backed review-needed entity is present, but its entity type was downgraded to `unknown_entity` during projection. |
 | `not_observed` | A searched signal with no evidence found. It must not mean "not searched". |
-| `not_searched_*` | Explicit unsearched state caused by budget, policy, missing scope, or pending output. |
+| `not_searched_*` | Explicit unsearched state caused by budget, policy, missing scope, or pending signal-monitoring handoff. |
 
 ## 4. High-Level Pipeline
 
@@ -99,7 +99,7 @@ flowchart TD
   I -->|expand or retry| F
   I -->|stop or block| K[Dossier and diagnostics]
   J --> L[Pre-signal checkpoint]
-  L -->|continue| M[Signal search]
+  L -->|continue| M[Signal-monitoring handoff snapshot]
   L -->|stop or block| K
   M --> N[Scoring and projection]
   N --> K
@@ -550,7 +550,7 @@ The checkpoint service reviews execution after key stages:
 - after discovery;
 - after qualification gates;
 - after coverage checks;
-- before signal search.
+- before signal-monitoring handoff.
 
 Possible decisions:
 
@@ -571,29 +571,42 @@ Actions are bounded:
 - weak recall with uncovered target hints runs target-aware expansion before
   revision;
 - repeated unlinked evidence after expansion can still route to `revise_plan`;
-- no signal search until the pre-signal checkpoint allows it;
+- no signal handoff until the pre-signal checkpoint allows it;
 - all adaptive provider calls count against budgets.
 
 If a stop is diagnostic rather than a runtime failure, the run can still produce
 a completed snapshot with `stopped_for_review_reason` and explicit checkpoint
 metadata.
 
-## 14. Signal Search
+## 14. Signal-Monitoring Handoff
 
-Signal search is not candidate discovery. It runs only after candidate universe
-and qualification/coverage checkpoints allow it.
+Signal monitoring is not candidate discovery. Candidate discovery still compiles
+configured signal tasks as monitoring intent and records a mandatory pre-signal
+checkpoint, but the normal runtime does not call providers for `signal_search`.
+Instead it produces a handoff snapshot for a later signal-monitoring run.
 
 Rules:
 
+- default candidate discovery uses `signal_execution_mode="handoff"`;
+- explicit `signal_execution_mode="inline_compatibility"` preserves the old
+  embedded signal-search path for compatibility tests and hidden callers;
+- after a continuing pre-signal checkpoint, every configured signal/candidate
+  scope row is projected with
+  `search_status="not_searched_pending_signal_monitoring"` and
+  `not_searched_reason="pending_signal_monitoring"`;
+- `signal_task_count` remains `0` in the normal handoff path;
+- if the pre-signal checkpoint blocks the run, the existing
+  `not_searched_policy_limited` / stopped-for-review statuses are used;
 - signal tasks should use web/official evidence sources, not registry enrichment
   sources unless a connector capability explicitly supports signal evidence;
-- signal prompts include one signal and the current candidate scope;
-- signal extraction must not add new scored candidates;
-- new entities found during signal search go to candidate universe gaps or
+- inline compatibility signal prompts include one signal and the current
+  candidate scope;
+- inline compatibility signal extraction must not add new scored candidates;
+- new entities found during inline compatibility signal search go to candidate universe gaps or
   diagnostics;
 - unsearched signals become `not_searched_*`, not `not_observed`;
 - `not_observed` is reserved for searched-negative evidence or invalid searched
-  evidence.
+  evidence from signal monitoring or explicit inline compatibility.
 
 ## 15. Budget Model
 
@@ -603,7 +616,7 @@ Execution budgets:
 
 - discovery tasks per rule;
 - gate tasks per candidate/rule;
-- signal tasks per candidate/signal;
+- legacy inline signal tasks per candidate/signal;
 - provider task keys;
 - total web tasks per run.
 
@@ -631,7 +644,8 @@ Budget reserves add an intent-level layer under the same run:
 - `open_web_coverage_probe`;
 - `production_site_coverage_probe`;
 - `extraction_recovery`;
-- `signal_search`.
+- `signal_search` for explicit inline compatibility only. Normal candidate
+  discovery handoff does not spend signal-search task budget.
 
 Reserve counters are reported as `budget_reserve_counters`. Exhausted reserves
 are reported as `budget_reserve_exhaustion_events` and should produce explicit
@@ -809,7 +823,9 @@ flowchart LR
 | Extraction schema repair | `radar/candidate_discovery/extraction` contract and OpenRouter provider recovery path. | Malformed-output fixtures, retry/backup budget tests. |
 | Entity resolution semantics | entity resolution and candidate universe projection. | Legal entity vs site/branch/project/asset tests. |
 | Checkpoint policy | checkpoint service/action executor. | Recorded/fake adaptive pipeline tests. |
-| Signal search behavior | retrieval task compiler and staged execution signal phase. | Not-searched vs not-observed tests. |
+| Candidate-discovery signal handoff | retrieval task compiler and `CandidateDiscoverySignalHandoffProjector`. | Not-searched pending handoff vs not-observed tests. |
+| Inline compatibility signal search | explicit `inline_compatibility` staged execution signal phase. | Legacy signal-search/budget compatibility tests. |
+| Signal monitoring behavior | `src/power_web_os/application/radar/signal_monitoring`. | Recorded signal-monitoring contracts/source-strategy tests. |
 | Dossier projection | API dossier mappers and source lifecycle. | Backend API/dossier tests. |
 | Benchmark metrics | evaluation module and baseline fixtures. | Evaluation unit/report tests. |
 

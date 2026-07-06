@@ -24,6 +24,7 @@ from support.radar_adaptive_harness import (
     assert_stopped_for_review,
     base_plan,
     cross_check_supporting_result,
+    discovery_result_with_raw_negative_signal,
     evidence_linking_failed_result,
     high_coverage_risk_result,
     radar_definition,
@@ -100,6 +101,56 @@ def test_unrecovered_weak_discovery_does_not_start_signal_search() -> None:
     assert "execution_stopped_for_review" in [event.event_type for event in events]
 
 
+def test_candidate_discovery_defaults_to_signal_monitoring_handoff() -> None:
+    provider = ScriptedProvider([strong_discovery_result()])
+
+    _, events, execution_results = run_staged_radar_execution(
+        radar=radar_definition(),
+        execution_plan=base_plan(),
+        provider=provider,
+    )
+
+    assert provider.stages == ["qualification_discovery"]
+    assert execution_results["signal_execution_mode"] == "handoff"
+    assert execution_results["signal_task_count"] == 0
+    assert execution_results["signal_monitoring_handoff_status"] == "pending_signal_monitoring"
+    assert execution_results["signal_monitoring_pending_count"] == 1
+    assert [
+        {
+            "candidate_name": item.get("candidate_name"),
+            "signal_id": item.get("signal_id"),
+            "task_id": item.get("task_id"),
+            "search_status": item.get("search_status"),
+            "not_searched_reason": item.get("not_searched_reason"),
+        }
+        for item in execution_results["signal_search_statuses"]
+    ] == [{
+        "candidate_name": "Candidate A",
+        "signal_id": "S1",
+        "task_id": "signal-s1",
+        "search_status": "not_searched_pending_signal_monitoring",
+        "not_searched_reason": "pending_signal_monitoring",
+    }]
+    assert not any(event.event_type == "signal_search_planned" for event in events)
+    assert_no_normal_negative_signal_projection(execution_results)
+
+
+def test_candidate_discovery_handoff_downgrades_raw_discovery_signal_negatives() -> None:
+    provider = ScriptedProvider([discovery_result_with_raw_negative_signal()])
+
+    result, _, execution_results = run_staged_radar_execution(
+        radar=radar_definition(),
+        execution_plan=base_plan(),
+        provider=provider,
+    )
+
+    assert execution_results["signal_execution_mode"] == "handoff"
+    assert result.candidate_observations[0]["signals"][0]["status"] == "unclear"
+    assert result.candidate_observations[0]["signals"][0]["search_status"] == "not_searched_pending_signal_monitoring"
+    assert result.candidate_observations[0]["signals"][0]["not_searched_reason"] == "pending_signal_monitoring"
+    assert_no_normal_negative_signal_projection(execution_results)
+
+
 def test_weak_discovery_retries_same_source_then_continues_to_signal_search() -> None:
     provider = ScriptedProvider([weak_result(), strong_discovery_result(), signal_result()])
 
@@ -108,6 +159,7 @@ def test_weak_discovery_retries_same_source_then_continues_to_signal_search() ->
         execution_plan=base_plan(),
         provider=provider,
         max_checkpoint_retries_per_stage=1,
+        signal_execution_mode="inline_compatibility",
     )
 
     assert provider.stages == ["qualification_discovery", "qualification_discovery", "signal_search"]
@@ -124,6 +176,7 @@ def test_weak_global_source_expands_allowed_additional_source_then_continues() -
         execution_plan=base_plan(source_scope="global", source_ids=["sibur_site"]),
         provider=provider,
         max_checkpoint_retries_per_stage=1,
+        signal_execution_mode="inline_compatibility",
     )
 
     discovery_calls = [call.queries[0] for call in provider.calls if call.queries[0].stage == "qualification_discovery"]
@@ -157,6 +210,7 @@ def test_schema_failure_applies_extraction_repair_then_continues() -> None:
         execution_plan=base_plan(),
         provider=provider,
         max_checkpoint_retries_per_stage=1,
+        signal_execution_mode="inline_compatibility",
     )
 
     assert provider.stages == ["qualification_discovery", "qualification_discovery", "signal_search"]
@@ -224,6 +278,7 @@ def test_evidence_linking_failure_with_benchmark_hints_runs_targeted_expansion_f
             }],
         },
         max_checkpoint_retries_per_stage=1,
+        signal_execution_mode="inline_compatibility",
     )
 
     assert provider.stages[:2] == ["qualification_discovery", "coverage_check"]
@@ -287,6 +342,7 @@ def test_adaptive_suite_uses_fake_providers_without_network(monkeypatch) -> None
         execution_plan=base_plan(),
         provider=provider,
         max_checkpoint_retries_per_stage=1,
+        signal_execution_mode="inline_compatibility",
     )
 
     assert_signal_search_ran(execution_results)
@@ -303,6 +359,7 @@ def test_cross_source_disambiguation_executes_official_web_check() -> None:
         radar=radar_definition(),
         execution_plan=base_plan(),
         provider=provider,
+        signal_execution_mode="inline_compatibility",
     )
 
     assert provider.stages == ["qualification_discovery", "coverage_check", "signal_search"]
@@ -325,6 +382,7 @@ def test_cross_source_disambiguation_records_no_supporting_evidence() -> None:
         radar=radar_definition(),
         execution_plan=base_plan(),
         provider=provider,
+        signal_execution_mode="inline_compatibility",
     )
 
     execution = execution_results["cross_source_disambiguation_execution"]
@@ -391,6 +449,7 @@ def test_cross_source_disambiguation_executes_when_task_is_created_after_gate() 
         radar=radar_definition(),
         execution_plan=plan,
         provider=provider,
+        signal_execution_mode="inline_compatibility",
     )
 
     assert provider.stages == ["qualification_discovery", "qualification_gate", "coverage_check", "signal_search"]

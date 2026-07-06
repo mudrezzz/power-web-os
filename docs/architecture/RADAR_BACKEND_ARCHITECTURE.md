@@ -166,7 +166,7 @@ Execution phase map:
 | `coverage.py` | `CoveragePhaseExecutor`: run iterative coverage checks and after-coverage checkpoint recovery. |
 | `expansion.py` | `ExpansionPhaseExecutor`: execute search expansion tasks under scheduler/admission and budget guards. |
 | `expansion_diagnostics.py` | Build expansion summaries, target coverage, and guarantee diagnostics. |
-| `signals.py` | `SignalCompatibilityPhaseExecutor`: preserve the compatibility signal-search stage and `not_searched_*` projection. |
+| `signals.py` | `CandidateDiscoverySignalHandoffProjector`: normal signal-monitoring handoff projection; `SignalCompatibilityPhaseExecutor`: explicit legacy inline signal-search compatibility. |
 | `finalization.py` | `FinalizationProjector`: build final `WebSearchProviderResult`, event list, and dossier/report metadata. |
 | `finalization_universe.py` | Add review-needed upstream entities and upstream disambiguation events. |
 | `task_runner.py` | `TaskExecutionService`: provider-neutral task execution, gate pass, retries, and candidate task utilities. |
@@ -196,7 +196,11 @@ authoritative class-by-class contract is maintained in
 - Phase behavior belongs to service/projector methods:
   `DiscoveryPhaseExecutor.run`, `GatePhaseExecutor.run`,
   `CoveragePhaseExecutor.run`, `ExpansionPhaseExecutor.run`,
+  `CandidateDiscoverySignalHandoffProjector.run`,
   `SignalCompatibilityPhaseExecutor.run`, and `FinalizationProjector.project`.
+  Normal candidate discovery uses `signal_execution_mode="handoff"` and does
+  not call provider `signal_search` tasks. Inline signal search remains only as
+  explicit `inline_compatibility` behavior until closure.
 - Helper behavior is also service-owned:
   `TaskExecutionService`, `ExecutionResultMerger`,
   `CandidateProjectionService`, `PipelineEventFactory`,
@@ -331,6 +335,12 @@ planning, signal-specific budget counters, payload parsing/repair, observation
 projection, and the recorded executor. Root files are compatibility shims and
 must not regain behavior. This migration does not add live providers,
 persistence, API/job lifecycle, or UI scheduling.
+
+As of slice `0.7.6.4.18.1`, candidate discovery and signal monitoring are split
+at runtime. Candidate discovery records the pre-signal checkpoint and projects
+`not_searched_pending_signal_monitoring` handoff rows by default. The
+signal-monitoring package owns actual signal evaluation semantics and budgets;
+candidate discovery keeps only explicit inline compatibility for old callers.
 
 As of slice `0.7.6.4.14.1`, the flat namespace closure policy is explicit:
 `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md` is the reviewable debt
@@ -523,8 +533,10 @@ bounded slices:
     collection/pipeline support, and source-risk helpers.
 19. `0.7.6.4.18` moved root-level signal-monitoring behavior into
     `radar/signal_monitoring`.
-20. `0.7.6.4.19` closes or sunsets remaining root Radar-prefixed files.
-21. Product corrective work resumes after the cleanup corridor, starting with
+20. `0.7.6.4.18.1` split candidate discovery and signal monitoring runtime:
+    discovery now emits handoff statuses by default.
+21. `0.7.6.4.19` closes or sunsets remaining root Radar-prefixed files.
+22. Product corrective work resumes after the cleanup corridor, starting with
     the already planned `0.7.6.3.6.6` post-extraction fallback materialization
     and `0.7.6.3.7` model-role evaluation slices, unless a blocking
     architecture regression appears.

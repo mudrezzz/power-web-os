@@ -224,3 +224,71 @@ def _searched_signal_status(candidate_name: str, task: RadarExecutionTask) -> di
         "search_status": "searched",
         "not_searched_reason": "",
     }
+
+
+class CandidateDiscoverySignalHandoffProjector:
+    """Projects signal-monitoring handoff state without executing signal providers.
+
+    Owns:
+    - Candidate-discovery signal handoff projection for the normal runtime path.
+
+    Does not own:
+    - Inline signal provider execution, standalone signal monitoring, or signal
+      monitoring budgets.
+
+    Architecture:
+    docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md#candidatediscoverysignalhandoffprojector
+    """
+
+    phase_name = "signal_handoff"
+
+    def __init__(self, task_service: TaskExecutionService | None = None) -> None:
+        self._task_service = task_service or TaskExecutionService()
+
+    def run(
+        self,
+        state: CandidateDiscoveryExecutionState,
+        *,
+        tasks: list[RadarExecutionTask],
+        can_run_signal_search: bool,
+        pre_signal_decision: RadarExecutionCheckpointDecision,
+    ) -> PhaseResult:
+        state.signal_task_count = 0
+        state.signal_candidate_scope = list(state.candidate_scope)
+        state.signal_search_statuses = []
+        if can_run_signal_search:
+            decision = _pending_signal_monitoring_decision()
+            status = "pending_signal_monitoring"
+        else:
+            decision = SignalCompatibilityPhaseExecutor._policy_limited_decision(state, pre_signal_decision)
+            status = "blocked"
+        self._project_signal_handoff(state, tasks, decision)
+        return PhaseResult(phase_name=self.phase_name, status=status)
+
+    def _project_signal_handoff(
+        self,
+        state: CandidateDiscoveryExecutionState,
+        tasks: list[RadarExecutionTask],
+        decision: dict[str, str],
+    ) -> None:
+        for task in tasks:
+            for scoped_candidate_name in state.signal_candidate_scope:
+                state.observations.append(self._task_service.events.not_searched_signal_observation(
+                    scoped_candidate_name,
+                    task,
+                    decision,
+                ))
+                state.signal_search_statuses.append(self._task_service.events.signal_status_record(
+                    scoped_candidate_name,
+                    task,
+                    decision,
+                ))
+
+
+def _pending_signal_monitoring_decision() -> dict[str, str]:
+    return {
+        "state": "not_searched_pending_signal_monitoring",
+        "reason": "pending_signal_monitoring",
+        "message": "Signal monitoring is pending a separate signal-monitoring run.",
+        "key": "signal_monitoring:handoff",
+    }

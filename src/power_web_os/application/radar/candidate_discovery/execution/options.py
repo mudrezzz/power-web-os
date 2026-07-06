@@ -5,6 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
+from power_web_os.application.radar.candidate_discovery.execution.signal_modes import (
+    CandidateDiscoverySignalExecutionMode,
+    _normalize_signal_execution_mode,
+)
 from power_web_os.application.radar.candidate_discovery.execution.task_budget import (
     RadarExecutionBudgetSettings,
     budget_settings_from_context,
@@ -58,6 +62,7 @@ class CandidateDiscoveryExecutionOptions:
     budget_reserve_limits: dict[str, int] | None = None
     semantic_task_reserve_limits: dict[str, int] | None = None
     source_policy_decisions: list[dict[str, Any]] | None = None
+    signal_execution_mode: CandidateDiscoverySignalExecutionMode = "handoff"
 
     @classmethod
     def from_task_context(
@@ -102,6 +107,7 @@ class CandidateDiscoveryExecutionOptions:
             budget_reserve_limits=_optional_int_dict(context, "budget_reserve_limits"),
             semantic_task_reserve_limits=_optional_int_dict(context, "semantic_task_reserve_limits"),
             source_policy_decisions=_source_policy_decisions(discovery_plan),
+            signal_execution_mode=_normalize_signal_execution_mode(context.get("signal_execution_mode")),
         )
 
     @classmethod
@@ -135,6 +141,7 @@ class CandidateDiscoveryExecutionOptions:
         budget_reserve_limits: dict[str, int] | None = None,
         semantic_task_reserve_limits: dict[str, int] | None = None,
         source_policy_decisions: list[dict[str, Any]] | None = None,
+        signal_execution_mode: str | None = None,
     ) -> "CandidateDiscoveryExecutionOptions":
         return cls(
             task_context=dict(task_context or {}),
@@ -164,6 +171,7 @@ class CandidateDiscoveryExecutionOptions:
             budget_reserve_limits=budget_reserve_limits,
             semantic_task_reserve_limits=semantic_task_reserve_limits,
             source_policy_decisions=source_policy_decisions,
+            signal_execution_mode=_normalize_signal_execution_mode(signal_execution_mode),
         )
 
     def apply_task_context(self, radar: dict[str, Any]) -> dict[str, Any]:

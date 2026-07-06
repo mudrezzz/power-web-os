@@ -48,6 +48,10 @@ Before the first run:
 7. For local OpenRouter live probes and runs, use repository `.env` as the
    credential source of truth. Do not trust an inherited `OPENROUTER_API_KEY`
    process variable when diagnosing provider auth failures.
+8. For the API/worker path, prefer the Docker dev API host port
+   `http://127.0.0.1:8001`. Use `http://127.0.0.1:8000` only for a manual local
+   uvicorn process after verifying `/health` and `/api/radars` belong to Power
+   Web OS.
 
 ## Run And Diagnose
 

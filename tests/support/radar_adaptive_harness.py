@@ -194,6 +194,20 @@ def strong_discovery_result(*, query_id: str = "discover-q1") -> WebSearchProvid
     )
 
 
+def discovery_result_with_raw_negative_signal(*, query_id: str = "discover-q1") -> WebSearchProviderResult:
+    result = strong_discovery_result(query_id=query_id)
+    candidate = dict(result.candidate_observations[0])
+    candidate["signals"] = [
+        {
+            "signal_code": "S1",
+            "status": "not_observed",
+            "search_status": "searched",
+            "summary": "No signal evidence found.",
+        }
+    ]
+    return result.model_copy(update={"candidate_observations": [candidate]})
+
+
 def strong_discovery_with_cross_check_plan(*, query_id: str = "discover-q1") -> WebSearchProviderResult:
     result = strong_discovery_result(query_id=query_id)
     return result.model_copy(update={

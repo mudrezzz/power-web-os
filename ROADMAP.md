@@ -8392,7 +8392,7 @@ Principles:
 
 ### Slice 0.7.6.4.18.1: Candidate discovery and signal monitoring runtime split
 
-- Status: Ready
+- Status: Done
 - Goal: Make candidate discovery and signal monitoring separate runtime products: candidate discovery stops owning inline signal search as the normal execution path, and signal monitoring owns signal execution semantics, budgets, and evaluation.
 - User value: Radar users and developers can run candidate discovery to build/review a candidate universe, then run signal monitoring separately on accepted or review-allowed candidates without confusing discovery budget exhaustion with signal quality.
 - Problem statement: The architecture says Radar is a family of pipelines, but candidate-discovery execution still plans and can run `signal_search` tasks inline. That legacy path makes live smoke diagnostics look like one monolithic Radar run and can project unsearched signals as if candidate discovery had evaluated them.
@@ -8433,7 +8433,7 @@ Principles:
 
 ### Slice 0.7.6.4.18.2: Signal monitoring live runtime and API wiring
 
-- Status: Backlog
+- Status: Ready
 - Goal: Add the first bounded live/scheduled signal-monitoring runtime over accepted candidate-discovery snapshots with independent signal budgets, provider calls, persistence/API surfaces, and no candidate-discovery budget coupling.
 - User value: A user can monitor intent changes for known candidates after discovery, with its own cadence, budget, and report, instead of rerunning full candidate discovery to refresh signals.
 - Problem statement: Signal monitoring currently has contracts, source strategy, budgets, model profile isolation, and a recorded demo loop, but no first-class live/API/job runtime equivalent to candidate discovery. Therefore the product cannot yet launch or evaluate signal monitoring independently.
