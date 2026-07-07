@@ -127,7 +127,7 @@ candidate state.
 | Web retrieval/extraction provider | `src/power_web_os/integrations/live_radar_openrouter.py` | Execute OpenRouter web/retrieval/extraction tasks under budget guard. | Execution budgets, final scoring, source obligations. |
 | Source registry/provider orchestration | `src/power_web_os/application/radar_source_providers.py` | Execute structured company registry providers for allowed stages. | Signal evidence replacement. |
 | Registry lookup term generator | `src/power_web_os/application/radar_registry_lookup_terms.py` | Build concrete lookup terms for registry providers. | Broad web discovery. |
-| Search expansion service | `src/power_web_os/application/radar/candidate_discovery/search_expansion/service.py`, `models.py`, and `support.py` | Build prioritized expansion target queues and bounded source-profile-driven query variants when discovery/coverage is weak. | Direct provider calls. |
+| Search expansion service | `src/power_web_os/application/radar/candidate_discovery/search_expansion/service.py`, `models.py`, `support.py`, and `target_merge.py` | Build prioritized expansion target queues, preserve protected benchmark target metadata through dedupe, and create bounded source-profile-driven query variants when discovery/coverage is weak. | Direct provider calls. |
 | Search expansion scheduler | `src/power_web_os/application/radar/candidate_discovery/search_expansion/scheduler.py` and `selection.py` | Select guaranteed target-lane variants, prioritize explicit benchmark completion targets over incidental targets, and order selected work before optional expansion. | Provider calls or changing source policy. |
 | Central work scheduler | `src/power_web_os/application/radar/candidate_discovery/search_expansion/work_scheduler.py` | Admit application-approved work lanes, protect shared OpenRouter capacity for guaranteed recall expansion, and record accepted/rejected work. | Provider calls, source policy mutation, or checkpoint decision policy. |
 | Search expansion executor | `src/power_web_os/application/radar/candidate_discovery/search_expansion/targeted_execution.py` | Execute only scheduler-admitted checkpoint expansion tasks under source policy and budget guards. | Choosing checkpoint decisions or admitting work locally. |
@@ -135,10 +135,10 @@ candidate state.
 | Checkpoint service | `src/power_web_os/application/radar/candidate_discovery/checkpoints/policy.py` | Decide continue, retry, expand, repair, revise, stop, or fail. | Direct HTTP/provider calls. |
 | Checkpoint action executor | `src/power_web_os/application/radar/candidate_discovery/checkpoints/recovery.py` | Apply approved checkpoint actions under budgets and policy. | Unbounded loops. |
 | Entity resolution | `src/power_web_os/application/radar/candidate_discovery/universe/entity_resolution.py` | Distinguish legal entity, branch, production site, project, asset, and unknown entity. | Provider transport. |
-| Candidate universe support | `src/power_web_os/application/radar/candidate_discovery/universe/` helpers | Preserve source-backed legal entities and review-needed upstream entities. | Product precision claims. |
+| Candidate universe support | `src/power_web_os/application/radar/candidate_discovery/universe/` helpers, especially `admission.py` | Preserve source-backed legal entities and review-needed upstream entities with recall-first upstream admission. | Product precision claims. |
 | Live artifact projection | `src/power_web_os/application/radar/candidate_discovery/diagnostics/live_run_artifact.py` | Shape product-safe live run artifacts from completed application state. | Provider execution, checkpoint decisions, or scheduler admission. |
 | Dossier projection | `src/power_web_os/api/radar_dossier_mappers.py` and related mappers | Explain lifecycle, diagnostics, checkpoints, budgets, candidates, and sources. | Mutating run behavior. |
-| Evaluation | `src/power_web_os/radar_evaluation.py` | Compare persisted run/dossier output to curated baseline. | Live provider calls. |
+| Evaluation | `src/power_web_os/radar_evaluation.py` and `radar_evaluation_funnel.py` | Compare persisted run/dossier output to curated baseline and report strict product precision separately from retained upstream leads. | Live provider calls. |
 
 ## 6. Inputs And Runtime Configuration
 
@@ -499,6 +499,9 @@ blank `not_retrieved_in_run`.
 For benchmark runs only, `task_context.benchmark_target_hints` can seed
 `benchmark_baseline_like_target` expansion targets. Production runs ignore those
 hints unless an explicit `benchmark_profile` is present.
+`benchmark_live` carries protected baseline-target lane minimums, completion
+slots, reserve budgets, and benchmark metadata so explicit baseline targets are
+scheduled before optional duplicate or alias exploration.
 
 ## 12. Candidate Universe And Entity Resolution
 
@@ -507,9 +510,25 @@ entities that are not yet strict product accounts.
 
 Current rules:
 
+- `CandidateDiscoveryUpstreamAdmissionPolicy` owns deterministic upstream
+  retention decisions;
+- candidate rows expose `upstream_discovery_outcome`,
+  `product_acceptance_status`, `upstream_confidence`, `upstream_reason`, and
+  `upstream_source_refs`;
+- `score.tier` remains a compatibility/display field and is derived from
+  upstream admission in normal handoff mode;
+- source-backed candidates no longer need observed signal evidence to avoid a
+  generic `Monitor` result;
+- pending signal monitoring does not add `signal_requires_human_review` and
+  does not create `not_observed`;
 - legal entities can become product candidates when evidence and resolution are
   sufficient;
 - weak legal-entity mentions can remain review-needed universe entries;
+- concrete registry identities such as INN, OGRN, or legal name are retained as
+  upstream evidence rather than being weak by construction;
+- high-trust official-domain evidence can promote upstream relation and
+  industrial coverage evidence when product-safe source diagnostics contain the
+  candidate name or alias;
 - branches, factories, production sites, projects, and assets can be retained
   as review-needed upstream entities or linked facts;
 - unresolved sites, projects, or assets must not become high-confidence product
@@ -755,6 +774,13 @@ Current SIBUR evaluation channels:
 - `review_recall` for production-site, branch, asset, or project hits retained
   as review-needed universe entities or linked facts;
 - `precision` for strict product account candidates;
+- `product_candidate_count`, which counts only product-accepted candidate rows;
+- `retained_upstream_lead_count`, `confirmed_upstream_lead_count`, and
+  `review_needed_upstream_lead_count`, which explain upstream discovery output
+  separately from strict product acceptance;
+- `benchmark_target_funnel`, which records generated, selected, admitted,
+  executed, source-found, projected, rejected, and path-reason states for each
+  baseline target;
 - false positives;
 - false negatives;
 - ambiguous matches;

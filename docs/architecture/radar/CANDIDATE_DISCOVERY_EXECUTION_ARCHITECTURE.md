@@ -14,6 +14,7 @@ Candidate discovery execution turns an accepted Radar execution plan into:
 - retrieved sources;
 - candidate observations;
 - review-needed upstream universe rows;
+- upstream discovery outcomes and product acceptance statuses;
 - checkpoint decisions;
 - search expansion diagnostics;
 - signal-monitoring handoff statuses;
@@ -206,6 +207,10 @@ retries, invocation of universe-owned retrieved-candidate extraction and
 cross-source disambiguation services, first checkpoint recovery, initial
 qualification gates, and smoke candidate-scope capping.
 
+It does not own recall-first upstream admission rules. Those live in
+`radar/candidate_discovery/universe/admission.py` and are applied during
+candidate normalization/final projection.
+
 ### `GatePhaseExecutor`
 
 Owns qualification gate execution for an explicit task list and candidate scope.
@@ -258,6 +263,22 @@ coverage metadata, final `WebSearchProviderResult`, and events.
 
 It does not own provider task execution, checkpoint decisions, or expansion
 target selection.
+
+For benchmark runs, finalization may project benchmark-present source
+diagnostics into review-needed upstream universe rows. It must use only
+product-safe source diagnostics and must not inspect prompts or hidden provider
+text.
+
+### `CandidateDiscoveryUpstreamAdmissionPolicy`
+
+Owns deterministic recall-first upstream retention:
+source-backed retrieved candidates, official-domain promotion, concrete
+registry identity retention, and the split between upstream discovery and
+strict product acceptance.
+
+It does not own signal-monitoring execution, provider calls, or manual product
+account approval. Normal candidate discovery must not require observed signal
+evidence to retain upstream leads.
 
 Extraction validation and diagnostic-state rules live in
 `radar/candidate_discovery/extraction`. Candidate normalization, collection

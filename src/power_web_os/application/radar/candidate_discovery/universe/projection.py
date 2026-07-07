@@ -53,5 +53,9 @@ def candidate_universe_entries(
             ],
             rejection_reasons=rejection_reasons,
             coverage_flags=[flag for flag in candidate.review_flags if "candidate_universe" in flag or "coverage" in flag],
+            upstream_discovery_outcome=candidate.upstream_discovery_outcome,
+            product_acceptance_status=candidate.product_acceptance_status,
+            upstream_confidence=candidate.upstream_confidence,
+            upstream_reason=candidate.upstream_reason,
         ))
     return entries

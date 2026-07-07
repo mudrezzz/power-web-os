@@ -48,6 +48,7 @@ from power_web_os.application.radar.candidate_discovery.execution.options import
 from power_web_os.application.radar.candidate_discovery.execution.orchestrator import run_staged_radar_execution
 from power_web_os.application.radar.candidate_discovery.execution.expansion_diagnostics import _target_probe_guarantees
 from power_web_os.application.radar.candidate_discovery.execution.finalization_universe import (
+    _append_benchmark_present_universe_entities,
     _append_review_needed_universe_entities,
 )
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
@@ -790,8 +791,9 @@ def test_recorded_response_normalizes_sources_candidates_and_scores() -> None:
     assert artifact["candidates"][0]["legal_name"] == "ПАО «Нижнекамскнефтехим»"
     assert artifact["candidates"][0]["score"]["fit_score"] == 2
     assert artifact["candidates"][0]["score"]["intent_score"] == 0
-    assert artifact["candidates"][0]["score"]["tier"] == "Monitor"
-    assert "signal_requires_human_review" in artifact["candidates"][0]["review_flags"]
+    assert artifact["candidates"][0]["score"]["tier"] == "Upstream confirmed"
+    assert artifact["candidates"][0]["upstream_discovery_outcome"] == "confirmed_upstream_lead"
+    assert "signal_requires_human_review" not in artifact["candidates"][0]["review_flags"]
     qualification = artifact["candidates"][0]["qualification"][0]
     assert qualification["operator"] == "AND"
     assert qualification["requirement_level"] == "required"
@@ -876,6 +878,160 @@ def test_soft_risky_source_keeps_candidate_but_downgrades_confidence() -> None:
     assert candidate.signals[0].score == 0
     assert candidate.score.fit_score == 0
     assert "source_verification_review" in candidate.review_flags
+
+
+def test_official_source_backed_candidate_is_confirmed_upstream_without_signals() -> None:
+    radar = build_live_mini_radar_definition()
+    radar["global_search_policy"] = {
+        "sources": [
+            {
+                "source_id": "sibur_site",
+                "source_type": "website",
+                "reference": "https://www.sibur.ru",
+                "trust_level": "high",
+            }
+        ]
+    }
+    source = RadarSourceEvidence(
+        evidence_ref="src_sibur",
+        title="SIBUR Neftekhim LLC production plant",
+        url="https://www.sibur.ru/ru/about/production/",
+        snippet="SIBUR Neftekhim LLC is listed as a petrochemical production facility.",
+        verification_state="reachable",
+    )
+
+    candidate = normalize_live_candidate(
+        {
+            "legal_name": "SIBUR Neftekhim LLC",
+            "qualification": [
+                {"criterion_code": "Q1", "status": "unknown", "confidence": "medium", "evidence_refs": ["src_sibur"]},
+                {"criterion_code": "Q2", "status": "unknown", "confidence": "medium", "evidence_refs": ["src_sibur"]},
+            ],
+            "signals": [
+                {
+                    "signal_code": "S1",
+                    "search_status": "not_searched_pending_signal_monitoring",
+                    "not_searched_reason": "pending_signal_monitoring",
+                }
+            ],
+        },
+        radar=radar,
+        sources=[source],
+    )
+
+    assert candidate.upstream_discovery_outcome == "confirmed_upstream_lead"
+    assert candidate.product_acceptance_status == "product_candidate"
+    assert candidate.upstream_confidence == "high"
+    assert candidate.score.tier == "Upstream confirmed"
+    assert candidate.score.fit_score == 2
+    assert candidate.score.intent_score == 0
+    assert "signal_requires_human_review" not in candidate.review_flags
+
+
+def test_open_web_source_backed_candidate_is_review_upstream_not_monitor() -> None:
+    radar = build_live_mini_radar_definition()
+    source = RadarSourceEvidence(
+        evidence_ref="src_web",
+        title="Industrial supplier profile for Candidate A",
+        url="https://example.test/candidate-a",
+        snippet="Candidate A is mentioned as a possible industrial maintenance supplier.",
+        verification_state="reachable",
+    )
+
+    candidate = normalize_live_candidate(
+        {
+            "legal_name": "Candidate A",
+            "qualification": [
+                {"criterion_code": "Q1", "status": "unknown", "confidence": "medium", "evidence_refs": ["src_web"]},
+            ],
+            "signals": [
+                {
+                    "signal_code": "S1",
+                    "search_status": "not_searched_pending_signal_monitoring",
+                    "not_searched_reason": "pending_signal_monitoring",
+                }
+            ],
+        },
+        radar=radar,
+        sources=[source],
+    )
+
+    assert candidate.upstream_discovery_outcome == "review_needed_upstream_lead"
+    assert candidate.product_acceptance_status == "review_required"
+    assert candidate.score.tier == "Upstream review"
+    assert "signal_requires_human_review" not in candidate.review_flags
+
+
+def test_registry_identity_candidate_is_retained_upstream_not_weak_by_default() -> None:
+    radar = build_live_mini_radar_definition()
+    source = RadarSourceEvidence(
+        evidence_ref="registry_candidate",
+        title="Registry: Candidate A",
+        url="",
+        snippet="INN 1234567890; OGRN 1234567890123; legal name Candidate A.",
+        source_type="company_registry",
+        verification_state="not_checked",
+    )
+
+    candidate = normalize_live_candidate(
+        {
+            "legal_name": "Candidate A",
+            "inn": "1234567890",
+            "ogrn": "1234567890123",
+            "evidence_refs": ["registry_candidate"],
+            "registry_facts": {"legal_name": "Candidate A", "inn": "1234567890"},
+            "qualification": [
+                {
+                    "criterion_code": "Q1",
+                    "status": "confirmed",
+                    "confidence": "high",
+                    "evidence_refs": ["registry_candidate"],
+                },
+            ],
+            "signals": [],
+        },
+        radar=radar,
+        sources=[source],
+    )
+
+    assert candidate.upstream_discovery_outcome == "confirmed_upstream_lead"
+    assert candidate.upstream_confidence == "high"
+    assert candidate.score.tier == "Upstream confirmed"
+    assert candidate.qualification[0].status == "confirmed"
+
+
+def test_benchmark_present_source_projection_restores_review_needed_universe_entry() -> None:
+    source = RadarSourceEvidence(
+        evidence_ref="src_kazan",
+        title="SIBUR official source mentions Kazanorgsintez",
+        url="https://www.sibur.ru/ru/about/production/",
+        snippet="Kazanorgsintez is part of the petrochemical production contour.",
+        verification_state="reachable",
+    )
+
+    universe = _append_benchmark_present_universe_entities(
+        [],
+        radar={
+            "task_context": {
+                "benchmark_profile": "benchmark_live",
+                "benchmark_target_hints": [
+                    {
+                        "baseline_id": "kazanorgsintez",
+                        "canonical_name": "Kazanorgsintez",
+                        "aliases": ["Kazanorgsintez PJSC"],
+                        "entity_type": "legal_entity",
+                    }
+                ],
+            }
+        },
+        provider_metadata={},
+        sources=[source],
+    )
+
+    assert universe[0]["legal_name"] == "Kazanorgsintez"
+    assert universe[0]["source_refs"] == ["src_kazan"]
+    assert universe[0]["upstream_discovery_outcome"] == "review_needed_upstream_lead"
+    assert universe[0]["benchmark_id"] == "kazanorgsintez"
 
 
 def test_useful_result_budget_retries_weak_discovery_result() -> None:
@@ -1162,7 +1318,7 @@ def test_live_radar_service_executes_explicit_pipeline_phases() -> None:
     assert collected.execution_results["signal_monitoring_pending_count"] == 3
     assert len(normalized.sources) == 1
     assert extracted.candidates[0]["legal_name"] == payload["candidate_observations"][0]["legal_name"]
-    assert evaluated.candidates[0]["score"]["tier"] == "Monitor"
+    assert evaluated.candidates[0]["score"]["tier"] == "Upstream confirmed"
     assert validated.contract_validation == []
     assert shaped.artifact is not None
     assert shaped.artifact["artifact_type"] == "icp_radar_live_run"
@@ -3025,11 +3181,12 @@ def test_staged_execution_extracts_review_candidate_from_retrieved_source_before
     result, events, execution_results = run_staged_radar_execution(radar=radar, execution_plan=plan, provider=provider)
 
     assert result.candidate_observations[0]["legal_name"] == "АО Красноярский завод синтетического каучука"
-    assert set(result.candidate_observations[0]["review_flags"]) == {
+    assert set(result.candidate_observations[0]["review_flags"]) >= {
         "candidate_universe_from_retrieved_source",
         "not_searched_pending_signal_monitoring",
         "retrieved_source_candidate_requires_review",
     }
+    assert "source_backed_upstream_lead" in result.candidate_observations[0]["review_flags"]
     assert result.sources[0].evidence_ref == "retrieved_kzsk"
     assert execution_results["candidate_scope"] == ["АО Красноярский завод синтетического каучука"]
     assert execution_results["signal_task_count"] == 0

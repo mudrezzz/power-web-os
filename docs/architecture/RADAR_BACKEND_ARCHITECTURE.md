@@ -384,11 +384,13 @@ Expected subpackages:
   retrieval contracts, retrieval task cards, and retrieved source material;
 - `extraction`: structured extraction validation, repair, and diagnostics;
 - `sources`: source obligations, registry/source orchestration, lookup terms;
-- `universe`: candidate universe, entity resolution, retrieved candidates,
-  candidate refs, gap payloads, and upstream/cross-source disambiguation;
+- `universe`: recall-first upstream admission, candidate universe, entity
+  resolution, retrieved candidates, candidate refs, gap payloads, and
+  upstream/cross-source disambiguation;
 - `checkpoints`: adaptive checkpoint policies and recovery actions;
-- `search_expansion`: recall-first expansion planning, selection, scheduling,
-  targeted checkpoint expansion execution, payloads, and work admission;
+- `search_expansion`: recall-first expansion planning, protected benchmark
+  target metadata merge, selection, scheduling, targeted checkpoint expansion
+  execution, payloads, and work admission;
 - `execution`: phase executors and phase order;
 - `diagnostics`: dossier/trace/journal-ready projection helpers.
 

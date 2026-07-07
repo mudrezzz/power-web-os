@@ -74,9 +74,10 @@ BENCHMARK_PROFILES: dict[str, dict[str, Any]] = {
         "max_discovery_retries_per_task": 1,
         "max_checkpoint_revisions_per_run": 2,
         "max_checkpoint_retries_per_stage": 1,
-        "max_openrouter_calls_per_run": 32,
+        "max_openrouter_calls_per_run": 48,
         "max_openrouter_planner_calls_per_run": 3,
-        "max_openrouter_web_task_calls_per_run": 26,
+        "max_openrouter_web_task_calls_per_run": 36,
+        "max_recall_expansion_openrouter_calls_per_run": 14,
         "max_openrouter_server_tool_web_searches_per_run": 120,
         "max_dadata_lookups_per_run": 12,
         "max_source_verification_requests_per_run": 100,
@@ -85,6 +86,23 @@ BENCHMARK_PROFILES: dict[str, dict[str, Any]] = {
         "openrouter_web_max_total_results_per_call": 10,
         "smoke_max_candidates": 0,
         "smoke_max_signals": 0,
+        "budget_reserve_limits": {
+            "official_coverage_probe": 12,
+            "open_web_coverage_probe": 6,
+            "production_site_coverage_probe": 4,
+        },
+        "semantic_task_reserve_limits": {
+            "recall_expansion": 14,
+            "official_coverage_probe": 12,
+            "open_web_coverage_probe": 6,
+            "production_site_coverage_probe": 4,
+        },
+        "benchmark_target_probe_minimums": {
+            "holding_or_group_target": 1,
+            "known_subsidiary_or_legal_entity_target": 8,
+            "production_site_or_branch_target": 3,
+        },
+        "coverage_completion_target_limit": 3,
     },
 }
 
@@ -231,6 +249,18 @@ def benchmark_result_summary(
     cross_execution = _list(dossier.get("cross_source_disambiguation_execution"))
     extraction_records = _list(dossier.get("extraction_recovery_records"))
     candidates = _list(dossier.get("candidates"))
+    retained_upstream_leads = [
+        item for item in candidates if str(item.get("upstream_discovery_outcome") or "") in {
+            "confirmed_upstream_lead",
+            "review_needed_upstream_lead",
+            "retained_upstream_lead",
+        }
+    ]
+    product_candidates = [
+        item
+        for item in candidates
+        if str(item.get("product_acceptance_status") or "product_candidate") == "product_candidate"
+    ]
     expansion_targets = _list(dossier.get("expansion_target_queue"))
     expansion_results = _list(dossier.get("search_expansion_results"))
     targets_not_searched = _list(dossier.get("targets_not_searched"))
@@ -257,6 +287,14 @@ def benchmark_result_summary(
         "stopped_for_review_reason": dossier.get("stopped_for_review_reason"),
         "verdict": verdict,
         "candidate_count": summary.get("candidate_count", 0),
+        "retained_upstream_lead_count": len(retained_upstream_leads),
+        "confirmed_upstream_lead_count": sum(
+            1 for item in retained_upstream_leads if item.get("upstream_discovery_outcome") == "confirmed_upstream_lead"
+        ),
+        "review_needed_upstream_lead_count": sum(
+            1 for item in retained_upstream_leads if item.get("upstream_discovery_outcome") == "review_needed_upstream_lead"
+        ),
+        "product_candidate_count": len(product_candidates),
         "source_count": summary.get("source_count", 0),
         "retrieved_source_count": summary.get("retrieved_source_count", 0),
         "diagnostic_source_count": summary.get("diagnostic_source_count", 0),
@@ -307,6 +345,8 @@ def benchmark_result_summary(
                 "fit_score": item.get("fit_score"),
                 "intent_score": item.get("intent_score"),
                 "review_flags": item.get("review_flags", []),
+                "upstream_discovery_outcome": item.get("upstream_discovery_outcome"),
+                "product_acceptance_status": item.get("product_acceptance_status"),
             }
             for item in candidates[:5]
             if isinstance(item, dict)

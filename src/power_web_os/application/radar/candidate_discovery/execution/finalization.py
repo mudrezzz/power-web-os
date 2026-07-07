@@ -11,15 +11,7 @@ from power_web_os.application.radar.candidate_discovery.extraction.diagnostics i
     extraction_validation_event,
     extraction_validation_issues,
 )
-from power_web_os.application.radar.candidate_discovery.universe import (
-    candidate_name,
-    candidate_name_set,
-    candidate_universe_entries,
-    dedupe_gap_payloads,
-    dict_list,
-    first_task_id,
-    gap_payloads,
-)
+from power_web_os.application.radar.candidate_discovery.universe import candidate_name, candidate_name_set, candidate_universe_entries, dedupe_gap_payloads, dict_list, first_task_id, gap_payloads
 from power_web_os.application.radar.candidate_discovery.contracts import (
     LiveRadarPipelineEvent,
     WebSearchProviderResult,
@@ -32,12 +24,7 @@ from power_web_os.application.radar.candidate_discovery.execution.expansion_diag
     _search_expansion_target_coverage,
     _target_probe_guarantees,
 )
-from power_web_os.application.radar.candidate_discovery.execution.finalization_universe import (
-    _append_review_needed_universe_entities,
-    _linked_branch_or_site_count,
-    _review_needed_universe_count,
-    _upstream_disambiguation_events,
-)
+from power_web_os.application.radar.candidate_discovery.execution.finalization_universe import _append_benchmark_present_universe_entities, _append_review_needed_universe_entities, _linked_branch_or_site_count, _review_needed_universe_count, _upstream_disambiguation_events
 from power_web_os.application.radar.candidate_discovery.execution.finalization_metadata import (
     _apply_smoke_candidate_promotion_cap,
     _benchmark_recall_target_summary,
@@ -170,9 +157,15 @@ class FinalizationProjector:
             with_signal_statuses,
             observations,
         )
-        return _append_review_needed_universe_entities(
+        with_review_needed = _append_review_needed_universe_entities(
             with_entity_metadata,
             provider_metadata=state.provider_metadata,
+        )
+        return _append_benchmark_present_universe_entities(
+            with_review_needed,
+            radar=context.radar,
+            provider_metadata=state.provider_metadata,
+            sources=state.sources,
         )
 
     def _source_obligation_decisions(

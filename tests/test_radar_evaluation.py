@@ -96,6 +96,66 @@ def test_evaluation_matches_sibur_holding_through_source_backed_short_alias() ->
     assert report["true_positives"][0]["baseline_id"] == "sibur-holding"
 
 
+def test_evaluation_separates_upstream_retention_from_product_acceptance() -> None:
+    baseline = RadarEvaluationBaseline(
+        baseline_id="upstream-product-split",
+        version="v1",
+        radar_id=SIBUR_CONTOUR_RADAR_ID,
+        description="Upstream retention split fixture.",
+        entities=(
+            RadarEvaluationEntity(
+                baseline_id="candidate-a",
+                canonical_name="Candidate A",
+                entity_type="legal_entity",
+            ),
+        ),
+    )
+    dossier = {
+        "summary": {"execution_outcome": "completed_with_candidates"},
+        "sources": [{"evidence_ref": "src_a", "url": "https://example.test/a", "state": "used"}],
+        "candidates": [
+            {
+                "legal_name": "Candidate A",
+                "source_refs": ["src_a"],
+                "upstream_discovery_outcome": "review_needed_upstream_lead",
+                "product_acceptance_status": "review_required",
+                "upstream_confidence": "medium",
+            }
+        ],
+        "candidate_universe": [],
+        "expansion_target_queue": [
+            {
+                "target_label": "Candidate A",
+                "target_type": "known_subsidiary_or_legal_entity_target",
+            }
+        ],
+        "search_expansion_query_variants": [{"query": "Candidate A official"}],
+        "work_admission_decisions": [{"target_label": "Candidate A", "accepted": True}],
+        "search_expansion_results": [
+            {
+                "target_label": "Candidate A",
+                "execution_status": "executed_source_found",
+                "source_count": 1,
+            }
+        ],
+    }
+
+    report = evaluate_radar_dossier(
+        run={"run_id": "radar-run-upstream", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},
+        dossier=dossier,
+        baseline=baseline,
+    )
+
+    assert report["metrics"]["strict_recall"] == 1.0
+    assert report["metrics"]["precision"] is None
+    assert report["metrics"]["product_candidate_count"] == 0
+    assert report["metrics"]["retained_upstream_lead_count"] == 1
+    assert report["metrics"]["review_needed_upstream_lead_count"] == 1
+    assert report["diagnostics"]["product_candidate_count"] == 0
+    assert report["benchmark_target_funnel"][0]["projected"] is True
+    assert report["benchmark_target_funnel"][0]["path_reason"] == "projected"
+
+
 def test_evaluation_counts_review_needed_sites_from_upstream_universe() -> None:
     baseline = RadarEvaluationBaseline(
         baseline_id="sibur_sites_test",

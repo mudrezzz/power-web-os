@@ -12,6 +12,7 @@ from power_web_os.application.radar.candidate_discovery.search_expansion.models 
     RadarSearchExpansionVariant,
     _ExpansionSource,
 )
+from power_web_os.application.radar.candidate_discovery.search_expansion.target_merge import dedupe_targets
 
 PRODUCTION_SITE_COVERAGE_RESERVE_KEY = "production_site_coverage_probe"
 
@@ -215,6 +216,9 @@ def raw_target_items(
                 "target_type": "benchmark_baseline_like_target",
                 "target_origin": "benchmark_context",
                 "uncovered_baseline_target": True,
+                "benchmark_id": item.get("baseline_id"),
+                "aliases": item.get("aliases", []),
+                "expected_source_hints": item.get("expected_source_hints", []),
             })
     if not any(is_actionable_term(str(item.get("label") or "")) for item in result):
         for item in radar_seed_terms(radar):
@@ -421,18 +425,6 @@ def _variant_reason_priority(reason: str) -> int:
         "open_web_industrial_site_query": 6,
         "open_web_membership_query": 7,
     }.get(reason, 20)
-
-
-def dedupe_targets(targets: list[RadarExpansionTarget]) -> list[RadarExpansionTarget]:
-    seen: set[str] = set()
-    result: list[RadarExpansionTarget] = []
-    for item in targets:
-        key = item.target_id
-        if key in seen:
-            continue
-        seen.add(key)
-        result.append(item)
-    return result
 
 
 def dedupe_text(values: list[str]) -> list[str]:

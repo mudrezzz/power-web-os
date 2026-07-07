@@ -463,7 +463,7 @@ def _candidate_observations_from_registry(
             "legal_name": observation.legal_name,
             "description": _registry_snippet(observation),
             "evidence_refs": [source_ref],
-            "review_flags": ["company_registry_fact_requires_review"],
+            "review_flags": ["registry_identity_retained"],
             "entity_type": observation.entity_type or "legal_entity",
             "entity_resolution_status": "resolved",
             "inn": observation.inn,
@@ -477,9 +477,9 @@ def _candidate_observations_from_registry(
             "qualification": [{
                 "criterion_code": task.subject_id,
                 "criterion": task.rule_snapshot or task.subject_id,
-                "status": "weak",
-                "confidence": "medium",
-                "rationale": "Structured company registry returned a source-backed company observation.",
+                "status": "confirmed",
+                "confidence": "high",
+                "rationale": "Structured company registry returned concrete legal-identity evidence.",
                 "evidence_refs": [source_ref],
             }],
         })

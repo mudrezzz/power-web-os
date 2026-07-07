@@ -90,6 +90,10 @@ class RadarCandidateUniverseEntry(BaseModel):
     gate_results: list[dict[str, Any]] = Field(default_factory=list)
     rejection_reasons: list[str] = Field(default_factory=list)
     coverage_flags: list[str] = Field(default_factory=list)
+    upstream_discovery_outcome: str = ""
+    product_acceptance_status: str = ""
+    upstream_confidence: str = ""
+    upstream_reason: str = ""
 
 
 class RadarCoverageCheckRecord(BaseModel):
@@ -353,6 +357,11 @@ class LiveRadarCandidate(BaseModel):
     score: LiveRadarScore
     review_flags: list[str] = Field(default_factory=list)
     evidence_refs: list[str] = Field(default_factory=list)
+    upstream_discovery_outcome: str = "review_needed_upstream_lead"
+    product_acceptance_status: str = "review_required"
+    upstream_confidence: str = "low"
+    upstream_reason: str = ""
+    upstream_source_refs: list[str] = Field(default_factory=list)
 
 
 class WebSearchProviderResult(BaseModel):

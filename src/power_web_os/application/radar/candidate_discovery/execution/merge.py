@@ -89,6 +89,8 @@ class ExecutionResultMerger:
         metadata_keys = (
             "entity_type", "entity_resolution_status", "not_candidate_reason", "inn", "ogrn",
             "okved", "normalized_legal_name", "match_quality", "matched_by", "lookup_query",
+            "upstream_source_kind", "upstream_discovery_outcome", "product_acceptance_status",
+            "upstream_confidence", "upstream_reason",
         )
         for metadata_key in metadata_keys:
             if item.get(metadata_key) and not target.get(metadata_key):

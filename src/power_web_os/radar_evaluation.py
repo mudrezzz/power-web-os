@@ -9,6 +9,11 @@ from pathlib import Path
 from typing import Any
 
 from power_web_os.radar_evaluation_diagnostics import false_negative_diagnostics
+from power_web_os.radar_evaluation_funnel import (
+    benchmark_target_funnel as _benchmark_target_funnel,
+    is_product_candidate as _is_product_candidate,
+    upstream_lead_counts as _upstream_lead_counts,
+)
 from power_web_os.radar_evaluation_matching import (
     contains_strong_name,
     entity_type_compatible,
@@ -115,9 +120,23 @@ def evaluate_radar_dossier(
     matches, ambiguous = _match_entities(baseline=baseline, observed=observed, source_index=source_index)
     matched_baseline_ids = {match.baseline.baseline_id for match in matches}
     ambiguous_baseline_ids = {match.baseline.baseline_id for match in ambiguous}
-    product_observations = [item for item in observed if item.source == "product_candidate"]
-    matched_product_ids = {id(match.observed) for match in matches if match.observed.source == "product_candidate" and match.baseline.entity_type == "legal_entity"}
-    ambiguous_product_ids = {id(match.observed) for match in ambiguous if match.observed.source == "product_candidate"}
+    product_observations = [
+        item
+        for item in observed
+        if item.source == "product_candidate" and _is_product_candidate(item.payload)
+    ]
+    matched_product_ids = {
+        id(match.observed)
+        for match in matches
+        if match.observed.source == "product_candidate"
+        and _is_product_candidate(match.observed.payload)
+        and match.baseline.entity_type == "legal_entity"
+    }
+    ambiguous_product_ids = {
+        id(match.observed)
+        for match in ambiguous
+        if match.observed.source == "product_candidate" and _is_product_candidate(match.observed.payload)
+    }
     false_positives = [
         _observed_payload(item)
         for item in product_observations
@@ -135,6 +154,13 @@ def evaluate_radar_dossier(
     review_hits = {match.baseline.baseline_id for match in matches if match.baseline.entity_type != "legal_entity"}
     summary = _dict(dossier.get("summary"))
     evidence_quality_values = [match.evidence_quality for match in matches + ambiguous] + ["missing"] * len(false_negatives)
+    upstream_counts = _upstream_lead_counts(dossier)
+    benchmark_target_funnel = _benchmark_target_funnel(
+        baseline=baseline,
+        observed=observed,
+        false_negative_diagnostics=false_negative_diagnostic_items,
+        dossier=dossier,
+    )
     report = {
         "artifact_type": "radar_evaluation_report",
         "artifact_version": EVALUATION_ARTIFACT_VERSION,
@@ -158,6 +184,10 @@ def evaluate_radar_dossier(
             "false_positive_count": len(false_positives),
             "false_negative_count": len(false_negatives),
             "ambiguous_match_count": len(ambiguous),
+            "retained_upstream_lead_count": upstream_counts["retained_upstream_lead_count"],
+            "confirmed_upstream_lead_count": upstream_counts["confirmed_upstream_lead_count"],
+            "review_needed_upstream_lead_count": upstream_counts["review_needed_upstream_lead_count"],
+            "product_candidate_count": len(product_observations),
         },
         "evidence_quality_summary": _count_by(evidence_quality_values),
         "true_positives": [_match_payload(match) for match in matches if match.baseline.entity_type == "legal_entity"],
@@ -168,8 +198,9 @@ def evaluate_radar_dossier(
         "ambiguous_matches": [_match_payload(match) for match in ambiguous],
         "coverage_probe_summary": {},
         "candidate_projection_note": (
-            "Precision counts strict product candidates only; review-needed universe entities are evaluated through review_recall."
+            "Precision counts strict product candidates only. Retained upstream leads are reported separately from product acceptance."
         ),
+        "benchmark_target_funnel": benchmark_target_funnel,
         "recommended_followup_buckets": _followup_buckets(
             summary=summary,
             false_positives=false_positives,
@@ -180,6 +211,7 @@ def evaluate_radar_dossier(
         "diagnostics": {
             "observed_entity_count": len(observed),
             "product_candidate_count": len(product_observations),
+            **upstream_counts,
             "source_lifecycle_count": len(source_index),
             "stopped_for_review_reason": dossier.get("stopped_for_review_reason"),
         },

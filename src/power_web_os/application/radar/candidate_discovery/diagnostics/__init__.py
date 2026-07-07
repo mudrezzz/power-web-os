@@ -4,9 +4,11 @@ from power_web_os.application.radar.candidate_discovery.diagnostics.collections 
     dedupe_sources,
     rank_candidates,
 )
+from power_web_os.application.radar.candidate_discovery.diagnostics.contract_validation import (
+    validate_live_radar_qualification_contract,
+)
 from power_web_os.application.radar.candidate_discovery.diagnostics.normalization import (
     normalize_live_candidate,
-    validate_live_radar_qualification_contract,
 )
 from power_web_os.application.radar.candidate_discovery.diagnostics.pipeline_support import (
     candidate_rejected,

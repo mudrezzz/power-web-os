@@ -664,6 +664,11 @@ Downstream account projection remains strict: product candidates still require
 legal-entity resolution, while dossier diagnostics expose
 `upstream_disambiguation_results`, `cross_source_disambiguation_tasks`,
 `review_needed_universe_count`, and `linked_branch_or_site_count`.
+After `0.7.6.4.18.1.1`, candidate rows also expose
+`upstream_discovery_outcome` and `product_acceptance_status`. In handoff mode,
+source-backed candidates should not fall back to `Monitor` only because signal
+monitoring has not run; pending signals are reported separately as
+`not_searched_pending_signal_monitoring`.
 
 `0.7.6.2` adds a bounded multi-radar benchmark runner. Treat it as evaluation
 infrastructure, not product truth. The catalog seed includes three benchmark
@@ -682,7 +687,10 @@ counters, top candidates, and a compact verdict:
 `ready_for_quality_review`, `stopped_diagnostic`, `budget_limited`, or
 `failed_runtime`. Use `benchmark_smoke` for all benchmark radars by default.
 Use `benchmark_live` only for one radar at a time after the smoke report is
-diagnosable.
+diagnosable. `benchmark_live` is not just a larger budget profile: it carries
+protected baseline-target lane minimums, completion slots, and reserve budgets,
+so explicit baseline targets should be generated, selected, and reported before
+optional duplicate/alias exploration.
 
 For SIBUR contour smoke runs, expansion diagnostics must be read by target type.
 `production_site_coverage_probe` is a dedicated reserve for branch/site/plant
@@ -729,6 +737,11 @@ production sites. `strict_recall` measures legal-entity hits,
 `precision` measures product account candidates only, and
 `ambiguous_matches` stay separate from false positives/false negatives until a
 human or a later corrective slice adjudicates them.
+Read `retained_upstream_lead_count`, `confirmed_upstream_lead_count`,
+`review_needed_upstream_lead_count`, and `benchmark_target_funnel` before
+concluding that candidate discovery found nothing. A run with retained upstream
+leads but zero strict product candidates is an acceptance/projection issue, not
+necessarily a retrieval absence.
 
 `0.7.6.3.1` keeps evaluation recall-first without relaxing product precision.
 Repairable extraction shape noise, such as keyed `sources`/`candidates` objects

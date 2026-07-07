@@ -40,6 +40,30 @@ def test_benchmark_task_context_uses_explicit_smoke_budgets() -> None:
     assert context["source"] == "radar_benchmark_cli"
 
 
+def test_benchmark_live_context_protects_baseline_target_lanes() -> None:
+    context = benchmark_task_context(profile="benchmark_live", radar_id="benchmark-sibur-holding-contour")
+
+    assert context["benchmark_profile"] == "benchmark_live"
+    assert context["run_profile"] == "live"
+    assert context["max_openrouter_calls_per_run"] == 48
+    assert context["max_openrouter_web_task_calls_per_run"] == 36
+    assert context["max_recall_expansion_openrouter_calls_per_run"] == 14
+    assert context["budget_reserve_limits"]["official_coverage_probe"] == 12
+    assert context["budget_reserve_limits"]["open_web_coverage_probe"] == 6
+    assert context["budget_reserve_limits"]["production_site_coverage_probe"] == 4
+    assert context["semantic_task_reserve_limits"]["recall_expansion"] == 14
+    assert context["semantic_task_reserve_limits"]["official_coverage_probe"] == 12
+    assert context["semantic_task_reserve_limits"]["open_web_coverage_probe"] == 6
+    assert context["semantic_task_reserve_limits"]["production_site_coverage_probe"] == 4
+    assert context["benchmark_target_probe_minimums"] == {
+        "holding_or_group_target": 1,
+        "known_subsidiary_or_legal_entity_target": 8,
+        "production_site_or_branch_target": 3,
+    }
+    assert context["coverage_completion_target_limit"] == 3
+    assert context["benchmark_target_hints"]
+
+
 def test_sibur_benchmark_task_context_includes_curated_target_hints() -> None:
     context = benchmark_task_context(profile="benchmark_smoke", radar_id="benchmark-sibur-holding-contour")
 

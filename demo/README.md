@@ -338,6 +338,10 @@ from strict product account candidates and carry review flags such as
 `upstream_disambiguation_results`, `cross_source_disambiguation_tasks`,
 `review_needed_universe_count`, and `linked_branch_or_site_count` to see what
 was retained for human review or official/web cross-check.
+After `0.7.6.4.18.1.1`, candidate rows also separate
+`upstream_discovery_outcome` from `product_acceptance_status`. Pending signal
+monitoring should not turn source-backed upstream leads into a generic
+`Monitor` result.
 
 After `0.7.6.1.11.9.5`, smoke should also prove recovery behavior. Schema
 noise should appear in `extraction_recovery_records` as
@@ -367,7 +371,9 @@ worker execution failed. Use `benchmark_smoke` for all benchmark radars; use
 `benchmark_live` only for one radar at a time after the smoke report is
 actionable. Benchmark profiles send explicit `task_context` budgets through the
 API request; those profile budgets should take precedence over local `.env`
-defaults so the report remains reproducible across machines.
+defaults so the report remains reproducible across machines. `benchmark_live`
+also carries protected baseline-target lane minimums, completion slots, and
+reserve budgets; do not treat it as merely a longer smoke run.
 
 After `0.7.6.3`, evaluate the SIBUR benchmark against a small curated baseline:
 
@@ -380,6 +386,11 @@ inspection report, not ground truth. `strict_recall` covers baseline legal
 entities, `review_recall` covers review-needed production sites or assets,
 `precision` covers product account candidates, and `ambiguous_matches` are
 kept separate so unclear matches are not hidden as success or failure.
+Also inspect `retained_upstream_lead_count`,
+`confirmed_upstream_lead_count`, `review_needed_upstream_lead_count`, and
+`benchmark_target_funnel`. Zero strict product candidates with retained
+upstream leads means the issue is acceptance/projection, not necessarily
+retrieval absence.
 
 After `0.7.6.3.1`, retrieved/analyzed source metadata can also contribute
 source-backed review-needed upstream entities. For example, a SIBUR source that

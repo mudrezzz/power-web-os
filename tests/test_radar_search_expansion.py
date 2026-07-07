@@ -135,6 +135,44 @@ def test_search_expansion_uses_benchmark_target_hints_only_for_benchmark_profile
     assert all(target.target_label != "Р“СѓР±РєРёРЅСЃРєРёР№ Р“РџР—" for target in non_benchmark_plan.targets)
 
 
+def test_benchmark_target_metadata_survives_dedupe_with_candidate_gap() -> None:
+    radar = _radar_with_sources()
+    radar["task_context"] = {
+        "benchmark_profile": "benchmark_live",
+        "benchmark_target_hints": [
+            {
+                "baseline_id": "polief",
+                "canonical_name": "POLIEF LLC",
+                "aliases": ["POLIEF"],
+                "entity_type": "legal_entity",
+                "expected_source_hints": ["sibur.ru"],
+            }
+        ],
+    }
+
+    payload = RadarSearchExpansionService(max_variants=6).plan_expansion(
+        radar=radar,
+        candidate_scope=[],
+        provider_metadata={},
+        coverage_checks=[{"completeness_risk": "high"}],
+        unresolved_candidate_gaps=[
+            {
+                "legal_name": "POLIEF LLC",
+                "source_refs": ["src_gap"],
+                "reason": "Candidate gap found before benchmark context.",
+            }
+        ],
+    ).to_payload()
+
+    target = next(item for item in payload["targets"] if item["target_label"] == "POLIEF LLC")
+    assert target["target_origin"] == "benchmark_context"
+    assert target["uncovered_baseline_target"] is True
+    assert target["benchmark_id"] == "polief"
+    assert target["aliases"] == ["POLIEF"]
+    assert target["expected_source_hints"] == ["sibur.ru"]
+    assert target["source_refs"] == ["src_gap"]
+
+
 def test_search_expansion_uses_source_profile_capabilities_not_hardcoded_dadata() -> None:
     radar = _radar_with_sources()
     radar["global_search_policy"]["sources"] = [

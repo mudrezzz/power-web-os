@@ -167,6 +167,9 @@ class RadarSearchExpansionService:
                     completion_rank_reason=rank_reason,
                     deprioritized_reason=_deprioritized_reason(target_label),
                     uncovered_baseline_target=bool(raw.get("uncovered_baseline_target")),
+                    benchmark_id=str(raw.get("benchmark_id") or ""),
+                    aliases=_string_list(raw.get("aliases")),
+                    expected_source_hints=_string_list(raw.get("expected_source_hints")),
                 ))
         return sorted(_dedupe_targets(targets), key=lambda item: (item.priority, item.target_label.casefold()))
 

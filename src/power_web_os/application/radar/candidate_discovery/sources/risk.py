@@ -10,6 +10,8 @@ def source_supports_evidence(source: RadarSourceEvidence | None) -> bool:
 
 
 def source_has_verification_risk(source: RadarSourceEvidence | None) -> bool:
+    if source is not None and source.source_type == "company_registry" and not source.url:
+        return False
     return source is not None and source.verification_state in {"blocked", "timeout", "unverified_url", "not_checked"}
 
 

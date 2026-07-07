@@ -11,6 +11,9 @@ Source-of-truth modules:
   service state.
 - `normalization.py`: candidate, qualification, signal, score, and source-backed
   evidence normalization.
+- `contract_validation.py`: normalized qualification contract validation.
+- `upstream_projection.py`: upstream admission decision projection into display
+  tier, promoted qualification, and product acceptance fields.
 - `collections.py`: candidate ranking and source dedupe helpers.
 - `pipeline_support.py`: planned event type, rejected-candidate payload, and
   sanitized technical trace helpers.

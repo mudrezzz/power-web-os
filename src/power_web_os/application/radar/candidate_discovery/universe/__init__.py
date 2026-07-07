@@ -1,5 +1,9 @@
 """Candidate-discovery universe source-of-truth package."""
 
+from power_web_os.application.radar.candidate_discovery.universe.admission import (
+    CandidateDiscoveryUpstreamAdmissionDecision,
+    CandidateDiscoveryUpstreamAdmissionPolicy,
+)
 from power_web_os.application.radar.candidate_discovery.universe.coverage import coverage_risk, coverage_warnings
 from power_web_os.application.radar.candidate_discovery.universe.gaps import (
     dedupe_gap_payloads,
@@ -20,6 +24,8 @@ from power_web_os.application.radar.candidate_discovery.universe.projection impo
 from power_web_os.application.radar.candidate_discovery.universe.signal_scope import filter_signal_result
 
 __all__ = [
+    "CandidateDiscoveryUpstreamAdmissionDecision",
+    "CandidateDiscoveryUpstreamAdmissionPolicy",
     "candidate_name",
     "candidate_name_set",
     "candidate_source_refs",

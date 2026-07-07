@@ -273,9 +273,9 @@ def _candidate_observation(*, radar: dict[str, Any], legal_name: str, source_ref
         {
             "criterion_code": str(criterion.get("code") or ""),
             "criterion": str(criterion.get("label") or criterion.get("rule") or ""),
-            "status": "weak",
-            "confidence": "low",
-            "rationale": "Retrieved source mentions an explicit legal-entity candidate; qualification requires review.",
+            "status": "unknown",
+            "confidence": "medium",
+            "rationale": "Retrieved source mentions an explicit legal-entity upstream lead; product qualification remains pending.",
             "evidence_refs": [source_ref],
             "evidence_findings": [
                 {
@@ -297,9 +297,11 @@ def _candidate_observation(*, radar: dict[str, Any], legal_name: str, source_ref
         "review_flags": [
             "retrieved_source_candidate_requires_review",
             "candidate_universe_from_retrieved_source",
+            "source_backed_upstream_lead",
         ],
         "entity_type": "legal_entity",
         "entity_resolution_status": "review_needed",
+        "upstream_source_kind": "retrieved_source",
     }
 
 

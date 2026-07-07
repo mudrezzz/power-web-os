@@ -63,20 +63,22 @@ Current package-owned source-of-truth modules:
   contracts and recorded retrieval provider used by tests and demos.
 - `retrieval/product_sources.py`: strict product-source projection for
   candidate rows.
-- `universe/`: candidate identity, metadata merge, gap payloads, coverage
-  helpers, entity resolution, retrieved-candidate extraction, final universe
-  projection, and upstream/cross-source disambiguation.
+- `universe/`: recall-first upstream admission, candidate identity, metadata
+  merge, gap payloads, coverage helpers, entity resolution,
+  retrieved-candidate extraction, final universe projection, and
+  upstream/cross-source disambiguation.
 - `extraction/`: provider payload validation, deterministic extraction repair,
   extraction validation states, and validation event projection.
-- `diagnostics/`: live artifact shaping, candidate normalization, collection
-  helpers, and trace/event support.
+- `diagnostics/`: live artifact shaping, candidate normalization, upstream
+  admission projection, contract validation, collection helpers, and trace/event
+  support.
 - `sources/risk.py`: source verification-risk helpers used by evidence
   projection.
 - `checkpoints/`: checkpoint models, deterministic policy, execution-state
   recording, and bounded recovery actions for candidate discovery.
 - `search_expansion/`: recall-first expansion target/variant planning,
-  selection, scheduling, targeted checkpoint expansion execution, and
-  work-admission contracts.
+  protected benchmark target merge, selection, scheduling, targeted checkpoint
+  expansion execution, and work-admission contracts.
 - `execution/task_budget.py`: candidate-discovery task budget settings,
   semantic task reserve decisions, counters, warnings, and exhaustion events.
 - `execution/useful_budget.py`: useful-result retry budget and retry task

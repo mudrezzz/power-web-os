@@ -8431,6 +8431,62 @@ Principles:
 - Risks:
   - Existing tests expect inline signal search in candidate discovery. Migrate those tests either to compatibility assertions or signal-monitoring tests rather than preserving the mixed product model.
 
+### Slice 0.7.6.4.18.1.1: Candidate discovery recall-first upstream semantics and benchmark target protection
+
+- Status: Done
+- Goal: Make candidate discovery actually recall-first after the signal-monitoring runtime split: retain source-backed upstream leads aggressively, stop downgrading all discovered entities into Monitor/weak review-only output, and protect explicit benchmark targets before continuing signal-monitoring live runtime work.
+- User value: A user can trust candidate discovery as a broad upstream finder: it should keep extra plausible SIBUR/industrial targets for review instead of silently losing them, and benchmark reports should explain real misses by algorithmic decision rather than by generic budget symptoms.
+- Problem statement: The 2026-07-06 benchmark_live SIBUR run proved that the code does not yet implement the intended false-positive-biased upstream behavior. It found 86 candidates, but all 86 were projected as Monitor; qualification checks produced 130 weak, 42 unknown, and 0 confirmed results; evaluation showed product_candidate_count=0; and three baseline targets were still false negatives. The causes are algorithmic: candidate scoring still depends on signal evidence after signal monitoring was split out; retrieved-source and registry observations are hardcoded as weak/requires-review; official SIBUR evidence is not promoted into upstream confirmation; benchmark_live lacks the protected target guarantees present in benchmark_smoke; and baseline entities present in source diagnostics can fail to project into observed upstream entities.
+- Scope:
+  - Introduce a package-owned candidate-discovery upstream admission policy that separates 'retain as upstream lead' from 'accept as product account'.
+  - Replace or quarantine the current Monitor/Tier candidate-discovery scoring path so discovery outcomes no longer require signal evidence.
+  - Promote source-backed official-domain evidence for configured high-trust sources such as SIBUR official pages into strong upstream relation/coverage evidence when the entity name or alias and industrial/asset context match.
+  - Stop treating every retrieved-source legal entity and every structured registry observation as weak by construction; preserve recall-first leads with explicit review state instead of downgrading them into low-quality output.
+  - Fix projection so a benchmark alias/canonical entity found in source diagnostics becomes an observed upstream entity or receives an explicit rejection reason.
+  - Add protected benchmark target handling for benchmark_live: explicit baseline hints must become protected targets, retain their benchmark flags through dedupe, receive guaranteed selection/admission before optional duplicate/alias work, and appear in diagnostics if skipped.
+  - Add RCA-grade report fields for selected/executed/projected status per explicit benchmark target.
+- Out of scope:
+  - No signal-monitoring live runtime/API implementation; that remains 0.7.6.4.18.2 after this correction.
+  - No broad quality claim from one live run.
+  - No production hardcode for specific SIBUR names outside benchmark fixtures/context; use source policy, official-domain trust, aliases, entity type, and benchmark hints.
+  - No change to provider credentials, Docker ports, persistence schema, frontend UI, or recurring scheduler unless a test exposes a small local defect.
+  - No lowering of downstream product precision: broad retention is upstream-only and must remain separated from accepted account projection.
+- Implementation notes:
+  - The immediate RCA run was radar-run-b75c73ee-437b-4040-b609-ec9b7096be71 on benchmark-sibur-holding-contour with benchmark_live.
+  - Current code path to correct: candidate normalization computes Monitor from confirmed qualification plus observed signals, which is stale after the handoff split.
+  - Current code path to correct: retrieved-source candidate observations are emitted with status=weak, confidence=low, and requires-review rationale by default.
+  - Current code path to correct: registry observations are emitted as weak/company_registry_fact_requires_review even when structured identity evidence is present.
+  - Current code path to correct: benchmark_live profile does not carry benchmark_target_probe_minimums, coverage_completion_target_limit, or protected recall-expansion reserve settings, so selection had selected_guaranteed_count=0 and selected_optional_count=6.
+  - Treat false-positive-biased upstream as a domain/application contract, not a prompt-only instruction. The prompt may ask for broad recall, but deterministic admission/projection code must enforce retention.
+- Tests:
+  - Add unit tests for upstream admission: official SIBUR source plus matching legal entity/alias is retained as a strong upstream lead, not downgraded to generic weak Monitor output.
+  - Add normalization tests proving candidate-discovery outcomes do not require signal observations after signal_execution_mode=handoff.
+  - Add retrieved-source and registry observation tests proving source-backed entities are retained with review/acceptance separation rather than erased or classified as low-quality by default.
+  - Add projection regression tests for Nizhnekamskneftekhim and Kazanorgsintez-style cases: if text appears in source diagnostics under benchmark aliases, it must become an observed upstream entity or have explicit rejection diagnostics.
+  - Add search-expansion tests proving benchmark_live inherits target guarantees and that benchmark flags survive target dedupe.
+  - Add selector/scheduler tests proving explicit benchmark targets outrank optional duplicates once required lane minimums are considered.
+  - Run: python -m pytest tests/test_radar_search_expansion.py tests/test_radar_benchmark.py tests/test_radar_evaluation.py -q
+  - Run: python -m pytest tests/test_live_icp_radar.py tests/test_radar_adaptive_execution.py tests/test_backend_api.py tests/test_persisted_live_radar.py tests/test_radar_jobs.py -q
+  - Run a bounded Docker/API benchmark smoke or live probe only after fast tests are green; evaluate the latest run and report recall, source linkage, qualification fit, rejected/gap entities, and checkpoint reasons.
+- Docs:
+  - Update RADAR_SEARCH_PIPELINE_AS_IS if candidate-discovery outcome semantics change.
+  - Update RADAR_BACKEND_ARCHITECTURE and CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE with the upstream admission policy owner.
+  - Update Developer Guide benchmark/runbook notes: benchmark_live is not just larger budget; it must carry protected benchmark target guarantees.
+  - Update demo/benchmark docs if report interpretation or run commands change.
+- Demo impact:
+  - No frontend redesign. Demo/report output should become clearer: candidate discovery should show retained upstream leads, review-needed leads, rejected/noise entities, protected benchmark targets, and explicit miss reasons instead of a flat list of Monitor rows.
+- Acceptance criteria:
+  - A recorded/fake fixture proves candidate discovery can retain source-backed false-positive-prone upstream leads without requiring signal evidence.
+  - Official high-trust SIBUR evidence can promote upstream relation/coverage confidence where deterministic evidence rules match.
+  - benchmark_live context includes protected target guarantees equivalent to the intended benchmark diagnostic path.
+  - Nizhnekamskneftekhim/Kazanorgsintez-style present-not-projected false negatives are covered by tests.
+  - The next SIBUR benchmark evaluation no longer reports product_candidate_count=0 merely because all source-backed leads were normalized into Monitor.
+  - Any remaining false negatives have path-level reasons: not generated, no executable query, not selected, not admitted, not executed, source not found, present not projected, or explicitly rejected.
+- Risks:
+  - Aggressive upstream retention can increase false positives. This is acceptable upstream, but must not leak into downstream accepted accounts without review/acceptance gates.
+  - Promoting official-source evidence too broadly can mask ambiguous legal-entity vs branch/site cases. Mitigate with entity-type-aware review states and source-linked evidence requirements.
+  - Live provider output can drift. Acceptance should prioritize deterministic contract tests and diagnostic specificity, not a one-run quality claim.
+
 ### Slice 0.7.6.4.18.2: Signal monitoring live runtime and API wiring
 
 - Status: Ready
@@ -8452,6 +8508,7 @@ Principles:
   - Reuse shared provider-level external-call contracts only where genuinely shared; keep signal task budgets signal-owned.
   - The input contract should not depend on candidate-discovery internals beyond product-safe candidate/source snapshot records.
   - Model profile should come from `signal_monitoring_default`, not candidate-discovery role settings.
+  - Run after 0.7.6.4.18.1.1 so signal-monitoring live runtime starts from a recall-first candidate-discovery handoff instead of a flat Monitor/weak upstream snapshot.
 - Tests:
   - Recorded signal-monitoring tests for observed, searched-negative, not-searched, budget-limited, and review-needed states.
   - API/job smoke for starting and reading a signal-monitoring run.
@@ -9096,4 +9153,4 @@ None.
 
 ## Next Recommended Task
 
-Slice 0.7.6.4.15: Candidate discovery checkpoint package migration
+Slice 0.7.6.4.18.1.1: Candidate discovery recall-first upstream semantics and benchmark target protection

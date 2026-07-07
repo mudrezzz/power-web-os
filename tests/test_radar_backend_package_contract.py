@@ -32,6 +32,7 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.search_expansion.selection",
     "power_web_os.application.radar.candidate_discovery.search_expansion.service",
     "power_web_os.application.radar.candidate_discovery.search_expansion.support",
+    "power_web_os.application.radar.candidate_discovery.search_expansion.target_merge",
     "power_web_os.application.radar.candidate_discovery.search_expansion.targeted_execution",
     "power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler",
     "power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler_metadata",
@@ -53,9 +54,12 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.extraction.contract",
     "power_web_os.application.radar.candidate_discovery.extraction.diagnostics",
     "power_web_os.application.radar.candidate_discovery.diagnostics.collections",
+    "power_web_os.application.radar.candidate_discovery.diagnostics.contract_validation",
     "power_web_os.application.radar.candidate_discovery.diagnostics.normalization",
     "power_web_os.application.radar.candidate_discovery.diagnostics.pipeline_support",
+    "power_web_os.application.radar.candidate_discovery.diagnostics.upstream_projection",
     "power_web_os.application.radar.candidate_discovery.sources.risk",
+    "power_web_os.application.radar.candidate_discovery.universe.admission",
     "power_web_os.application.radar.candidate_discovery.universe.coverage",
     "power_web_os.application.radar.candidate_discovery.universe.cross_source_disambiguation",
     "power_web_os.application.radar.candidate_discovery.universe.entity_resolution",
@@ -723,3 +727,10 @@ def test_candidate_discovery_search_expansion_classes_are_importable() -> None:
         module = importlib.import_module(module_name)
         for name in names:
             assert hasattr(module, name), f"{module_name} must export {name}"
+
+
+def test_candidate_discovery_universe_admission_classes_are_importable() -> None:
+    module = importlib.import_module("power_web_os.application.radar.candidate_discovery.universe.admission")
+
+    assert hasattr(module, "CandidateDiscoveryUpstreamAdmissionPolicy")
+    assert hasattr(module, "CandidateDiscoveryUpstreamAdmissionDecision")

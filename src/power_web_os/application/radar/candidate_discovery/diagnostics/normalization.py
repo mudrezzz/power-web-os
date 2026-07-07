@@ -11,7 +11,6 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     LiveRadarScore,
     LiveRadarSignalResult,
     QualificationAssessment,
-    QualificationContractIssue,
     QualificationCrossValidation,
     QualificationEvidenceFinding,
     QualificationRequirement,
@@ -28,10 +27,21 @@ from power_web_os.application.radar.candidate_discovery.diagnostics.collections 
     dedupe_sources as _dedupe_sources,
     rank_candidates as _rank_candidates,
 )
+from power_web_os.application.radar.candidate_discovery.diagnostics.contract_validation import (
+    validate_live_radar_qualification_contract,
+)
+from power_web_os.application.radar.candidate_discovery.diagnostics.upstream_projection import (
+    product_acceptance_status as _product_acceptance_status,
+    promote_upstream_qualification as _promote_upstream_qualification,
+    upstream_tier as _upstream_tier,
+)
 from power_web_os.application.radar.candidate_discovery.sources.risk import (
     refs_are_only_risky as _refs_are_only_risky,
     refs_have_verification_risk as _refs_have_verification_risk,
     source_supports_evidence as _source_supports_evidence,
+)
+from power_web_os.application.radar.candidate_discovery.universe.admission import (
+    CandidateDiscoveryUpstreamAdmissionPolicy,
 )
 
 def normalize_live_candidate(
@@ -43,22 +53,33 @@ def normalize_live_candidate(
     legal_name = str(payload.get("legal_name") or payload.get("name") or "Unknown candidate").strip()
     qualification = _normalize_qualification(payload.get("qualification", []), radar, sources=sources or [])
     signals = _normalize_signals(payload.get("signals", []), radar, sources=sources or [])
-    fit_score = sum(1 for item in qualification if item.status == "confirmed")
-    intent_score = sum(item.score for item in signals if item.status == "observed")
-    tier = "Tier 1" if fit_score == 2 and intent_score >= 3 else "Tier 2" if fit_score >= 1 and intent_score >= 1 else "Monitor"
-    review_flags = [str(item) for item in payload.get("review_flags", []) if str(item).strip()]
-    if any(item.status in {"weak", "unknown"} for item in qualification):
-        review_flags.append("qualification_requires_human_review")
-    if any(item.status == "unclear" for item in signals):
-        review_flags.append("signal_requires_human_review")
-    if any(_refs_have_verification_risk(item.evidence_refs, sources or []) for item in [*qualification, *signals]):
-        review_flags.append("source_verification_review")
-    evidence_refs = sorted({
+    source_refs = sorted({
         ref
         for collection in [qualification, signals]
         for item in collection
         for ref in item.evidence_refs
     })
+    admission = CandidateDiscoveryUpstreamAdmissionPolicy().decide(
+        payload=payload,
+        legal_name=legal_name,
+        qualification=qualification,
+        evidence_refs=source_refs,
+        sources=sources or [],
+        radar=radar,
+    )
+    qualification = _promote_upstream_qualification(qualification, admission)
+    fit_score = sum(1 for item in qualification if item.status == "confirmed")
+    intent_score = sum(item.score for item in signals if item.status == "observed")
+    tier = _upstream_tier(admission.upstream_discovery_outcome)
+    product_acceptance_status = _product_acceptance_status(admission.upstream_discovery_outcome, qualification)
+    review_flags = [str(item) for item in payload.get("review_flags", []) if str(item).strip()]
+    if any(item.status in {"weak", "unknown"} for item in qualification):
+        review_flags.append("qualification_requires_human_review")
+    if any(item.status == "unclear" and not item.search_status.startswith("not_searched") for item in signals):
+        review_flags.append("signal_requires_human_review")
+    if any(_refs_have_verification_risk(item.evidence_refs, sources or []) for item in [*qualification, *signals]):
+        review_flags.append("source_verification_review")
+    evidence_refs = sorted({*source_refs, *admission.upstream_source_refs})
     return LiveRadarCandidate(
         candidate_id=_stable_id(legal_name),
         legal_name=legal_name,
@@ -68,6 +89,11 @@ def normalize_live_candidate(
         score=LiveRadarScore(fit_score=fit_score, intent_score=intent_score, tier=tier),
         review_flags=sorted(set(review_flags)),
         evidence_refs=evidence_refs,
+        upstream_discovery_outcome=admission.upstream_discovery_outcome,
+        product_acceptance_status=product_acceptance_status,
+        upstream_confidence=admission.upstream_confidence,
+        upstream_reason=admission.upstream_reason,
+        upstream_source_refs=list(admission.upstream_source_refs),
     )
 
 
@@ -282,36 +308,6 @@ def _qualification_requirement_evaluation(
         satisfied=satisfied_value,
         explanation=rationale,
     )
-
-
-def validate_live_radar_qualification_contract(
-    *,
-    candidates: list[LiveRadarCandidate],
-    sources: list[RadarSourceEvidence],
-    radar: dict[str, Any],
-) -> list[QualificationContractIssue]:
-    issues: list[QualificationContractIssue] = []
-    rule_codes = {str(item.get("code")) for item in radar.get("qualification_criteria", [])}
-    source_refs = {source.evidence_ref for source in sources}
-    for candidate_index, candidate in enumerate(candidates):
-        candidate_path = f"candidates[{candidate_index}]"
-        result_codes = {item.criterion_code for item in candidate.qualification}
-        missing = sorted(rule_codes - result_codes)
-        extra = sorted(result_codes - rule_codes)
-        for code in missing:
-            issues.append(QualificationContractIssue(severity="error", path=f"{candidate_path}.qualification.{code}", message="Qualification result is missing for radar rule."))
-        for code in extra:
-            issues.append(QualificationContractIssue(severity="error", path=f"{candidate_path}.qualification.{code}", message="Qualification result references an unknown radar rule."))
-        for item in candidate.qualification:
-            item_path = f"{candidate_path}.qualification.{item.criterion_code}"
-            for ref in item.evidence_refs:
-                if ref not in source_refs:
-                    issues.append(QualificationContractIssue(severity="error", path=f"{item_path}.evidence_refs", message=f"Evidence ref {ref} is not present in sources."))
-            if item.requirement_level == "required" and item.final_assessment in {"does_not_match", "unknown"}:
-                issues.append(QualificationContractIssue(severity="warning", path=item_path, message="Required qualification rule is not satisfied and needs human review."))
-            if item.cross_validation.required and item.cross_validation.status != "passed":
-                issues.append(QualificationContractIssue(severity="warning", path=f"{item_path}.cross_validation", message="Cross-validation requirement is not fully satisfied."))
-    return issues
 
 
 def _normalize_signals(

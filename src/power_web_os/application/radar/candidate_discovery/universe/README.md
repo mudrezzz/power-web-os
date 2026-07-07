@@ -5,7 +5,8 @@
 Owns candidate-universe entities, entity resolution, retrieved-candidate
 materialization, review-needed flags, provider metadata merge semantics,
 candidate source refs, gap payloads, upstream/cross-source disambiguation, and
-product-candidate projection inputs.
+product-candidate projection inputs. `admission.py` owns the deterministic
+split between broad upstream retention and strict product acceptance.
 
 ## Allowed imports
 
@@ -24,8 +25,14 @@ Keep upstream universe recall-first and product candidate projection
 precision-first. Review-needed sites or branches must not become confident
 account rows without explicit resolution evidence.
 
+Source-backed upstream leads should be retained even when signal monitoring has
+not run. Use `upstream_discovery_outcome` for discovery state and
+`product_acceptance_status` for downstream/product acceptance state.
+
 Current source-of-truth modules:
 
+- `admission.py`: recall-first upstream admission policy, official-domain
+  promotion, registry identity retention, and product acceptance split.
 - `identity.py`: candidate names, stable ids, source refs, and candidate source
   ref extraction.
 - `metadata.py`: provider metadata merge contract and typed dict-list helper.

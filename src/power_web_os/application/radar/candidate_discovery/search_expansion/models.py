@@ -21,6 +21,9 @@ class RadarExpansionTarget:
     completion_rank_reason: str = ""
     deprioritized_reason: str = ""
     uncovered_baseline_target: bool = False
+    benchmark_id: str = ""
+    aliases: list[str] = field(default_factory=list)
+    expected_source_hints: list[str] = field(default_factory=list)
     execution_status: str = "planned"
     not_searched_reason: str = ""
 
@@ -39,6 +42,9 @@ class RadarExpansionTarget:
             "completion_rank_reason": self.completion_rank_reason,
             "deprioritized_reason": self.deprioritized_reason,
             "uncovered_baseline_target": self.uncovered_baseline_target,
+            "benchmark_id": self.benchmark_id,
+            "aliases": list(self.aliases),
+            "expected_source_hints": list(self.expected_source_hints),
             "execution_status": self.execution_status,
             "not_searched_reason": self.not_searched_reason,
         }

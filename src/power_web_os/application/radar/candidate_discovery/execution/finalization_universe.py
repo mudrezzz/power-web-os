@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from power_web_os.application.radar.candidate_discovery.contracts import LiveRadarPipelineEvent
+from power_web_os.application.radar.candidate_discovery.contracts import LiveRadarPipelineEvent, RadarSourceEvidence
 from power_web_os.application.radar.candidate_discovery.universe import dict_list, stable_id
 
 
@@ -51,6 +51,53 @@ def _append_review_needed_universe_entities(
         }
         result.append(payload)
         known[name.casefold()] = payload
+    return result
+
+
+def _append_benchmark_present_universe_entities(
+    candidate_universe: list[dict[str, Any]],
+    *,
+    radar: dict[str, Any],
+    provider_metadata: dict[str, Any],
+    sources: list[RadarSourceEvidence],
+) -> list[dict[str, Any]]:
+    task_context = radar.get("task_context") if isinstance(radar.get("task_context"), dict) else {}
+    if not str(task_context.get("benchmark_profile") or "").startswith("benchmark_"):
+        return candidate_universe
+    result = list(candidate_universe)
+    known_names = {str(item.get("legal_name") or item.get("name") or "").casefold() for item in result}
+    documents = _product_safe_source_documents(provider_metadata=provider_metadata, sources=sources)
+    for hint in dict_list(task_context.get("benchmark_target_hints")):
+        canonical_name = str(hint.get("canonical_name") or hint.get("name") or "").strip()
+        if not canonical_name or canonical_name.casefold() in known_names:
+            continue
+        names = [canonical_name, *_string_list(hint.get("aliases"))]
+        matched = _matching_source_document(names=names, documents=documents)
+        if matched is None or not matched.get("source_ref"):
+            continue
+        payload = {
+            "candidate_id": stable_id(canonical_name),
+            "legal_name": canonical_name,
+            "status": "unknown_review_needed",
+            "origin_task_id": "benchmark_present_source_projection",
+            "source_refs": [str(matched["source_ref"])],
+            "gate_results": [],
+            "rejection_reasons": [],
+            "coverage_flags": ["benchmark_present_source_projection"],
+            "entity_type": str(hint.get("entity_type") or "unknown_entity"),
+            "resolution_status": "review_needed",
+            "not_candidate_reason": "" if str(hint.get("entity_type") or "") == "legal_entity" else "not_standalone_legal_entity",
+            "review_flags": ["benchmark_present_source_projection", "requires_human_review"],
+            "linked_fact_count": 0,
+            "signal_searches": [],
+            "upstream_discovery_outcome": "review_needed_upstream_lead",
+            "product_acceptance_status": "review_required",
+            "upstream_confidence": "medium",
+            "upstream_reason": "Benchmark baseline alias was present in source diagnostics with a source ref.",
+            "benchmark_id": str(hint.get("baseline_id") or ""),
+        }
+        result.append(payload)
+        known_names.add(canonical_name.casefold())
     return result
 
 def _merge_review_needed_metadata(target: dict[str, Any], incoming: dict[str, Any]) -> None:
@@ -119,3 +166,41 @@ def _upstream_disambiguation_events(
 
 def _string_list(value: object) -> list[str]:
     return [str(item) for item in value if str(item).strip()] if isinstance(value, list) else []
+
+
+def _product_safe_source_documents(
+    *,
+    provider_metadata: dict[str, Any],
+    sources: list[RadarSourceEvidence],
+) -> list[dict[str, str]]:
+    documents: list[dict[str, str]] = []
+    for source in sources:
+        documents.append({
+            "source_ref": source.evidence_ref,
+            "text": " ".join(str(value or "") for value in (source.title, source.snippet, source.url)),
+        })
+    for item in [
+        *dict_list(provider_metadata.get("retrieved_sources")),
+        *dict_list(provider_metadata.get("analyzed_sources")),
+    ]:
+        source_ref = str(item.get("source_ref") or item.get("evidence_ref") or item.get("id") or "")
+        text = " ".join(str(item.get(key) or "") for key in ("title", "snippet", "url"))
+        documents.append({"source_ref": source_ref, "text": text})
+    return documents
+
+
+def _matching_source_document(
+    *,
+    names: list[str],
+    documents: list[dict[str, str]],
+) -> dict[str, str] | None:
+    normalized_names = [_normalize_text(name) for name in names if str(name).strip()]
+    for document in documents:
+        text = _normalize_text(document.get("text", ""))
+        if any(name and name in text for name in normalized_names):
+            return document
+    return None
+
+
+def _normalize_text(value: str) -> str:
+    return " ".join(str(value or "").casefold().replace("\u0451", "\u0435").split())

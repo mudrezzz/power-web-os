@@ -4,8 +4,8 @@
 
 Owns recall-first candidate-discovery search expansion planning, target and
 variant records, deterministic variant selection, guaranteed-lane scheduling,
-checkpoint targeted expansion execution, payload projection, and expansion work
-admission.
+protected benchmark target metadata merge, checkpoint targeted expansion
+execution, payload projection, and expansion work admission.
 
 ## Allowed imports
 
@@ -27,3 +27,7 @@ Keep expansion strategy deterministic and bounded. Add new target records,
 selection diagnostics, scheduler decisions, or payload helpers in this package;
 phase flow stays in `candidate_discovery/execution/expansion.py`, and checkpoint
 recovery only calls `targeted_execution.py`.
+
+Explicit benchmark targets must retain `benchmark_id`, aliases,
+`target_origin="benchmark_context"`, and `uncovered_baseline_target=True`
+through dedupe, selection, scheduling, and report projection.
