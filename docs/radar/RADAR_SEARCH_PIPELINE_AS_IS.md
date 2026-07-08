@@ -131,7 +131,7 @@ candidate state.
 | Search expansion scheduler | `src/power_web_os/application/radar/candidate_discovery/search_expansion/scheduler.py` and `selection.py` | Select guaranteed target-lane variants, prioritize explicit benchmark completion targets over incidental targets, and order selected work before optional expansion. | Provider calls or changing source policy. |
 | Central work scheduler | `src/power_web_os/application/radar/candidate_discovery/search_expansion/work_scheduler.py` | Admit application-approved work lanes, protect shared OpenRouter capacity for guaranteed recall expansion, and record accepted/rejected work. | Provider calls, source policy mutation, or checkpoint decision policy. |
 | Search expansion executor | `src/power_web_os/application/radar/candidate_discovery/search_expansion/targeted_execution.py` | Execute only scheduler-admitted checkpoint expansion tasks under source policy and budget guards. | Choosing checkpoint decisions or admitting work locally. |
-| Extraction contract/repair | `src/power_web_os/application/radar/candidate_discovery/extraction/contract.py` and `diagnostics.py` | Validate and repair provider payload shape when deterministic repair is safe. | Silently converting unrecoverable output into success. |
+| Extraction contract/repair/salvage | `src/power_web_os/application/radar/candidate_discovery/extraction/contract.py`, `diagnostics.py`, and `recovery.py` | Validate and repair provider payload shape when deterministic repair is safe; salvage source-backed review-needed upstream leads from product-safe source diagnostics after bounded extraction recovery fails. | Silently converting unrecoverable output into success or reading prompts/hidden provider text. |
 | Checkpoint service | `src/power_web_os/application/radar/candidate_discovery/checkpoints/policy.py` | Decide continue, retry, expand, repair, revise, stop, or fail. | Direct HTTP/provider calls. |
 | Checkpoint action executor | `src/power_web_os/application/radar/candidate_discovery/checkpoints/recovery.py` | Apply approved checkpoint actions under budgets and policy. | Unbounded loops. |
 | Entity resolution | `src/power_web_os/application/radar/candidate_discovery/universe/entity_resolution.py` | Distinguish legal entity, branch, production site, project, asset, and unknown entity. | Provider transport. |
@@ -271,12 +271,21 @@ The retrieval/extraction path is split conceptually:
    context.
 6. If configured, one bounded backup extraction model retry can be attempted for
    extraction-stage tasks only.
-7. If still invalid, the branch stops with an explicit diagnostic reason such as
-   `primary_schema_invalid`, `backup_schema_invalid`, `backup_not_configured`,
-   or `budget_exhausted_before_backup`.
+7. If strict extraction is still invalid, candidate discovery classifies the
+   failure and may run one deterministic post-extraction salvage pass from
+   product-safe source diagnostics.
+8. Salvage can materialize only source-backed review-needed upstream leads. It
+   never reads prompts, hidden reasoning, headers, tokens, or raw private
+   provider text, and it never creates accepted product candidates.
+9. If salvage cannot recover a source-backed lead, the branch stops with an
+   explicit diagnostic reason such as `schema_invalid_empty`,
+   `backup_schema_invalid`, `retry_budget_exhausted`, or
+   `unrecoverable_no_source_text`.
 
 Extraction recovery attempts are recorded in `extraction_recovery_records` and
-must count against external-call and provider-retry budgets.
+must count against external-call and provider-retry budgets. Deterministic
+post-extraction salvage is recorded separately in
+`post_extraction_salvage_records` and does not call a provider.
 
 ## 10. Registry Lookup Loop
 
@@ -318,9 +327,13 @@ flowchart TD
   B -->|schema issue| E[Repair or retry extraction]
   B -->|policy issue| F[Stop or block]
   D --> G[Execute bounded official and open-web tasks]
-  E --> H[Merge repaired observations]
+  E --> H{Strict extraction recovered}
+  H -->|yes| J[Merge repaired observations]
+  H -->|no but source-backed| K[Post-extraction salvage review leads]
+  H -->|no safe source| F
   G --> I[Merge source-backed entities and evidence]
-  H --> I
+  J --> I
+  K --> I
   I --> A
 ```
 
@@ -744,6 +757,8 @@ Radar exposes several diagnostic surfaces:
 - source obligation decisions and runtime outcomes;
 - external-call budget counters;
 - extraction recovery records;
+- post-extraction salvage outcome, records, count, and unrecovered reason;
+- candidate discovery reconciliation summary and product acceptance ledger;
 - registry lookup terms and attempts;
 - expansion target queue;
 - search expansion query variants and results grouped by target;
@@ -781,6 +796,13 @@ Current SIBUR evaluation channels:
 - `benchmark_target_funnel`, which records generated, selected, admitted,
   executed, source-found, projected, rejected, and path-reason states for each
   baseline target;
+- `candidate_discovery_reconciliation`, which reconciles public candidate rows,
+  universe-only upstream leads, diagnostic gaps, product acceptance, and public
+  projection reasons;
+- `product_acceptance_ledger`, which gives a product-safe row-level reason for
+  every retained or not-promoted upstream entity;
+- dossier responses expose both public `candidates` and `candidate_universe` so
+  evaluation counts do not drift from the candidate endpoint;
 - false positives;
 - false negatives;
 - ambiguous matches;
@@ -805,6 +827,10 @@ review entity type was lost.
 
 Evaluation is a measurement layer. If it exposes poor quality, the fix should be
 planned as a follow-up slice rather than hidden inside the evaluation code.
+For candidate discovery to satisfy the current DoD, `unexplained_drop_count`
+must be zero. A zero `product_candidate_count` is acceptable only when the
+ledger explains every non-product row, and `present_not_projected` must be
+treated as a corrective defect rather than as an acceptable benchmark outcome.
 
 ## 19. Context Management
 

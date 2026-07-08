@@ -62,6 +62,19 @@ Implement one small, complete, tested, documented product increment.
   fixtures, malformed-output negative fixtures, and targeted provider probes
   where relevant. A long live run is a final smoke/benchmark step, not the first
   validation signal.
+- For any Radar slice that changes pipeline behavior, run the Radar control loop
+  after tests are green:
+  1. rebuild Docker/API/worker with `docker compose up -d --build`;
+  2. run the documented bounded Radar smoke or benchmark smoke;
+  3. diagnose the persisted run id with `radar-run-diagnostics`;
+  4. compare observed behavior against the current slice and previously
+     completed slices that should already guarantee the behavior;
+  5. automatically fix small local defects, or add/update a corrective roadmap
+     slice when the mismatch is architectural or product-semantic;
+  6. update skills, ADRs, docs, tests, or architecture guardrails when the root
+     cause is a process gap rather than only a code defect.
+  Do not treat "tests passed" as enough evidence for a behavior-changing Radar
+  slice.
 - Do not normalize broken LLM/provider output into apparently successful
   product states. Missing source refs, invalid schemas, evidence-linking
   failures, and budget/policy skips should become explicit diagnostic states and
@@ -78,6 +91,10 @@ Before finishing:
 - Tests were added or updated.
 - For complex LLM pipelines, fast preflight/recorded/negative tests were added
   or explicitly documented as out of scope for the slice.
+- For behavior-changing Radar slices, Docker/API/worker was rebuilt before the
+  run, a persisted smoke/benchmark run was diagnosed, and any mismatch with
+  completed slices produced either an autofix or an explicit roadmap/process
+  correction.
 - Relevant tests were run.
 - Backend architecture contract tests were run when backend boundaries changed.
 - Docs were updated.

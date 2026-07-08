@@ -117,11 +117,22 @@ def _source_ref(source: dict[str, Any]) -> str:
 
 
 def _legal_names_from_source(source: dict[str, Any]) -> list[str]:
+    names: list[str] = []
+    for key in ("title", "snippet", "summary"):
+        for name in _legal_names_from_text(str(source.get(key) or "")):
+            if name not in names:
+                names.append(name)
+    if names:
+        return names
     text = " ".join(
         str(source.get(key) or "")
         for key in ("title", "snippet", "summary")
         if str(source.get(key) or "").strip()
     )
+    return _legal_names_from_text(text)
+
+
+def _legal_names_from_text(text: str) -> list[str]:
     names: list[str] = []
     for match in _LEGAL_NAME_PATTERN.finditer(text):
         name = _clean_legal_name(match.group(0))
@@ -247,6 +258,7 @@ def _looks_sentence_like(value: str) -> bool:
         " reports ",
         " announces ",
         " есть ",
+        " упоминается ",
         " сообщает ",
         " описывает ",
     )

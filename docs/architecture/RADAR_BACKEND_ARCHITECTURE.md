@@ -65,7 +65,7 @@ when behavior has already moved to `application/radar`.
 | `live_radar_definition_runtime.py` | Persisted definition runtime mapping | `radar/candidate_discovery/planning/definition_runtime.py` |
 | `live_radar_discovery_planning.py`, `live_radar_plan_acceptance.py`, `live_radar_planning_pipeline.py`, `live_radar_execution_plan.py`, `live_radar_retrieval_plan.py` | Planning, validation, acceptance, and executable plan projection | `radar/candidate_discovery/planning/` |
 | `live_radar_web_retrieval.py`, `live_radar_product_sources.py` | Provider-neutral retrieval/source material | `radar/candidate_discovery/retrieval/` |
-| `live_radar_extraction_contract.py`, `live_radar_extraction_diagnostics.py` | Extraction schema validation, repair, and diagnostics | `radar/candidate_discovery/extraction/contract.py` and `diagnostics.py` |
+| `live_radar_extraction_contract.py`, `live_radar_extraction_diagnostics.py` | Extraction schema validation, repair, diagnostics, and post-extraction salvage | `radar/candidate_discovery/extraction/contract.py`, `diagnostics.py`, and `recovery.py` |
 | `live_radar_source_cards.py`, `radar_source_obligations.py`, connector/capability helpers | Source capability, source-card, and obligation rules | `radar/shared/sources/` and `radar/candidate_discovery/sources/` |
 | `radar_source_providers.py`, registry lookup helpers, lookup term generators | Provider-neutral registry/source orchestration | `radar/candidate_discovery/sources/` |
 | `live_radar_entity_resolution.py`, `live_radar_universe.py`, `live_radar_retrieved_candidates.py`, `live_radar_candidate_refs.py`, `live_radar_cross_disambiguation.py`, `radar_upstream_disambiguation.py` | Candidate universe, entity resolution, retrieved candidate extraction, upstream/cross-source disambiguation | `radar/candidate_discovery/universe/` |
@@ -169,6 +169,7 @@ Execution phase map:
 | `signals.py` | `CandidateDiscoverySignalHandoffProjector`: normal signal-monitoring handoff projection; `SignalCompatibilityPhaseExecutor`: explicit legacy inline signal-search compatibility. |
 | `finalization.py` | `FinalizationProjector`: build final `WebSearchProviderResult`, event list, and dossier/report metadata. |
 | `finalization_universe.py` | Add review-needed upstream entities and upstream disambiguation events. |
+| `reconciliation.py` | `CandidateDiscoveryOutcomeReconciler`: reconcile public candidates, universe-only leads, diagnostic gaps, product acceptance, and projection reasons. |
 | `task_runner.py` | `TaskExecutionService`: provider-neutral task execution, gate pass, retries, and candidate task utilities. |
 | `merge.py` | `ExecutionResultMerger`: source/observation/provider metadata merge and universe entity metadata projection. |
 | `projection.py` | `CandidateProjectionService` and `PipelineEventFactory`: candidate projection and product-safe event payloads. |
@@ -315,10 +316,11 @@ moved:
 | `live_radar_pipeline_support.py` | `radar/candidate_discovery/diagnostics/pipeline_support.py` |
 | `live_radar_source_risk.py` | `radar/candidate_discovery/sources/risk.py` |
 
-The extraction package owns provider payload validation, deterministic repair
-and extraction diagnostic states. The diagnostics package owns candidate
-normalization, collection helpers, and trace/event support used by product-safe
-artifact projection. The sources package owns source verification-risk helpers.
+The extraction package owns provider payload validation, deterministic repair,
+post-extraction salvage from product-safe source diagnostics, and extraction
+diagnostic states. The diagnostics package owns candidate normalization,
+collection helpers, and trace/event support used by product-safe artifact
+projection. The sources package owns source verification-risk helpers.
 Root files are compatibility shims and must not regain behavior.
 
 As of slice `0.7.6.4.18`, recorded/no-network signal-monitoring behavior has
@@ -538,10 +540,12 @@ bounded slices:
 20. `0.7.6.4.18.1` split candidate discovery and signal monitoring runtime:
     discovery now emits handoff statuses by default.
 21. `0.7.6.4.19` closes or sunsets remaining root Radar-prefixed files.
-22. Product corrective work resumes after the cleanup corridor, starting with
-    the already planned `0.7.6.3.6.6` post-extraction fallback materialization
-    and `0.7.6.3.7` model-role evaluation slices, unless a blocking
-    architecture regression appears.
+22. `0.7.6.4.18.1.2` merges the older `0.7.6.3.6.6` fallback scope into
+    current candidate-discovery recovery and adds deterministic
+    post-extraction salvage before signal-monitoring live runtime resumes.
+23. Product corrective work resumes with signal-monitoring live runtime and
+    model-role evaluation only after live candidate-discovery smoke reaches
+    expansion and benchmark target-funnel diagnostics.
 
 ## Remaining Migration Debt
 

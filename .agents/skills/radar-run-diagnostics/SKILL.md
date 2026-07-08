@@ -67,6 +67,19 @@ Focus on algorithm behavior, not only candidate counts:
 - trace quality: whether technical trace explains prompts, provider calls,
   parsed outputs, validation and redaction without leaking secrets.
 
+When counts appear contradictory, explain the surfaces separately instead of
+collapsing them into one "candidate count":
+
+- benchmark matches: baseline entities recognized anywhere in dossier/evidence;
+- candidate universe: broad upstream raw/review entities retained for recall;
+- public candidates: capped/scored candidate rows shown to users;
+- product candidates: strict downstream accepted accounts;
+- signal rows: signal-monitoring or compatibility signal states.
+
+If a run found many upstream/review entities but public candidates are still
+`Monitor` or `product_candidate_count=0`, treat that as a semantic/product
+surface mismatch that needs roadmap or implementation action.
+
 ## RCA Format
 
 Answer in Russian unless the user asks otherwise. Keep the report readable:
@@ -78,7 +91,11 @@ Answer in Russian unless the user asks otherwise. Keep the report readable:
 4. **Root causes**: ordered by impact, each tied to persisted evidence.
 5. **Roadmap match**: whether the behavior is already expected/covered by
    current slices or indicates a gap.
-6. **Recommended next action**:
+6. **Retrospective**: if behavior contradicts a completed slice, name the
+   completed slice, the failed assumption, and the missing process guardrail
+   such as a test, linter, skill instruction, ADR, documentation rule, or
+   acceptance gate.
+7. **Recommended next action**:
    - continue according to roadmap;
    - adjust current implementation;
    - add a new corrective slice;

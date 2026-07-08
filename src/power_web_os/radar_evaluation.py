@@ -14,6 +14,10 @@ from power_web_os.radar_evaluation_funnel import (
     is_product_candidate as _is_product_candidate,
     upstream_lead_counts as _upstream_lead_counts,
 )
+from power_web_os.radar_evaluation_reconciliation import (
+    candidate_discovery_reconciliation as _candidate_discovery_reconciliation,
+    product_acceptance_ledger as _product_acceptance_ledger,
+)
 from power_web_os.radar_evaluation_matching import (
     contains_strong_name,
     entity_type_compatible,
@@ -21,11 +25,8 @@ from power_web_os.radar_evaluation_matching import (
     normalize_name,
     review_entity_name_match,
 )
-
-
 SIBUR_CONTOUR_RADAR_ID = "benchmark-sibur-holding-contour"
 EVALUATION_ARTIFACT_VERSION = "0.7.6.3"
-
 
 @dataclass(slots=True)
 class RadarEvaluationEntity:
@@ -42,7 +43,6 @@ class RadarEvaluationEntity:
     @property
     def normalized_names(self) -> set[str]:
         return {normalized for name in (self.canonical_name, *self.aliases) if (normalized := normalize_name(name))}
-
 
 @dataclass(slots=True)
 class RadarEvaluationBaseline:
@@ -68,7 +68,6 @@ class RadarObservedEntity:
     def normalized_name(self) -> str:
         return normalize_name(self.name)
 
-
 @dataclass(slots=True)
 class RadarEvaluationMatch:
     baseline: RadarEvaluationEntity
@@ -76,7 +75,6 @@ class RadarEvaluationMatch:
     match_type: str
     confidence: str
     evidence_quality: str
-
 
 def load_evaluation_baseline(path: Path) -> RadarEvaluationBaseline:
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -161,6 +159,9 @@ def evaluate_radar_dossier(
         false_negative_diagnostics=false_negative_diagnostic_items,
         dossier=dossier,
     )
+    reconciliation = _candidate_discovery_reconciliation(dossier)
+    product_acceptance_ledger = _product_acceptance_ledger(dossier)
+    funnel_reason_counts = _count_by(str(item.get("path_reason") or "") for item in benchmark_target_funnel)
     report = {
         "artifact_type": "radar_evaluation_report",
         "artifact_version": EVALUATION_ARTIFACT_VERSION,
@@ -188,6 +189,8 @@ def evaluate_radar_dossier(
             "confirmed_upstream_lead_count": upstream_counts["confirmed_upstream_lead_count"],
             "review_needed_upstream_lead_count": upstream_counts["review_needed_upstream_lead_count"],
             "product_candidate_count": len(product_observations),
+            "unexplained_drop_count": int(reconciliation.get("unexplained_drop_count") or 0),
+            "present_not_projected_count": funnel_reason_counts.get("present_not_projected", 0),
         },
         "evidence_quality_summary": _count_by(evidence_quality_values),
         "true_positives": [_match_payload(match) for match in matches if match.baseline.entity_type == "legal_entity"],
@@ -198,8 +201,11 @@ def evaluate_radar_dossier(
         "ambiguous_matches": [_match_payload(match) for match in ambiguous],
         "coverage_probe_summary": {},
         "candidate_projection_note": (
-            "Precision counts strict product candidates only. Retained upstream leads are reported separately from product acceptance."
+            "Precision counts strict product candidates only. Retained upstream leads, universe-only rows, and "
+            "not-promoted entities are reported separately from product acceptance."
         ),
+        "candidate_discovery_reconciliation": reconciliation,
+        "product_acceptance_ledger": product_acceptance_ledger,
         "benchmark_target_funnel": benchmark_target_funnel,
         "recommended_followup_buckets": _followup_buckets(
             summary=summary,
@@ -212,6 +218,9 @@ def evaluate_radar_dossier(
             "observed_entity_count": len(observed),
             "product_candidate_count": len(product_observations),
             **upstream_counts,
+            "candidate_discovery_reconciliation": reconciliation,
+            "product_acceptance_ledger_count": len(product_acceptance_ledger),
+            "benchmark_target_path_reasons": funnel_reason_counts,
             "source_lifecycle_count": len(source_index),
             "stopped_for_review_reason": dossier.get("stopped_for_review_reason"),
         },

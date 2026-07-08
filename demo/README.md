@@ -368,12 +368,14 @@ diagnostic output to inspect quality, `stopped_diagnostic` means the pipeline
 stopped for an explicit review reason, `budget_limited` means configured
 benchmark limits shaped the result, and `failed_runtime` means infrastructure or
 worker execution failed. Use `benchmark_smoke` for all benchmark radars; use
-`benchmark_live` only for one radar at a time after the smoke report is
-actionable. Benchmark profiles send explicit `task_context` budgets through the
-API request; those profile budgets should take precedence over local `.env`
-defaults so the report remains reproducible across machines. `benchmark_live`
-also carries protected baseline-target lane minimums, completion slots, and
-reserve budgets; do not treat it as merely a longer smoke run.
+`benchmark_live` only for one radar at a time after smoke reaches expansion and
+benchmark target-funnel diagnostics. Benchmark profiles send explicit
+`task_context` budgets through the API request; those profile budgets should
+take precedence over local `.env` defaults so the report remains reproducible
+across machines. `benchmark_live` also carries protected baseline-target lane
+minimums, completion slots, and reserve budgets; do not treat it as merely a
+longer smoke run. If smoke stops before the target funnel, inspect
+`post_extraction_salvage_*` and `extraction_recovery_records` first.
 
 After `0.7.6.3`, evaluate the SIBUR benchmark against a small curated baseline:
 
@@ -391,6 +393,14 @@ Also inspect `retained_upstream_lead_count`,
 `benchmark_target_funnel`. Zero strict product candidates with retained
 upstream leads means the issue is acceptance/projection, not necessarily
 retrieval absence.
+After the candidate-discovery reconciliation repair, inspect
+`candidate_discovery_reconciliation.unexplained_drop_count` and
+`product_acceptance_ledger` as part of the smoke result. A smoke run is not a
+valid DoD pass if retained upstream leads disappear without a
+`public_projection_reason`, or if `product_candidate_count=0` has no row-level
+acceptance reasons. If product candidates are present, the zero-product
+explanation flag must be false, and the dossier `candidates` list must agree
+with the candidates endpoint.
 
 After `0.7.6.3.1`, retrieved/analyzed source metadata can also contribute
 source-backed review-needed upstream entities. For example, a SIBUR source that

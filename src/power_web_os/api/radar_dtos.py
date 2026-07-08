@@ -156,6 +156,14 @@ class RadarCandidateResponse(BaseModel):
     evidence_refs: list[str] = Field(default_factory=list)
     qualification: list[QualificationResponse] = Field(default_factory=list)
     signals: list[SignalResponse] = Field(default_factory=list)
+    upstream_discovery_outcome: str = ""
+    product_acceptance_status: str = ""
+    upstream_confidence: str = ""
+    upstream_reason: str = ""
+    upstream_source_refs: list[str] = Field(default_factory=list)
+    product_acceptance_reason: str = ""
+    public_result_status: str = ""
+    public_projection_reason: str = ""
 
 
 class RadarSourceResponse(BaseModel):
@@ -173,6 +181,9 @@ class RadarRunCandidatesResponse(BaseModel):
     candidates: list[RadarCandidateResponse]
     sources: list[RadarSourceResponse]
     contract_validation: list[dict[str, Any]] = Field(default_factory=list)
+    candidate_universe: list[dict[str, Any]] = Field(default_factory=list)
+    candidate_discovery_reconciliation: dict[str, Any] = Field(default_factory=dict)
+    product_acceptance_ledger: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class RadarReviewDecisionRequest(BaseModel):
@@ -404,6 +415,9 @@ class RadarRunDossierResponse(BaseModel):
     linked_entity_facts: list[dict[str, Any]] = Field(default_factory=list)
     entity_resolution_warnings: list[dict[str, Any]] = Field(default_factory=list)
     candidate_universe: list[dict[str, Any]] = Field(default_factory=list)
+    candidates: list[dict[str, Any]] = Field(default_factory=list)
+    candidate_discovery_reconciliation: dict[str, Any] = Field(default_factory=dict)
+    product_acceptance_ledger: list[dict[str, Any]] = Field(default_factory=list)
     upstream_disambiguation_results: list[dict[str, Any]] = Field(default_factory=list)
     cross_source_disambiguation_tasks: list[dict[str, Any]] = Field(default_factory=list)
     cross_source_disambiguation_execution: list[dict[str, Any]] = Field(default_factory=list)

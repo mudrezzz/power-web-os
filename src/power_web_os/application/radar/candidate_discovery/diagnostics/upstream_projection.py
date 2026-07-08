@@ -62,3 +62,18 @@ def product_acceptance_status(
     if upstream_outcome in {"confirmed_upstream_lead", "review_needed_upstream_lead", "retained_upstream_lead"}:
         return "review_required"
     return "not_product_accepted"
+
+
+def product_acceptance_reason(
+    *,
+    product_acceptance_status: str,
+    upstream_reason: str,
+    qualification: list[LiveRadarQualificationResult],
+) -> str:
+    if product_acceptance_status == "product_candidate":
+        return "deterministic_qualification_and_upstream_evidence_passed"
+    if any(item.final_assessment == "does_not_match" for item in qualification):
+        return "required_product_qualification_rejected"
+    if any(item.final_assessment in {"unknown", "partially_matches"} for item in qualification):
+        return "requires_human_review_before_product_acceptance"
+    return upstream_reason or "insufficient_product_acceptance_evidence"

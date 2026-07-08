@@ -30,6 +30,7 @@ from support.radar_adaptive_harness import (
     radar_definition,
     required_source_unavailable_result,
     schema_invalid_result,
+    source_backed_schema_invalid_result,
     signal_result,
     strong_discovery_with_cross_check_plan,
     source_policy_selected,
@@ -239,6 +240,26 @@ def test_schema_failure_repair_cap_stops_without_blind_fallback() -> None:
         item.get("reason_code") == "extraction_repair_exhausted"
         for item in execution_results["checkpoint_decisions"]
     )
+    assert_no_normal_negative_signal_projection(execution_results)
+
+
+def test_schema_failure_with_source_diagnostics_salvages_upstream_lead() -> None:
+    provider = ScriptedProvider([source_backed_schema_invalid_result(), schema_invalid_result()])
+
+    _, _, execution_results = run_staged_radar_execution(
+        radar=radar_definition(),
+        execution_plan=base_plan(),
+        provider=provider,
+        max_checkpoint_retries_per_stage=1,
+    )
+
+    assert provider.stages == ["qualification_discovery", "qualification_discovery"]
+    assert execution_results["post_extraction_salvage_outcome"] == "post_extraction_salvage_recovered"
+    assert execution_results["post_extraction_salvage_count"] == 1
+    assert execution_results["extraction_contract_state"] == "post_extraction_salvage_recovered"
+    assert execution_results["candidate_universe"][0]["legal_name"] == "LLC Candidate A"
+    assert execution_results["candidate_universe"][0]["product_acceptance_status"] == "review_required"
+    assert not execution_results["stopped_for_review_reason"]
     assert_no_normal_negative_signal_projection(execution_results)
 
 

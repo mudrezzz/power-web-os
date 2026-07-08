@@ -65,6 +65,8 @@ def dossier_response(
     linked_entity_facts = _list(execution_results.get("linked_entity_facts"))
     entity_resolution_warnings = _list(execution_results.get("entity_resolution_warnings"))
     candidate_universe = _list(execution_results.get("candidate_universe"))
+    candidate_discovery_reconciliation = _dict(execution_results.get("candidate_discovery_reconciliation"))
+    product_acceptance_ledger = _list(execution_results.get("product_acceptance_ledger"))
     upstream_disambiguation_results = _list(execution_results.get("upstream_disambiguation_results"))
     cross_source_disambiguation_tasks = _list(execution_results.get("cross_source_disambiguation_tasks"))
     cross_source_disambiguation_execution = _list(execution_results.get("cross_source_disambiguation_execution"))
@@ -134,6 +136,9 @@ def dossier_response(
         linked_entity_facts=linked_entity_facts,
         entity_resolution_warnings=entity_resolution_warnings,
         candidate_universe=candidate_universe,
+        candidates=candidates,
+        candidate_discovery_reconciliation=candidate_discovery_reconciliation,
+        product_acceptance_ledger=product_acceptance_ledger,
         upstream_disambiguation_results=upstream_disambiguation_results,
         cross_source_disambiguation_tasks=cross_source_disambiguation_tasks,
         cross_source_disambiguation_execution=cross_source_disambiguation_execution,

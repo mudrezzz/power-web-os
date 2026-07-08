@@ -686,11 +686,17 @@ checkpoint summary, extraction recovery count, cross-source outcomes, budget
 counters, top candidates, and a compact verdict:
 `ready_for_quality_review`, `stopped_diagnostic`, `budget_limited`, or
 `failed_runtime`. Use `benchmark_smoke` for all benchmark radars by default.
-Use `benchmark_live` only for one radar at a time after the smoke report is
-diagnosable. `benchmark_live` is not just a larger budget profile: it carries
+Use `benchmark_live` only for one radar at a time after smoke reaches expansion
+and benchmark target-funnel diagnostics. `benchmark_live` is not just a larger
+budget profile: it carries
 protected baseline-target lane minimums, completion slots, and reserve budgets,
 so explicit baseline targets should be generated, selected, and reported before
 optional duplicate/alias exploration.
+
+If smoke stops at extraction schema recovery before target-funnel diagnostics,
+debug `post_extraction_salvage_*` and `extraction_recovery_records` first. A
+longer live benchmark on top of unrecovered extraction drift is budget noise,
+not quality evidence.
 
 For SIBUR contour smoke runs, expansion diagnostics must be read by target type.
 `production_site_coverage_probe` is a dedicated reserve for branch/site/plant
@@ -742,6 +748,16 @@ Read `retained_upstream_lead_count`, `confirmed_upstream_lead_count`,
 concluding that candidate discovery found nothing. A run with retained upstream
 leads but zero strict product candidates is an acceptance/projection issue, not
 necessarily a retrieval absence.
+After `0.7.6.4.18.1.3`, also inspect
+`candidate_discovery_reconciliation` and `product_acceptance_ledger`.
+`unexplained_drop_count` must be zero before a behavior-changing
+candidate-discovery slice is accepted. If `product_candidate_count` is zero,
+the ledger must explain every non-product row; if a benchmark target is
+`present_not_projected`, treat it as a corrective defect, not as a valid smoke
+result. If `product_candidate_count` is greater than zero,
+`product_candidate_zero_explained` must be false. Dossier responses expose the
+same public candidate rows as the candidates endpoint so evaluator counts and
+API inspection stay aligned.
 
 `0.7.6.3.1` keeps evaluation recall-first without relaxing product precision.
 Repairable extraction shape noise, such as keyed `sources`/`candidates` objects
@@ -759,6 +775,9 @@ or `budget_exhausted_before_backup`, instead of only reporting generic
 `extraction_repair_exhausted`. Second, evaluation reports include
 `false_negative_diagnostics` so a missed baseline entity is classified as
 `present_not_projected`, `present_not_matched`, or `not_retrieved_in_run`.
+Current candidate discovery also records deterministic post-extraction salvage
+through `post_extraction_salvage_records`, `post_extraction_salvage_outcome`,
+and `post_extraction_salvage_unrecovered_reason`.
 
 If a missed entity should be checked with a bounded live search, run the
 separate diagnostic probe. It does not change the original run metrics:

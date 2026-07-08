@@ -6,6 +6,8 @@ import json
 import re
 from typing import Any
 
+from power_web_os.radar_evaluation_matching import review_entity_name_match
+
 
 def is_product_candidate(payload: dict[str, Any]) -> bool:
     status = str(payload.get("product_acceptance_status") or "")
@@ -139,7 +141,12 @@ def _matching_name_records(names: list[str], records: list[Any]) -> list[dict[st
 def _observed_matches_entity(entity: Any, observed: Any) -> bool:
     names = [_normalize_match_text(entity.canonical_name), *[_normalize_match_text(alias) for alias in entity.aliases]]
     observed_name = _normalize_match_text(observed.name)
-    return any(name and (name == observed_name or name in observed_name or observed_name in name) for name in names)
+    if any(name and (name == observed_name or name in observed_name or observed_name in name) for name in names):
+        return True
+    return review_entity_name_match(
+        baseline_names={name for name in names if name},
+        observed_name=observed_name,
+    )
 
 
 def _normalize_match_text(value: str) -> str:

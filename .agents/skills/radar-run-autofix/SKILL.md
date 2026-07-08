@@ -52,6 +52,15 @@ Before the first run:
    `http://127.0.0.1:8001`. Use `http://127.0.0.1:8000` only for a manual local
    uvicorn process after verifying `/health` and `/api/radars` belong to Power
    Web OS.
+9. Before any Docker/API-backed run, rebuild the stack yourself:
+
+   ```powershell
+   docker compose up -d --build
+   ```
+
+   Do not ask the user whether to rebuild, and do not treat a run against a
+   stale backend image as evidence for current workspace code. Mention Docker
+   only when Docker is unavailable or the rebuild fails.
 
 ## Run And Diagnose
 
@@ -82,6 +91,38 @@ After diagnosis, compare the observed behavior with `ROADMAP.md`:
   planned slice, report the failure and recommend continuing with that slice.
 - If the result fails and the failure is not covered by the roadmap, classify
   the required change before editing.
+- If the result contradicts a slice already marked `Done`, treat that as a
+  process defect, not just a product bug. Identify which assumption, test,
+  guardrail, documentation, skill instruction, or roadmap acceptance criterion
+  let the mismatch pass.
+
+## Post-Slice Retrospective
+
+For every Radar slice that changes candidate discovery, source routing,
+extraction, admission, projection, checkpoints, budgets, signal monitoring, API
+surface, or benchmark semantics, perform a retrospective after the run:
+
+1. Compare observed behavior against each relevant completed slice, not only
+   the current next slice.
+2. Explain count surfaces in plain language: raw upstream entities,
+   benchmark matched entities, public candidate rows, accepted product
+   candidates, and signal-monitoring rows are different surfaces.
+3. Flag contradictions, for example:
+   - recall-first upstream is marked done but public candidates are all
+     `Monitor`;
+   - benchmark targets are present in source diagnostics but remain
+     `present_not_projected`;
+   - `product_candidate_count=0` appears while the run found source-backed
+     upstream leads;
+   - candidate discovery emits signal-like review flags after handoff mode.
+4. Decide whether the response needs:
+   - a small autofix;
+   - a new corrective roadmap slice;
+   - a skill/procedure update;
+   - an architecture/ADR/test/guardrail update.
+5. Do not close the loop with "continue roadmap" until the contradiction is
+   either fixed, explicitly covered by the next slice, or recorded as a new
+   corrective slice.
 
 ## Mismatch Classification
 

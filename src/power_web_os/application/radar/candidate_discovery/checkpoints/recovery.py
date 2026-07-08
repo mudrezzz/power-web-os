@@ -16,6 +16,11 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     WebSearchProvider,
 )
 from power_web_os.application.radar.candidate_discovery.execution.task_budget import RadarExecutionBudget
+from power_web_os.application.radar.candidate_discovery.extraction.recovery import PostExtractionSalvageService
+from power_web_os.application.radar.candidate_discovery.checkpoints.recovery_salvage import (
+    attempt_post_extraction_salvage,
+    extraction_recovery_stop_reason,
+)
 from power_web_os.application.radar.shared.budgets import RadarExternalCallBudget
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 from power_web_os.application.radar.candidate_discovery.search_expansion.targeted_execution import execute_targeted_search_expansion
@@ -101,6 +106,7 @@ class RadarCheckpointActionExecutor:
     def __init__(self, plan_reviser: RadarExecutionPlanReviser | None = None) -> None:
         self._plan_reviser = plan_reviser or DefaultRadarExecutionPlanReviser()
         self._task_service = TaskExecutionService()
+        self._salvage_service = PostExtractionSalvageService()
 
     def recover(
         self,
@@ -127,7 +133,19 @@ class RadarCheckpointActionExecutor:
                 attempt = retry_attempts
             elif action in {"repair_extraction", "retry_extraction"}:
                 if repair_attempts >= context.service.policy.max_retries_per_stage:
-                    detail = _extraction_recovery_stop_reason(state.provider_metadata)
+                    state, recovered = self._attempt_post_extraction_salvage(
+                        checkpoint_id=checkpoint_id,
+                        phase=phase,
+                        state=state,
+                        context=context,
+                    )
+                    if recovered:
+                        decision = self._record(checkpoint_id=checkpoint_id, phase=phase, state=state, context=context)
+                        if decision.action == "continue":
+                            state.stopped_for_review_reason = ""
+                            break
+                        continue
+                    detail = extraction_recovery_stop_reason(state.provider_metadata)
                     state.stopped_for_review_reason = (
                         "Extraction repair limit reached before extraction recovered."
                         if not detail
@@ -265,6 +283,50 @@ class RadarCheckpointActionExecutor:
                 break
         return state, decision
 
+    def _attempt_post_extraction_salvage(
+        self,
+        *,
+        checkpoint_id: str,
+        phase: str,
+        state: RadarCheckpointRecoveryState,
+        context: RadarCheckpointRecoveryContext,
+    ) -> tuple[RadarCheckpointRecoveryState, bool]:
+        salvage = attempt_post_extraction_salvage(
+            checkpoint_id=checkpoint_id,
+            phase=phase,
+            radar=context.radar,
+            sources=state.sources,
+            observations=state.observations,
+            provider_metadata=state.provider_metadata,
+            completed_qualification_ids=context.completed_qualification_ids,
+            adaptive_actions=context.adaptive_actions,
+            task_service=self._task_service,
+            salvage_service=self._salvage_service,
+        )
+        if not salvage.recovered:
+            return RadarCheckpointRecoveryState(
+                salvage.sources,
+                salvage.observations,
+                salvage.provider_metadata,
+                state.candidate_scope,
+            ), False
+        provider_metadata = _with_extraction_recovery_record(
+            salvage.provider_metadata,
+            checkpoint_id=checkpoint_id,
+            phase=phase,
+            action="post_extraction_salvage",
+            attempt=1,
+            task_id="post-extraction-salvage",
+            outcome="post_extraction_salvage_recovered",
+            message="Recovered source-backed upstream leads from product-safe source diagnostics.",
+        )
+        return RadarCheckpointRecoveryState(
+            salvage.sources,
+            salvage.observations,
+            provider_metadata,
+            salvage.candidate_scope,
+        ), True
+
     def _task_for_action(
         self,
         *,
@@ -347,6 +409,8 @@ def _additional_sources_allowed(radar: dict[str, Any]) -> bool:
 
 
 def _has_extraction_issues(metadata: dict[str, Any]) -> bool:
+    if str(metadata.get("post_extraction_salvage_outcome") or "") == "post_extraction_salvage_recovered":
+        return False
     for result in metadata.get("extraction_validation_results", []):
         if isinstance(result, dict) and str(result.get("state")) in {"extraction_schema_invalid", "evidence_linking_failed"}:
             return True
@@ -427,21 +491,3 @@ def _record_terminal_stop(
         "message": message,
         "details": details or {},
     })
-
-
-def _extraction_recovery_stop_reason(metadata: dict[str, Any]) -> str:
-    outcome = str(metadata.get("extraction_recovery_outcome") or "")
-    if outcome:
-        return outcome
-    for attempt in reversed([item for item in metadata.get("extraction_model_attempts", []) if isinstance(item, dict)]):
-        reason = str(attempt.get("reason") or attempt.get("outcome") or "")
-        if reason:
-            return reason
-    for issue in metadata.get("extraction_validation_issues", []):
-        if not isinstance(issue, dict):
-            continue
-        path = str(issue.get("path") or "")
-        message = str(issue.get("message") or issue.get("code") or "")
-        if path or message:
-            return " ".join(part for part in [path, message] if part)
-    return ""

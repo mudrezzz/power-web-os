@@ -28,6 +28,7 @@ from power_web_os.application.radar.candidate_discovery.execution.finalization_u
 from power_web_os.application.radar.candidate_discovery.execution.finalization_metadata import (
     _apply_smoke_candidate_promotion_cap,
     _benchmark_recall_target_summary,
+    _budget_metadata,
     _external_budget_events,
     _legal_subsidiary_completion_summary,
 )
@@ -35,6 +36,9 @@ from power_web_os.application.radar.candidate_discovery.execution.finalization_s
     _signal_projection_observations,
     _signal_handoff_status,
     _signal_monitoring_pending_count,
+)
+from power_web_os.application.radar.candidate_discovery.execution.reconciliation import (
+    CandidateDiscoveryOutcomeReconciler,
 )
 from power_web_os.application.radar.candidate_discovery.execution.state import CandidateDiscoveryExecutionState
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
@@ -56,8 +60,13 @@ class FinalizationProjector:
     docs/architecture/radar/CANDIDATE_DISCOVERY_EXECUTION_ARCHITECTURE.md#finalizationprojector
     """
 
-    def __init__(self, task_service: TaskExecutionService | None = None) -> None:
+    def __init__(
+        self,
+        task_service: TaskExecutionService | None = None,
+        outcome_reconciler: CandidateDiscoveryOutcomeReconciler | None = None,
+    ) -> None:
         self._task_service = task_service or TaskExecutionService()
+        self._outcome_reconciler = outcome_reconciler or CandidateDiscoveryOutcomeReconciler()
 
     def project(
         self,
@@ -86,6 +95,12 @@ class FinalizationProjector:
             observations,
             unresolved_gaps,
         )
+        reconciliation = self._outcome_reconciler.reconcile(
+            public_candidates=normalized_candidates,
+            candidate_universe=universe_payload,
+            unresolved_gaps=unresolved_gaps,
+        )
+        universe_payload = reconciliation.candidate_universe
         source_obligation_decisions = self._source_obligation_decisions(context, state, observations)
         self._record_final_events(context, state, source_obligation_decisions)
         target_probe_payload = _target_probe_guarantees(provider_metadata=state.provider_metadata, radar=context.radar)
@@ -102,6 +117,8 @@ class FinalizationProjector:
             extraction_issues=extraction_issues,
             repair_results=repair_results,
             target_probe_payload=target_probe_payload,
+            outcome_reconciliation=reconciliation.summary,
+            product_acceptance_ledger=reconciliation.product_acceptance_ledger,
         )
         return result, state.events, metadata
 
@@ -260,10 +277,12 @@ class FinalizationProjector:
         extraction_issues: list[dict[str, Any]],
         repair_results: list[dict[str, Any]],
         target_probe_payload: dict[str, Any],
+        outcome_reconciliation: dict[str, Any],
+        product_acceptance_ledger: list[dict[str, Any]],
     ) -> dict[str, Any]:
         metadata: dict[str, Any] = {"execution_mode": "qualification_first_iterative_coverage"}
         metadata.update(self._execution_metadata(context, state))
-        metadata.update(self._budget_metadata(context, state))
+        metadata.update(_budget_metadata(context, state))
         metadata.update(self._retrieval_metadata(state))
         metadata.update(self._expansion_metadata(state, target_probe_payload))
         metadata.update(self._registry_metadata(state))
@@ -273,6 +292,8 @@ class FinalizationProjector:
         metadata.update(self._universe_metadata(state, observations, universe_payload, unresolved_gaps))
         metadata.update(self._coverage_metadata(context, state))
         metadata.update(smoke_metadata)
+        metadata["candidate_discovery_reconciliation"] = outcome_reconciliation
+        metadata["product_acceptance_ledger"] = product_acceptance_ledger
         metadata["rejected_candidates"] = self._task_service.projection.rejected_candidate_summaries(
             normalized_candidates
         )
@@ -300,41 +321,6 @@ class FinalizationProjector:
             "max_signal_tasks": context.budget_settings.max_signal_tasks_per_candidate_signal,
             "max_web_tasks_per_subject": context.budget_settings.compatibility_max_web_tasks_per_subject,
         }
-
-    @staticmethod
-    def _budget_metadata(
-        context: CandidateDiscoveryExecutionContext,
-        state: CandidateDiscoveryExecutionState,
-    ) -> dict[str, Any]:
-        metadata = {
-            "budget_settings": {
-                "max_total_web_tasks_per_run": context.budget_settings.max_total_tasks_per_run,
-                "max_discovery_tasks_per_rule": context.budget_settings.max_discovery_tasks_per_rule,
-                "max_gate_tasks_per_candidate_rule": context.budget_settings.max_gate_tasks_per_candidate_rule,
-                "max_signal_tasks_per_candidate_signal": context.budget_settings.max_signal_tasks_per_candidate_signal,
-                "compatibility_max_web_tasks_per_subject": (
-                    context.budget_settings.compatibility_max_web_tasks_per_subject
-                ),
-            },
-            "budget_counters": {
-                "total": context.task_budget.total_count,
-                "by_key": dict(context.task_budget.counts),
-                "semantic_reserves": dict(context.task_budget.semantic_reserve_counts),
-            },
-            "budget_exhaustion_events": list(context.task_budget.exhaustion_events),
-            "source_verification_cache_stats": context.verification_cache.to_metadata(),
-            "web_task_counts_by_subject": context.task_budget.counts,
-            "web_task_budget_warnings": context.task_budget.warnings,
-            "useful_result_retry_records": state.useful_result_retry_records,
-            "useful_result_warnings": state.useful_result_warnings,
-            "min_useful_sources_per_discovery_task": context.useful_budget.min_sources,
-            "min_candidates_per_discovery_task": context.useful_budget.min_candidates,
-            "max_discovery_retries_per_task": context.useful_budget.max_retries,
-        }
-        metadata.update(context.task_budget.to_metadata())
-        metadata.update(context.verification_cache.to_metadata())
-        metadata.update(context.external_budget.to_metadata())
-        return metadata
 
     @staticmethod
     def _retrieval_metadata(state: CandidateDiscoveryExecutionState) -> dict[str, Any]:
@@ -450,6 +436,12 @@ class FinalizationProjector:
             "extraction_retry_attempt_count": state.provider_metadata.get("extraction_retry_attempt_count", 0),
             "extraction_recovery_outcome": state.provider_metadata.get("extraction_recovery_outcome", ""),
             "extraction_contract_state": extraction_contract_state(state.provider_metadata),
+            "post_extraction_salvage_records": state.provider_metadata.get("post_extraction_salvage_records", []),
+            "post_extraction_salvage_count": state.provider_metadata.get("post_extraction_salvage_count", 0),
+            "post_extraction_salvage_outcome": state.provider_metadata.get("post_extraction_salvage_outcome", ""),
+            "post_extraction_salvage_unrecovered_reason": state.provider_metadata.get(
+                "post_extraction_salvage_unrecovered_reason", ""
+            ),
         }
 
     @staticmethod

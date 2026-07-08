@@ -41,6 +41,16 @@ Docker dev stack publishes the API on host port `8001` and keeps container port
 (`power-web-os-api` / `python -m power_web_os.api`), and verify `/health`
 belongs to Power Web OS before queuing a run.
 
+Before any Docker/API-backed Radar self-test, rebuild the backend image without
+asking the user:
+
+```powershell
+docker compose up -d --build
+```
+
+If Docker is not available in the session, report that as a blocker. Do not run
+against a stale container image and do not ask the user whether to rebuild.
+
 1. Verify API health:
 
    ```powershell
@@ -91,6 +101,9 @@ The final answer must include:
 - whether the run reached terminal state within the timeout;
 - status and duration;
 - candidate/source counts only as supporting facts;
+- a plain-language explanation of every major count surface that can look
+  inconsistent, especially `candidate_universe`, public `candidates`,
+  benchmark matches, review matches, and `product_candidate_count`;
 - root cause verdict;
 - whether the result supports continuing the roadmap or requires a corrective
   implementation slice.

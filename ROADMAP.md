@@ -7081,8 +7081,11 @@ Principles:
 
 ### Slice 0.7.6.3.6.6: Post-extraction fallback materialization and registry enrichment recheck
 
-- Status: Backlog
-- Goal: Fix the next TOIR Docker smoke blocker: when extraction payloads fail but retrieved/analyzed sources contain source-backed candidates, materialize review-needed candidates, run bounded identity enrichment for concrete names, and re-review checkpoints before declaring a terminal policy stop.
+- Status: Blocked
+- Goal: Superseded and merged into 0.7.6.4.18.1.2. Do not implement this slice independently.
+- Problem statement: This older backlog item described the same post-extraction fallback/materialization problem now exposed by the live Docker/API smoke after 0.7.6.4.18.1.1. To avoid duplicate roadmap owners, its implementation scope is merged into 0.7.6.4.18.1.2.
+- Scope: No independent scope remains. Implement 0.7.6.4.18.1.2 instead.
+- Acceptance criteria: 0.7.6.4.18.1.2 is completed and validates post-extraction salvage/recovery without duplicate roadmap work.
 
 ### Slice 0.7.6.4.0: Radar pipeline split, model-profile separation, and documentation registry
 
@@ -8487,6 +8490,110 @@ Principles:
   - Promoting official-source evidence too broadly can mask ambiguous legal-entity vs branch/site cases. Mitigate with entity-type-aware review states and source-linked evidence requirements.
   - Live provider output can drift. Acceptance should prioritize deterministic contract tests and diagnostic specificity, not a one-run quality claim.
 
+### Slice 0.7.6.4.18.1.2: Live extraction robustness and post-extraction salvage
+
+- Status: Done
+- Goal: Make live candidate-discovery extraction robust enough to reach recall expansion and benchmark target protection: when live provider output violates the strict extraction schema but product-safe sources already contain source-backed entities, salvage review-needed upstream leads instead of ending the run as an opaque schema_failed stop.
+- User value: A user can run a bounded live Radar smoke and get a useful candidate/target funnel diagnosis instead of paying for repeated OpenRouter attempts that stop before candidates, expansion, and benchmark baseline protection can be evaluated.
+- Problem statement: After 0.7.6.4.18.1.1 the deterministic recall-first admission and benchmark target protection tests are green, but Docker/API benchmark smoke exposed an earlier live-provider failure: the run stopped with `Extraction repair limit reached before extraction recovered: schema_failed` before normal expansion/target-protection checks. Existing retry, useful-result retry, and backup-model logic can retry or ask another model for valid JSON, but they do not yet materialize candidates from already available product-safe source diagnostics when strict extraction shape remains invalid. This slice merges and supersedes the older backlog slice 0.7.6.3.6.6 so there is one owner for post-extraction salvage work.
+- Scope:
+  - Add recorded/no-secret fixtures for the live extraction schema-failure class seen in the Docker/API smoke.
+  - Classify extraction failures into actionable states: no useful sources, schema invalid with usable source diagnostics, unlinked candidates/source refs, backup model schema invalid, and recovery budget exhausted.
+  - Add package-owned post-extraction salvage under candidate discovery: from product-safe retrieved/analyzed source title/snippet/url/annotations and source lifecycle diagnostics, materialize review-needed upstream leads when names/aliases are source-backed.
+  - Reuse the recall-first upstream admission policy for salvaged candidates; do not bypass product acceptance gates.
+  - Re-run checkpoint review after salvage so a run with recovered source-backed upstream leads can continue to expansion and benchmark target funnel instead of stopping only because the original JSON was malformed.
+  - Preserve explicit extraction repair/retry diagnostics, including which path recovered the run or why salvage could not recover it.
+  - Run a bounded Docker/API benchmark smoke after fast tests are green and require it to reach expansion/target-funnel diagnostics before any longer benchmark_live run.
+- Out of scope:
+  - No signal-monitoring live runtime/API implementation; 0.7.6.4.18.2 resumes only after this slice is validated.
+  - No quality claim from a single live run.
+  - No broad prompt redesign or provider/model tuning beyond minimal targeted repair prompts if tests prove they are needed.
+  - No hardcoded SIBUR production logic outside benchmark fixtures/hints.
+  - No lowering of downstream product acceptance precision; salvaged entities are upstream review-needed unless deterministic evidence justifies stronger upstream status.
+  - No unbounded retries or hidden broad fallback.
+- Implementation notes:
+  - Treat old 0.7.6.3.6.6 as merged into this slice: do not implement it separately.
+  - The correction belongs after package ownership cleanup because candidate universe, extraction, diagnostics, and admission now have package-owned homes.
+  - Salvage must use product-safe diagnostics only: source titles, snippets, URLs, annotations, lifecycle metadata, and candidate-universe source refs. Do not scan prompts, hidden provider reasoning, or raw private payload text.
+  - Recovery should be explicit: if salvage creates candidates, metadata should say `post_extraction_salvage_recovered`; if not, metadata should say whether the miss was no usable source text, no source ref, no matching entity text, or explicit rejection.
+  - Existing retry and backup-model attempts remain useful first-line recovery, but this slice adds the missing deterministic fallback after those bounded attempts fail.
+  - Keep the module split small enough to satisfy backend architecture hotspot tests.
+- Tests:
+  - Unit tests for failure classification: schema invalid with no useful sources, schema invalid with usable source diagnostics, unlinked source refs, backup schema invalid, and retry budget exhausted.
+  - Recorded fixture test proving malformed extraction output plus source-backed company text materializes review-needed upstream leads.
+  - Checkpoint recovery test proving salvage can clear terminal schema_failed stop and continue to expansion/target-funnel diagnostics.
+  - Regression tests proving no hidden broad fallback: no source text/ref means no product candidate and an explicit unrecovered reason.
+  - Benchmark smoke gate: `python -m power_web_os.demo run-radar-benchmark --api-url http://127.0.0.1:8001 --profile benchmark_smoke --radar-id benchmark-sibur-holding-contour` followed by evaluation; acceptance is reaching expansion/target funnel, not a quality claim.
+  - Regression commands: architecture/package tests, live ICP/adaptive/search-expansion/external-budget tests, API/preflight/persisted/jobs tests, roadmap check, and git diff check.
+- Docs:
+  - Update RADAR_SEARCH_PIPELINE_AS_IS if recovery/salvage states become implemented behavior.
+  - Update candidate-discovery execution architecture with post-extraction salvage ownership and checkpoint interaction.
+  - Update Developer Guide/demo benchmark runbook so live benchmark_live is not run until smoke reaches expansion/target-funnel diagnostics.
+  - Update roadmap artifacts and explicitly note that 0.7.6.3.6.6 is superseded by this slice.
+- Demo impact: Demo benchmark smoke should become more diagnostically useful: instead of stopping before candidate/target analysis on salvageable schema drift, it should show recovered upstream leads or explicit unrecovered source-level reasons.
+- Acceptance criteria:
+  - The old 0.7.6.3.6.6 scope is no longer an independent backlog item; it is merged into 0.7.6.4.18.1.2.
+  - A recorded malformed live extraction fixture recovers source-backed upstream leads without requiring valid provider candidate JSON.
+  - Checkpoint recovery distinguishes unrecoverable schema failure from salvage-recovered source-backed candidates.
+  - Bounded retry/backup behavior remains bounded and visible; salvage is deterministic and diagnostic, not a hidden unlimited retry.
+  - Docker/API benchmark_smoke reaches expansion/benchmark target-funnel diagnostics after fast tests are green.
+  - benchmark_live is allowed only after smoke reaches the funnel; it remains a bounded diagnostic run without a quality claim.
+  - Signal monitoring live runtime remains deferred until this candidate-discovery live extraction blocker is resolved.
+- Risks:
+  - Salvage can over-retain false positives. Mitigate by keeping salvaged entities as upstream review-needed unless official/registry evidence supports stronger upstream confidence.
+  - Over-broad text scanning can leak unsafe provider text into decisions. Mitigate by limiting salvage inputs to product-safe source diagnostics.
+  - Fixing recovery could accidentally mask real provider contract bugs. Mitigate by preserving extraction_validation_issues and explicit recovery path metadata.
+
+### Slice 0.7.6.4.18.1.3: Candidate discovery outcome reconciliation and public result repair
+
+- Status: Done
+- Goal: Make candidate discovery reconcile raw upstream leads, public candidate rows, benchmark target matches, product acceptance, and rejected/not-promoted entities without silent drops, default Monitor output, or unexplained product_candidate_count=0.
+- User value: A user can trust the Radar result surface: broad upstream discovery is visible, strict product acceptance remains explainable, and the report shows exactly why each found entity was retained, promoted, rejected, or left for review.
+- Problem statement: The latest SIBUR benchmark_smoke run reached the benchmark target funnel, but the result still contradicted completed recall-first slices: the dossier retained broad upstream evidence and benchmark evaluation matched 10 of 12 targets, while the public candidates endpoint showed only 3 Monitor rows and product_candidate_count stayed 0 without a complete acceptance ledger. This means the pipeline can find evidence but still loses or flattens meaning between candidate universe, public rows, benchmark reporting, and product acceptance.
+- Scope:
+  - Add a candidate-discovery reconciliation report that links benchmark targets, source/evidence observations, retained upstream leads, public candidate rows, product candidates, rejected/not-promoted entities, explicit gaps, and unexplained drops.
+  - Repair public candidate and dossier projection so source-backed handoff-mode discoveries expose upstream outcome, product acceptance status, confidence, reason, and public projection reason.
+  - Stop using Monitor as the default visible outcome for source-backed candidate discovery after signal-monitoring handoff.
+  - Make product_candidate_count=0 acceptable only with a per-entity product acceptance ledger.
+  - Turn protected benchmark present_not_projected into a failing state by projecting source-backed aliases into observed upstream entities or recording explicit rejection reasons.
+- Out of scope:
+  - No signal-monitoring live runtime or API implementation.
+  - No broad provider/model tuning or benchmark quality claim.
+  - No lowering of downstream product precision; this slice explains and surfaces strict rejection instead of silently promoting weak leads.
+  - No SIBUR-specific production hardcode outside benchmark fixtures/hints.
+  - No attempt to make benchmark_smoke shorter; duration is not this slice's DoD.
+- Implementation notes:
+  - Treat candidate_universe as the broad upstream truth surface, public candidates as a capped/display surface, and product candidates as strict downstream acceptance.
+  - Add additive API/dossier fields only; preserve compatibility for existing consumers.
+  - Reuse existing upstream admission and benchmark funnel concepts rather than inventing a second scoring model.
+  - Reconciliation must be machine-checkable and included in final artifact/dossier metadata.
+  - The run cannot be considered successful if any source-backed entity disappears between upstream universe and public/product surfaces without an explicit reason.
+- Tests:
+  - Add red tests for no silent drops: retained upstream leads that do not appear as public candidates must have public_result_status and reason.
+  - Add red tests that source-backed handoff-mode candidates cannot all be default Monitor.
+  - Add red tests that product_candidate_count=0 requires a non-empty product_acceptance_ledger covering every strong/review upstream lead.
+  - Add red tests that protected benchmark targets present in source diagnostics cannot remain present_not_projected.
+  - Add API/dossier regression tests for the new reconciliation section and additive candidate fields.
+  - Run focused candidate-discovery/evaluation/API tests, architecture/package tests, docs/static checks, and final Docker/API benchmark_smoke after docker compose rebuild.
+- Docs:
+  - Update RADAR_SEARCH_PIPELINE_AS_IS and generated PDF with outcome reconciliation, no-silent-drop invariant, and product acceptance ledger.
+  - Update RADAR_BACKEND_ARCHITECTURE and candidate-discovery execution architecture with the reconciliation owner.
+  - Update Developer Guide and demo benchmark runbook with the new post-slice DoD gate and interpretation of upstream/public/product counts.
+  - Export/render/check roadmap artifacts.
+- Demo impact: Demo benchmark reports become explainable: users see why broad upstream entities are retained, why some are hidden from the public top rows, and why strict product acceptance did or did not happen.
+- Acceptance criteria:
+  - For SIBUR Docker/API benchmark_smoke after docker compose up -d --build: terminal run, benchmark target funnel present, unexplained_drop_count=0, present_not_projected_count=0, and source-backed public candidates are not all Monitor.
+  - Every retained upstream lead has one of confirmed_upstream_lead, review_needed_upstream_lead, retained_upstream_lead, rejected_noise, or not_promoted_to_public_candidate with reason.
+  - If public candidates are fewer than candidate_universe entries, every hidden upstream lead has public_result_status and public_projection_reason.
+  - If product_candidate_count=0, product_acceptance_ledger is non-empty and covers every strong/review upstream lead.
+  - Nizhnekamskneftekhim/Kazanorgsintez-style protected benchmark fixtures no longer end as present_not_projected.
+  - Handoff signal statuses remain not-searched/pending/limited without false not_observed.
+  - Slice is not Done until a rebuilt Docker/API smoke run satisfies this DoD; passing unit tests alone is insufficient.
+- Risks:
+  - The reconciliation layer can expose many review/noise entities. Mitigate by separating upstream retention from product acceptance and keeping public top rows capped.
+  - Product acceptance may remain strict and produce zero product candidates in some runs. Mitigate by requiring a complete acceptance ledger rather than weakening acceptance.
+  - Live provider drift can change exact recall counts. Mitigate by gating on invariants such as no silent drops and no present_not_projected, not a single quality score.
+
 ### Slice 0.7.6.4.18.2: Signal monitoring live runtime and API wiring
 
 - Status: Ready
@@ -8509,6 +8616,7 @@ Principles:
   - The input contract should not depend on candidate-discovery internals beyond product-safe candidate/source snapshot records.
   - Model profile should come from `signal_monitoring_default`, not candidate-discovery role settings.
   - Run after 0.7.6.4.18.1.1 so signal-monitoring live runtime starts from a recall-first candidate-discovery handoff instead of a flat Monitor/weak upstream snapshot.
+  - Deferred until 0.7.6.4.18.1.2 is validated, because signal-monitoring live runtime should start from a candidate-discovery snapshot that can survive live extraction schema drift.
 - Tests:
   - Recorded signal-monitoring tests for observed, searched-negative, not-searched, budget-limited, and review-needed states.
   - API/job smoke for starting and reading a signal-monitoring run.

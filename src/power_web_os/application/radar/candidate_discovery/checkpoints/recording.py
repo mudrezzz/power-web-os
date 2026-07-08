@@ -123,6 +123,8 @@ def _linked_source_count(observations: list[dict[str, Any]], sources: list[Radar
 
 
 def _extraction_issue_codes(provider_metadata: dict[str, Any]) -> list[str]:
+    if str(provider_metadata.get("post_extraction_salvage_outcome") or "") == "post_extraction_salvage_recovered":
+        return []
     codes: list[str] = []
     for issue in _dict_list(provider_metadata.get("extraction_validation_issues")):
         code = str(issue.get("code") or "").strip()

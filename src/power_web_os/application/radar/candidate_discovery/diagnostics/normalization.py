@@ -31,6 +31,7 @@ from power_web_os.application.radar.candidate_discovery.diagnostics.contract_val
     validate_live_radar_qualification_contract,
 )
 from power_web_os.application.radar.candidate_discovery.diagnostics.upstream_projection import (
+    product_acceptance_reason as _product_acceptance_reason,
     product_acceptance_status as _product_acceptance_status,
     promote_upstream_qualification as _promote_upstream_qualification,
     upstream_tier as _upstream_tier,
@@ -43,7 +44,6 @@ from power_web_os.application.radar.candidate_discovery.sources.risk import (
 from power_web_os.application.radar.candidate_discovery.universe.admission import (
     CandidateDiscoveryUpstreamAdmissionPolicy,
 )
-
 def normalize_live_candidate(
     payload: dict[str, Any],
     *,
@@ -72,6 +72,11 @@ def normalize_live_candidate(
     intent_score = sum(item.score for item in signals if item.status == "observed")
     tier = _upstream_tier(admission.upstream_discovery_outcome)
     product_acceptance_status = _product_acceptance_status(admission.upstream_discovery_outcome, qualification)
+    product_acceptance_reason = _product_acceptance_reason(
+        product_acceptance_status=product_acceptance_status,
+        upstream_reason=admission.upstream_reason,
+        qualification=qualification,
+    )
     review_flags = [str(item) for item in payload.get("review_flags", []) if str(item).strip()]
     if any(item.status in {"weak", "unknown"} for item in qualification):
         review_flags.append("qualification_requires_human_review")
@@ -94,8 +99,10 @@ def normalize_live_candidate(
         upstream_confidence=admission.upstream_confidence,
         upstream_reason=admission.upstream_reason,
         upstream_source_refs=list(admission.upstream_source_refs),
+        product_acceptance_reason=product_acceptance_reason,
+        public_result_status="public_candidate",
+        public_projection_reason="promoted_to_public_candidate_row",
     )
-
 
 def _normalize_qualification(
     payload: Any,

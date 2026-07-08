@@ -24,6 +24,7 @@ def merge_provider_metadata(existing: dict[str, Any], incoming: dict[str, Any]) 
         "extraction_validation_results",
         "extraction_validation_issues",
         "extraction_repair_results",
+        "post_extraction_salvage_records",
         "entity_resolution_results",
         "linked_entity_facts",
         "entity_resolution_warnings",

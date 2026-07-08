@@ -133,6 +133,29 @@ def schema_invalid_result() -> WebSearchProviderResult:
     )
 
 
+def source_backed_schema_invalid_result() -> WebSearchProviderResult:
+    return WebSearchProviderResult(
+        sources=[
+            RadarSourceEvidence(
+                evidence_ref="citation_1",
+                title="LLC Candidate A",
+                url="https://example.test/source",
+                snippet="LLC Candidate A is listed as a production company.",
+                query_id="discover-q1",
+            )
+        ],
+        provider_metadata={
+            "provider": "adaptive-harness",
+            "extraction_validation_results": [
+                {"state": "extraction_schema_invalid", "message": "Provider output field candidates must be a list."}
+            ],
+            "extraction_validation_issues": [
+                {"code": "extraction_schema_invalid", "severity": "error", "path": "$.candidates"}
+            ],
+        },
+    )
+
+
 def evidence_linking_failed_result() -> WebSearchProviderResult:
     return WebSearchProviderResult(
         sources=[source("src_known", query_id="discover-q1")],

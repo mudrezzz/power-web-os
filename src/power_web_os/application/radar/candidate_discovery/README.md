@@ -68,7 +68,8 @@ Current package-owned source-of-truth modules:
   retrieved-candidate extraction, final universe projection, and
   upstream/cross-source disambiguation.
 - `extraction/`: provider payload validation, deterministic extraction repair,
-  extraction validation states, and validation event projection.
+  post-extraction salvage from product-safe source diagnostics, extraction
+  validation states, and validation event projection.
 - `diagnostics/`: live artifact shaping, candidate normalization, upstream
   admission projection, contract validation, collection helpers, and trace/event
   support.
@@ -79,6 +80,9 @@ Current package-owned source-of-truth modules:
 - `search_expansion/`: recall-first expansion target/variant planning,
   protected benchmark target merge, selection, scheduling, targeted checkpoint
   expansion execution, and work-admission contracts.
+- `execution/reconciliation.py`: final product-safe accounting between public
+  candidate rows, universe-only upstream leads, diagnostic gaps, product
+  acceptance, and projection reasons.
 - `execution/task_budget.py`: candidate-discovery task budget settings,
   semantic task reserve decisions, counters, warnings, and exhaustion events.
 - `execution/useful_budget.py`: useful-result retry budget and retry task

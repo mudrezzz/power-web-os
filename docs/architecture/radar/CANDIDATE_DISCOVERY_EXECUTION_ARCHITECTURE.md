@@ -269,6 +269,19 @@ diagnostics into review-needed upstream universe rows. It must use only
 product-safe source diagnostics and must not inspect prompts or hidden provider
 text.
 
+### `CandidateDiscoveryOutcomeReconciler`
+
+Owns the product-safe ledger that reconciles raw upstream leads, public
+candidate rows, candidate-universe-only rows, diagnostic gaps, product
+acceptance status, and public projection reasons. Every retained upstream lead
+must have a `public_result_status`, `public_projection_reason`, and
+`product_acceptance_reason`; `unexplained_drop_count` must stay zero for a run
+to satisfy the candidate-discovery DoD.
+
+It does not own retrieval, extraction, admission, product acceptance policy,
+signal monitoring, or benchmark scoring. It only makes the already projected
+candidate-discovery output auditable.
+
 ### `CandidateDiscoveryUpstreamAdmissionPolicy`
 
 Owns deterministic recall-first upstream retention:
@@ -287,6 +300,26 @@ helpers, and product-safe pipeline trace/event helpers live in
 in `radar/candidate_discovery/sources/risk.py`. Execution services invoke these
 contracts but should not recreate extraction repair, normalization, or source
 risk policy inline.
+
+### `ExtractionFailureClassifier`
+
+Owns provider-neutral extraction failure categories used by checkpoint recovery:
+schema-invalid empty output, schema-invalid output with usable source
+diagnostics, unlinked source refs, backup schema invalid, retry budget
+exhaustion, and unrecoverable no-source-text cases.
+
+It does not own provider retries, backup model choice, checkpoint decision
+selection, or candidate projection.
+
+### `PostExtractionSalvageService`
+
+Owns deterministic post-extraction salvage after bounded extraction recovery
+fails. It may materialize review-needed upstream observations only from
+product-safe source title/snippet/URL diagnostics with source refs, and it
+records explicit recovered or unrecovered metadata.
+
+It does not own OpenRouter calls, raw provider payload inspection, hidden
+reasoning, signal monitoring, or downstream product acceptance.
 
 ### `TaskExecutionService`
 
@@ -385,18 +418,22 @@ in `FinalizationProjector`.
 Checkpoint policy stays in `radar/candidate_discovery/checkpoints`.
 `models.py` owns checkpoint records, `policy.py` owns deterministic review
 decisions, `recording.py` owns checkpoint event/state recording, and
-`recovery.py` owns bounded adaptive action execution. Execution phases may call
-checkpoint recovery/recording and persist the resulting decisions, but they
-should not invent new checkpoint policy inline or import root checkpoint shims.
+`recovery.py` owns bounded adaptive action execution. `recovery_salvage.py`
+owns the checkpoint-specific integration between extraction salvage and recovery
+state. Execution phases may call checkpoint recovery/recording and persist the
+resulting decisions, but they should not invent new checkpoint policy inline or
+import root checkpoint shims.
 
 ### Change Extraction Or Diagnostics Behavior
 
 Extraction payload validation and deterministic repair belong in
-`radar/candidate_discovery/extraction`. Candidate normalization, collection
-helpers, trace/event support, and product-safe artifact helpers belong in
+`radar/candidate_discovery/extraction`. Post-extraction salvage also belongs
+there; checkpoint code may invoke it but must not reimplement source scanning or
+upstream-admission decisions. Candidate normalization, collection helpers,
+trace/event support, and product-safe artifact helpers belong in
 `radar/candidate_discovery/diagnostics`. Source verification-risk helpers belong
-in `radar/candidate_discovery/sources/risk.py`. Do not import root
-`live_radar_*` shims from execution code.
+in `radar/candidate_discovery/sources/risk.py`. Do not import root `live_radar_*`
+shims from execution code.
 
 ## Documentation Rules
 

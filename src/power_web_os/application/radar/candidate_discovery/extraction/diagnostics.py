@@ -16,6 +16,8 @@ def extraction_repair_results(provider_metadata: dict[str, Any]) -> list[dict[st
 
 
 def extraction_contract_state(provider_metadata: dict[str, Any]) -> str:
+    if str(provider_metadata.get("post_extraction_salvage_outcome") or "") == "post_extraction_salvage_recovered":
+        return "post_extraction_salvage_recovered"
     states = {
         str(item.get("state"))
         for item in _list(provider_metadata.get("extraction_validation_results"))

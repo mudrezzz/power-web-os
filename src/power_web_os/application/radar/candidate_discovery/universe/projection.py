@@ -57,5 +57,8 @@ def candidate_universe_entries(
             product_acceptance_status=candidate.product_acceptance_status,
             upstream_confidence=candidate.upstream_confidence,
             upstream_reason=candidate.upstream_reason,
+            product_acceptance_reason=candidate.product_acceptance_reason,
+            public_result_status=candidate.public_result_status,
+            public_projection_reason=candidate.public_projection_reason,
         ))
     return entries

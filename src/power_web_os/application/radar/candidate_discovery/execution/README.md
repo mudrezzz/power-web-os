@@ -46,6 +46,9 @@ Read it before changing this package.
 - `finalization_signals.py`: private signal handoff metadata helpers used by
   finalization.
 - `finalization_universe.py`: review-needed upstream entity projection.
+- `reconciliation.py`: `CandidateDiscoveryOutcomeReconciler` for public
+  candidate, universe-only lead, diagnostic gap, product-acceptance, and
+  projection-reason ledger output.
 - `task_runner.py`: `TaskExecutionService` for provider-neutral task execution,
   gate passes, retries, and candidate task utilities.
 - `task_runner_payloads.py`: private small payload/schema helpers used by task execution.
@@ -117,7 +120,7 @@ to `CandidateDiscoveryOrchestrator`, `DiscoveryPhaseExecutor`,
 `GatePhaseExecutor`, `CoveragePhaseExecutor`, `ExpansionPhaseExecutor`,
 `CandidateDiscoverySignalHandoffProjector`,
 `SignalCompatibilityPhaseExecutor`, `FinalizationProjector`,
-`TaskExecutionService`, `ExecutionResultMerger`,
+`CandidateDiscoveryOutcomeReconciler`, `TaskExecutionService`, `ExecutionResultMerger`,
 `CandidateProjectionService`, `PipelineEventFactory`, `SmokeLimitPolicy`, or
 `ExecutionMetadataFactory`. Private `_helper` functions are acceptable only for
 small local pure transformations and product-safe payload/summary builders.

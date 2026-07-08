@@ -40,6 +40,10 @@ from power_web_os.application.radar.shared.budgets.external_context import reser
 from power_web_os.application.radar.candidate_discovery.universe.entity_resolution import RadarEntityResolutionService
 from power_web_os.application.radar.candidate_discovery.diagnostics.normalization import normalize_live_candidate
 from power_web_os.application.radar.candidate_discovery.extraction.contract import validate_and_repair_extraction_payload
+from power_web_os.application.radar.candidate_discovery.extraction.recovery import (
+    ExtractionFailureClassifier,
+    PostExtractionSalvageService,
+)
 from power_web_os.application.radar.candidate_discovery.universe.retrieved_candidates import candidates_from_retrieved_sources
 from power_web_os.application.radar.candidate_discovery.retrieval.product_sources import product_sources_for_candidates
 from power_web_os.application.radar.candidate_discovery.planning.retrieval_plan import retrieval_plan_from_execution_plan, retrieval_plan_to_search_plan
@@ -1251,6 +1255,114 @@ def test_openrouter_normalization_records_extraction_repair_metadata() -> None:
     assert result.provider_metadata["extraction_repair_results"][0]["type"] == "object_wrapped_as_list"
 
 
+def test_extraction_failure_classifier_distinguishes_source_backed_schema_failure() -> None:
+    classification = ExtractionFailureClassifier().classify(
+        sources=[
+            RadarSourceEvidence(
+                evidence_ref="citation_1",
+                title="LLC Candidate A",
+                url="https://example.test/source",
+                snippet="LLC Candidate A is listed as a production company.",
+            )
+        ],
+        provider_metadata={
+            "extraction_validation_results": [{"state": "extraction_schema_invalid"}],
+            "extraction_validation_issues": [
+                {"code": "extraction_schema_invalid", "severity": "error", "path": "$"}
+            ],
+        },
+    )
+
+    assert classification.failure_kind == "schema_invalid_with_sources"
+    assert classification.product_safe_source_count == 1
+
+
+def test_post_extraction_salvage_materializes_source_backed_review_lead() -> None:
+    salvage = PostExtractionSalvageService().recover(
+        radar={
+            "qualification_criteria": [{"code": "Q1", "label": "Industrial company"}],
+            "global_search_policy": {"sources": []},
+        },
+        sources=[
+            RadarSourceEvidence(
+                evidence_ref="citation_1",
+                title="LLC Candidate A",
+                url="https://example.test/source",
+                snippet="LLC Candidate A is listed as a production company.",
+            )
+        ],
+        observations=[],
+        provider_metadata={
+            "extraction_validation_results": [{"state": "extraction_schema_invalid"}],
+            "extraction_validation_issues": [
+                {"code": "extraction_schema_invalid", "severity": "error", "path": "$"}
+            ],
+        },
+    )
+
+    assert salvage.recovered
+    assert salvage.outcome == "post_extraction_salvage_recovered"
+    assert salvage.recovered_result.candidate_observations[0]["legal_name"] == "LLC Candidate A"
+    assert salvage.recovered_result.candidate_observations[0]["product_acceptance_status"] == "review_required"
+    assert salvage.recovered_result.provider_metadata["post_extraction_salvage_count"] == 1
+
+
+def test_post_extraction_salvage_recovers_benchmark_alias_without_legal_form() -> None:
+    salvage = PostExtractionSalvageService().recover(
+        radar={
+            "qualification_criteria": [{"code": "Q1", "label": "Industrial company"}],
+            "task_context": {
+                "benchmark_profile": "benchmark_smoke",
+                "benchmark_target_hints": [
+                    {
+                        "baseline_id": "target-1",
+                        "canonical_name": "Candidate Baseline",
+                        "aliases": ["Candidate Alias"],
+                        "entity_type": "legal_entity",
+                    }
+                ],
+            },
+        },
+        sources=[
+            RadarSourceEvidence(
+                evidence_ref="citation_1",
+                title="Industrial holdings",
+                url="https://example.test/source",
+                snippet="Candidate Alias appears in the industrial source list.",
+            )
+        ],
+        observations=[],
+        provider_metadata={
+            "extraction_validation_results": [{"state": "extraction_schema_invalid"}],
+            "extraction_validation_issues": [
+                {"code": "extraction_schema_invalid", "severity": "error", "path": "$"}
+            ],
+        },
+    )
+
+    assert salvage.recovered
+    assert salvage.recovered_result.candidate_observations[0]["legal_name"] == "Candidate Baseline"
+    assert salvage.recovered_result.candidate_observations[0]["benchmark_id"] == "target-1"
+
+
+def test_post_extraction_salvage_does_not_create_blind_fallback_without_source_text() -> None:
+    salvage = PostExtractionSalvageService().recover(
+        radar={"qualification_criteria": [{"code": "Q1", "label": "Industrial company"}]},
+        sources=[],
+        observations=[],
+        provider_metadata={
+            "extraction_validation_results": [{"state": "extraction_schema_invalid"}],
+            "extraction_validation_issues": [
+                {"code": "extraction_schema_invalid", "severity": "error", "path": "$"}
+            ],
+        },
+    )
+
+    assert not salvage.recovered
+    assert salvage.outcome == "not_recovered"
+    assert salvage.unrecovered_reason == "schema_invalid_empty"
+
+
 def test_staged_execution_exposes_extraction_schema_failures_in_execution_results() -> None:
     radar = build_live_mini_radar_definition()
     execution_plan = RadarExecutionPlan(
@@ -1892,6 +2004,15 @@ def test_smoke_profile_caps_promoted_candidates_not_only_signal_scope() -> None:
     assert execution_results["promoted_candidate_count"] == 2
     assert execution_results["diagnostic_candidate_count"] == 2
     assert len([item for item in execution_results["unresolved_candidate_gaps"] if item["reason"] == "smoke_candidate_cap_exceeded"]) == 2
+    assert execution_results["candidate_discovery_reconciliation"]["raw_upstream_lead_count"] == 4
+    assert execution_results["candidate_discovery_reconciliation"]["public_candidate_count"] == 2
+    assert execution_results["candidate_discovery_reconciliation"]["unresolved_gap_count"] == 2
+    assert execution_results["candidate_discovery_reconciliation"]["unexplained_drop_count"] == 0
+    gap_rows = [
+        item for item in execution_results["product_acceptance_ledger"]
+        if item["collection"] == "unresolved_candidate_gaps"
+    ]
+    assert {item["public_projection_reason"] for item in gap_rows} == {"smoke_candidate_cap_exceeded"}
     assert "smoke_candidate_cap_applied" in [event.event_type for event in events]
 
 

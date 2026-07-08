@@ -151,9 +151,112 @@ def test_evaluation_separates_upstream_retention_from_product_acceptance() -> No
     assert report["metrics"]["product_candidate_count"] == 0
     assert report["metrics"]["retained_upstream_lead_count"] == 1
     assert report["metrics"]["review_needed_upstream_lead_count"] == 1
+    assert report["metrics"]["unexplained_drop_count"] == 0
+    assert report["metrics"]["present_not_projected_count"] == 0
     assert report["diagnostics"]["product_candidate_count"] == 0
+    assert report["candidate_discovery_reconciliation"]["product_candidate_zero_explained"] is True
     assert report["benchmark_target_funnel"][0]["projected"] is True
     assert report["benchmark_target_funnel"][0]["path_reason"] == "projected"
+
+
+def test_evaluation_explains_zero_product_candidates_with_reconciliation_ledger() -> None:
+    baseline = RadarEvaluationBaseline(
+        baseline_id="zero-product-ledger",
+        version="v1",
+        radar_id=SIBUR_CONTOUR_RADAR_ID,
+        description="Zero product candidate ledger fixture.",
+        entities=(
+            RadarEvaluationEntity(
+                baseline_id="candidate-a",
+                canonical_name="Candidate A",
+                entity_type="legal_entity",
+            ),
+            RadarEvaluationEntity(
+                baseline_id="candidate-b",
+                canonical_name="Candidate B",
+                entity_type="legal_entity",
+            ),
+        ),
+    )
+    dossier = {
+        "summary": {"execution_outcome": "stopped_for_review"},
+        "sources": [{"evidence_ref": "src_a", "title": "Candidate A and Candidate B", "url": "https://example.test/a"}],
+        "candidates": [
+            {
+                "legal_name": "Candidate A",
+                "source_refs": ["src_a"],
+                "upstream_discovery_outcome": "review_needed_upstream_lead",
+                "product_acceptance_status": "review_required",
+                "product_acceptance_reason": "requires_human_review_before_product_acceptance",
+                "public_result_status": "public_candidate",
+                "public_projection_reason": "promoted_to_public_candidate_row",
+            }
+        ],
+        "candidate_universe": [
+            {
+                "legal_name": "Candidate A",
+                "entity_type": "legal_entity",
+                "source_refs": ["src_a"],
+                "upstream_discovery_outcome": "review_needed_upstream_lead",
+                "product_acceptance_status": "review_required",
+                "product_acceptance_reason": "requires_human_review_before_product_acceptance",
+                "public_result_status": "public_candidate",
+                "public_projection_reason": "promoted_to_public_candidate_row",
+            },
+            {
+                "legal_name": "Candidate B",
+                "entity_type": "legal_entity",
+                "source_refs": ["src_a"],
+                "upstream_discovery_outcome": "review_needed_upstream_lead",
+                "product_acceptance_status": "review_required",
+                "product_acceptance_reason": "requires_human_review_before_product_acceptance",
+                "public_result_status": "retained_in_candidate_universe",
+                "public_projection_reason": "requires_review_before_public_candidate_row",
+            },
+        ],
+        "candidate_discovery_reconciliation": {
+            "raw_upstream_lead_count": 2,
+            "public_candidate_count": 1,
+            "candidate_universe_count": 2,
+            "ledger_entry_count": 2,
+            "product_candidate_count": 0,
+            "universe_only_count": 1,
+            "unexplained_drop_count": 0,
+            "product_candidate_zero_explained": True,
+        },
+        "product_acceptance_ledger": [
+            {
+                "legal_name": "Candidate A",
+                "collection": "public_candidates",
+                "product_acceptance_status": "review_required",
+                "product_acceptance_reason": "requires_human_review_before_product_acceptance",
+                "public_result_status": "public_candidate",
+                "public_projection_reason": "promoted_to_public_candidate_row",
+            },
+            {
+                "legal_name": "Candidate B",
+                "collection": "candidate_universe",
+                "product_acceptance_status": "review_required",
+                "product_acceptance_reason": "requires_human_review_before_product_acceptance",
+                "public_result_status": "retained_in_candidate_universe",
+                "public_projection_reason": "requires_review_before_public_candidate_row",
+            },
+        ],
+    }
+
+    report = evaluate_radar_dossier(
+        run={"run_id": "radar-run-zero-product", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},
+        dossier=dossier,
+        baseline=baseline,
+    )
+
+    assert report["metrics"]["product_candidate_count"] == 0
+    assert report["metrics"]["retained_upstream_lead_count"] == 2
+    assert report["metrics"]["strict_recall"] == 1.0
+    assert report["metrics"]["unexplained_drop_count"] == 0
+    assert report["candidate_discovery_reconciliation"]["raw_upstream_lead_count"] == 2
+    assert report["candidate_discovery_reconciliation"]["product_candidate_zero_explained"] is True
+    assert {row["legal_name"] for row in report["product_acceptance_ledger"]} == {"Candidate A", "Candidate B"}
 
 
 def test_evaluation_counts_review_needed_sites_from_upstream_universe() -> None:
@@ -276,6 +379,8 @@ def test_evaluation_matches_tobolsk_review_site_with_relation_suffix() -> None:
     assert report["metrics"]["review_recall"] == 1.0
     assert report["false_negatives"] == []
     assert report["review_matches"][0]["baseline_id"] == "tobolsk-site"
+    assert report["benchmark_target_funnel"][0]["projected"] is True
+    assert report["benchmark_target_funnel"][0]["path_reason"] == "projected"
 
 
 def test_evaluation_diagnoses_projection_type_lost_for_review_site() -> None:
@@ -374,6 +479,8 @@ def test_evaluation_classifies_false_negative_present_in_source_diagnostics() ->
     diagnostics = {item["baseline_id"]: item["bucket"] for item in report["false_negative_diagnostics"]}
     assert diagnostics["gubkinsky-gpp"] == "present_not_projected"
     assert diagnostics["tobolsk-site"] == "not_retrieved_in_run"
+    assert report["metrics"]["present_not_projected_count"] == 1
+    assert report["diagnostics"]["benchmark_target_path_reasons"]["present_not_projected"] == 1
     assert report["candidate_projection_note"]
 
 

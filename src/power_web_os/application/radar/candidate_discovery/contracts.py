@@ -94,6 +94,9 @@ class RadarCandidateUniverseEntry(BaseModel):
     product_acceptance_status: str = ""
     upstream_confidence: str = ""
     upstream_reason: str = ""
+    product_acceptance_reason: str = ""
+    public_result_status: str = ""
+    public_projection_reason: str = ""
 
 
 class RadarCoverageCheckRecord(BaseModel):
@@ -362,6 +365,9 @@ class LiveRadarCandidate(BaseModel):
     upstream_confidence: str = "low"
     upstream_reason: str = ""
     upstream_source_refs: list[str] = Field(default_factory=list)
+    product_acceptance_reason: str = ""
+    public_result_status: str = "public_candidate"
+    public_projection_reason: str = "promoted_to_public_candidate_row"
 
 
 class WebSearchProviderResult(BaseModel):

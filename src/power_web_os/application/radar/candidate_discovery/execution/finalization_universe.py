@@ -33,12 +33,13 @@ def _append_review_needed_universe_entities(
             _merge_review_needed_metadata(existing, item)
             continue
         entity_type = str(item.get("entity_type") or "unknown_entity")
+        payload_source_refs = _string_list(item.get("source_refs"))
         payload = {
             "candidate_id": stable_id(name),
             "legal_name": name,
             "status": "unknown_review_needed",
             "origin_task_id": str(item.get("origin_task_id") or item.get("lookup_query") or "upstream_disambiguation"),
-            "source_refs": list(item.get("source_refs", [])) if isinstance(item.get("source_refs"), list) else [],
+            "source_refs": payload_source_refs,
             "gate_results": [],
             "rejection_reasons": [],
             "coverage_flags": [flag for flag in _string_list(item.get("review_flags")) if "candidate_universe" in flag or "coverage" in flag],
@@ -48,6 +49,21 @@ def _append_review_needed_universe_entities(
             "review_flags": _string_list(item.get("review_flags")),
             "linked_fact_count": 0,
             "signal_searches": [],
+            "upstream_discovery_outcome": "review_needed_upstream_lead",
+            "product_acceptance_status": "review_required",
+            "upstream_confidence": "medium" if payload_source_refs else "low",
+            "upstream_reason": "Review-needed upstream entity retained from source-backed diagnostics.",
+            "product_acceptance_reason": (
+                "review_entity_not_standalone_legal_entity"
+                if entity_type != "legal_entity"
+                else "requires_human_review_before_product_acceptance"
+            ),
+            "public_result_status": "retained_in_candidate_universe",
+            "public_projection_reason": (
+                "review_entity_not_standalone_legal_entity"
+                if entity_type != "legal_entity"
+                else "requires_review_before_public_candidate_row"
+            ),
         }
         result.append(payload)
         known[name.casefold()] = payload
@@ -94,6 +110,9 @@ def _append_benchmark_present_universe_entities(
             "product_acceptance_status": "review_required",
             "upstream_confidence": "medium",
             "upstream_reason": "Benchmark baseline alias was present in source diagnostics with a source ref.",
+            "product_acceptance_reason": "requires_human_review_before_product_acceptance",
+            "public_result_status": "retained_in_candidate_universe",
+            "public_projection_reason": "benchmark_present_source_projection_requires_review",
             "benchmark_id": str(hint.get("baseline_id") or ""),
         }
         result.append(payload)

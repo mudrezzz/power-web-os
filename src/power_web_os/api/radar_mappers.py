@@ -120,6 +120,7 @@ def candidates_response(
     reviews: tuple[RadarReviewDecisionRecord, ...] = (),
 ) -> RadarRunCandidatesResponse:
     artifact = output.artifact_payload
+    execution_results = _dict(_dict(_dict(artifact).get("run_metadata")).get("execution_results"))
     review_index = _review_index(reviews)
     return RadarRunCandidatesResponse(
         run_id=run.run_id,
@@ -127,6 +128,9 @@ def candidates_response(
         candidates=[_candidate_response(item, review_index=review_index) for item in _list(artifact.get("candidates"))],
         sources=[_source_response(item) for item in _list(artifact.get("sources"))],
         contract_validation=_list(artifact.get("contract_validation")),
+        candidate_universe=_list(execution_results.get("candidate_universe")),
+        candidate_discovery_reconciliation=_dict(execution_results.get("candidate_discovery_reconciliation")),
+        product_acceptance_ledger=_list(execution_results.get("product_acceptance_ledger")),
     )
 
 
@@ -235,6 +239,18 @@ def _candidate_response(
             _signal_response(item, review=_find_review(review_index, candidate_id, "signal", str(item.get("signal_code", ""))))
             for item in _list(payload.get("signals"))
         ],
+        upstream_discovery_outcome=str(payload.get("upstream_discovery_outcome") or ""),
+        product_acceptance_status=str(payload.get("product_acceptance_status") or ""),
+        upstream_confidence=str(payload.get("upstream_confidence") or ""),
+        upstream_reason=str(payload.get("upstream_reason") or ""),
+        upstream_source_refs=[
+            str(item)
+            for item in payload.get("upstream_source_refs", [])
+            if isinstance(item, str)
+        ],
+        product_acceptance_reason=str(payload.get("product_acceptance_reason") or ""),
+        public_result_status=str(payload.get("public_result_status") or ""),
+        public_projection_reason=str(payload.get("public_projection_reason") or ""),
     )
 
 

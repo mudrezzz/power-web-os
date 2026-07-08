@@ -49,6 +49,38 @@ def _apply_smoke_candidate_promotion_cap(
     }
 
 
+def _budget_metadata(context: Any, state: Any) -> dict[str, Any]:
+    metadata = {
+        "budget_settings": {
+            "max_total_web_tasks_per_run": context.budget_settings.max_total_tasks_per_run,
+            "max_discovery_tasks_per_rule": context.budget_settings.max_discovery_tasks_per_rule,
+            "max_gate_tasks_per_candidate_rule": context.budget_settings.max_gate_tasks_per_candidate_rule,
+            "max_signal_tasks_per_candidate_signal": context.budget_settings.max_signal_tasks_per_candidate_signal,
+            "compatibility_max_web_tasks_per_subject": (
+                context.budget_settings.compatibility_max_web_tasks_per_subject
+            ),
+        },
+        "budget_counters": {
+            "total": context.task_budget.total_count,
+            "by_key": dict(context.task_budget.counts),
+            "semantic_reserves": dict(context.task_budget.semantic_reserve_counts),
+        },
+        "budget_exhaustion_events": list(context.task_budget.exhaustion_events),
+        "source_verification_cache_stats": context.verification_cache.to_metadata(),
+        "web_task_counts_by_subject": context.task_budget.counts,
+        "web_task_budget_warnings": context.task_budget.warnings,
+        "useful_result_retry_records": state.useful_result_retry_records,
+        "useful_result_warnings": state.useful_result_warnings,
+        "min_useful_sources_per_discovery_task": context.useful_budget.min_sources,
+        "min_candidates_per_discovery_task": context.useful_budget.min_candidates,
+        "max_discovery_retries_per_task": context.useful_budget.max_retries,
+    }
+    metadata.update(context.task_budget.to_metadata())
+    metadata.update(context.verification_cache.to_metadata())
+    metadata.update(context.external_budget.to_metadata())
+    return metadata
+
+
 def _benchmark_recall_target_summary(provider_metadata: dict[str, Any]) -> dict[str, Any]:
     targets = dict_list(provider_metadata.get("expansion_target_queue"))
     if not targets:
