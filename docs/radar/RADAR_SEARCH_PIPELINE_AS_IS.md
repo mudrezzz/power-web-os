@@ -534,6 +534,12 @@ Current rules:
   review;
 - visible rows expose `candidate_surface_status`,
   `candidate_surface_reason`, and `candidate_surface_rank`;
+- duplicate visible rows with the same stable candidate id are merged before
+  the public surface is emitted, preserving evidence refs, benchmark ids,
+  review flags, and projection reasons;
+- a visible row must have resolvable public provenance: web source evidence,
+  registry evidence such as `dadata_<inn>`, source-lifecycle/projection
+  evidence, or an explicit product-safe diagnostic reason;
 - `candidate_surface_status="accepted_product_candidate"` means the strict
   product acceptance rules passed;
 - `candidate_surface_status="review_needed_candidate"` means the entity is
@@ -834,6 +840,9 @@ Current SIBUR evaluation channels:
 - dossier responses expose public `candidates` from `user_visible_candidates`
   when available, plus the broader `candidate_universe`, so evaluation counts
   do not drift from the candidate endpoint;
+- candidates API responses expose public source-like records for non-web
+  provenance, including registry and projection evidence, so review-needed
+  rows do not render as empty score-zero accounts;
 - false positives;
 - false negatives;
 - ambiguous matches;

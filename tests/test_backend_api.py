@@ -601,6 +601,115 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert after_reset["candidates"][0]["signals"][0]["review_decision"] is None
 
 
+def test_candidates_endpoint_exposes_registry_provenance_for_review_needed_candidate(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    engine = create_database_engine(database_url=database_url)
+    session_factory = create_session_factory(engine)
+    with session_scope(session_factory) as session:
+        radar_repo = SqlAlchemyRadarRepository(session)
+        run_repo = SqlAlchemyRadarRunRepository(session)
+        output_repo = SqlAlchemyRadarRunOutputRepository(session)
+        radar_repo.upsert(
+            RadarRecord(
+                radar_id="benchmark-sibur-holding-contour",
+                name="Benchmark / SIBUR holding contour",
+                status="active",
+                owner="ABM Research",
+                profile={"icp_profile": "Benchmark / SIBUR holding contour"},
+                summary={"run_mode": "benchmark"},
+            )
+        )
+        run = RadarRunRecord(
+            run_id="radar-run-registry-provenance",
+            radar_id="benchmark-sibur-holding-contour",
+            status=RadarRunStatus.COMPLETED,
+        )
+        run_repo.create(run)
+        output_repo.upsert(
+            RadarRunOutputRecord(
+                run_id=run.run_id,
+                artifact_version="live_icp_radar.v1",
+                radar_payload={},
+                artifact_payload={
+                    "sources": [],
+                    "candidates": [],
+                    "contract_validation": [],
+                    "run_metadata": {
+                        "execution_results": {
+                            "user_visible_candidates": [
+                                {
+                                    "candidate_id": "ао-сибуртюменьгаз",
+                                    "legal_name": 'АО "СИБУРТЮМЕНЬГАЗ"',
+                                    "description": "",
+                                    "entity_type": "legal_entity",
+                                    "score": {"fit_score": 0, "intent_score": 0, "tier": "Review needed"},
+                                    "review_flags": ["registry_match_ambiguous"],
+                                    "evidence_refs": ["dadata_7202116628"],
+                                    "qualification": [],
+                                    "signals": [],
+                                    "upstream_source_refs": ["dadata_7202116628"],
+                                    "product_acceptance_status": "review_required",
+                                    "candidate_surface_status": "review_needed_candidate",
+                                    "candidate_surface_reason": "source_backed_legal_entity_requires_review",
+                                },
+                                {
+                                    "candidate_id": "ао-сибуртюменьгаз",
+                                    "legal_name": "АО «СибурТюменьГаз»",
+                                    "description": "",
+                                    "entity_type": "legal_entity",
+                                    "score": {"fit_score": 0, "intent_score": 0, "tier": "Review needed"},
+                                    "review_flags": ["benchmark_present_source_projection"],
+                                    "evidence_refs": ["dadata_7202116628"],
+                                    "qualification": [],
+                                    "signals": [],
+                                    "upstream_source_refs": ["dadata_7202116628"],
+                                    "product_acceptance_status": "review_required",
+                                    "candidate_surface_status": "review_needed_candidate",
+                                    "candidate_surface_reason": "benchmark_present_source_projection_requires_review",
+                                    "benchmark_id": "sibur-tyumen-gas",
+                                },
+                            ],
+                            "review_needed_upstream_entities": [
+                                {
+                                    "entity_name": 'АО "СИБУРТЮМЕНЬГАЗ"',
+                                    "legal_name": 'АО "СИБУРТЮМЕНЬГАЗ"',
+                                    "entity_type": "legal_entity",
+                                    "source_refs": ["dadata_7202116628"],
+                                    "source_id": "dadata_registry",
+                                    "provider_id": "dadata",
+                                    "lookup_query": "АО СИБУР",
+                                    "inn": "7202116628",
+                                    "ogrn": "1037200611612",
+                                    "match_quality": "medium",
+                                    "review_flags": ["registry_match_ambiguous", "requires_human_review"],
+                                    "reason": "Ambiguous registry observation retained for recall-first upstream discovery.",
+                                }
+                            ],
+                        }
+                    },
+                },
+                search_plan_payload={},
+                sources_payload=[],
+                candidates_payload=[],
+                contract_validation_payload=[],
+            )
+        )
+
+    client = TestClient(_app(tmp_path, database_url=database_url))
+    candidates = client.get(f"/api/radar-runs/{run.run_id}/candidates").json()
+    dossier = client.get(f"/api/radar-runs/{run.run_id}/dossier").json()
+    sources_by_ref = {source["evidence_ref"]: source for source in candidates["sources"]}
+    lifecycle_by_ref = {source["evidence_ref"]: source for source in dossier["source_lifecycle"]}
+
+    assert len(candidates["candidates"]) == 1
+    assert candidates["candidates"][0]["legal_name"] == "АО «СибурТюменьГаз»"
+    assert candidates["candidates"][0]["evidence_refs"] == ["dadata_7202116628"]
+    assert sources_by_ref["dadata_7202116628"]["source_type"] == "registry"
+    assert "7202116628" in sources_by_ref["dadata_7202116628"]["snippet"]
+    assert "1037200611612" in sources_by_ref["dadata_7202116628"]["snippet"]
+    assert "dadata_7202116628" not in lifecycle_by_ref
+
+
 def test_post_radar_run_commits_before_enqueue_so_worker_can_read_run(tmp_path: Path) -> None:
     database_path = tmp_path / "api-seeded.db"
     database_url = _create_seeded_database(tmp_path)

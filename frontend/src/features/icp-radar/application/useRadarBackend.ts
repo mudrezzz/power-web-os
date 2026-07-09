@@ -138,7 +138,15 @@ export function useRadarBackend({
         return;
       }
       const details = detailResults.flatMap((entry) => (entry.status === 'fulfilled' ? [entry.value] : []));
-      const baseCatalog = details.length ? apiDetailsToCatalogArtifact(details, fallbackCatalog) : summaryCatalog;
+      const detailCatalog = apiDetailsToCatalogArtifact(details, fallbackCatalog);
+      const detailItemsById = new Map(detailCatalog.radars.map((radar) => [radar.radar_id, radar]));
+      const mergedRadars = summaryCatalog.radars.map((radar) => detailItemsById.get(radar.radar_id) ?? radar);
+      for (const detailRadar of detailCatalog.radars) {
+        if (!mergedRadars.some((radar) => radar.radar_id === detailRadar.radar_id)) {
+          mergedRadars.push(detailRadar);
+        }
+      }
+      const baseCatalog = { ...summaryCatalog, radars: mergedRadars };
       detailsByRadarId.current = Object.fromEntries(baseCatalog.radars.map((radar) => [radar.radar_id, radar]));
       for (const detail of details) {
         if (detail.latest_run?.status === 'completed') {
@@ -389,7 +397,7 @@ export function useRadarBackend({
   }, [api, refreshRunOutput, runState.mode]);
 
   return {
-    catalog: apiCatalog ?? (runState.mode === 'fallback' ? fallbackCatalog : null),
+    catalog: apiCatalog ?? fallbackCatalog,
     liveRunArtifact: apiLiveArtifacts['toir-quick-live'] ?? fallbackLiveRunArtifact,
     liveRunArtifacts: apiLiveArtifacts,
     runState,

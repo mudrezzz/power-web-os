@@ -360,6 +360,13 @@ review-needed legal candidates. Strict product precision must use
 `accepted_product_candidate_count` / `product_candidate_count`, not the full
 visible candidate count.
 
+Every visible candidate row must also be explainable. A row is not ready for
+the public candidate surface unless its `evidence_refs` resolve to a web source,
+registry evidence such as `dadata_<inn>`, source-lifecycle evidence, or an
+explicit public projection/diagnostic reason rendered by the UI. Duplicate
+`candidate_id` rows must be merged before the API response; preserving a count
+by showing the same legal entity twice is a failed Radar surface DoD.
+
 Direct checkout demo without installing:
 
 ```bash

@@ -64,6 +64,46 @@ def test_public_surface_promotes_source_backed_selected_legal_rows_only() -> Non
     assert surface.candidates[1]["candidate_surface_status"] == "review_needed_candidate"
 
 
+def test_public_surface_merges_duplicate_candidate_ids_and_preserves_reasons() -> None:
+    surface = CandidateDiscoveryPublicSurfaceProjector().project(
+        public_candidates=[],
+        candidate_universe=[
+            {
+                "candidate_id": "ао-сибуртюменьгаз",
+                "legal_name": 'АО "СИБУРТЮМЕНЬГАЗ"',
+                "entity_type": "legal_entity",
+                "source_refs": ["dadata_7202116628"],
+                "public_projection_reason": "requires_review_before_public_candidate_row",
+                "review_flags": ["registry_match_ambiguous"],
+            },
+            {
+                "candidate_id": "ао-сибуртюменьгаз",
+                "legal_name": "АО «СибурТюменьГаз»",
+                "entity_type": "legal_entity",
+                "source_refs": ["dadata_7202116628"],
+                "public_projection_reason": "benchmark_present_source_projection_requires_review",
+                "review_flags": ["benchmark_present_source_projection"],
+                "benchmark_id": "sibur-tyumen-gas",
+            },
+        ],
+    )
+
+    assert surface.summary["visible_candidate_count"] == 1
+    candidate = surface.candidates[0]
+    assert candidate["legal_name"] == "АО «СибурТюменьГаз»"
+    assert candidate["evidence_refs"] == ["dadata_7202116628"]
+    assert candidate["benchmark_id"] == "sibur-tyumen-gas"
+    assert set(candidate["review_flags"]) >= {
+        "registry_match_ambiguous",
+        "benchmark_present_source_projection",
+        "review_needed_candidate",
+    }
+    assert set(candidate["public_projection_reasons"]) == {
+        "requires_review_before_public_candidate_row",
+        "benchmark_present_source_projection_requires_review",
+    }
+
+
 def test_evaluation_matches_exact_alias_identifier_and_review_needed_site() -> None:
     report = evaluate_radar_dossier(
         run={"run_id": "radar-run-1", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},

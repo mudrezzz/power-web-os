@@ -16,6 +16,7 @@ from power_web_os.api.radar_dtos import (
 from power_web_os.api.radar_dossier_summaries import budget_summary as _budget_summary
 from power_web_os.api.radar_dossier_summaries import coverage_summary as _coverage_summary
 from power_web_os.api.radar_mappers import journal_event_response
+from power_web_os.api.radar_public_provenance import public_candidate_rows
 from power_web_os.api.radar_source_lifecycle import source_lifecycle as _source_lifecycle
 from power_web_os.api.radar_source_lifecycle import source_lifecycle_summary as _source_lifecycle_summary
 from power_web_os.application.radar_records import (
@@ -64,7 +65,9 @@ def dossier_response(
     linked_entity_facts = _list(execution_results.get("linked_entity_facts"))
     entity_resolution_warnings = _list(execution_results.get("entity_resolution_warnings"))
     candidate_universe = _list(execution_results.get("candidate_universe"))
-    candidates = _list(execution_results.get("user_visible_candidates")) or _list(artifact.get("candidates"))
+    candidates = public_candidate_rows(
+        _list(execution_results.get("user_visible_candidates")) or _list(artifact.get("candidates"))
+    )
     candidate_discovery_reconciliation = _dict(execution_results.get("candidate_discovery_reconciliation"))
     product_acceptance_ledger = _list(execution_results.get("product_acceptance_ledger"))
     upstream_disambiguation_results = _list(execution_results.get("upstream_disambiguation_results"))

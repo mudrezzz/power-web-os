@@ -74,7 +74,9 @@ export function LiveRadarCandidateDetailView({
 }) {
   const { t } = useTranslation();
   const sourcesByRef = useMemo(() => new Map(artifact.sources.map((source) => [source.evidence_ref, source])), [artifact.sources]);
-  const usedSources = candidate.evidence_refs.map((ref) => sourcesByRef.get(ref)).filter((source): source is LiveRadarSourceEvidence => Boolean(source));
+  const candidateSourceRefs = uniqueStrings([...(candidate.evidence_refs ?? []), ...(candidate.upstream_source_refs ?? [])]);
+  const usedSources = candidateSourceRefs.map((ref) => sourcesByRef.get(ref)).filter((source): source is LiveRadarSourceEvidence => Boolean(source));
+  const candidateReason = liveCandidateSurfaceReason(candidate, t);
   const visibleJournalEvents = (artifact.journal_events ?? []).filter(
     (event) => event.visibility !== 'debug' && (!event.candidate_refs.length || event.candidate_refs.includes(candidate.candidate_id)),
   );
@@ -117,8 +119,18 @@ export function LiveRadarCandidateDetailView({
               <ScoreBox label={t('icpRadar.total')} value={scoreWithMax(liveTotalScore(candidate), liveTotalScoreMax(candidate))} />
               <ScoreBox label={t('icpRadar.fit')} value={scoreWithMax(candidate.score.fit_score, liveFitScoreMax(candidate))} />
               <ScoreBox label={t('icpRadar.intent')} value={scoreWithMax(candidate.score.intent_score, liveIntentScoreMax(candidate))} />
-              <ScoreBox label={t('icpRadar.live.sources')} value={scoreWithMax(candidate.evidence_refs.length, artifact.sources.length)} />
+              <ScoreBox label={t('icpRadar.live.sources')} value={scoreWithMax(usedSources.length, artifact.sources.length)} />
             </div>
+            <section className="icp-detail-section">
+              <Eyebrow>{t('icpRadar.live.publicSurface')}</Eyebrow>
+              <div className="badge-list">
+                <Badge tone={candidate.candidate_surface_status === 'accepted_product_candidate' ? 'ally' : 'unsurfaced'}>
+                  {t(`icpRadar.live.surfaceStatus.${candidate.candidate_surface_status || 'unknown'}`, { defaultValue: candidate.score.tier })}
+                </Badge>
+                <Badge tone="neutral">{candidate.upstream_confidence || t('icpRadar.unknown')}</Badge>
+              </div>
+              <p>{candidateReason}</p>
+            </section>
             <section className="icp-detail-section">
               <Eyebrow>{t('icpRadar.canonicalDetail.mainInsight')}</Eyebrow>
               <p>{candidate.description || t('icpRadar.live.noDescription')}</p>
@@ -188,7 +200,7 @@ export function LiveRadarCandidateDetailView({
           <Card>
             <section className="icp-detail-section">
               <Eyebrow>{t('icpRadar.live.evidence')}</Eyebrow>
-              <LiveSourceSummary sources={usedSources} />
+              <LiveSourceSummary missingRefs={candidateSourceRefs.filter((ref) => !sourcesByRef.has(ref))} sources={usedSources} />
             </section>
           </Card>
         )}
@@ -488,9 +500,9 @@ function LiveQualificationReviewRow({
   );
 }
 
-function LiveSourceSummary({ sources }: { sources: LiveRadarSourceEvidence[] }) {
+function LiveSourceSummary({ missingRefs = [], sources }: { missingRefs?: string[]; sources: LiveRadarSourceEvidence[] }) {
   const { t } = useTranslation();
-  if (!sources.length) {
+  if (!sources.length && !missingRefs.length) {
     return <p>{t('icpRadar.unknown')}</p>;
   }
   return (
@@ -505,7 +517,7 @@ function LiveSourceSummary({ sources }: { sources: LiveRadarSourceEvidence[] }) 
           </tr>
         </thead>
         <tbody>
-          {sources.map((source, index) => (
+          {[...sources, ...missingRefs.map((ref) => unresolvedSource(ref, t))].map((source, index) => (
             <tr key={source.evidence_ref}>
               <td><Mono>{index + 1}</Mono></td>
               <td>
@@ -514,7 +526,11 @@ function LiveSourceSummary({ sources }: { sources: LiveRadarSourceEvidence[] }) 
               </td>
               <td>{source.source_type}</td>
               <td>
-                <a href={source.url} rel="noreferrer" target="_blank">{source.url}</a>
+                {source.url ? (
+                  <a href={source.url} rel="noreferrer" target="_blank">{source.url}</a>
+                ) : (
+                  <Mono>{source.evidence_ref}</Mono>
+                )}
               </td>
             </tr>
           ))}
@@ -522,4 +538,33 @@ function LiveSourceSummary({ sources }: { sources: LiveRadarSourceEvidence[] }) 
       </table>
     </div>
   );
+}
+
+function uniqueStrings(values: string[]) {
+  return Array.from(new Set(values.filter((value) => value.trim().length > 0)));
+}
+
+function liveCandidateSurfaceReason(
+  candidate: LiveRadarCandidate,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
+  return candidate.candidate_surface_reason
+    || candidate.public_projection_reason
+    || candidate.product_acceptance_reason
+    || candidate.upstream_reason
+    || t('icpRadar.live.publicSurfaceFallback');
+}
+
+function unresolvedSource(
+  evidenceRef: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): LiveRadarSourceEvidence {
+  return {
+    evidence_ref: evidenceRef,
+    title: t('icpRadar.live.unresolvedEvidenceTitle'),
+    url: '',
+    snippet: t('icpRadar.live.unresolvedEvidenceCopy'),
+    query_id: null,
+    source_type: 'diagnostic',
+  };
 }

@@ -25,6 +25,7 @@ from power_web_os.api.radar_dtos import (
     SignalResponse,
     SourceUsageResponse,
 )
+from power_web_os.api.radar_public_provenance import public_candidate_rows, public_candidate_sources
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRecord,
@@ -153,11 +154,12 @@ def _catalog_summary(
 def _visible_candidates(output: RadarRunOutputRecord) -> list[dict[str, Any]]:
     artifact = _dict(output.artifact_payload)
     execution_results = _dict(_dict(artifact.get("run_metadata")).get("execution_results"))
-    return (
+    candidates = (
         _list(execution_results.get("user_visible_candidates"))
         or _list(artifact.get("candidates"))
         or [dict(item) for item in output.candidates_payload if isinstance(item, dict)]
     )
+    return public_candidate_rows(candidates)
 
 
 def candidates_response(
@@ -168,13 +170,20 @@ def candidates_response(
 ) -> RadarRunCandidatesResponse:
     artifact = output.artifact_payload
     execution_results = _dict(_dict(_dict(artifact).get("run_metadata")).get("execution_results"))
-    visible_candidates = _list(execution_results.get("user_visible_candidates")) or _list(artifact.get("candidates"))
+    visible_candidates = public_candidate_rows(
+        _list(execution_results.get("user_visible_candidates")) or _list(artifact.get("candidates"))
+    )
+    sources = public_candidate_sources(
+        artifact_sources=_list(artifact.get("sources")),
+        execution_results=execution_results,
+        candidates=visible_candidates,
+    )
     review_index = _review_index(reviews)
     return RadarRunCandidatesResponse(
         run_id=run.run_id,
         radar_id=run.radar_id,
         candidates=[_candidate_response(item, review_index=review_index) for item in visible_candidates],
-        sources=[_source_response(item) for item in _list(artifact.get("sources"))],
+        sources=[_source_response(item) for item in sources],
         contract_validation=_list(artifact.get("contract_validation")),
         candidate_universe=_list(execution_results.get("candidate_universe")),
         candidate_discovery_reconciliation=_dict(execution_results.get("candidate_discovery_reconciliation")),

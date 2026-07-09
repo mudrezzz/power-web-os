@@ -49,15 +49,15 @@ class CandidateDiscoveryPublicSurfaceProjector:
         candidate_universe: list[dict[str, Any]],
     ) -> CandidateDiscoveryPublicSurface:
         rows: list[dict[str, Any]] = []
-        seen: set[str] = set()
+        rows_by_key: dict[str, dict[str, Any]] = {}
         for item in public_candidates:
             row = self._visible_public_candidate(item)
-            self._append(rows, seen, row)
+            self._append(rows, rows_by_key, row)
         for item in candidate_universe:
-            if not self._should_surface_universe_entry(item, seen):
+            if not self._should_surface_universe_entry(item, rows_by_key):
                 continue
             row = self._visible_review_candidate(item)
-            self._append(rows, seen, row)
+            self._append(rows, rows_by_key, row)
         ranked = [
             {**row, "candidate_surface_rank": index + 1}
             for index, row in enumerate(rows)
@@ -122,9 +122,8 @@ class CandidateDiscoveryPublicSurfaceProjector:
             "benchmark_id": str(item.get("benchmark_id") or ""),
         }
 
-    def _should_surface_universe_entry(self, item: dict[str, Any], seen: set[str]) -> bool:
-        name_key = self._name_key(item)
-        if not name_key or name_key in seen:
+    def _should_surface_universe_entry(self, item: dict[str, Any], seen: dict[str, dict[str, Any]]) -> bool:
+        if not self._name_key(item):
             return False
         if str(item.get("entity_type") or "unknown_entity") != "legal_entity":
             return False
@@ -134,7 +133,7 @@ class CandidateDiscoveryPublicSurfaceProjector:
             return False
         return bool(
             self._source_refs(item)
-            or str(item.get("benchmark_id") or "").strip()
+            or self._diagnostic_reason(item)
             or str(item.get("status") or "") in {"qualified", "unknown_review_needed"}
         )
 
@@ -150,13 +149,135 @@ class CandidateDiscoveryPublicSurfaceProjector:
             return "accepted_by_product_candidate_rules"
         return str(item.get("product_acceptance_reason") or "requires_human_review_before_product_acceptance")
 
-    @staticmethod
-    def _append(rows: list[dict[str, Any]], seen: set[str], row: dict[str, Any]) -> None:
-        name = str(row.get("legal_name") or "").casefold()
-        if not name or name in seen:
+    def _append(
+        self,
+        rows: list[dict[str, Any]],
+        rows_by_key: dict[str, dict[str, Any]],
+        row: dict[str, Any],
+    ) -> None:
+        key = self._merge_key(row)
+        if not key:
             return
-        seen.add(name)
-        rows.append(row)
+        current = rows_by_key.get(key)
+        if current is None:
+            rows_by_key[key] = row
+            rows.append(row)
+            return
+        self._merge_rows(current, row)
+
+    def _merge_rows(self, target: dict[str, Any], incoming: dict[str, Any]) -> None:
+        if self._prefer_incoming_name(target, incoming):
+            target["legal_name"] = self._display_name(incoming)
+        for key in ("evidence_refs", "upstream_source_refs", "review_flags"):
+            target[key] = self._merged_strings(target.get(key), incoming.get(key))
+        for field_name, collection_name in (
+            ("candidate_surface_reason", "candidate_surface_reasons"),
+            ("public_projection_reason", "public_projection_reasons"),
+            ("upstream_reason", "upstream_reasons"),
+            ("product_acceptance_reason", "product_acceptance_reasons"),
+        ):
+            reasons = self._merged_strings(
+                target.get(collection_name),
+                [target.get(field_name), incoming.get(field_name)],
+            )
+            if reasons:
+                target[collection_name] = reasons
+                target[field_name] = self._preferred_reason(reasons)
+        for key in (
+            "benchmark_id",
+            "inn",
+            "ogrn",
+            "okved",
+            "provider_id",
+            "source_id",
+            "lookup_query",
+            "match_quality",
+        ):
+            if not str(target.get(key) or "").strip() and str(incoming.get(key) or "").strip():
+                target[key] = incoming.get(key)
+        target["benchmark_ids"] = self._merged_strings(
+            target.get("benchmark_ids"),
+            [target.get("benchmark_id"), incoming.get("benchmark_id")],
+        )
+        if str(incoming.get("candidate_surface_status") or "") == "accepted_product_candidate":
+            target["candidate_surface_status"] = "accepted_product_candidate"
+        if str(incoming.get("product_acceptance_status") or "") == "product_candidate":
+            target["product_acceptance_status"] = "product_candidate"
+        if self._score_total(incoming) > self._score_total(target):
+            target["score"] = dict(incoming.get("score")) if isinstance(incoming.get("score"), dict) else incoming.get("score")
+        for key in ("qualification", "signals"):
+            if not isinstance(target.get(key), list) or not target.get(key):
+                value = incoming.get(key)
+                if isinstance(value, list) and value:
+                    target[key] = value
+
+    def _merge_key(self, item: dict[str, Any]) -> str:
+        candidate_id = str(item.get("candidate_id") or "").strip().casefold()
+        if candidate_id:
+            return f"id:{candidate_id}"
+        name = self._normalized_name(self._display_name(item))
+        entity_type = str(item.get("entity_type") or "legal_entity").strip().casefold()
+        return f"name:{entity_type}:{name}" if name else ""
+
+    @staticmethod
+    def _normalized_name(value: str) -> str:
+        return "".join(ch for ch in value.casefold() if ch.isalnum())
+
+    @staticmethod
+    def _prefer_incoming_name(target: dict[str, Any], incoming: dict[str, Any]) -> bool:
+        if not str(target.get("legal_name") or "").strip():
+            return True
+        if str(incoming.get("benchmark_id") or "").strip() and not str(target.get("benchmark_id") or "").strip():
+            return True
+        return False
+
+    @classmethod
+    def _merged_strings(cls, *values: object) -> list[str]:
+        result: list[str] = []
+        seen: set[str] = set()
+        for value in values:
+            items = value if isinstance(value, list) else [value]
+            for item in items:
+                text = str(item or "").strip()
+                if not text or text in seen:
+                    continue
+                seen.add(text)
+                result.append(text)
+        return result
+
+    @staticmethod
+    def _preferred_reason(reasons: list[str]) -> str:
+        for reason in reasons:
+            if "benchmark_present" in reason:
+                return reason
+        return reasons[0] if reasons else ""
+
+    @staticmethod
+    def _score_total(item: dict[str, Any]) -> int:
+        score = item.get("score")
+        if not isinstance(score, dict):
+            return 0
+        total = 0
+        for key in ("fit_score", "intent_score"):
+            try:
+                total += int(score.get(key) or 0)
+            except (TypeError, ValueError):
+                continue
+        return total
+
+    @staticmethod
+    def _diagnostic_reason(item: dict[str, Any]) -> str:
+        for key in (
+            "candidate_surface_reason",
+            "public_projection_reason",
+            "product_acceptance_reason",
+            "upstream_reason",
+            "reason",
+        ):
+            text = str(item.get(key) or "").strip()
+            if text:
+                return text
+        return ""
 
     def _summary(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
         by_status = self._count_by(rows, "candidate_surface_status")

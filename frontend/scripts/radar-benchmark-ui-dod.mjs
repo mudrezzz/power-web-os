@@ -140,6 +140,20 @@ async function runIteration(browserInstance, expected, iteration) {
     await page.getByText(`${expected.accepted} accepted/product`, { exact: true }).waitFor({ state: 'visible' });
     await page.getByText(`${expected.review} review-needed`, { exact: true }).waitFor({ state: 'visible' });
     await page.getByText(expected.runId, { exact: false }).waitFor({ state: 'visible' });
+    for (let index = 0; index < expected.candidates.length; index += 1) {
+      const candidate = expected.candidates[index];
+      const row = page.locator('.icp-radar-table-live .icp-candidate-row').nth(index);
+      await row.click();
+      await page.getByRole('button', { name: 'Open details', exact: true }).click();
+      await page.getByText(candidate.legal_name, { exact: true }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
+      await page.getByText(candidate.reason, { exact: false }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
+      await page.getByRole('button', { name: 'Sources', exact: true }).click();
+      const source = candidate.sources[0];
+      await page.getByText(source.title, { exact: false }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
+      await page.getByText(source.source_type, { exact: false }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
+      await page.getByRole('button', { name: 'Back to found accounts', exact: true }).click();
+      await page.locator('.icp-radar-table-live .icp-candidate-row').first().waitFor({ state: 'visible', timeout: uiWaitMs });
+    }
     if (browserErrors.length > 0) {
       throw new Error(`Browser console/page errors during iteration ${iteration}:\n${browserErrors.join('\n')}`);
     }
@@ -178,17 +192,84 @@ async function benchmarkExpectationFromBackend() {
     candidate.candidate_surface_status === 'review_needed_candidate'
     || candidate.product_acceptance_status === 'review_required'
   )).length;
+  const sourcesByRef = new Map((Array.isArray(candidatesPayload.sources) ? candidatesPayload.sources : [])
+    .map((source) => [source.evidence_ref, source]));
   const expected = {
     runId: radar.latest_run.run_id,
     total: candidates.length,
     accepted,
     review,
+    candidates: candidates.map((candidate) => ({
+      candidate_id: candidate.candidate_id,
+      legal_name: candidate.legal_name,
+      reason: candidate.candidate_surface_reason
+        || candidate.public_projection_reason
+        || candidate.product_acceptance_reason
+        || candidate.upstream_reason
+        || 'Review-needed',
+      sources: candidateSources(candidate, sourcesByRef),
+    })),
   };
-  if (expected.total !== 13 || expected.accepted !== 3 || expected.review !== 10) {
+  const duplicateIds = duplicateCandidateIds(candidates);
+  if (duplicateIds.length) {
+    throw new Error(`Backend candidate surface has duplicate candidate ids: ${duplicateIds.join(', ')}.`);
+  }
+  const emptyEvidence = candidates.filter((candidate) => !candidateHasPublicEvidence(candidate, sourcesByRef));
+  if (emptyEvidence.length) {
+    throw new Error(`Backend candidate surface has empty provenance: ${emptyEvidence.map((item) => item.legal_name).join(', ')}.`);
+  }
+  if (expected.total !== 12 || expected.accepted !== 3 || expected.review !== 9) {
     throw new Error(`Backend candidate surface does not match DoD: ${JSON.stringify(expected)}.`);
   }
   assertSummaryMatchesBackend(radar, expected);
   return expected;
+}
+
+function candidateSources(candidate, sourcesByRef) {
+  const refs = [
+    ...(Array.isArray(candidate.evidence_refs) ? candidate.evidence_refs : []),
+    ...(Array.isArray(candidate.upstream_source_refs) ? candidate.upstream_source_refs : []),
+  ].filter(Boolean);
+  const sources = refs.map((ref) => sourcesByRef.get(ref)).filter(Boolean);
+  if (sources.length) {
+    return sources;
+  }
+  return [{
+    title: candidate.legal_name,
+    source_type: 'diagnostic',
+  }];
+}
+
+function duplicateCandidateIds(candidates) {
+  const seen = new Set();
+  const duplicates = new Set();
+  for (const candidate of candidates) {
+    const id = String(candidate.candidate_id ?? '').trim();
+    if (!id) {
+      continue;
+    }
+    if (seen.has(id)) {
+      duplicates.add(id);
+    }
+    seen.add(id);
+  }
+  return Array.from(duplicates).sort();
+}
+
+function candidateHasPublicEvidence(candidate, sourcesByRef) {
+  const refs = [
+    ...(Array.isArray(candidate.evidence_refs) ? candidate.evidence_refs : []),
+    ...(Array.isArray(candidate.upstream_source_refs) ? candidate.upstream_source_refs : []),
+  ].filter(Boolean);
+  if (refs.some((ref) => sourcesByRef.has(ref))) {
+    return true;
+  }
+  return Boolean(
+    candidate.candidate_surface_reason
+    || candidate.public_projection_reason
+    || candidate.product_acceptance_reason
+    || candidate.upstream_reason
+  );
 }
 
 function assertSummaryMatchesBackend(radar, expected) {

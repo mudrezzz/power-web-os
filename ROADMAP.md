@@ -8715,9 +8715,129 @@ Principles:
   - Docker seed/init race can masquerade as frontend instability; the readiness gate must isolate that cause.
   - Ten UI runs can be slow, but that cost is intentional because this slice is specifically about stability, not a single happy-path smoke.
 
-### Slice 0.7.6.4.18.2: Signal monitoring live runtime and API wiring
+### Slice 0.7.6.4.18.1.4.3: Candidate evidence completeness and duplicate-safe public surface
+
+- Status: Done
+- Goal: Make every user-visible candidate explainable: no public candidate row may appear without a visible source/provenance chain, no duplicate public rows may share the same candidate id, and review-needed candidates must render as review-needed evidence rather than empty zero-score accounts.
+- User value: A user can open any candidate shown by Radar and understand why it is there: which source, registry fact, benchmark projection, or review reason produced it, and whether it is accepted or still requires human review.
+- Problem statement: After 0.7.6.4.18.1.4.2 the benchmark radar is visible and shows 13 rows, but one row is a duplicate ?? ?????????????? projection and 10 review-needed rows have fit_score=0 and appear empty in the UI. The backend payload contains evidence refs such as dadata_7202116628 or benchmark/source refs, but those refs are not included in the public sources surface that the UI can resolve. The same entity can also be projected twice, as seen with АО СИБУРТЮМЕНЬГАЗ appearing twice with the same candidate_id and different projection reasons. The previous DoD checked candidate counts, not evidence completeness, duplicate safety, or detail-view readability.
+- Scope:
+  - Define a public-candidate evidence completeness contract: every visible candidate must carry at least one resolvable source, registry evidence object, or explicit projection chain that the API/UI can render.
+  - Add backend projection logic that converts registry refs, benchmark-present refs, source lifecycle refs, and review-needed upstream refs into public evidence/source objects or documented non-public diagnostics.
+  - Merge duplicate public candidate rows by stable candidate id and normalized name, preserving combined review flags, benchmark ids, source refs, projection reasons, and registry identity fields.
+  - Change API/dossier/candidates projection so review-needed candidates expose `why shown`, source/provenance, and review reason instead of a blank detail surface.
+  - Change frontend detail rendering so review-needed/no-strict-score candidates are displayed as `requires review` with provenance, not as empty zero-score candidates.
+  - Add validation fixtures for АО СИБУРТЮМЕНЬГАЗ-style registry + benchmark duplicate projection.
+- Out of scope:
+  - No new candidate discovery retrieval/search algorithm.
+  - No blind benchmark profile implementation; that is 0.7.6.4.18.1.4.4 after this evidence surface is trustworthy.
+  - No signal-monitoring runtime/API implementation; that remains deferred.
+  - No broad live quality claim.
+  - No acceptance-promotion loosening: review-needed remains review-needed unless strict product acceptance evidence is present.
+- Implementation notes:
+  - Treat `candidate_universe` and `user_visible_candidates` as related but different surfaces: public rows must be deduped and enriched before reaching the API.
+  - Do not hide source-less rows by silently dropping them if they are important; move them into diagnostics/gaps with an explicit reason.
+  - A numeric `0` must not be the only user-facing explanation for a review-needed candidate. Use status/reason/provenance as the primary display semantics.
+  - Registry refs such as `dadata_<inn>` need a renderable public evidence record with legal name, INN/OGRN where available, provider, match quality, lookup query, and review flags.
+  - Benchmark-present projection refs must point to product-safe source diagnostics or become explicit gaps; they cannot render as blank candidates.
+- Tests:
+  - Backend red test: a visible review-needed candidate with `evidence_refs=[dadata_...]` produces a resolvable evidence/source object in the candidates or dossier API.
+  - Backend red test: two projected rows with the same candidate_id are merged into one public row with combined reasons and refs.
+  - Backend red test: a visible candidate with no resolvable provenance is rejected from public rows and appears as a diagnostic gap with a path-level reason.
+  - Frontend test: opening each Benchmark / SIBUR holding contour candidate detail renders a non-empty provenance/reason section.
+  - Playwright DoD: Benchmark / SIBUR holding contour shows 12 unique candidates after dedupe, 3 accepted/product and 9 review-needed, with zero blank detail pages and no duplicate candidate ids.
+  - Regression: candidates endpoint counts still match catalog counters; signal handoff statuses remain pending/not-searched; no false `not_observed` is introduced.
+  - Run: python -m pytest tests/test_backend_api.py tests/test_radar_evaluation.py tests/test_live_icp_radar.py -q
+  - Run: npm --prefix ./frontend run build and the benchmark UI DoD/visual smoke after Docker rebuild.
+- Docs:
+  - Update Developer Guide and demo runbook to define evidence completeness as part of Radar candidate-surface DoD.
+  - Update RADAR_SEARCH_PIPELINE_AS_IS if public projection/evidence surfaces change.
+  - Update ROADMAP closeout with a candidate-by-candidate evidence completeness table for the benchmark run.
+- Demo impact: The benchmark radar detail page should stop showing empty zero-score candidates. Review-needed rows should be visibly useful: they show the source/registry fact/projection reason and why human review is required.
+- Acceptance criteria:
+  - Slice is not Done until a rebuilt Docker/API Benchmark / SIBUR holding contour run or latest seeded benchmark artifact passes the public-surface DoD.
+  - 12/12 unique visible candidates have a non-empty detail view unless another legitimate source-backed unique candidate is promoted.
+  - 12/12 unique visible candidates have at least one resolvable provenance item: web source, registry evidence, source lifecycle entry, or explicit projection/gap reason rendered in UI, unless another legitimate source-backed unique candidate is promoted.
+  - 0 duplicate public candidate ids.
+  - АО СИБУРТЮМЕНЬГАЗ appears once, with merged registry/projection reasons and visible Dadata/registry evidence.
+  - Review-needed candidates are not presented as unexplained score-0 accounts; they show review-required status and reason.
+  - Catalog counters, candidates endpoint, and UI counts agree.
+  - Any candidate that cannot satisfy provenance completeness is not public; it is reported as a diagnostic/gap with a path-level reason.
+- Risks:
+  - Over-eager evidence synthesis can make weak registry/projection rows look stronger than they are. Mitigate by rendering them as review-needed, not accepted.
+  - Frontend detail changes can mask backend contract defects. Mitigate by backend contract tests first, UI rendering second.
+  - Deduping by candidate_id alone can merge entities incorrectly if IDs are too coarse. Mitigate with normalized-name/entity-type checks and retained conflict diagnostics.
+- Closeout:
+  - Docker/API DoD passed against `radar-run-0bfe0ad6-c284-4142-9a6c-3115234626f3`: 10/10 UI iterations stable.
+  - Public surface result: 12 unique visible candidates, 3 accepted/product, 9 review-needed, 0 duplicate candidate ids, 0 empty provenance rows.
+  - Candidate evidence table:
+  - `???-?????-???????` / ??? ?????? ???????? / accepted_product_candidate / refs: `retrieved_12`, `retrieved_2`, `retrieved_6` / detail non-empty.
+  - `???-?????` / ??? ?????? / accepted_product_candidate / refs: `retrieved_2`, `s1`, `s2` / detail non-empty.
+  - `???-?????????????` / ??? ??????????????? / accepted_product_candidate / refs: `retrieved_1`, `retrieved_4` / detail non-empty.
+  - `??-??????????????` / ?? ???????????????? / review_needed_candidate / ref: `dadata_7202116628` / duplicate merged, registry/projection detail non-empty.
+  - `??-?????-????????` / ?? "?????-????????" / review_needed_candidate / ref: `dadata_5249051203` / detail non-empty.
+  - `??-?????-????` / ?? "?????-????" / review_needed_candidate / ref: `dadata_6903038398` / detail non-empty.
+  - `???-?????-???????` / ??? ?????? ???????? / review_needed_candidate / ref: `src_1` / detail non-empty.
+  - `???-??????????????` / ??? ???????????????? / review_needed_candidate / ref: `sibur_zapsib_about` / detail non-empty.
+  - `??-???????????????????` / ?? ????????????????????? / review_needed_candidate / ref: `src_3` / detail non-empty.
+  - `???-????????` / ??? ?????????? / review_needed_candidate / ref: `src_1` / detail non-empty.
+  - `???-??????????????????` / ??? ???????????????????? / review_needed_candidate / ref: `src_3` / detail non-empty.
+  - `???-???????????????` / ??? ????????????????? / review_needed_candidate / ref: `src_3` / detail non-empty.
+
+### Slice 0.7.6.4.18.1.4.4: Blind benchmark profile and post-run baseline evaluation
 
 - Status: Ready
+- Goal: Add a true blind benchmark mode for candidate discovery: run without baseline hints or protected benchmark targets, then compare the completed result against the curated SIBUR baseline only after the run.
+- User value: A user can distinguish two different questions: whether the pipeline can pass a guided diagnostic smoke, and whether it can independently discover the expected SIBUR contour without being told the target names.
+- Problem statement: Current benchmark_smoke is intentionally guided: it uses the curated SIBUR baseline as target hints and protected coverage probes. That is useful for diagnosing pipeline mechanics, but it is not a blind quality measurement. We need a separate mode that does not inject baseline names into planning, expansion, or projection, then evaluates the result post-factum against the same baseline.
+- Scope:
+  - Add a benchmark profile such as `blind_benchmark` or `benchmark_blind` with no `benchmark_target_hints`, no baseline-derived protected targets, and no `uncovered_baseline_target` scheduling.
+  - Keep the evaluation baseline external to the run and use it only after completion in `evaluate-radar-benchmark`.
+  - Add metadata proving whether benchmark hints were used: `benchmark_hints_used=false`, `benchmark_mode=blind`, and no benchmark-context expansion targets.
+  - Add post-run evaluation fields that compare blind results against the 12-target SIBUR smoke baseline: strict legal recall, visible legal recall, accepted count, review-needed count, production-site review recall, false negatives, evidence completeness, duplicate count.
+  - Add CLI/docs for running blind benchmark separately from guided smoke.
+  - Keep benchmark_smoke as the fast guided diagnostic contour with 12 key targets.
+- Out of scope:
+  - No replacement of benchmark_smoke.
+  - No expansion of the baseline to all 33 demo candidates in this slice.
+  - No signal-monitoring live runtime/API implementation.
+  - No one-run public quality claim; blind benchmark is diagnostic evidence, not a published benchmark number.
+  - No unlimited budget or hidden fallback to baseline target hints.
+- Implementation notes:
+  - Proposed budget limits: max_total_web_tasks_per_run=55, max_openrouter_calls_per_run=36, max_openrouter_planner_calls_per_run=3, max_openrouter_web_task_calls_per_run=28, max_recall_expansion_openrouter_calls_per_run=10, max_openrouter_server_tool_web_searches_per_run=90, max_dadata_lookups_per_run=10, max_source_verification_requests_per_run=80.
+  - Discovery limits: max_discovery_tasks_per_rule=5, max_web_tasks_per_subject=2, min_useful_sources_per_discovery_task=2, min_candidates_per_discovery_task=2, max_discovery_retries_per_task=1, max_provider_retries_per_task=1, max_checkpoint_revisions_per_run=2, max_checkpoint_retries_per_stage=1.
+  - Reserves: recall_expansion=10, official_coverage_probe=8, open_web_coverage_probe=5, production_site_coverage_probe=3.
+  - Disable smoke caps: smoke_max_candidates=0 and smoke_max_signals=0. Keep signal_execution_mode=handoff.
+  - Disable guided-target fields: benchmark_target_hints=[], benchmark_target_probe_minimums={}, coverage_completion_target_limit=0 or generic-only without baseline target ids.
+  - Use the same curated 12-target SIBUR baseline for evaluation to keep smoke and blind numbers comparable.
+- Tests:
+  - Unit/contract test: blind benchmark context contains no benchmark_target_hints and reports benchmark_hints_used=false.
+  - Search-expansion test: blind benchmark produces no target_origin=benchmark_context and no uncovered_baseline_target=true records.
+  - Evaluation test: baseline is loaded only by post-run evaluation, not by run task_context.
+  - API/CLI test: `run-radar-benchmark --profile blind_benchmark` is accepted and persisted with blind metadata.
+  - Regression test: benchmark_smoke still carries guided target hints and protected target guarantees.
+  - Final gate after 0.7.6.4.18.1.4.3: rebuild Docker, run SIBUR blind benchmark once, evaluate latest run, and report strict recall, visible recall, accepted/review-needed counts, false negatives, duplicate count, and evidence completeness.
+- Docs:
+  - Update Developer Guide and demo README with the difference between guided `benchmark_smoke` and blind benchmark.
+  - Update benchmark/evaluation docs to state that blind mode is post-run comparison only.
+  - Update roadmap closeout with the exact budget limits used and first observed blind benchmark numbers.
+- Demo impact: Demo tooling gains a clearer quality diagnostic: users can run guided smoke for pipeline mechanics and blind benchmark for independent discovery behavior. UI does not need a new screen in this slice, but reports should label the mode clearly.
+- Acceptance criteria:
+  - `benchmark_smoke` remains guided and continues to use the 12-target diagnostic baseline.
+  - New blind benchmark mode runs without baseline hints inside candidate discovery.
+  - Run metadata proves baseline hints were not used.
+  - Expansion diagnostics contain no benchmark-context/protected-baseline targets.
+  - Post-run evaluation compares the result against the 12-target SIBUR baseline and reports blind strict recall, visible recall, accepted/review-needed counts, false negatives, evidence completeness, duplicate count, and source quality.
+  - The slice is not Done until at least one rebuilt Docker/API blind benchmark completes or reaches a terminal bounded state with an interpretable post-run evaluation report.
+  - The result is not treated as a public quality claim.
+- Risks:
+  - Without hints the first blind run may look worse than guided smoke; that is expected and useful evidence.
+  - Budget too low can under-measure recall; budget too high can hide poor search strategy. Start with the bounded intermediate profile and adjust only with explicit RCA.
+  - If evidence completeness remains broken, blind results will be hard to read; therefore this slice depends on 0.7.6.4.18.1.4.3.
+
+### Slice 0.7.6.4.18.2: Signal monitoring live runtime and API wiring
+
+- Status: Blocked
 - Goal: Add the first bounded live/scheduled signal-monitoring runtime over accepted candidate-discovery snapshots with independent signal budgets, provider calls, persistence/API surfaces, and no candidate-discovery budget coupling.
 - User value: A user can monitor intent changes for known candidates after discovery, with its own cadence, budget, and report, instead of rerunning full candidate discovery to refresh signals.
 - Problem statement: Signal monitoring currently has contracts, source strategy, budgets, model profile isolation, and a recorded demo loop, but no first-class live/API/job runtime equivalent to candidate discovery. Therefore the product cannot yet launch or evaluate signal monitoring independently.
@@ -8739,6 +8859,8 @@ Principles:
   - Run after 0.7.6.4.18.1.1 so signal-monitoring live runtime starts from a recall-first candidate-discovery handoff instead of a flat Monitor/weak upstream snapshot.
   - Deferred until 0.7.6.4.18.1.2 is validated, because signal-monitoring live runtime should start from a candidate-discovery snapshot that can survive live extraction schema drift.
   - Deferred until 0.7.6.4.18.1.4 is validated, because signal monitoring should start from a user-facing candidate snapshot that exposes accepted and review-needed legal candidates, not only the strict accepted subset.
+  - Deferred until 0.7.6.4.18.1.4.3 validates evidence-complete, duplicate-safe public candidate rows, because signal monitoring should not consume empty or duplicated candidate snapshots.
+  - Deferred until 0.7.6.4.18.1.4.4 adds blind benchmark mode, so product work can separate guided diagnostic smoke from independent discovery quality evidence.
 - Tests:
   - Recorded signal-monitoring tests for observed, searched-negative, not-searched, budget-limited, and review-needed states.
   - API/job smoke for starting and reading a signal-monitoring run.
@@ -9383,4 +9505,4 @@ None.
 
 ## Next Recommended Task
 
-Slice 0.7.6.4.18.1.4.2: Radar API catalog latency and fallback stability cleanup
+Slice 0.7.6.4.18.1.4.3: Candidate evidence completeness and duplicate-safe public surface

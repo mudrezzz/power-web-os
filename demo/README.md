@@ -667,8 +667,11 @@ npm --prefix ./frontend run radar:benchmark-ui-dod
 It checks ten clean browser contexts against the Docker frontend/API on
 `http://127.0.0.1:5173` and `http://127.0.0.1:8001`, then verifies that
 `Benchmark / SIBUR holding contour` is visible, opens to the latest completed
-run, shows 13 candidates, 3 accepted/product, and 10 review-needed, and is not
-hidden by demo fallback or local overrides. Set
+run, shows 12 unique candidates after duplicate-safe merge, 3 accepted/product,
+and 9 review-needed, and is not hidden by demo fallback or local overrides. The
+same gate opens each visible candidate and verifies a non-empty provenance
+surface: web source, registry evidence, projection evidence, or an explicit
+diagnostic reason. Set
 `POWER_WEB_OS_RADAR_UI_DOD_START_VITE=1` only for a manual local Vite run with
 matching backend CORS origins.
 

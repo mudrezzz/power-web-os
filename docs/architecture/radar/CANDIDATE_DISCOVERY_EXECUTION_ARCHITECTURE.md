@@ -305,12 +305,19 @@ production sites, branches, rejected entities, or signal-monitoring output.
 
 Owns the user-facing candidate surface. It keeps strict product candidates and
 review-needed legal candidates in one visible list with
-`candidate_surface_status`, `candidate_surface_reason`, and stable ranking.
+`candidate_surface_status`, `candidate_surface_reason`, and stable ranking. It
+also merges duplicate projections that share a stable candidate id, preserving
+source refs, benchmark ids, review flags, and projection reasons.
 
 It does not own retrieval, extraction, product acceptance rules, benchmark
 scoring, or signal monitoring. Its job is to prevent source-backed legal
 entities from being buried only in `candidate_universe` when they should be
 visible to the user as review-needed candidates.
+
+It must not emit a public row that is both duplicate and unexplained. If a
+candidate is visible, API projection must be able to render at least one web
+source, registry evidence record, source-lifecycle/projection record, or
+explicit product-safe diagnostic reason for it.
 
 ### `CandidateDiscoveryUpstreamAdmissionPolicy`
 
