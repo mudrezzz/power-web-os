@@ -95,6 +95,14 @@
   justify-content: flex-start;
 }
 
+.icp-radar-backend-error {
+  max-width: calc(var(--s-20) * 3);
+  overflow: hidden;
+  color: var(--fg3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .icp-radar-run-mode {
   justify-content: flex-start;
   overflow-wrap: anywhere;

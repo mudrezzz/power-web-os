@@ -2,16 +2,21 @@ import { ChevronRight, Plus, Radar, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../../../components/primitives';
 import type { ICPRadarCatalogItem } from '../../../types';
+import type { RadarBackendMode } from '../application/useRadarBackend';
 import { cadenceKey, isLocalRadarStatus, lastRunKey, runModeKey } from '../domain/catalogMeta';
 import { radarStatusKey } from '../domain/radarStatus';
 
 export function RadarCatalogScreen({
+  backendError,
+  backendMode,
   hasLocalChanges,
   onCreateRadar,
   onOpenRadar,
   onResetDemoChanges,
   radars,
 }: {
+  backendError: string | null;
+  backendMode: RadarBackendMode;
   hasLocalChanges: boolean;
   onCreateRadar: () => void;
   onOpenRadar: (radar: ICPRadarCatalogItem) => void;
@@ -40,6 +45,9 @@ export function RadarCatalogScreen({
           <p>{t('icpRadar.catalogSummary', { count: radars.length })}</p>
         </div>
         <div className="icp-profile-meta">
+          <Badge tone={backendMode === 'api' ? 'ally' : backendMode === 'fallback' ? 'unsurfaced' : 'neutral'}>
+            {t(`icpRadar.live.backendMode.${backendMode}`)}
+          </Badge>
           <Badge tone="cobalt">{t('icpRadar.catalogTotals.candidates', { count: totals.candidates })}</Badge>
           <Badge tone="neutral">{t('icpRadar.catalogTotals.review', { count: totals.review })}</Badge>
           <Button icon={<Plus aria-hidden="true" />} variant="default" onClick={onCreateRadar}>
@@ -49,6 +57,11 @@ export function RadarCatalogScreen({
             <Button icon={<RotateCcw aria-hidden="true" />} variant="default" onClick={onResetDemoChanges}>
               {t('icpRadar.resetDemoChanges')}
             </Button>
+          )}
+          {backendMode === 'fallback' && backendError && (
+            <span className="icp-radar-backend-error">
+              <Mono>{backendError}</Mono>
+            </span>
           )}
         </div>
       </header>
@@ -74,6 +87,9 @@ export function RadarCatalogScreen({
                 </Badge>
                 {isLocalRadarStatus(radar.status) && (
                   <Badge tone="unsurfaced">{t('icpRadar.localDraft')}</Badge>
+                )}
+                {radar.local_override_status === 'protected_from_delete' && (
+                  <Badge tone="unsurfaced">{t('icpRadar.localOverrideProtected')}</Badge>
                 )}
               </span>
               <dl className="icp-radar-list-metrics">
@@ -109,4 +125,3 @@ function Metric({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-

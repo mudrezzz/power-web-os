@@ -1,6 +1,7 @@
 import type {
   EvidenceFindingDto,
   RadarDetailDto,
+  RadarSummaryDto,
   RadarRunCandidatesDto,
   RadarRunDossierDto,
   RadarRunJournalDto,
@@ -33,7 +34,7 @@ import type {
 // API DTOs are normalized here so UI components keep rendering the established artifact-shaped contracts.
 
 export function apiDetailsToCatalogArtifact(
-  details: RadarDetailDto[],
+  details: Array<RadarDetailDto | RadarSummaryDto>,
   fallback: ICPRadarCatalogArtifact | null,
 ): ICPRadarCatalogArtifact {
   return {
@@ -49,8 +50,9 @@ export function apiDetailsToCatalogArtifact(
   };
 }
 
-export function apiDetailToCatalogItem(detail: RadarDetailDto): ICPRadarCatalogItem {
-  const definition = detail.active_definition?.definition_payload as RadarDefinition | undefined;
+export function apiDetailToCatalogItem(detail: RadarDetailDto | RadarSummaryDto): ICPRadarCatalogItem {
+  const definition = ('active_definition' in detail ? detail.active_definition?.definition_payload : undefined) as RadarDefinition | undefined;
+  const latestRunAt = detail.latest_run?.completed_at ?? detail.latest_run?.queued_at ?? '';
   return {
     radar_id: detail.radar_id,
     name: detail.name,
@@ -64,7 +66,7 @@ export function apiDetailToCatalogItem(detail: RadarDetailDto): ICPRadarCatalogI
     },
     summary: {
       cadence: stringField(detail.summary.cadence, 'weekly'),
-      last_run: stringField(detail.summary.last_run, detail.latest_run?.completed_at ?? detail.latest_run?.queued_at ?? ''),
+      last_run: latestRunAt ? 'backend_run' : stringField(detail.summary.last_run, ''),
       candidate_count: numberField(detail.summary.candidate_count, detail.latest_run?.output?.candidate_count ?? 0),
       needs_review_count: numberField(detail.summary.needs_review_count, 0),
       accepted_count: numberField(detail.summary.accepted_count, 0),
@@ -72,6 +74,35 @@ export function apiDetailToCatalogItem(detail: RadarDetailDto): ICPRadarCatalogI
     },
     definition: definition ?? emptyDefinition(detail),
     artifact_path: detail.artifact_path,
+  };
+}
+
+export function catalogWithLiveRunArtifacts(
+  catalog: ICPRadarCatalogArtifact,
+  artifactsByRadarId: Record<string, LiveICPRadarRunArtifact>,
+): ICPRadarCatalogArtifact {
+  return {
+    ...catalog,
+    radars: catalog.radars.map((radar) => {
+      const artifact = artifactsByRadarId[radar.radar_id];
+      if (!artifact) {
+        return radar;
+      }
+      const acceptedCount = artifact.candidates.filter((candidate) => candidate.candidate_surface_status === 'accepted_product_candidate'
+        || candidate.product_acceptance_status === 'product_candidate').length;
+      const reviewCount = artifact.candidates.filter((candidate) => candidate.candidate_surface_status === 'review_needed_candidate'
+        || candidate.product_acceptance_status === 'review_required').length;
+      return {
+        ...radar,
+        summary: {
+          ...radar.summary,
+          last_run: 'backend_run',
+          candidate_count: artifact.candidates.length,
+          accepted_count: acceptedCount,
+          needs_review_count: reviewCount,
+        },
+      };
+    }),
   };
 }
 
@@ -115,7 +146,7 @@ export function apiRunToLiveArtifact(
       web_mode: nullableString(run.run_metadata.web_mode),
       query_count: numberField(run.run_metadata.query_count, 0),
       source_count: run.output?.source_count ?? candidates.sources.length,
-      candidate_count: run.output?.candidate_count ?? candidates.candidates.length,
+      candidate_count: candidates.candidates.length,
       run_at: run.completed_at ?? run.started_at ?? run.queued_at ?? new Date().toISOString(),
     },
     search_plan: {
@@ -148,6 +179,18 @@ export function apiRunToLiveArtifact(
       candidate_id: candidate.candidate_id,
       legal_name: candidate.legal_name,
       description: candidate.description,
+      entity_type: candidate.entity_type,
+      upstream_discovery_outcome: candidate.upstream_discovery_outcome,
+      product_acceptance_status: candidate.product_acceptance_status,
+      upstream_confidence: candidate.upstream_confidence,
+      upstream_reason: candidate.upstream_reason,
+      upstream_source_refs: candidate.upstream_source_refs ?? [],
+      public_result_status: candidate.public_result_status,
+      public_projection_reason: candidate.public_projection_reason,
+      product_acceptance_reason: candidate.product_acceptance_reason,
+      candidate_surface_status: candidate.candidate_surface_status,
+      candidate_surface_reason: candidate.candidate_surface_reason,
+      candidate_surface_rank: candidate.candidate_surface_rank ?? null,
       qualification: candidate.qualification.map((item) => ({
         criterion_code: item.criterion_code,
         criterion: item.criterion,
@@ -453,9 +496,9 @@ function signalReviewDecision(
   };
 }
 
-function emptyDefinition(detail: RadarDetailDto): RadarDefinition {
+function emptyDefinition(detail: RadarDetailDto | RadarSummaryDto): RadarDefinition {
   return {
-    definition_id: detail.active_definition?.definition_id ?? `${detail.radar_id}-definition`,
+    definition_id: ('active_definition' in detail ? detail.active_definition?.definition_id : null) ?? `${detail.radar_id}-definition`,
     metadata: {
       name: detail.name,
       description: '',

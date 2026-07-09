@@ -47,6 +47,13 @@
   overflow-y: hidden;
 }
 
+.live-radar-surface-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-bottom: var(--s-3);
+}
+
 .radar-operations-stack {
   display: grid;
   gap: var(--s-4);

@@ -13,7 +13,9 @@ from power_web_os.api.config import ApiSettings
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRecord,
+    RadarRunOutputRecord,
     RadarRunRecord,
+    RadarRunStatus,
     RadarRunTechnicalTraceRecord,
 )
 from power_web_os.jobs.radar_jobs import execute_radar_run_once
@@ -21,6 +23,7 @@ from power_web_os.persistence import (
     Base,
     SqlAlchemyRadarDefinitionRepository,
     SqlAlchemyRadarRepository,
+    SqlAlchemyRadarRunOutputRepository,
     SqlAlchemyRadarRunRepository,
     SqlAlchemyRadarRunTechnicalTraceRepository,
     create_database_engine,
@@ -194,6 +197,88 @@ def test_radar_catalog_and_detail_read_persisted_data(tmp_path: Path) -> None:
     detail = detail_response.json()
     assert detail["active_definition"]["definition_id"] == "radar-def-live"
     assert detail["runs"] == []
+
+
+def test_radar_catalog_summary_uses_latest_visible_candidate_surface_counts(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    engine = create_database_engine(database_url=database_url)
+    session_factory = create_session_factory(engine)
+    with session_scope(session_factory) as session:
+        radar_repo = SqlAlchemyRadarRepository(session)
+        definition_repo = SqlAlchemyRadarDefinitionRepository(session)
+        run_repo = SqlAlchemyRadarRunRepository(session)
+        output_repo = SqlAlchemyRadarRunOutputRepository(session)
+        radar_repo.upsert(
+            RadarRecord(
+                radar_id="benchmark-sibur-holding-contour",
+                name="Benchmark / SIBUR holding contour",
+                status="active",
+                owner="ABM Research",
+                profile={"icp_profile": "Benchmark / SIBUR holding contour"},
+                summary={"run_mode": "benchmark", "candidate_count": 0, "accepted_count": 0, "needs_review_count": 0},
+            )
+        )
+        definition_repo.upsert(
+            RadarDefinitionRecord(
+                definition_id="radar-def-benchmark",
+                radar_id="benchmark-sibur-holding-contour",
+                definition_payload={"definition_id": "radar-def-benchmark", "metadata": {"name": "Benchmark / SIBUR holding contour"}},
+                definition_version="0.7.6-test",
+            )
+        )
+        run_repo.create(RadarRunRecord(
+            run_id="benchmark-run",
+            radar_id="benchmark-sibur-holding-contour",
+            run_metadata={"heavy": {"nested": ["payload"] * 100}},
+        ))
+        run_repo.update_status("benchmark-run", RadarRunStatus.COMPLETED)
+        visible_candidates = [
+            {
+                "candidate_id": f"accepted-{index}",
+                "legal_name": f"Accepted {index}",
+                "candidate_surface_status": "accepted_product_candidate",
+                "product_acceptance_status": "product_candidate",
+            }
+            for index in range(3)
+        ] + [
+            {
+                "candidate_id": f"review-{index}",
+                "legal_name": f"Review {index}",
+                "candidate_surface_status": "review_needed_candidate",
+                "product_acceptance_status": "review_required",
+            }
+            for index in range(10)
+        ]
+        output_repo.upsert(
+            RadarRunOutputRecord(
+                run_id="benchmark-run",
+                artifact_version="0.7.6-test",
+                radar_payload={"radar_id": "benchmark-sibur-holding-contour"},
+                search_plan_payload={"queries": []},
+                sources_payload=[],
+                candidates_payload=visible_candidates,
+                contract_validation_payload=[],
+                artifact_payload={
+                    "artifact_type": "icp_radar_live_run",
+                    "run_metadata": {
+                        "execution_results": {
+                            "user_visible_candidates": visible_candidates,
+                        },
+                    },
+                    "candidates": [],
+                },
+            )
+        )
+
+    client = TestClient(_app(tmp_path, database_url=database_url))
+    payload = client.get("/api/radars").json()
+    benchmark = next(item for item in payload if item["radar_id"] == "benchmark-sibur-holding-contour")
+
+    assert benchmark["latest_run"]["run_id"] == "benchmark-run"
+    assert benchmark["latest_run"]["run_metadata"] == {}
+    assert benchmark["summary"]["candidate_count"] == 13
+    assert benchmark["summary"]["accepted_count"] == 3
+    assert benchmark["summary"]["needs_review_count"] == 10
 
 
 def test_update_radar_definition_persists_source_usage_obligations_without_creating_runs(tmp_path: Path) -> None:

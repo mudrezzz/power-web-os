@@ -39,29 +39,23 @@ export function cadenceKey(cadence: string) {
 }
 
 export function lastRunKey(lastRun: string) {
-  if (lastRun === 'not_run') {
-    return 'icpRadar.lastRun.notRun';
-  }
-  if (lastRun === 'not_scheduled') {
-    return 'icpRadar.lastRun.notScheduled';
-  }
-  return 'icpRadar.lastRun.fixture';
+  return ({
+    not_run: 'icpRadar.lastRun.notRun',
+    not_scheduled: 'icpRadar.lastRun.notScheduled',
+    backend_run: 'icpRadar.lastRun.backendRun',
+  } as Record<string, string>)[lastRun] ?? 'icpRadar.lastRun.fixture';
 }
 
 export function runModeKey(runMode: string) {
-  if (runMode === 'incremental_signal_monitoring') {
-    return 'icpRadar.runMode.incremental';
-  }
-  if (runMode === 'configured_not_generated') {
-    return 'icpRadar.runMode.configured';
-  }
-  if (runMode === 'planned') {
-    return 'icpRadar.runMode.planned';
-  }
-  if (runMode === 'fixture_import') {
-    return 'icpRadar.runMode.fixtureImport';
-  }
-  return 'icpRadar.runMode.unknown';
+  return ({
+    incremental_signal_monitoring: 'icpRadar.runMode.incremental',
+    configured_not_generated: 'icpRadar.runMode.configured',
+    planned: 'icpRadar.runMode.planned',
+    fixture_import: 'icpRadar.runMode.fixtureImport',
+    benchmark: 'icpRadar.runMode.benchmark',
+    live_cli: 'icpRadar.runMode.backendApi',
+    backend_api: 'icpRadar.runMode.backendApi',
+  } as Record<string, string>)[runMode] ?? 'icpRadar.runMode.unknown';
 }
 
 export function liveRuntimeKey(runtime: string) {

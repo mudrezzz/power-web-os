@@ -8656,6 +8656,65 @@ Principles:
   - Fixing `??????` by simply raising budget could hide selection defects. Mitigate by requiring specific selection/reserve diagnostics and bounded tuning.
   - Live provider drift can change exact source names. Mitigate by gating on invariant counts and path reasons, not one brittle text snippet.
 
+### Slice 0.7.6.4.18.1.4.1: Radar UI candidate surface wiring and benchmark result visibility
+
+- Status: Done
+- Goal: Expose backend benchmark candidate-discovery runs in the ICP Radar UI: benchmark radars stay visible, latest completed run artifacts open for any backend radar, and catalog counts match the candidates endpoint.
+
+### Slice 0.7.6.4.18.1.4.2: Radar API catalog latency and fallback stability cleanup
+
+- Status: Done
+- Goal: Make the ICP Radar catalog deterministic from a user point of view: Benchmark / SIBUR holding contour must remain visible whenever the backend returns it, and the UI must not silently replace a slow backend response with demo fallback or local overrides.
+- User value: A user can open Docker, go to ICP Radar, reliably see the backend Benchmark / SIBUR holding contour radar, open its latest completed run, and see candidate counts that match the backend API.
+- Problem statement: After 0.7.6.4.18.1.4.1 the benchmark radar can still appear unstable in the UI. The likely causes are mixed catalog responsibilities: /api/radars latency, heavy latest-run artifact hydration, early demo fallback, localStorage demo overrides, and weak Docker seed/readiness checks. The slice is not complete until this instability is reproduced, fixed, and proven with 10 consecutive successful visibility checks.
+- Scope:
+  - Measure cold and warm /api/radars latency and identify whether the endpoint hydrates latest-run artifacts too deeply.
+  - Split lightweight catalog summary from heavy latest-run artifact loading where needed.
+  - Keep explicit backend loading state while /api/radars is pending; never show demo fallback as if it were backend data.
+  - Allow demo fallback only after an explicit API failure, with a visible fallback indicator, error/retry path, and local reset action.
+  - Make localStorage demo overrides unable to silently hide backend radars.
+  - Add Docker/API readiness gate: rebuild/start, run backend seed/init to completion, verify /api/radars returns the seeded catalog including benchmark-sibur-holding-contour before UI checks.
+  - Keep catalog card counters aligned with candidates endpoint or a lightweight candidate-surface summary.
+  - Extend the Playwright DoD runner so it repeats the Benchmark / SIBUR holding contour catalog/detail visibility check 10 times in a row in one command.
+- Out of scope:
+  - No candidate-discovery admission/ranking/product acceptance tuning.
+  - No signal-monitoring runtime/API implementation; that remains 0.7.6.4.18.2.
+  - No new live quality claim.
+  - No broad redesign of ICP Radar shell or visual language.
+- Implementation notes:
+  - Start with instrumentation: log or assert timing for /api/radars and latest-run artifact fetch separately.
+  - Prefer fixing backend catalog payload cost over merely raising frontend timeout.
+  - If fallback remains useful offline, keep it, but make it impossible to mistake for backend data.
+  - Add a deterministic readiness script or npm target that fails before UI smoke if backend seed is incomplete.
+  - The 10-run DoD should use a clean browser context or explicitly reset relevant localStorage before each iteration, then verify no silent fallback indicator is active.
+  - Treat any failure in the 10-run sequence as slice failure; diagnose the failed iteration before retrying.
+- Tests:
+  - Backend/API: seeded /api/radars includes benchmark-sibur-holding-contour and returns lightweight catalog fields without requiring dossier/trace hydration.
+  - Backend/API: candidate counts for Benchmark / SIBUR holding contour match candidates endpoint or explicit candidate-surface summary.
+  - Frontend architecture: catalog loading cannot render demo fallback while backend request is still pending.
+  - Frontend unit/contract: fallback state requires visible source indicator and retry/reset affordance.
+  - Playwright DoD: run Benchmark / SIBUR holding contour visibility/detail/count check 10 consecutive times after Docker rebuild/start.
+  - Negative Playwright: localStorage demo overrides cannot hide backend benchmark radar silently.
+  - Regression: npm --prefix ./frontend run build, tests/test_frontend_architecture_contract.py, roadmap check, git diff --check.
+- Docs:
+  - Update frontend ICP Radar README with backend catalog loading, fallback, and local override rules.
+  - Update Developer Guide/demo runbook with Docker readiness and 10-run Benchmark visibility DoD command.
+  - Record the observed root cause and final 10/10 evidence in ROADMAP closeout notes before marking Done.
+- Demo impact: After docker compose rebuild/start and seed, the ICP Radar catalog consistently shows Benchmark / SIBUR holding contour when the backend exposes it. Users can tell whether they are seeing backend data or an explicit demo fallback/error state.
+- Acceptance criteria:
+  - The slice cannot be marked Done until the Benchmark / SIBUR holding contour catalog/detail DoD passes 10 times in a row.
+  - Each of the 10 runs must verify: catalog contains Benchmark / SIBUR holding contour; opening it shows latest completed benchmark run; UI shows 13 candidates, 3 accepted/product, and 10 review-needed; counts match backend candidates endpoint or documented summary endpoint; no silent demo fallback is active.
+  - If backend is unavailable, UI must show explicit loading/error/fallback state instead of hiding the benchmark radar silently.
+  - If local overrides are present, UI must show an explicit indicator/reset path and must not let overrides remove backend benchmark radars without notice.
+  - /api/radars cold/warm latency is either reduced to an acceptable bounded value or explicitly handled by a stable loading state.
+  - Docker readiness check fails loudly unless the seeded catalog contains benchmark-sibur-holding-contour before Playwright starts.
+  - The final closeout must include the 10-run command, all 10 iteration results, backend/API counts used for comparison, and any remaining caveats.
+- Risks:
+  - A slow backend query may be the real source of UI flakiness; frontend timeout changes alone would hide the problem.
+  - Demo fallback is useful offline, so removing it entirely would regress local demo behavior.
+  - Docker seed/init race can masquerade as frontend instability; the readiness gate must isolate that cause.
+  - Ten UI runs can be slow, but that cost is intentional because this slice is specifically about stability, not a single happy-path smoke.
+
 ### Slice 0.7.6.4.18.2: Signal monitoring live runtime and API wiring
 
 - Status: Ready
@@ -9324,4 +9383,4 @@ None.
 
 ## Next Recommended Task
 
-Slice 0.7.6.4.18.1.1: Candidate discovery recall-first upstream semantics and benchmark target protection
+Slice 0.7.6.4.18.1.4.2: Radar API catalog latency and fallback stability cleanup

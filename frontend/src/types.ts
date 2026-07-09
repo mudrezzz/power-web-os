@@ -559,6 +559,18 @@ export type LiveRadarCandidate = {
   candidate_id: string;
   legal_name: string;
   description: string;
+  entity_type?: string;
+  upstream_discovery_outcome?: string;
+  product_acceptance_status?: string;
+  upstream_confidence?: string;
+  upstream_reason?: string;
+  upstream_source_refs?: string[];
+  public_result_status?: string;
+  public_projection_reason?: string;
+  product_acceptance_reason?: string;
+  candidate_surface_status?: string;
+  candidate_surface_reason?: string;
+  candidate_surface_rank?: number | null;
   qualification: LiveRadarQualificationResult[];
   signals: LiveRadarSignalResult[];
   score: {
@@ -851,6 +863,7 @@ export type ICPRadarCatalogItem = {
     accepted_count: number;
     run_mode: string;
   };
+  local_override_status?: 'protected_from_delete' | string;
   definition: RadarDefinition;
   artifact_path: string | null;
 };

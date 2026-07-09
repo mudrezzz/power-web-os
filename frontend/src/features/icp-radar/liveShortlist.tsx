@@ -38,6 +38,7 @@ export function LiveRadarShortlistTable({
       </Card>
     );
   }
+  const surfaceCounts = liveSurfaceCounts(artifact.candidates);
 
   return (
     <>
@@ -59,6 +60,12 @@ export function LiveRadarShortlistTable({
         </Card>
       ) : (
         <Card>
+          <div className="live-radar-surface-summary" aria-label={t('icpRadar.live.surfaceSummaryAria')}>
+            <Badge tone="neutral">{t('icpRadar.live.surfaceTotal', { count: artifact.candidates.length })}</Badge>
+            <Badge tone="ally">{t('icpRadar.live.surfaceAccepted', { count: surfaceCounts.accepted })}</Badge>
+            <Badge tone="unsurfaced">{t('icpRadar.live.surfaceReview', { count: surfaceCounts.review })}</Badge>
+            <Mono>{artifact.dossier?.run_context.run_id || artifact.run_metadata.task_id}</Mono>
+          </div>
           <div className="icp-radar-table-wrap" aria-label={t('icpRadar.live.tableAria')}>
             <div className="icp-radar-table icp-radar-table-live">
               <div className="icp-radar-table-head">
@@ -74,7 +81,7 @@ export function LiveRadarShortlistTable({
               {artifact.candidates.map((candidate, index) => {
                 const expanded = expandedCandidateId === candidate.candidate_id;
                 return (
-                  <div className="icp-candidate-record" key={candidate.candidate_id}>
+                  <div className="icp-candidate-record" key={`${candidate.candidate_id}:${index}`}>
                     <button
                       aria-expanded={expanded}
                       className={`icp-candidate-row${expanded ? ' icp-candidate-row-selected' : ''}`}
@@ -98,7 +105,7 @@ export function LiveRadarShortlistTable({
                       <Mono>{candidate.score.intent_score}</Mono>
                       <Mono>{t('icpRadar.notAvailable')}</Mono>
                       <span>
-                        <Badge tone={candidate.score.tier === 'Tier 1' ? 'ally' : 'neutral'}>{candidate.score.tier}</Badge>
+                        <Badge tone={liveSurfaceTone(candidate)}>{liveSurfaceLabel(candidate, t)}</Badge>
                       </span>
                       <Mono>{candidate.evidence_refs.length}</Mono>
                       <span className="row-action">
@@ -121,6 +128,35 @@ export function LiveRadarShortlistTable({
       )}
     </>
   );
+}
+
+function liveSurfaceCounts(candidates: LiveRadarCandidate[]) {
+  return candidates.reduce(
+    (acc, candidate) => ({
+      accepted: acc.accepted + (candidate.candidate_surface_status === 'accepted_product_candidate'
+        || candidate.product_acceptance_status === 'product_candidate' ? 1 : 0),
+      review: acc.review + (candidate.candidate_surface_status === 'review_needed_candidate'
+        || candidate.product_acceptance_status === 'review_required' ? 1 : 0),
+    }),
+    { accepted: 0, review: 0 },
+  );
+}
+
+function liveSurfaceTone(candidate: LiveRadarCandidate) {
+  if (candidate.candidate_surface_status === 'accepted_product_candidate'
+    || candidate.product_acceptance_status === 'product_candidate') {
+    return 'ally';
+  }
+  if (candidate.candidate_surface_status === 'review_needed_candidate'
+    || candidate.product_acceptance_status === 'review_required') {
+    return 'unsurfaced';
+  }
+  return 'neutral';
+}
+
+function liveSurfaceLabel(candidate: LiveRadarCandidate, t: (key: string, options?: Record<string, unknown>) => string) {
+  const status = candidate.candidate_surface_status || candidate.product_acceptance_status || 'unknown';
+  return t(`icpRadar.live.surfaceStatus.${status}`, { defaultValue: candidate.score.tier });
 }
 
 export function LiveRadarCandidatePreview({

@@ -118,6 +118,7 @@ def test_icp_radar_has_application_and_adapter_boundaries() -> None:
         "apiRadarAdapter.ts": [
             "apiDetailsToCatalogArtifact",
             "apiRunToLiveArtifact",
+            "catalogWithLiveRunArtifacts",
         ],
         "viewModels.ts": [
             "RadarViewModel",
@@ -146,6 +147,43 @@ def test_icp_radar_has_application_and_adapter_boundaries() -> None:
         text = read(str(feature_dir / "application" / file_name))
         for symbol in expected_symbols:
             assert symbol in text
+
+
+def test_icp_radar_backend_live_artifact_viewer_is_not_hardcoded_to_quick_radar() -> None:
+    backend = read("frontend/src/features/icp-radar/application/useRadarBackend.ts")
+    workspace = read("frontend/src/features/icp-radar/application/useRadarWorkspace.ts")
+    adapter = read("frontend/src/features/icp-radar/adapters/catalogAdapter.ts")
+
+    assert "const liveRadarId" not in backend
+    assert "liveRunArtifacts" in backend
+    assert "backend.liveRunArtifacts[selectedRadar.radar_id]" in workspace
+    assert "radar.radar_id === 'toir-quick-live'" not in adapter
+
+
+def test_icp_radar_benchmark_radars_are_protected_from_silent_local_delete() -> None:
+    settings_model = read("frontend/src/features/icp-radar/settingsModel.ts")
+    catalog_screen = read("frontend/src/features/icp-radar/components/RadarCatalogScreen.tsx")
+
+    assert "isProtectedBackendRadar" in settings_model
+    assert "run_mode === 'benchmark'" in settings_model
+    assert "protected_from_delete" in settings_model
+    assert "localOverrideProtected" in catalog_screen
+
+
+def test_icp_radar_catalog_does_not_silently_fallback_while_backend_is_loading() -> None:
+    app = read("frontend/src/App.tsx")
+    backend = read("frontend/src/features/icp-radar/application/useRadarBackend.ts")
+    catalog_screen = read("frontend/src/features/icp-radar/components/RadarCatalogScreen.tsx")
+    workspace = read("frontend/src/features/icp-radar/application/useRadarWorkspace.ts")
+
+    assert "const activeIcpRadarCatalog = icpRadarBackend.catalog;" in app
+    assert "apiCatalog ?? (runState.mode === 'fallback' ? fallbackCatalog : null)" in backend
+    assert "Promise.allSettled(summaries.map((item) => api.getRadar(item.radar_id)))" in backend
+    assert "loadCompletedRunArtifacts" not in backend
+    assert "loadRadarRunArtifact" in backend
+    assert "backend.loadRadarRunArtifact(selectedRadar.radar_id)" in workspace
+    assert "backendMode={backend.runState.mode}" in read("frontend/src/features/icp-radar/ICPRadarScreen.tsx")
+    assert "icpRadar.live.backendMode.${backendMode}" in catalog_screen
 
 
 def test_icp_radar_feature_has_local_onboarding_readme() -> None:

@@ -74,7 +74,7 @@ export function RadarPipelineControlPanel({
             <Button disabled={runState.busy || runState.mode === 'loading'} icon={<Play aria-hidden="true" />} variant="primary" onClick={onRunCandidateDiscovery}>
               {runState.busy ? t('icpRadar.live.runInProgress') : t('icpRadar.live.pipeline.candidate.run')}
             </Button>
-            {runState.runId && (
+            {(runState.runId || artifact) && (
               <Button icon={<Eye aria-hidden="true" />} variant="default" onClick={onToggleDiagnostics}>
                 {diagnosticsOpen ? t('icpRadar.live.diagnostics.hideRun') : t('icpRadar.live.diagnostics.inspectRun')}
               </Button>

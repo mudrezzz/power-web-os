@@ -60,9 +60,17 @@ RadarContext = Annotated[RadarApiContext, Depends(get_radar_api_context)]
 def list_radars(context: RadarContext) -> list[RadarSummaryResponse]:
     responses: list[RadarSummaryResponse] = []
     for radar in context.radar_repository.list():
-        runs = context.run_repository.list_for_radar(radar.radar_id)
-        outputs = _outputs_for_runs(context, runs)
-        responses.append(radar_summary_response(radar, runs=runs, outputs_by_run_id=outputs))
+        latest_run = context.run_repository.latest_summary_for_radar(radar.radar_id)
+        runs = (latest_run,) if latest_run else ()
+        outputs = _latest_output_for_runs(context, runs)
+        responses.append(
+            radar_summary_response(
+                radar,
+                runs=runs,
+                outputs_by_run_id=outputs,
+                run_count=context.run_repository.count_for_radar(radar.radar_id),
+            )
+        )
     return responses
 
 
@@ -317,6 +325,14 @@ def _outputs_for_runs(context: RadarApiContext, runs: tuple[RadarRunRecord, ...]
         if output is not None:
             outputs[run.run_id] = output
     return outputs
+
+
+def _latest_output_for_runs(context: RadarApiContext, runs: tuple[RadarRunRecord, ...]) -> dict[str, RadarRunOutputRecord]:
+    if not runs:
+        return {}
+    latest = runs[-1]
+    output = context.output_repository.get(latest.run_id)
+    return {latest.run_id: output} if output is not None else {}
 
 
 def _active_runtime_definition_payload(context: RadarApiContext, radar_id: str) -> dict[str, object]:

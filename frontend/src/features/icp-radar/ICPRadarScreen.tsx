@@ -52,7 +52,9 @@ export function ICPRadarScreen({
   if (!workspace.selectedRadar) {
     return (
       <RadarCatalogScreen
-        hasLocalChanges={workspace.mergedRadars.some((radar) => radar.status === 'local_draft' || radar.status === 'modified_locally')}
+        backendError={backend.runState.error}
+        backendMode={backend.runState.mode}
+        hasLocalChanges={workspace.hasLocalChanges}
         radars={workspace.mergedRadars}
         onCreateRadar={workspace.createRadar}
         onOpenRadar={navigation.openRadar}

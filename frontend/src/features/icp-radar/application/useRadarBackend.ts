@@ -8,9 +8,13 @@ import type {
   RadarDefinition,
   SignalValidationDecision,
 } from '../../../types';
-import { apiDetailToCatalogItem, apiDetailsToCatalogArtifact, apiRunToLiveArtifact } from '../adapters/apiRadarAdapter';
+import {
+  apiDetailToCatalogItem,
+  apiDetailsToCatalogArtifact,
+  apiRunToLiveArtifact,
+  catalogWithLiveRunArtifacts,
+} from '../adapters/apiRadarAdapter';
 
-const liveRadarId = 'toir-quick-live';
 const terminalStatuses = new Set(['completed', 'failed']);
 const pollingIntervalMs = 2000;
 const pollingDeadlineMs = 15 * 60 * 1000;
@@ -36,8 +40,10 @@ export type RadarPreflightControlState = {
 export type RadarBackendController = {
   catalog: ICPRadarCatalogArtifact | null;
   liveRunArtifact: LiveICPRadarRunArtifact | null;
+  liveRunArtifacts: Record<string, LiveICPRadarRunArtifact>;
   runState: RadarRunControlState;
   preflightState: RadarPreflightControlState;
+  loadRadarRunArtifact: (radarId: string) => Promise<void>;
   saveRadarDefinition: (radarId: string, definition: RadarDefinition) => Promise<ICPRadarCatalogItem | null>;
   checkRadarSetup: (radarId: string) => Promise<void>;
   runRadar: (radarId: string) => void;
@@ -61,7 +67,7 @@ export function useRadarBackend({
   // The backend mode boundary decides when API state owns Radar data and when demo fallback remains active.
   const api = useMemo(() => new RadarApiClient(), []);
   const [apiCatalog, setApiCatalog] = useState<ICPRadarCatalogArtifact | null>(null);
-  const [apiLiveArtifact, setApiLiveArtifact] = useState<LiveICPRadarRunArtifact | null>(null);
+  const [apiLiveArtifacts, setApiLiveArtifacts] = useState<Record<string, LiveICPRadarRunArtifact>>({});
   const [runState, setRunState] = useState<RadarRunControlState>({
     mode: 'loading',
     apiBaseUrl: api.baseUrl,
@@ -77,32 +83,44 @@ export function useRadarBackend({
     error: null,
   });
   const activeRunByRadarId = useRef<Record<string, string>>({});
+  const latestRunByRadarId = useRef<Record<string, RadarRunSummaryDto>>({});
   const detailsByRadarId = useRef<Record<string, ICPRadarCatalogItem>>({});
   const pollCancel = useRef(false);
+
+  const loadRunArtifact = useCallback(async (run: RadarRunSummaryDto, radar: ICPRadarCatalogItem) => {
+    const [candidates, journal, dossier, technicalTrace] = await Promise.all([
+      api.getRunCandidates(run.run_id),
+      api.getRunJournal(run.run_id),
+      api.getRunDossier(run.run_id),
+      api.getRunTechnicalTrace(run.run_id),
+    ]);
+    return apiRunToLiveArtifact(run, candidates, radar, journal, dossier, technicalTrace);
+  }, [api]);
 
   useEffect(() => {
     let cancelled = false;
     async function loadCatalog() {
+      let summaryCatalog: ICPRadarCatalogArtifact;
+      let summaries: Awaited<ReturnType<typeof api.listRadars>>;
       try {
-        const summaries = await api.listRadars();
-        const details = await Promise.all(summaries.map((item) => api.getRadar(item.radar_id)));
+        summaries = await api.listRadars();
         if (cancelled) {
           return;
         }
-        const catalog = apiDetailsToCatalogArtifact(details, fallbackCatalog);
-        detailsByRadarId.current = Object.fromEntries(catalog.radars.map((radar) => [radar.radar_id, radar]));
-        setApiCatalog(catalog);
+        summaryCatalog = apiDetailsToCatalogArtifact(summaries, fallbackCatalog);
+        detailsByRadarId.current = Object.fromEntries(summaryCatalog.radars.map((radar) => [radar.radar_id, radar]));
+        for (const summary of summaries) {
+          if (summary.latest_run?.status === 'completed') {
+            activeRunByRadarId.current[summary.radar_id] = summary.latest_run.run_id;
+            latestRunByRadarId.current[summary.radar_id] = summary.latest_run;
+          }
+        }
+        setApiCatalog(summaryCatalog);
         setRunState((current) => ({
           ...current,
           mode: 'api',
           error: null,
         }));
-
-        const liveDetail = details.find((item) => item.radar_id === liveRadarId);
-        if (liveDetail?.latest_run?.status === 'completed' && liveDetail.latest_run.output) {
-          activeRunByRadarId.current[liveRadarId] = liveDetail.latest_run.run_id;
-          await refreshRunOutput(liveDetail.latest_run, catalog.radars.find((item) => item.radar_id === liveRadarId) ?? null);
-        }
       } catch (error) {
         if (cancelled) {
           return;
@@ -112,7 +130,23 @@ export function useRadarBackend({
           mode: 'fallback',
           error: errorMessage(error),
         }));
+        return;
       }
+
+      const detailResults = await Promise.allSettled(summaries.map((item) => api.getRadar(item.radar_id)));
+      if (cancelled) {
+        return;
+      }
+      const details = detailResults.flatMap((entry) => (entry.status === 'fulfilled' ? [entry.value] : []));
+      const baseCatalog = details.length ? apiDetailsToCatalogArtifact(details, fallbackCatalog) : summaryCatalog;
+      detailsByRadarId.current = Object.fromEntries(baseCatalog.radars.map((radar) => [radar.radar_id, radar]));
+      for (const detail of details) {
+        if (detail.latest_run?.status === 'completed') {
+          activeRunByRadarId.current[detail.radar_id] = detail.latest_run.run_id;
+          latestRunByRadarId.current[detail.radar_id] = detail.latest_run;
+        }
+      }
+      setApiCatalog(baseCatalog);
     }
     loadCatalog();
     return () => {
@@ -126,16 +160,10 @@ export function useRadarBackend({
       return;
     }
     try {
-      const [candidates, journal, dossier, technicalTrace] = await Promise.all([
-        api.getRunCandidates(run.run_id),
-        api.getRunJournal(run.run_id),
-        api.getRunDossier(run.run_id),
-        api.getRunTechnicalTrace(run.run_id),
-      ]);
-      const artifact = apiRunToLiveArtifact(run, candidates, radar, journal, dossier, technicalTrace);
-      if (radar.radar_id === liveRadarId) {
-        setApiLiveArtifact(artifact);
-      }
+      const artifact = await loadRunArtifact(run, radar);
+      latestRunByRadarId.current[radar.radar_id] = run;
+      setApiLiveArtifacts((current) => ({ ...current, [radar.radar_id]: artifact }));
+      setApiCatalog((current) => (current ? catalogWithLiveRunArtifacts(current, { [radar.radar_id]: artifact }) : current));
       setRunState((current) => ({
         ...current,
         busy: false,
@@ -165,7 +193,19 @@ export function useRadarBackend({
         outputPending: false,
       }));
     }
-  }, [api]);
+  }, [loadRunArtifact]);
+
+  const loadRadarRunArtifact = useCallback(async (radarId: string) => {
+    if (runState.mode !== 'api' || apiLiveArtifacts[radarId]) {
+      return;
+    }
+    const radar = detailsByRadarId.current[radarId];
+    const latestRun = latestRunByRadarId.current[radarId];
+    if (!radar || latestRun?.status !== 'completed' || !latestRun.output) {
+      return;
+    }
+    await refreshRunOutput(latestRun, radar);
+  }, [apiLiveArtifacts, refreshRunOutput, runState.mode]);
 
   const pollRun = useCallback(async (radarId: string, runId: string, startedAt: number) => {
     if (pollCancel.current) {
@@ -349,10 +389,12 @@ export function useRadarBackend({
   }, [api, refreshRunOutput, runState.mode]);
 
   return {
-    catalog: apiCatalog ?? fallbackCatalog,
-    liveRunArtifact: apiLiveArtifact ?? fallbackLiveRunArtifact,
+    catalog: apiCatalog ?? (runState.mode === 'fallback' ? fallbackCatalog : null),
+    liveRunArtifact: apiLiveArtifacts['toir-quick-live'] ?? fallbackLiveRunArtifact,
+    liveRunArtifacts: apiLiveArtifacts,
     runState,
     preflightState,
+    loadRadarRunArtifact,
     saveRadarDefinition,
     checkRadarSetup,
     runRadar,

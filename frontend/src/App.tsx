@@ -128,7 +128,7 @@ export function App() {
     setActiveScreen('plans');
   }
 
-  const activeIcpRadarCatalog = icpRadarBackend.catalog ?? icpRadarCatalog;
+  const activeIcpRadarCatalog = icpRadarBackend.catalog;
   const activeLiveMiniRadarArtifact = icpRadarBackend.liveRunArtifact ?? liveMiniRadarArtifact;
   const activeIcpRadarError = activeIcpRadarCatalog ? icpRadarError : (icpRadarCatalogError ?? icpRadarError);
 

@@ -306,10 +306,13 @@ export function mergeRadarCatalog(
     .filter(([, override]) => override.override_type === 'deleted')
     .map(([radarId]) => radarId));
   const merged = catalog.radars
-    .filter((radar) => !deletedIds.has(radar.radar_id))
+    .filter((radar) => !deletedIds.has(radar.radar_id) || isProtectedBackendRadar(radar))
     .map((radar) => {
       const override = overrides[radar.radar_id];
-      return normalizeRadarCatalogItem(override && override.override_type !== 'deleted' ? override.radar : radar);
+      const normalized = normalizeRadarCatalogItem(override && override.override_type !== 'deleted' ? override.radar : radar);
+      return deletedIds.has(radar.radar_id) && isProtectedBackendRadar(radar)
+        ? { ...normalized, local_override_status: 'protected_from_delete' }
+        : normalized;
     });
   const existingIds = new Set(merged.map((radar) => radar.radar_id));
   const created = Object.values(overrides)
@@ -450,6 +453,7 @@ export function normalizeRadarCatalogItem(radar: ICPRadarCatalogItem): ICPRadarC
       accepted_count: Number.isFinite(Number(radar.summary?.accepted_count)) ? Number(radar.summary.accepted_count) : 0,
       run_mode: radar.summary?.run_mode || definition.monitoring_policy.run_mode || 'configured_not_generated',
     },
+    local_override_status: typeof radar.local_override_status === 'string' ? radar.local_override_status : undefined,
     definition,
     artifact_path: radar.artifact_path ?? null,
   };
@@ -650,4 +654,8 @@ export function ruleIdFrom(label: string): string {
 
 export function isLocalRadarStatus(status: string) {
   return status === 'local_draft' || status === 'modified_locally';
+}
+
+function isProtectedBackendRadar(radar: ICPRadarCatalogItem) {
+  return radar.summary?.run_mode === 'benchmark';
 }

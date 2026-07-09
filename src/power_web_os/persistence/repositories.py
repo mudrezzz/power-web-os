@@ -137,6 +137,58 @@ class SqlAlchemyRadarRunRepository:
         stmt = select(RadarRunModel).where(RadarRunModel.radar_id == radar_id).order_by(RadarRunModel.queued_at)
         return tuple(_run_record(model) for model in self._session.scalars(stmt).all())
 
+    def latest_for_radar(self, radar_id: str) -> RadarRunRecord | None:
+        stmt = (
+            select(RadarRunModel)
+            .where(RadarRunModel.radar_id == radar_id)
+            .order_by(RadarRunModel.queued_at.desc())
+            .limit(1)
+        )
+        model = self._session.scalars(stmt).first()
+        return _run_record(model) if model is not None else None
+
+    def latest_summary_for_radar(self, radar_id: str) -> RadarRunRecord | None:
+        stmt = (
+            select(
+                RadarRunModel.run_id,
+                RadarRunModel.radar_id,
+                RadarRunModel.status,
+                RadarRunModel.queued_at,
+                RadarRunModel.started_at,
+                RadarRunModel.completed_at,
+                RadarRunModel.idempotency_key,
+                RadarRunModel.correlation_id,
+                RadarRunModel.error_message,
+                RadarRunModel.created_at,
+                RadarRunModel.updated_at,
+            )
+            .where(RadarRunModel.radar_id == radar_id)
+            .order_by(RadarRunModel.queued_at.desc())
+            .limit(1)
+        )
+        row = self._session.execute(stmt).first()
+        if row is None:
+            return None
+        return RadarRunRecord(
+            run_id=row.run_id,
+            radar_id=row.radar_id,
+            status=RadarRunStatus(row.status),
+            queued_at=row.queued_at,
+            started_at=row.started_at,
+            completed_at=row.completed_at,
+            idempotency_key=row.idempotency_key,
+            correlation_id=row.correlation_id,
+            error_message=row.error_message,
+            error_metadata={},
+            run_metadata={},
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+
+    def count_for_radar(self, radar_id: str) -> int:
+        stmt = select(func.count()).select_from(RadarRunModel).where(RadarRunModel.radar_id == radar_id)
+        return int(self._session.scalar(stmt) or 0)
+
     def update_status(
         self,
         run_id: str,

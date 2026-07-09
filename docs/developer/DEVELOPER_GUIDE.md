@@ -55,6 +55,12 @@ Troubleshooting:
 
 - If the UI stays in `Demo fallback`, check that the `api` service is healthy
   and `VITE_POWER_WEB_OS_API_BASE_URL` points to `http://127.0.0.1:8001`.
+- If a backend radar appears and disappears in the ICP Radar catalog, treat that
+  as a bug. The catalog must wait for the lightweight `/api/radars` response
+  instead of silently showing demo fallback while heavy run artifacts are still
+  loading. Validate this with
+  `npm --prefix ./frontend run radar:benchmark-ui-dod`; the command performs
+  ten clean browser-context checks for `Benchmark / SIBUR holding contour`.
 - If a run stays `queued`, check the `worker` service logs and Redis service.
 - If a run becomes `failed`, inspect `worker` logs and `.env` OpenRouter
   credentials/model settings.

@@ -49,6 +49,24 @@ catalog, candidate-discovery runs, candidates, and review decisions when
 available. Browser-local overlays can change fixture/offline demo state, but
 they must never mutate generated JSON.
 
+Backend-connected Radar runs are artifact-backed by `radar_id`, not by a
+single special demo radar. Any backend radar with a completed latest run can
+open the live shortlist, diagnostics, dossier, and candidate detail surfaces.
+Catalog counts for those radars are derived from the run candidates endpoint so
+the card total, accepted/product count, and review-needed count match the rows
+the user opens.
+
+Backend catalog loading is intentionally two-step. The lightweight
+`/api/radars` response owns catalog visibility first; heavy detail, dossier,
+trace, and candidate artifact hydration happen after that and must not hide a
+radar that the backend already returned. While the catalog request is pending,
+the screen stays in a loading/API state. Demo fallback is allowed only after an
+explicit API failure and must be visibly labeled as fallback.
+
+Benchmark radars returned by the backend are protected from silent browser-local
+delete overrides. If local demo state attempted to hide one, the catalog keeps
+the backend radar visible and marks it so the user can reset demo changes.
+
 `frontend/public/demo/radar_signal_monitoring_report.json` is a recorded
 no-network signal-monitoring report used only to make the separate
 signal-monitoring contour visible in the UI. The production `Check signals`
@@ -98,5 +116,12 @@ action stays disabled until a backend signal-monitoring API exists.
 - Adapter or model change: run `python -m pytest tests/test_frontend_architecture_contract.py`.
 - Frontend TypeScript change: run `npm --prefix ./frontend run build`.
 - Any visible UI/layout change: run `npm --prefix ./frontend run visual:smoke`.
+- Backend catalog visibility/stability change: run
+  `npm --prefix ./frontend run radar:benchmark-ui-dod` against the Docker
+  frontend on `http://127.0.0.1:5173`; it performs ten clean browser-context
+  checks and fails if `Benchmark / SIBUR holding contour` is missing, hidden by
+  fallback/local overrides, or its UI counts diverge from the backend candidates
+  endpoint. Set `POWER_WEB_OS_RADAR_UI_DOD_START_VITE=1` only for a manual local
+  Vite run with matching backend CORS origins.
 - Settings/local overlay change: run `npm --prefix ./frontend run settings:toggle-smoke`.
 - Public behavior or architecture change: update developer docs, architecture docs, ADRs, and `ROADMAP.md`.

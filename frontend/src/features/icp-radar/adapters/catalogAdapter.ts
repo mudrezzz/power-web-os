@@ -27,7 +27,7 @@ export function radarToViewModel(
   if (radar.radar_id === activeFixtureRadarId) {
     return fixtureRadarToViewModel(radar, fixtureArtifact);
   }
-  if (radar.radar_id === 'toir-quick-live') {
+  if (liveArtifact || radar.summary.last_run === 'backend_run') {
     return liveRadarToViewModel(radar, liveArtifact);
   }
   return {

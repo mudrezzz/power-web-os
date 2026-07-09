@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "visual:smoke": "node scripts/visual-smoke.mjs",
+    "radar:benchmark-ui-dod": "node scripts/radar-benchmark-ui-dod.mjs",
     "settings:toggle-smoke": "node scripts/settings-toggle-smoke.mjs"
   },
   "dependencies": {

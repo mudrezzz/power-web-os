@@ -63,7 +63,9 @@ export function useRadarWorkspace({
   const selectedRadarOverride = selectedRadar ? radarOverrides[selectedRadar.radar_id] : undefined;
   const activeFixtureRadarId = catalog?.workflow_metadata.active_fixture_radar_id ?? 'toir-sibur';
   const selectedFixtureArtifact = selectedRadar?.radar_id === activeFixtureRadarId ? artifact : null;
-  const selectedLiveArtifact = selectedRadar?.radar_id === 'toir-quick-live' ? liveRunArtifact : null;
+  const selectedLiveArtifact = selectedRadar
+    ? backend.liveRunArtifacts[selectedRadar.radar_id] ?? (selectedRadar.radar_id === 'toir-quick-live' ? liveRunArtifact : null)
+    : null;
   const apiBackedLiveArtifact = Boolean(selectedLiveArtifact && backend.runState.mode === 'api');
   const radarViewModel = selectedRadar
     ? radarToViewModel(selectedRadar, activeFixtureRadarId, selectedFixtureArtifact, selectedLiveArtifact)
@@ -80,6 +82,23 @@ export function useRadarWorkspace({
   const detailValidatedScore = detailCandidate && selectedRadar
     ? buildValidatedCandidateScore(detailCandidate, validationForCandidate(signalValidation, selectedRadar.radar_id, detailCandidate.account_id))
     : null;
+
+  useEffect(() => {
+    if (
+      selectedRadar
+      && backend.runState.mode === 'api'
+      && selectedRadar.summary.last_run === 'backend_run'
+      && !selectedLiveArtifact
+    ) {
+      void backend.loadRadarRunArtifact(selectedRadar.radar_id);
+    }
+  }, [
+    backend.loadRadarRunArtifact,
+    backend.runState.mode,
+    selectedLiveArtifact,
+    selectedRadar?.radar_id,
+    selectedRadar?.summary.last_run,
+  ]);
 
   useEffect(() => {
     if (!selectedRadar) {
@@ -258,6 +277,7 @@ export function useRadarWorkspace({
 
   return {
     navigation,
+    hasLocalChanges: Object.keys(radarOverrides).length > 0,
     mergedRadars,
     selectedRadar,
     selectedRadarOverride,

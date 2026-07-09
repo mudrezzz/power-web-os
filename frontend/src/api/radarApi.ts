@@ -1,7 +1,7 @@
 import type { QualificationAssessmentStatus, RadarPipelineId, SignalValidationStatus } from '../types';
 
 const defaultBaseUrl = 'http://127.0.0.1:8001';
-const requestTimeoutMs = 30000;
+const requestTimeoutMs = 60000;
 
 export type RadarApiErrorKind = 'http' | 'network' | 'conflict' | 'validation';
 
@@ -179,6 +179,18 @@ export type RadarCandidateDto = {
   candidate_id: string;
   legal_name: string;
   description: string;
+  entity_type?: string;
+  upstream_discovery_outcome?: string;
+  product_acceptance_status?: string;
+  upstream_confidence?: string;
+  upstream_reason?: string;
+  upstream_source_refs?: string[];
+  public_result_status?: string;
+  public_projection_reason?: string;
+  product_acceptance_reason?: string;
+  candidate_surface_status?: string;
+  candidate_surface_reason?: string;
+  candidate_surface_rank?: number | null;
   score: {
     fit_score: number | null;
     intent_score: number | null;
@@ -205,6 +217,8 @@ export type RadarRunCandidatesDto = {
   candidates: RadarCandidateDto[];
   sources: RadarSourceDto[];
   contract_validation: Array<Record<string, unknown>>;
+  candidate_discovery_reconciliation?: Record<string, unknown>;
+  product_acceptance_ledger?: Array<Record<string, unknown>>;
 };
 
 export type RadarRunJournalEventDto = {

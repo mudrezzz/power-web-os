@@ -655,6 +655,23 @@ catalog, manual run, candidates, journal, technical trace, and review decisions
 when the backend is available. Browser-local overlays remain only for
 fixture/offline fallback state.
 
+The ICP Radar catalog must not silently fall back to demo data while the backend
+catalog is merely slow. The lightweight `/api/radars` response owns radar
+visibility first; completed-run candidates, dossier, journal, and technical
+trace hydrate after that. For the benchmark contour, run the stability gate:
+
+```powershell
+npm --prefix ./frontend run radar:benchmark-ui-dod
+```
+
+It checks ten clean browser contexts against the Docker frontend/API on
+`http://127.0.0.1:5173` and `http://127.0.0.1:8001`, then verifies that
+`Benchmark / SIBUR holding contour` is visible, opens to the latest completed
+run, shows 13 candidates, 3 accepted/product, and 10 review-needed, and is not
+hidden by demo fallback or local overrides. Set
+`POWER_WEB_OS_RADAR_UI_DOD_START_VITE=1` only for a manual local Vite run with
+matching backend CORS origins.
+
 The backend also exposes `GET /api/radar-runs/{run_id}/dossier`. The frontend
 uses it in the live Radar detail `Journal` tab as the product run dossier:
 run context, definition version, task context, discovery strategy, selected or

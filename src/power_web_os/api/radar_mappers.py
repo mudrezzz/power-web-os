@@ -41,18 +41,25 @@ def radar_summary_response(
     *,
     runs: tuple[RadarRunRecord, ...] = (),
     outputs_by_run_id: dict[str, RadarRunOutputRecord] | None = None,
+    include_run_metadata: bool = False,
+    run_count: int | None = None,
 ) -> RadarSummaryResponse:
     latest = runs[-1] if runs else None
+    latest_output = (outputs_by_run_id or {}).get(latest.run_id) if latest else None
     return RadarSummaryResponse(
         radar_id=radar.radar_id,
         name=radar.name,
         status=radar.status,
         owner=radar.owner,
         profile=radar.profile,
-        summary=radar.summary,
+        summary=_catalog_summary(radar.summary, latest_output),
         artifact_path=radar.artifact_path,
-        run_count=len(runs),
-        latest_run=run_summary_response(latest, output=(outputs_by_run_id or {}).get(latest.run_id)) if latest else None,
+        run_count=run_count if run_count is not None else len(runs),
+        latest_run=run_summary_response(
+            latest,
+            output=latest_output,
+            include_run_metadata=include_run_metadata,
+        ) if latest else None,
     )
 
 
@@ -63,7 +70,12 @@ def radar_detail_response(
     runs: tuple[RadarRunRecord, ...],
     outputs_by_run_id: dict[str, RadarRunOutputRecord],
 ) -> RadarDetailResponse:
-    summary = radar_summary_response(radar, runs=runs, outputs_by_run_id=outputs_by_run_id)
+    summary = radar_summary_response(
+        radar,
+        runs=runs,
+        outputs_by_run_id=outputs_by_run_id,
+        include_run_metadata=True,
+    )
     return RadarDetailResponse(
         **summary.model_dump(),
         active_definition=definition_response(active_definition) if active_definition else None,
@@ -86,6 +98,7 @@ def run_summary_response(
     run: RadarRunRecord,
     *,
     output: RadarRunOutputRecord | None,
+    include_run_metadata: bool = True,
 ) -> RadarRunSummaryResponse:
     return RadarRunSummaryResponse(
         run_id=run.run_id,
@@ -98,7 +111,7 @@ def run_summary_response(
         correlation_id=run.correlation_id,
         error_message=run.error_message,
         error_metadata=run.error_metadata,
-        run_metadata=run.run_metadata,
+        run_metadata=run.run_metadata if include_run_metadata else {},
         output=output_summary_response(output) if output else None,
     )
 
@@ -110,6 +123,40 @@ def output_summary_response(output: RadarRunOutputRecord) -> RadarRunOutputSumma
         candidate_count=len(output.candidates_payload),
         contract_issue_count=len(output.contract_validation_payload),
         updated_at=output.updated_at,
+    )
+
+
+def _catalog_summary(
+    radar_summary: dict[str, Any],
+    latest_output: RadarRunOutputRecord | None,
+) -> dict[str, Any]:
+    summary = dict(radar_summary)
+    if latest_output is None:
+        return summary
+    candidates = _visible_candidates(latest_output)
+    summary["candidate_count"] = len(candidates)
+    summary["accepted_count"] = sum(
+        1
+        for candidate in candidates
+        if str(candidate.get("candidate_surface_status") or "") == "accepted_product_candidate"
+        or str(candidate.get("product_acceptance_status") or "") == "product_candidate"
+    )
+    summary["needs_review_count"] = sum(
+        1
+        for candidate in candidates
+        if str(candidate.get("candidate_surface_status") or "") == "review_needed_candidate"
+        or str(candidate.get("product_acceptance_status") or "") == "review_required"
+    )
+    return summary
+
+
+def _visible_candidates(output: RadarRunOutputRecord) -> list[dict[str, Any]]:
+    artifact = _dict(output.artifact_payload)
+    execution_results = _dict(_dict(artifact.get("run_metadata")).get("execution_results"))
+    return (
+        _list(execution_results.get("user_visible_candidates"))
+        or _list(artifact.get("candidates"))
+        or [dict(item) for item in output.candidates_payload if isinstance(item, dict)]
     )
 
 
