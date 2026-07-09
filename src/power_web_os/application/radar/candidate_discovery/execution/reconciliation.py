@@ -5,10 +5,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from power_web_os.application.radar.candidate_discovery.execution.public_surface import (
+    CandidateDiscoveryProductAcceptancePromoter,
+    CandidateDiscoveryPublicSurfaceProjector,
+)
+
 
 @dataclass(frozen=True)
 class _CandidateDiscoveryOutcomeReconciliation:
     candidate_universe: list[dict[str, Any]]
+    user_visible_candidates: list[dict[str, Any]]
     summary: dict[str, Any]
     product_acceptance_ledger: list[dict[str, Any]]
 
@@ -35,7 +41,8 @@ class CandidateDiscoveryOutcomeReconciler:
         candidate_universe: list[dict[str, Any]],
         unresolved_gaps: list[dict[str, Any]],
     ) -> _CandidateDiscoveryOutcomeReconciliation:
-        public_payloads = [self._payload(item) for item in public_candidates]
+        promoter = CandidateDiscoveryProductAcceptancePromoter()
+        public_payloads = [promoter.promote_public_candidate(self._payload(item)) for item in public_candidates]
         public_names = {
             self._name_key(item)
             for item in public_payloads
@@ -45,6 +52,15 @@ class CandidateDiscoveryOutcomeReconciler:
             self._enriched_universe_entry(item, public_names=public_names)
             for item in candidate_universe
         ]
+        public_surface = CandidateDiscoveryPublicSurfaceProjector().project(
+            public_candidates=public_payloads,
+            candidate_universe=enriched_universe,
+        )
+        enriched_universe = self._apply_visible_surface_metadata(
+            enriched_universe,
+            user_visible_candidates=public_surface.candidates,
+            public_names=public_names,
+        )
         ledger = self._ledger(
             public_payloads=public_payloads,
             candidate_universe=enriched_universe,
@@ -52,14 +68,43 @@ class CandidateDiscoveryOutcomeReconciler:
         )
         return _CandidateDiscoveryOutcomeReconciliation(
             candidate_universe=enriched_universe,
+            user_visible_candidates=public_surface.candidates,
             summary=self._summary(
                 public_payloads=public_payloads,
+                user_visible_candidates=public_surface.candidates,
                 candidate_universe=enriched_universe,
                 unresolved_gaps=unresolved_gaps,
                 ledger=ledger,
+                public_surface_summary=public_surface.summary,
             ),
             product_acceptance_ledger=ledger,
         )
+
+    def _apply_visible_surface_metadata(
+        self,
+        candidate_universe: list[dict[str, Any]],
+        *,
+        user_visible_candidates: list[dict[str, Any]],
+        public_names: set[str],
+    ) -> list[dict[str, Any]]:
+        visible_by_name = {
+            self._name_key(item): item
+            for item in user_visible_candidates
+            if self._name_key(item)
+        }
+        result = []
+        for item in candidate_universe:
+            payload = dict(item)
+            name_key = self._name_key(payload)
+            visible = visible_by_name.get(name_key)
+            if visible is not None:
+                payload["candidate_surface_status"] = str(visible.get("candidate_surface_status") or "")
+                payload["candidate_surface_reason"] = str(visible.get("candidate_surface_reason") or "")
+                if name_key not in public_names:
+                    payload["public_result_status"] = "review_needed_candidate"
+                    payload["public_projection_reason"] = payload["candidate_surface_reason"]
+            result.append(payload)
+        return result
 
     def _enriched_universe_entry(
         self,
@@ -117,9 +162,11 @@ class CandidateDiscoveryOutcomeReconciler:
         self,
         *,
         public_payloads: list[dict[str, Any]],
+        user_visible_candidates: list[dict[str, Any]],
         candidate_universe: list[dict[str, Any]],
         unresolved_gaps: list[dict[str, Any]],
         ledger: list[dict[str, Any]],
+        public_surface_summary: dict[str, Any],
     ) -> dict[str, Any]:
         upstream_rows = [
             item for item in ledger
@@ -140,6 +187,11 @@ class CandidateDiscoveryOutcomeReconciler:
         return {
             "raw_upstream_lead_count": len({self._name_key(item) for item in upstream_rows if self._name_key(item)}),
             "public_candidate_count": len({self._name_key(item) for item in public_rows if self._name_key(item)}),
+            "visible_candidate_count": int(public_surface_summary.get("visible_candidate_count") or 0),
+            "accepted_product_candidate_count": int(
+                public_surface_summary.get("accepted_product_candidate_count") or 0
+            ),
+            "review_needed_candidate_count": int(public_surface_summary.get("review_needed_candidate_count") or 0),
             "candidate_universe_count": len(candidate_universe),
             "unresolved_gap_count": len(unresolved_gaps),
             "ledger_entry_count": len(ledger),
@@ -151,6 +203,7 @@ class CandidateDiscoveryOutcomeReconciler:
             "by_public_result_status": by_public_status,
             "by_product_acceptance_status": by_product_status,
             "by_upstream_discovery_outcome": by_upstream_outcome,
+            "by_candidate_surface_status": dict(public_surface_summary.get("by_candidate_surface_status") or {}),
             "product_candidate_zero_explained": product_candidate_count == 0 and all(
                 str(item.get("product_acceptance_reason") or "").strip()
                 for item in ledger
@@ -161,6 +214,11 @@ class CandidateDiscoveryOutcomeReconciler:
                 for item in public_payloads
                 if self._name_key(item)
             }),
+            "visible_candidate_names": [
+                str(item.get("legal_name") or "")
+                for item in user_visible_candidates
+                if self._name_key(item)
+            ],
         }
 
     def _ledger_row(self, item: dict[str, Any], *, collection: str) -> dict[str, Any]:
@@ -186,6 +244,8 @@ class CandidateDiscoveryOutcomeReconciler:
                     str(item.get("public_result_status") or ""),
                 )
             ),
+            "candidate_surface_status": str(item.get("candidate_surface_status") or ""),
+            "candidate_surface_reason": str(item.get("candidate_surface_reason") or ""),
             "review_flags": self._string_list(item.get("review_flags")),
             "benchmark_id": str(item.get("benchmark_id") or ""),
         }

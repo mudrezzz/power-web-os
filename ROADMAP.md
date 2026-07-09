@@ -8594,6 +8594,68 @@ Principles:
   - Product acceptance may remain strict and produce zero product candidates in some runs. Mitigate by requiring a complete acceptance ledger rather than weakening acceptance.
   - Live provider drift can change exact recall counts. Mitigate by gating on invariants such as no silent drops and no present_not_projected, not a single quality score.
 
+### Slice 0.7.6.4.18.1.4: Candidate discovery public candidate surface and acceptance promotion tuning
+
+- Status: Done
+- Goal: Make the user-facing candidate surface reflect all source-backed relevant legal targets found by candidate discovery: accepted product candidates and review-needed visible candidates must be visible separately, with strict product acceptance preserved and Docker/API benchmark-smoke DoD mandatory before moving to signal monitoring runtime.
+- User value: A user sees the real result of candidate discovery instead of a misleading short list: found legal targets are visible as accepted or review-needed candidates, while strict product acceptance remains explainable and not silently widened.
+- Problem statement: After 0.7.6.4.18.1.3 the pipeline no longer silently drops upstream leads, but the product surface is still too narrow. The SIBUR benchmark smoke found 8 of 9 legal baseline targets in candidate_universe, while only 3 appeared as public/product candidate rows. This is better than the previous zero-product contradiction, but still product-poor: five source-backed legal targets are retained diagnostically instead of being visible to the user as review-needed candidate rows. The remaining false negative, ООО «Полиом», is generated but not selected before smoke budget/cap exhaustion. The next correction must tune public candidate surface and acceptance promotion, not signal monitoring.
+- Scope:
+  - Introduce or refine a user-facing candidate surface contract that separates `accepted_product_candidate`, `review_needed_candidate`, `universe_only_diagnostic`, and `not_promoted` states.
+  - Promote source-backed legal entities from candidate_universe into user-visible review-needed candidate rows when they match protected benchmark/legal targets or have sufficient source/registry identity, even if they are not strict product candidates yet.
+  - Keep strict product acceptance separate: accepted product candidates require deterministic qualification/evidence; review-needed candidates are visible but not counted as precision-positive product acceptance.
+  - Add per-candidate promotion ledger fields explaining why each legal target is accepted, visible-for-review, universe-only, not selected, or not promoted.
+  - Tune benchmark protected target selection so `Полиом` is either selected/executed/projected in benchmark_smoke or receives a more specific bounded reason than generic silent omission.
+  - Update evaluation so it reports `visible_candidate_count`, `accepted_product_candidate_count`, `review_needed_candidate_count`, and `legal_baseline_visible_count` separately from strict precision.
+  - Update API/dossier/candidates endpoint so the user-facing candidate list includes accepted and review-needed legal candidates with clear statuses.
+- Out of scope:
+  - No signal-monitoring live runtime/API implementation; 0.7.6.4.18.2 remains blocked until this DoD passes.
+  - No broad live quality claim from one benchmark run.
+  - No weakening of strict product precision: review-needed visible candidates must not be counted as accepted product candidates.
+  - No SIBUR-specific production hardcode outside benchmark fixtures/hints.
+  - No unbounded budget increase or hidden broad fallback; selection/budget tuning must remain bounded and explainable.
+  - No frontend redesign unless API contract changes require a minimal fixture/docs update.
+- Implementation notes:
+  - Treat `candidate_universe` as the broad upstream truth, `user_visible_candidates` as the product-facing candidate surface, and accepted product candidates as a strict subset.
+  - Public candidate rows should no longer mean only strict product acceptance; they should carry a `candidate_surface_status` or equivalent field that distinguishes accepted vs review-needed.
+  - Existing `product_acceptance_status` must remain strict. Additive fields are preferred over breaking current consumers.
+  - Benchmark evaluation should stop using `product_candidate_count` as the only user-facing success signal. It must show how many legal baseline targets are visible to the user, how many are accepted, and how many remain review-needed.
+  - `Полиом` is the concrete regression probe for protected-target selection: generated-but-not-selected is now a known bounded selection defect.
+  - Keep `unexplained_drop_count=0` and `present_not_projected_count=0` as non-negotiable inherited gates from 0.7.6.4.18.1.3.
+- Tests:
+  - Red test: when candidate_universe contains source-backed legal baseline matches that are not strict product candidates, the candidates API/dossier exposes them as review-needed visible candidates, not only diagnostic universe rows.
+  - Red test: accepted product candidates and review-needed visible candidates are counted separately; review-needed candidates do not inflate precision.
+  - Red test: SIBUR-style fixture with 8 legal baseline matches produces legal_baseline_visible_count >= 8 and accepted_product_candidate_count >= 3.
+  - Red test: `Полиом` protected target cannot remain only `generated=true, selected=false` without a bounded, specific selection/cap reason; target selection must either execute it or report the exact cap/reserve that blocked it.
+  - Red test: public surface cannot hide source-backed legal targets behind generic `universe_only` when entity type is legal_entity and source/registry identity is present.
+  - Regression tests: no false `not_observed`, signal handoff remains pending/not-searched, product_acceptance_ledger remains complete, and no `present_not_projected` regressions.
+  - Required fast gates: `python -m pytest tests/test_radar_evaluation.py tests/test_backend_api.py tests/test_live_icp_radar.py -q`; `python -m pytest tests/test_radar_search_expansion.py tests/test_radar_benchmark.py tests/test_radar_adaptive_execution.py -q`; architecture/package/docs/static checks.
+  - Required final gate after fast tests: rebuild Docker, run SIBUR `benchmark_smoke`, evaluate latest run, and verify the DoD numbers below before marking Done.
+- Docs:
+  - Create TO BE doc/PDF for 0.7.6.4.18.1.4 before implementation.
+  - Update RADAR_SEARCH_PIPELINE_AS_IS and generated PDF after implementation with the visible candidate surface contract.
+  - Update RADAR_BACKEND_ARCHITECTURE and candidate-discovery execution architecture with the public-surface/promotion owner.
+  - Update Developer Guide and demo benchmark runbook: success is accepted + review-needed visibility, not only strict product_candidate_count.
+  - Export/render/check roadmap artifacts.
+- Demo impact: Benchmark/demo output should become understandable to a user: instead of seeing only 3 accepted rows while 5 relevant legal targets are buried in diagnostics, the candidate surface should show accepted and review-needed legal candidates with reasons and source refs.
+- Acceptance criteria:
+  - Slice is not Done until a rebuilt Docker/API SIBUR `benchmark_smoke` run and evaluation satisfy this DoD; passing unit tests alone is insufficient.
+  - `legal_baseline_visible_count >= 8` for the 9 legal baseline targets, where visible means accepted product candidate or review-needed user-visible legal candidate.
+  - `accepted_product_candidate_count >= 3` and remains strict; review-needed candidates must not be counted as accepted product candidates.
+  - `review_needed_candidate_count >= 5` or, if fewer, every missing legal target has a specific target-funnel reason and ledger explanation.
+  - `product_candidate_count` / accepted product count is no longer the only public success signal; evaluation and dossier expose accepted vs review-needed counts separately.
+  - `unexplained_drop_count == 0`.
+  - `present_not_projected_count == 0`.
+  - Protected benchmark targets such as ?????????????????? and ??????????????? remain projected/visible; they cannot regress to present_not_projected.
+  - `Полиом` is either projected/visible or has a specific bounded reason such as `selection_cap_exhausted_for_protected_legal_target`, not a vague disappearance.
+  - Handoff signal statuses remain not-searched/pending/limited; no candidate receives `not_observed` unless signal monitoring or explicit inline compatibility actually searched signals.
+  - The final answer for implementation must include the benchmark run id and the DoD metric table.
+- Risks:
+  - Showing review-needed legal candidates can look like false positives if UI/copy treats them as accepted accounts. Mitigate with explicit surface status and strict product acceptance count.
+  - Promoting more legal entities to visible review can increase list length. Mitigate with clear ordering: accepted first, protected benchmark/legal review-needed next, diagnostics after.
+  - Fixing `??????` by simply raising budget could hide selection defects. Mitigate by requiring specific selection/reserve diagnostics and bounded tuning.
+  - Live provider drift can change exact source names. Mitigate by gating on invariant counts and path reasons, not one brittle text snippet.
+
 ### Slice 0.7.6.4.18.2: Signal monitoring live runtime and API wiring
 
 - Status: Ready
@@ -8617,6 +8679,7 @@ Principles:
   - Model profile should come from `signal_monitoring_default`, not candidate-discovery role settings.
   - Run after 0.7.6.4.18.1.1 so signal-monitoring live runtime starts from a recall-first candidate-discovery handoff instead of a flat Monitor/weak upstream snapshot.
   - Deferred until 0.7.6.4.18.1.2 is validated, because signal-monitoring live runtime should start from a candidate-discovery snapshot that can survive live extraction schema drift.
+  - Deferred until 0.7.6.4.18.1.4 is validated, because signal monitoring should start from a user-facing candidate snapshot that exposes accepted and review-needed legal candidates, not only the strict accepted subset.
 - Tests:
   - Recorded signal-monitoring tests for observed, searched-negative, not-searched, budget-limited, and review-needed states.
   - API/job smoke for starting and reading a signal-monitoring run.

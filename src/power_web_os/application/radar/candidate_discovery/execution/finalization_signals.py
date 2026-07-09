@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from power_web_os.application.radar.candidate_discovery.execution.context import CandidateDiscoveryExecutionContext
 from power_web_os.application.radar.candidate_discovery.execution.state import CandidateDiscoveryExecutionState
 
@@ -17,6 +19,19 @@ def _signal_projection_observations(
     if not decision:
         return observations
     return [_observation_with_unsearched_signals(item, decision) for item in observations]
+
+
+def _signal_projection_candidates(
+    context: CandidateDiscoveryExecutionContext,
+    state: CandidateDiscoveryExecutionState,
+    candidates: list[Any],
+) -> list[Any]:
+    if context.signal_execution_mode == "inline_compatibility":
+        return candidates
+    decision = _signal_handoff_decision(state)
+    if not decision:
+        return candidates
+    return [_candidate_with_unsearched_signals(item, decision) for item in candidates]
 
 
 def _signal_monitoring_pending_count(state: CandidateDiscoveryExecutionState) -> int:
@@ -63,7 +78,11 @@ def _observation_with_unsearched_signals(item: dict, decision: dict[str, str]) -
 
 def _signal_with_unsearched_status(signal: object, decision: dict[str, str]) -> object:
     if not isinstance(signal, dict):
-        return signal
+        if not hasattr(signal, "model_dump") or not hasattr(signal, "model_copy"):
+            return signal
+        payload = signal.model_dump()
+        projected = _signal_with_unsearched_status(payload, decision)
+        return signal.model_copy(update=projected) if isinstance(projected, dict) else signal
     search_status = str(signal.get("search_status") or "")
     if search_status.startswith("not_searched"):
         return signal
@@ -76,3 +95,17 @@ def _signal_with_unsearched_status(signal: object, decision: dict[str, str]) -> 
     review_flags = [str(item) for item in projected.get("review_flags", []) if str(item).strip()]
     projected["review_flags"] = sorted({*review_flags, decision["search_status"]})
     return projected
+
+
+def _candidate_with_unsearched_signals(candidate: Any, decision: dict[str, str]) -> Any:
+    signals = getattr(candidate, "signals", None)
+    if not isinstance(signals, list):
+        return candidate
+    projected_signals = [_signal_with_unsearched_status(signal, decision) for signal in signals]
+    if hasattr(candidate, "model_copy"):
+        return candidate.model_copy(update={"signals": projected_signals})
+    if isinstance(candidate, dict):
+        projected = dict(candidate)
+        projected["signals"] = projected_signals
+        return projected
+    return candidate

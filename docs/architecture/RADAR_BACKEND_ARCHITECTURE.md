@@ -170,6 +170,7 @@ Execution phase map:
 | `finalization.py` | `FinalizationProjector`: build final `WebSearchProviderResult`, event list, and dossier/report metadata. |
 | `finalization_universe.py` | Add review-needed upstream entities and upstream disambiguation events. |
 | `reconciliation.py` | `CandidateDiscoveryOutcomeReconciler`: reconcile public candidates, universe-only leads, diagnostic gaps, product acceptance, and projection reasons. |
+| `public_surface.py` | `CandidateDiscoveryPublicSurfaceProjector` and `CandidateDiscoveryProductAcceptancePromoter`: build `user_visible_candidates` with accepted product rows and review-needed legal rows, and promote only already selected source-backed legal public rows. |
 | `task_runner.py` | `TaskExecutionService`: provider-neutral task execution, gate pass, retries, and candidate task utilities. |
 | `merge.py` | `ExecutionResultMerger`: source/observation/provider metadata merge and universe entity metadata projection. |
 | `projection.py` | `CandidateProjectionService` and `PipelineEventFactory`: candidate projection and product-safe event payloads. |
@@ -205,7 +206,8 @@ authoritative class-by-class contract is maintained in
 - Helper behavior is also service-owned:
   `TaskExecutionService`, `ExecutionResultMerger`,
   `CandidateProjectionService`, `PipelineEventFactory`,
-  `SmokeLimitPolicy`, and `ExecutionMetadataFactory`.
+  `CandidateDiscoveryPublicSurfaceProjector`, `SmokeLimitPolicy`, and
+  `ExecutionMetadataFactory`.
 - Public top-level functions are forbidden across
   `candidate_discovery/execution`, except the compatibility wrapper
   `run_staged_radar_execution`. Private helpers are allowed only for small local
@@ -343,6 +345,14 @@ at runtime. Candidate discovery records the pre-signal checkpoint and projects
 `not_searched_pending_signal_monitoring` handoff rows by default. The
 signal-monitoring package owns actual signal evaluation semantics and budgets;
 candidate discovery keeps only explicit inline compatibility for old callers.
+
+As of slice `0.7.6.4.18.1.4`, candidate discovery also separates three output
+surfaces. `candidate_universe` remains the broad upstream truth,
+`user_visible_candidates` is the product-facing candidate list, and strict
+accepted product candidates are only the `candidate_surface_status =
+accepted_product_candidate` subset. Source-backed legal entities can now be
+visible as `review_needed_candidate` rows without inflating strict product
+precision.
 
 As of slice `0.7.6.4.14.1`, the flat namespace closure policy is explicit:
 `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md` is the reviewable debt

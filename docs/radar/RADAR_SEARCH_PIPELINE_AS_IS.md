@@ -4,9 +4,9 @@ Status: AS IS
 
 Product area: Radar candidate discovery pipeline
 
-Updated after slice: 0.7.6.4.18.1
+Updated after slice: 0.7.6.4.18.1.4
 
-Last updated: 2026-07-06
+Last updated: 2026-07-08
 
 Canonical source: current implementation, tests, `ROADMAP.md`, and Radar run diagnostics
 
@@ -57,7 +57,8 @@ merged into this AS IS document and the PDF is regenerated.
 |---|---|
 | Radar definition | Persisted active configuration for one Radar, including criteria, signals, source policy, and scoring settings. |
 | Candidate universe | The broad set of source-backed entities known to the run, including legal entities and review-needed sites, branches, projects, or assets. |
-| Product candidate | A strict account candidate shown as a scored product row. Product candidates should be legal entities or resolved account-level entities. |
+| User-visible candidate | A legal entity shown to a user as either an accepted product candidate or a review-needed candidate. |
+| Product candidate | A strict accepted account candidate. Product candidates should be legal entities or resolved account-level entities and are a subset of user-visible candidates. |
 | Review-needed entity | A source-backed entity retained upstream with review flags, but not promoted as a confident product account. |
 | Signal | A monitored buying-intent or activity indicator evaluated for candidate entities. |
 | Source | A user-selected information source in Radar settings. |
@@ -528,6 +529,20 @@ Current rules:
 - candidate rows expose `upstream_discovery_outcome`,
   `product_acceptance_status`, `upstream_confidence`, `upstream_reason`, and
   `upstream_source_refs`;
+- finalization builds `user_visible_candidates` from accepted product
+  candidates plus source-backed legal entities that should be visible for
+  review;
+- visible rows expose `candidate_surface_status`,
+  `candidate_surface_reason`, and `candidate_surface_rank`;
+- `candidate_surface_status="accepted_product_candidate"` means the strict
+  product acceptance rules passed;
+- `candidate_surface_status="review_needed_candidate"` means the entity is
+  source-backed and legal-entity-shaped enough to show to a user, but still
+  needs human review before downstream/product acceptance;
+- already selected public candidate rows can be promoted to strict product
+  candidates when they are source-backed legal entities and have no explicit
+  rejection or non-standalone marker; this promotion does not apply to arbitrary
+  candidate-universe diagnostics;
 - `score.tier` remains a compatibility/display field and is derived from
   upstream admission in normal handoff mode;
 - source-backed candidates no longer need observed signal evidence to avoid a
@@ -559,7 +574,9 @@ Common review flags include:
 - `candidate_universe_gap`.
 
 Product candidate projection remains precision-first. Upstream universe
-retention is allowed to be broader than product account output.
+retention is allowed to be broader than product account output, and the
+user-visible candidate surface sits between them: broader than strict accepted
+product candidates, narrower than the full diagnostic candidate universe.
 
 Projection must preserve review-needed metadata across handoffs:
 
@@ -759,6 +776,7 @@ Radar exposes several diagnostic surfaces:
 - extraction recovery records;
 - post-extraction salvage outcome, records, count, and unrecovered reason;
 - candidate discovery reconciliation summary and product acceptance ledger;
+- `user_visible_candidates`, including accepted and review-needed legal rows;
 - registry lookup terms and attempts;
 - expansion target queue;
 - search expansion query variants and results grouped by target;
@@ -789,7 +807,16 @@ Current SIBUR evaluation channels:
 - `review_recall` for production-site, branch, asset, or project hits retained
   as review-needed universe entities or linked facts;
 - `precision` for strict product account candidates;
-- `product_candidate_count`, which counts only product-accepted candidate rows;
+- `visible_candidate_count`, which counts accepted plus review-needed legal
+  rows shown to the user;
+- `legal_baseline_visible_count`, which counts legal baseline targets matched
+  by that visible surface;
+- `accepted_product_candidate_count`, which counts only strict accepted product
+  rows;
+- `review_needed_candidate_count`, which counts visible legal rows that still
+  require human review;
+- `product_candidate_count`, which remains the strict product-accepted count
+  for compatibility and precision calculations;
 - `retained_upstream_lead_count`, `confirmed_upstream_lead_count`, and
   `review_needed_upstream_lead_count`, which explain upstream discovery output
   separately from strict product acceptance;
@@ -801,8 +828,12 @@ Current SIBUR evaluation channels:
   projection reasons;
 - `product_acceptance_ledger`, which gives a product-safe row-level reason for
   every retained or not-promoted upstream entity;
-- dossier responses expose both public `candidates` and `candidate_universe` so
-  evaluation counts do not drift from the candidate endpoint;
+- the ledger distinguishes selected public candidate promotion from
+  review-needed candidate-universe retention, so `accepted_product_candidate`
+  counts do not require signal evidence or hide source-backed public rows;
+- dossier responses expose public `candidates` from `user_visible_candidates`
+  when available, plus the broader `candidate_universe`, so evaluation counts
+  do not drift from the candidate endpoint;
 - false positives;
 - false negatives;
 - ambiguous matches;
@@ -828,9 +859,11 @@ review entity type was lost.
 Evaluation is a measurement layer. If it exposes poor quality, the fix should be
 planned as a follow-up slice rather than hidden inside the evaluation code.
 For candidate discovery to satisfy the current DoD, `unexplained_drop_count`
-must be zero. A zero `product_candidate_count` is acceptable only when the
-ledger explains every non-product row, and `present_not_projected` must be
-treated as a corrective defect rather than as an acceptable benchmark outcome.
+must be zero, `present_not_projected` must be zero, and a SIBUR benchmark smoke
+must show at least eight visible legal baseline targets with accepted and
+review-needed counts reported separately. A low strict `product_candidate_count`
+is acceptable only when the visible surface and ledger make every non-product
+row explicit.
 
 ## 19. Context Management
 

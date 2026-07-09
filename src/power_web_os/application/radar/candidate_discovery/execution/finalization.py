@@ -34,6 +34,7 @@ from power_web_os.application.radar.candidate_discovery.execution.finalization_m
 )
 from power_web_os.application.radar.candidate_discovery.execution.finalization_signals import (
     _signal_projection_observations,
+    _signal_projection_candidates,
     _signal_handoff_status,
     _signal_monitoring_pending_count,
 )
@@ -86,6 +87,7 @@ class FinalizationProjector:
             observations=signal_projected_observations,
             smoke_candidate_limit=context.external_budget.settings.smoke_max_candidates,
         )
+        normalized_candidates = _signal_projection_candidates(context, state, normalized_candidates)
         unresolved_gaps = self._unresolved_gaps(state, smoke_gaps)
         self._record_smoke_cap_event(state, smoke_gaps, smoke_metadata)
         universe_payload = self._candidate_universe_payload(
@@ -118,6 +120,7 @@ class FinalizationProjector:
             repair_results=repair_results,
             target_probe_payload=target_probe_payload,
             outcome_reconciliation=reconciliation.summary,
+            user_visible_candidates=reconciliation.user_visible_candidates,
             product_acceptance_ledger=reconciliation.product_acceptance_ledger,
         )
         return result, state.events, metadata
@@ -278,6 +281,7 @@ class FinalizationProjector:
         repair_results: list[dict[str, Any]],
         target_probe_payload: dict[str, Any],
         outcome_reconciliation: dict[str, Any],
+        user_visible_candidates: list[dict[str, Any]],
         product_acceptance_ledger: list[dict[str, Any]],
     ) -> dict[str, Any]:
         metadata: dict[str, Any] = {"execution_mode": "qualification_first_iterative_coverage"}
@@ -293,6 +297,7 @@ class FinalizationProjector:
         metadata.update(self._coverage_metadata(context, state))
         metadata.update(smoke_metadata)
         metadata["candidate_discovery_reconciliation"] = outcome_reconciliation
+        metadata["user_visible_candidates"] = user_visible_candidates
         metadata["product_acceptance_ledger"] = product_acceptance_ledger
         metadata["rejected_candidates"] = self._task_service.projection.rejected_candidate_summaries(
             normalized_candidates

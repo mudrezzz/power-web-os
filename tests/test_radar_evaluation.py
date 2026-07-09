@@ -6,6 +6,9 @@ from typing import Any
 
 import pytest
 
+from power_web_os.application.radar.candidate_discovery.execution.public_surface import (
+    CandidateDiscoveryPublicSurfaceProjector,
+)
 from power_web_os.radar_evaluation import (
     SIBUR_CONTOUR_RADAR_ID,
     RadarEvaluationBaseline,
@@ -26,6 +29,39 @@ def test_load_sibur_baseline_fixture_is_curated_mixed_baseline() -> None:
     assert baseline.radar_id == SIBUR_CONTOUR_RADAR_ID
     assert 10 <= len(baseline.entities) <= 20
     assert {item.entity_type for item in baseline.entities} >= {"legal_entity", "production_site"}
+
+
+def test_public_surface_promotes_source_backed_selected_legal_rows_only() -> None:
+    surface = CandidateDiscoveryPublicSurfaceProjector().project(
+        public_candidates=[
+            {
+                "candidate_id": "zapsibneftekhim",
+                "legal_name": "ZapSibNeftekhim",
+                "entity_type": "legal_entity",
+                "source_refs": ["retrieved_4"],
+                "product_acceptance_status": "review_required",
+                "product_acceptance_reason": "requires_human_review_before_product_acceptance",
+                "review_flags": ["qualification_requires_human_review", "source_backed_upstream_lead"],
+            }
+        ],
+        candidate_universe=[
+            {
+                "candidate_id": "candidate-universe-only",
+                "legal_name": "Candidate Universe Only",
+                "entity_type": "legal_entity",
+                "source_refs": ["retrieved_5"],
+                "product_acceptance_status": "review_required",
+                "review_flags": ["requires_human_review"],
+            }
+        ],
+    )
+
+    assert surface.summary["accepted_product_candidate_count"] == 1
+    assert surface.summary["review_needed_candidate_count"] == 1
+    assert surface.candidates[0]["product_acceptance_status"] == "product_candidate"
+    assert surface.candidates[0]["candidate_surface_status"] == "accepted_product_candidate"
+    assert surface.candidates[1]["product_acceptance_status"] == "review_required"
+    assert surface.candidates[1]["candidate_surface_status"] == "review_needed_candidate"
 
 
 def test_evaluation_matches_exact_alias_identifier_and_review_needed_site() -> None:
@@ -157,6 +193,119 @@ def test_evaluation_separates_upstream_retention_from_product_acceptance() -> No
     assert report["candidate_discovery_reconciliation"]["product_candidate_zero_explained"] is True
     assert report["benchmark_target_funnel"][0]["projected"] is True
     assert report["benchmark_target_funnel"][0]["path_reason"] == "projected"
+
+
+def test_evaluation_counts_visible_candidate_surface_separately_from_product_acceptance() -> None:
+    baseline = RadarEvaluationBaseline(
+        baseline_id="visible-surface",
+        version="v1",
+        radar_id=SIBUR_CONTOUR_RADAR_ID,
+        description="Visible candidate surface fixture.",
+        entities=tuple(
+            RadarEvaluationEntity(
+                baseline_id=f"candidate-{index}",
+                canonical_name=f"Candidate {index}",
+                entity_type="legal_entity",
+            )
+            for index in range(1, 10)
+        ),
+    )
+    candidates: list[dict[str, Any]] = []
+    for index in range(1, 9):
+        accepted = index <= 3
+        candidates.append({
+            "legal_name": f"Candidate {index}",
+            "entity_type": "legal_entity",
+            "evidence_refs": [f"src_{index}"],
+            "upstream_discovery_outcome": "confirmed_upstream_lead" if accepted else "review_needed_upstream_lead",
+            "product_acceptance_status": "product_candidate" if accepted else "review_required",
+            "candidate_surface_status": (
+                "accepted_product_candidate" if accepted else "review_needed_candidate"
+            ),
+            "candidate_surface_reason": (
+                "accepted_by_product_candidate_rules"
+                if accepted
+                else "source_backed_legal_entity_requires_review"
+            ),
+        })
+    dossier = {
+        "summary": {"execution_outcome": "completed_with_candidates"},
+        "sources": [
+            {"evidence_ref": f"src_{index}", "url": f"https://example.test/{index}", "state": "used"}
+            for index in range(1, 9)
+        ],
+        "candidates": candidates,
+        "candidate_universe": candidates,
+        "candidate_discovery_reconciliation": {
+            "unexplained_drop_count": 0,
+            "visible_candidate_count": 8,
+            "accepted_product_candidate_count": 3,
+            "review_needed_candidate_count": 5,
+        },
+    }
+
+    report = evaluate_radar_dossier(
+        run={"run_id": "radar-run-visible", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},
+        dossier=dossier,
+        baseline=baseline,
+    )
+
+    assert report["metrics"]["legal_baseline_visible_count"] == 8
+    assert report["metrics"]["visible_candidate_count"] == 8
+    assert report["metrics"]["accepted_product_candidate_count"] == 3
+    assert report["metrics"]["review_needed_candidate_count"] == 5
+    assert report["metrics"]["product_candidate_count"] == 3
+    assert report["metrics"]["precision"] == 1.0
+    assert report["metrics"]["false_negative_count"] == 1
+
+
+def test_evaluation_gives_specific_reason_for_generated_unselected_legal_target() -> None:
+    baseline = RadarEvaluationBaseline(
+        baseline_id="protected-legal-selection",
+        version="v1",
+        radar_id=SIBUR_CONTOUR_RADAR_ID,
+        description="Protected legal target selection fixture.",
+        entities=(
+            RadarEvaluationEntity(
+                baseline_id="poliom",
+                canonical_name="ООО «Полиом»",
+                aliases=("Полиом",),
+                entity_type="legal_entity",
+            ),
+        ),
+    )
+    dossier = {
+        "summary": {"execution_outcome": "stopped_for_review"},
+        "candidates": [],
+        "candidate_universe": [],
+        "expansion_target_queue": [
+            {
+                "target_id": "known_subsidiary_or_legal_entity_target:poliom",
+                "target_label": "Полиом",
+                "target_type": "known_subsidiary_or_legal_entity_target",
+                "target_origin": "benchmark_context",
+            }
+        ],
+        "targets_not_searched": [
+            {
+                "target_id": "known_subsidiary_or_legal_entity_target:poliom",
+                "target_label": "Полиом",
+                "target_type": "known_subsidiary_or_legal_entity_target",
+                "not_searched_reason": "not_selected",
+            }
+        ],
+    }
+
+    report = evaluate_radar_dossier(
+        run={"run_id": "radar-run-poliom", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},
+        dossier=dossier,
+        baseline=baseline,
+    )
+
+    assert report["false_negative_diagnostics"][0]["bucket"] == "expansion_not_selected"
+    assert report["benchmark_target_funnel"][0]["path_reason"] == (
+        "selection_cap_exhausted_for_protected_legal_target"
+    )
 
 
 def test_evaluation_explains_zero_product_candidates_with_reconciliation_ledger() -> None:

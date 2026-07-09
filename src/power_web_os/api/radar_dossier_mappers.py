@@ -37,7 +37,6 @@ def dossier_response(
 ) -> RadarRunDossierResponse:
     artifact = output.artifact_payload if output is not None else {}
     persisted_run_metadata = _dict(run.run_metadata)
-    candidates = _list(artifact.get("candidates"))
     sources = _list(artifact.get("sources"))
     run_metadata = _dict(artifact.get("run_metadata"))
     discovery_plan = _dict(run_metadata.get("discovery_plan"))
@@ -65,6 +64,7 @@ def dossier_response(
     linked_entity_facts = _list(execution_results.get("linked_entity_facts"))
     entity_resolution_warnings = _list(execution_results.get("entity_resolution_warnings"))
     candidate_universe = _list(execution_results.get("candidate_universe"))
+    candidates = _list(execution_results.get("user_visible_candidates")) or _list(artifact.get("candidates"))
     candidate_discovery_reconciliation = _dict(execution_results.get("candidate_discovery_reconciliation"))
     product_acceptance_ledger = _list(execution_results.get("product_acceptance_ledger"))
     upstream_disambiguation_results = _list(execution_results.get("upstream_disambiguation_results"))
@@ -201,6 +201,18 @@ def dossier_response(
             diagnostic_source_count=source_lifecycle_summary.total_count,
             skipped_source_count=skipped_source_count,
             candidate_count=len(candidates),
+            visible_candidate_count=_int(
+                candidate_discovery_reconciliation.get("visible_candidate_count"),
+                default=len(candidates),
+            ),
+            accepted_product_candidate_count=_int(
+                candidate_discovery_reconciliation.get("accepted_product_candidate_count"),
+                default=_accepted_product_candidate_count(candidates),
+            ),
+            review_needed_candidate_count=_int(
+                candidate_discovery_reconciliation.get("review_needed_candidate_count"),
+                default=_review_needed_candidate_count(candidates),
+            ),
             smoke_candidate_cap=_optional_int(execution_results.get("smoke_candidate_cap")),
             promoted_candidate_count=_int(execution_results.get("promoted_candidate_count"), default=len(candidates)),
             diagnostic_candidate_count=_int(execution_results.get("diagnostic_candidate_count"), default=0),
@@ -235,6 +247,27 @@ def _execution_outcome(
     if candidate_count:
         return "completed_with_candidates", ""
     return "completed_empty", ""
+
+
+def _accepted_product_candidate_count(candidates: list[dict[str, Any]]) -> int:
+    return len({
+        str(item.get("legal_name") or "").casefold()
+        for item in candidates
+        if str(item.get("legal_name") or "").strip()
+        and str(item.get("product_acceptance_status") or "") == "product_candidate"
+    })
+
+
+def _review_needed_candidate_count(candidates: list[dict[str, Any]]) -> int:
+    return len({
+        str(item.get("legal_name") or "").casefold()
+        for item in candidates
+        if str(item.get("legal_name") or "").strip()
+        and (
+            str(item.get("candidate_surface_status") or "") == "review_needed_candidate"
+            or str(item.get("product_acceptance_status") or "") == "review_required"
+        )
+    })
 
 
 def _checkpoint_reason(checkpoint_summary: dict[str, Any]) -> str:

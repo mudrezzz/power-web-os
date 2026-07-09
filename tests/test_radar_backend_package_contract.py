@@ -93,6 +93,7 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.execution.orchestrator",
     "power_web_os.application.radar.candidate_discovery.execution.options",
     "power_web_os.application.radar.candidate_discovery.execution.projection",
+    "power_web_os.application.radar.candidate_discovery.execution.public_surface",
     "power_web_os.application.radar.candidate_discovery.execution.reconciliation",
     "power_web_os.application.radar.candidate_discovery.execution.signal_modes",
     "power_web_os.application.radar.candidate_discovery.execution.service_contracts",
@@ -650,6 +651,10 @@ def test_candidate_discovery_execution_service_classes_are_importable() -> None:
         "power_web_os.application.radar.candidate_discovery.execution.projection": [
             "CandidateProjectionService",
             "PipelineEventFactory",
+        ],
+        "power_web_os.application.radar.candidate_discovery.execution.public_surface": [
+            "CandidateDiscoveryProductAcceptancePromoter",
+            "CandidateDiscoveryPublicSurfaceProjector",
         ],
         "power_web_os.application.radar.candidate_discovery.execution.service_contracts": [
             "CandidateDiscoveryFactory",

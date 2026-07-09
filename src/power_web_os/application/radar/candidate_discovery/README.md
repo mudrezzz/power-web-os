@@ -83,6 +83,9 @@ Current package-owned source-of-truth modules:
 - `execution/reconciliation.py`: final product-safe accounting between public
   candidate rows, universe-only upstream leads, diagnostic gaps, product
   acceptance, and projection reasons.
+- `execution/public_surface.py`: user-visible candidate surface projection:
+  accepted product candidates plus review-needed legal candidates with strict
+  product acceptance kept as a separate subset.
 - `execution/task_budget.py`: candidate-discovery task budget settings,
   semantic task reserve decisions, counters, warnings, and exhaustion events.
 - `execution/useful_budget.py`: useful-result retry budget and retry task

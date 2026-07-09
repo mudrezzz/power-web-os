@@ -321,9 +321,14 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     candidate = candidates["candidates"][0]
     assert candidate["legal_name"] == "Candidate A"
     assert candidate["score"]["tier"] == "Tier 1"
+    assert candidate["entity_type"] == "legal_entity"
     assert candidate["upstream_discovery_outcome"] == "confirmed_upstream_lead"
     assert candidate["product_acceptance_status"] == "product_candidate"
     assert candidate["public_result_status"] == "public_candidate"
+    assert candidate["candidate_surface_status"] == "accepted_product_candidate"
+    assert candidates["candidates"][1]["legal_name"] == "Candidate B"
+    assert candidates["candidates"][1]["product_acceptance_status"] == "review_required"
+    assert candidates["candidates"][1]["candidate_surface_status"] == "review_needed_candidate"
     assert candidate["qualification"][0]["source_usages"][0]["source_ref"] == "src_1"
     assert candidate["qualification"][0]["evidence_findings"][0]["why_it_matches_rule"]
     assert candidate["signals"][0]["score_evaluation"]["applied_score"] == 2
@@ -376,20 +381,32 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["coverage_summary"]["analyzed_source_reasons"] == ["not_used_by_candidate"]
     assert dossier["candidate_universe"][0]["status"] == "qualified"
     assert dossier["candidate_universe"][0]["public_result_status"] == "public_candidate"
+    assert dossier["candidate_universe"][0]["candidate_surface_status"] == "accepted_product_candidate"
     assert dossier["candidate_universe"][0]["entity_type"] == "legal_entity"
     assert dossier["candidate_universe"][0]["resolution_status"] == "resolved"
     assert dossier["candidate_universe"][0]["linked_fact_count"] == 1
-    assert dossier["candidate_universe"][1]["entity_type"] == "branch"
-    assert dossier["candidate_universe"][1]["resolution_status"] == "review_needed"
-    assert dossier["candidate_universe"][1]["not_candidate_reason"] == "not_standalone_legal_entity"
-    assert dossier["candidate_universe"][1]["public_projection_reason"] == "review_entity_not_standalone_legal_entity"
-    assert "registry_match_ambiguous" in dossier["candidate_universe"][1]["review_flags"]
+    assert dossier["candidate_universe"][1]["entity_type"] == "legal_entity"
+    assert dossier["candidate_universe"][1]["candidate_surface_status"] == "review_needed_candidate"
+    assert dossier["candidate_universe"][2]["entity_type"] == "branch"
+    assert dossier["candidate_universe"][2]["resolution_status"] == "review_needed"
+    assert dossier["candidate_universe"][2]["not_candidate_reason"] == "not_standalone_legal_entity"
+    assert dossier["candidate_universe"][2]["public_projection_reason"] == "review_entity_not_standalone_legal_entity"
+    assert "registry_match_ambiguous" in dossier["candidate_universe"][2]["review_flags"]
     assert dossier["candidate_discovery_reconciliation"]["unexplained_drop_count"] == 0
-    assert dossier["candidate_discovery_reconciliation"]["raw_upstream_lead_count"] == 2
+    assert dossier["candidate_discovery_reconciliation"]["raw_upstream_lead_count"] == 3
+    assert dossier["candidate_discovery_reconciliation"]["visible_candidate_count"] == 2
+    assert dossier["candidate_discovery_reconciliation"]["accepted_product_candidate_count"] == 1
+    assert dossier["candidate_discovery_reconciliation"]["review_needed_candidate_count"] == 1
+    assert dossier["summary"]["candidate_count"] == 2
+    assert dossier["summary"]["visible_candidate_count"] == 2
+    assert dossier["summary"]["accepted_product_candidate_count"] == 1
+    assert dossier["summary"]["review_needed_candidate_count"] == 1
     assert dossier["candidates"][0]["legal_name"] == "Candidate A"
     assert dossier["candidates"][0]["product_acceptance_status"] == "product_candidate"
     assert dossier["candidates"][0]["public_result_status"] == "public_candidate"
-    assert dossier["product_acceptance_ledger"][1]["public_result_status"] == "retained_in_candidate_universe"
+    assert dossier["candidates"][1]["legal_name"] == "Candidate B"
+    assert dossier["candidates"][1]["candidate_surface_status"] == "review_needed_candidate"
+    assert dossier["product_acceptance_ledger"][2]["public_result_status"] == "retained_in_candidate_universe"
     assert candidates["candidate_discovery_reconciliation"]["unexplained_drop_count"] == 0
     assert candidates["product_acceptance_ledger"][0]["legal_name"] == "Candidate A"
     assert dossier["entity_resolution_results"][1]["entity_type"] == "project"
@@ -419,7 +436,7 @@ def test_post_radar_run_queues_work_and_polling_reads_output_after_worker_execut
     assert dossier["signal_search_statuses"][1]["search_status"] == "not_searched_budget_limited"
     assert dossier["search_plan"][0]["query_id"] == "q1"
     assert dossier["search_plan"][0]["source_refs"] == ["src_1"]
-    assert dossier["search_plan"][0]["candidate_refs"] == ["candidate-a"]
+    assert dossier["search_plan"][0]["candidate_refs"] == ["candidate-a", "candidate-b"]
     assert dossier["sources"][0]["usage_status"] == "used"
     assert {usage["subject_type"] for usage in dossier["sources"][0]["usages"]} == {"candidate", "qualification", "signal"}
     assert [event["event_type"] for event in dossier["timeline"]][0] == "run_queued"
@@ -1191,6 +1208,30 @@ def _artifact() -> dict[str, Any]:
                         "product_acceptance_reason": "deterministic_qualification_and_upstream_evidence_passed",
                         "public_result_status": "public_candidate",
                         "public_projection_reason": "promoted_to_public_candidate_row",
+                        "candidate_surface_status": "accepted_product_candidate",
+                        "candidate_surface_reason": "accepted_by_product_candidate_rules",
+                    },
+                    {
+                        "candidate_id": "candidate-b",
+                        "legal_name": "Candidate B",
+                        "status": "unknown_review_needed",
+                        "origin_task_id": "discover-q1",
+                        "source_refs": ["src_1"],
+                        "gate_results": [],
+                        "rejection_reasons": [],
+                        "coverage_flags": [],
+                        "entity_type": "legal_entity",
+                        "resolution_status": "review_needed",
+                        "linked_fact_count": 0,
+                        "upstream_discovery_outcome": "review_needed_upstream_lead",
+                        "product_acceptance_status": "review_required",
+                        "upstream_confidence": "medium",
+                        "upstream_reason": "Source-backed legal entity retained for user review.",
+                        "product_acceptance_reason": "requires_human_review_before_product_acceptance",
+                        "public_result_status": "review_needed_candidate",
+                        "public_projection_reason": "source_backed_legal_entity_requires_review",
+                        "candidate_surface_status": "review_needed_candidate",
+                        "candidate_surface_reason": "source_backed_legal_entity_requires_review",
                     },
                     {
                         "candidate_id": "review-gubkin-plant",
@@ -1219,12 +1260,115 @@ def _artifact() -> dict[str, Any]:
                         "public_projection_reason": "review_entity_not_standalone_legal_entity",
                     }
                 ],
+                "user_visible_candidates": [
+                    {
+                        "candidate_id": "candidate-a",
+                        "legal_name": "Candidate A",
+                        "description": "Industrial candidate with maintenance agenda.",
+                        "entity_type": "legal_entity",
+                        "score": {"fit_score": 2, "intent_score": 2, "tier": "Tier 1"},
+                        "review_flags": ["signal_requires_human_review"],
+                        "evidence_refs": ["src_1"],
+                        "upstream_discovery_outcome": "confirmed_upstream_lead",
+                        "product_acceptance_status": "product_candidate",
+                        "upstream_confidence": "high",
+                        "upstream_reason": "Source-backed qualification evidence satisfies the candidate-discovery rules.",
+                        "upstream_source_refs": ["src_1"],
+                        "product_acceptance_reason": "deterministic_qualification_and_upstream_evidence_passed",
+                        "public_result_status": "public_candidate",
+                        "public_projection_reason": "promoted_to_public_candidate_row",
+                        "candidate_surface_status": "accepted_product_candidate",
+                        "candidate_surface_reason": "accepted_by_product_candidate_rules",
+                        "candidate_surface_rank": 1,
+                        "qualification": [
+                            {
+                                "criterion_code": "Q1",
+                                "criterion": "Belongs to target industrial group",
+                                "status": "confirmed",
+                                "confidence": "high",
+                                "rationale": "Source confirms the relationship.",
+                                "evidence_refs": ["src_1"],
+                                "rule_id": "rule-q1",
+                                "rule_text_snapshot": "Candidate must belong to target group.",
+                                "operator": "AND",
+                                "requirement_level": "required",
+                                "confidence_policy": "trusted",
+                                "source_usages": [{"source_ref": "src_1", "source_name": "Candidate A modernization"}],
+                                "evidence_findings": [
+                                    {
+                                        "source_ref": "src_1",
+                                        "fact": "Candidate A belongs to target group.",
+                                        "excerpt": "Candidate A reports maintenance modernization.",
+                                        "why_it_matches_rule": "The source states the relevant relationship.",
+                                    }
+                                ],
+                                "cross_validation": {"required": False, "status": "not_required"},
+                                "requirement_evaluation": {"requirement_level": "required", "satisfied": True},
+                                "final_assessment": "matches",
+                            }
+                        ],
+                        "signals": [
+                            {
+                                "signal_code": "S1",
+                                "signal": "Maintenance modernization",
+                                "status": "observed",
+                                "score": 2,
+                                "confidence": "high",
+                                "summary": "Modernization is explicit.",
+                                "evidence_refs": ["src_1"],
+                                "source_usages": [{"source_ref": "src_1", "source_name": "Candidate A modernization"}],
+                                "evidence_findings": [
+                                    {
+                                        "source_ref": "src_1",
+                                        "fact": "Modernization is active.",
+                                        "excerpt": "maintenance modernization",
+                                        "why_it_matches_signal": "Maintenance modernization matches S1.",
+                                        "why_score_applies": "Direct evidence supports max score.",
+                                    }
+                                ],
+                                "cross_validation": {"required": False, "status": "not_required"},
+                                "score_evaluation": {
+                                    "scale": "0-2",
+                                    "applied_score": 2,
+                                    "max_score": 2,
+                                    "rule_snapshot": "2: direct evidence",
+                                    "explanation": "Direct source-backed signal.",
+                                },
+                            }
+                        ],
+                    },
+                    {
+                        "candidate_id": "candidate-b",
+                        "legal_name": "Candidate B",
+                        "description": "",
+                        "entity_type": "legal_entity",
+                        "score": {"fit_score": 0, "intent_score": 0, "tier": "Review needed"},
+                        "review_flags": ["review_needed_candidate"],
+                        "evidence_refs": ["src_1"],
+                        "qualification": [],
+                        "signals": [],
+                        "upstream_discovery_outcome": "review_needed_upstream_lead",
+                        "product_acceptance_status": "review_required",
+                        "upstream_confidence": "medium",
+                        "upstream_reason": "Source-backed legal entity retained for user review.",
+                        "upstream_source_refs": ["src_1"],
+                        "product_acceptance_reason": "requires_human_review_before_product_acceptance",
+                        "public_result_status": "review_needed_candidate",
+                        "public_projection_reason": "source_backed_legal_entity_requires_review",
+                        "candidate_surface_status": "review_needed_candidate",
+                        "candidate_surface_reason": "source_backed_legal_entity_requires_review",
+                        "candidate_surface_rank": 2,
+                    },
+                ],
                 "candidate_discovery_reconciliation": {
-                    "raw_upstream_lead_count": 2,
+                    "raw_upstream_lead_count": 3,
                     "public_candidate_count": 1,
-                    "candidate_universe_count": 2,
+                    "visible_candidate_count": 2,
+                    "accepted_product_candidate_count": 1,
+                    "review_needed_candidate_count": 1,
+                    "candidate_universe_count": 3,
                     "unresolved_gap_count": 0,
-                    "ledger_entry_count": 2,
+                    "ledger_entry_count": 3,
                     "product_candidate_count": 1,
                     "universe_only_count": 1,
                     "not_promoted_count": 0,
@@ -1244,7 +1388,24 @@ def _artifact() -> dict[str, Any]:
                         "product_acceptance_reason": "deterministic_qualification_and_upstream_evidence_passed",
                         "public_result_status": "public_candidate",
                         "public_projection_reason": "promoted_to_public_candidate_row",
+                        "candidate_surface_status": "accepted_product_candidate",
+                        "candidate_surface_reason": "accepted_by_product_candidate_rules",
                         "review_flags": ["signal_requires_human_review"],
+                    },
+                    {
+                        "candidate_id": "candidate-b",
+                        "legal_name": "Candidate B",
+                        "collection": "candidate_universe",
+                        "entity_type": "legal_entity",
+                        "source_refs": ["src_1"],
+                        "upstream_discovery_outcome": "review_needed_upstream_lead",
+                        "product_acceptance_status": "review_required",
+                        "product_acceptance_reason": "requires_human_review_before_product_acceptance",
+                        "public_result_status": "review_needed_candidate",
+                        "public_projection_reason": "source_backed_legal_entity_requires_review",
+                        "candidate_surface_status": "review_needed_candidate",
+                        "candidate_surface_reason": "source_backed_legal_entity_requires_review",
+                        "review_flags": ["review_needed_candidate"],
                     },
                     {
                         "candidate_id": "review-gubkin-plant",
@@ -1522,6 +1683,9 @@ def _artifact() -> dict[str, Any]:
                 "product_acceptance_reason": "deterministic_qualification_and_upstream_evidence_passed",
                 "public_result_status": "public_candidate",
                 "public_projection_reason": "promoted_to_public_candidate_row",
+                "candidate_surface_status": "accepted_product_candidate",
+                "candidate_surface_reason": "accepted_by_product_candidate_rules",
+                "candidate_surface_rank": 1,
                 "qualification": [
                     {
                         "criterion_code": "Q1",

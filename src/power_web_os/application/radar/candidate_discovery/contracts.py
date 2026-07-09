@@ -97,6 +97,8 @@ class RadarCandidateUniverseEntry(BaseModel):
     product_acceptance_reason: str = ""
     public_result_status: str = ""
     public_projection_reason: str = ""
+    candidate_surface_status: str = ""
+    candidate_surface_reason: str = ""
 
 
 class RadarCoverageCheckRecord(BaseModel):
@@ -355,6 +357,7 @@ class LiveRadarCandidate(BaseModel):
     candidate_id: str
     legal_name: str
     description: str = ""
+    entity_type: RadarEntityType = "legal_entity"
     qualification: list[LiveRadarQualificationResult]
     signals: list[LiveRadarSignalResult]
     score: LiveRadarScore
@@ -368,6 +371,9 @@ class LiveRadarCandidate(BaseModel):
     product_acceptance_reason: str = ""
     public_result_status: str = "public_candidate"
     public_projection_reason: str = "promoted_to_public_candidate_row"
+    candidate_surface_status: str = "review_needed_candidate"
+    candidate_surface_reason: str = "requires_human_review_before_product_acceptance"
+    candidate_surface_rank: int | None = None
 
 
 class WebSearchProviderResult(BaseModel):

@@ -130,6 +130,13 @@ or signal evidence. If product sources are zero, inspect
 `source_lifecycle_summary` and `summary.diagnostic_source_count` before
 concluding that retrieval found nothing.
 
+Candidate discovery now separates visible candidate rows from strict product
+acceptance. API/dossier `candidates` include accepted product candidates and
+review-needed legal candidates. Use `accepted_product_candidate_count` or
+`product_candidate_count` for strict precision, and use
+`visible_candidate_count` plus `review_needed_candidate_count` to understand
+what a user can actually inspect after a run.
+
 Complex live Radar runs should be treated as TDD/preflight-gated work. Before a
 manual `Run radar` is used as evidence of quality, the fast preflight/recorded
 fixture checks should verify active definition wiring, configured source bases,

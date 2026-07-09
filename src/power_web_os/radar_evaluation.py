@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import json
-import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +23,17 @@ from power_web_os.radar_evaluation_matching import (
     match_rank,
     normalize_name,
     review_entity_name_match,
+)
+from power_web_os.radar_evaluation_observed import (
+    RadarObservedEntity,
+    accepted_product_candidate_row_count,
+    candidate_surface_rows,
+    evidence_quality,
+    observed_entities,
+    optional_digits,
+    review_needed_candidate_row_count,
+    source_index,
+    visible_candidate_observations,
 )
 SIBUR_CONTOUR_RADAR_ID = "benchmark-sibur-holding-contour"
 EVALUATION_ARTIFACT_VERSION = "0.7.6.3"
@@ -54,21 +64,6 @@ class RadarEvaluationBaseline:
 
 
 @dataclass(slots=True)
-class RadarObservedEntity:
-    name: str
-    entity_type: str
-    source: str
-    source_refs: tuple[str, ...] = ()
-    review_flags: tuple[str, ...] = ()
-    inn: str | None = None
-    ogrn: str | None = None
-    payload: dict[str, Any] = field(default_factory=dict)
-
-    @property
-    def normalized_name(self) -> str:
-        return normalize_name(self.name)
-
-@dataclass(slots=True)
 class RadarEvaluationMatch:
     baseline: RadarEvaluationEntity
     observed: RadarObservedEntity
@@ -84,8 +79,8 @@ def load_evaluation_baseline(path: Path) -> RadarEvaluationBaseline:
             canonical_name=str(item["canonical_name"]),
             entity_type=str(item["entity_type"]),
             aliases=tuple(str(value) for value in item.get("aliases", [])),
-            inn=_optional_digits(item.get("inn")),
-            ogrn=_optional_digits(item.get("ogrn")),
+            inn=optional_digits(item.get("inn")),
+            ogrn=optional_digits(item.get("ogrn")),
             expected_relation=str(item.get("expected_relation") or ""),
             expected_source_hints=tuple(str(value) for value in item.get("expected_source_hints", [])),
             evaluation_weight=float(item.get("evaluation_weight", 1.0)),
@@ -113,15 +108,17 @@ def evaluate_radar_dossier(
     run_radar_id = str(run.get("radar_id") or dossier.get("radar_id") or "")
     if run_radar_id != baseline.radar_id:
         raise ValueError(f"Baseline {baseline.baseline_id} targets {baseline.radar_id}, got run for {run_radar_id}.")
-    observed = _observed_entities(dossier)
-    source_index = _source_index(dossier)
-    matches, ambiguous = _match_entities(baseline=baseline, observed=observed, source_index=source_index)
+    observed = observed_entities(dossier)
+    sources_by_ref = source_index(dossier)
+    matches, ambiguous = _match_entities(baseline=baseline, observed=observed, source_index=sources_by_ref)
+    visible_observations = visible_candidate_observations(observed)
+    visible_rows = candidate_surface_rows(dossier)
     matched_baseline_ids = {match.baseline.baseline_id for match in matches}
     ambiguous_baseline_ids = {match.baseline.baseline_id for match in ambiguous}
     product_observations = [
         item
-        for item in observed
-        if item.source == "product_candidate" and _is_product_candidate(item.payload)
+        for item in visible_observations
+        if _is_product_candidate(item.payload)
     ]
     matched_product_ids = {
         id(match.observed)
@@ -150,6 +147,14 @@ def evaluate_radar_dossier(
     review_baseline = [item for item in baseline.entities if item.entity_type != "legal_entity" and item.evaluation_weight > 0]
     strict_hits = {match.baseline.baseline_id for match in matches if match.baseline.entity_type == "legal_entity"}
     review_hits = {match.baseline.baseline_id for match in matches if match.baseline.entity_type != "legal_entity"}
+    legal_visible_hits = {
+        match.baseline.baseline_id
+        for match in [*matches, *ambiguous]
+        if match.baseline.entity_type == "legal_entity"
+        and match.observed.source == "product_candidate"
+    }
+    accepted_product_count = accepted_product_candidate_row_count(visible_rows)
+    review_needed_count = review_needed_candidate_row_count(visible_rows)
     summary = _dict(dossier.get("summary"))
     evidence_quality_values = [match.evidence_quality for match in matches + ambiguous] + ["missing"] * len(false_negatives)
     upstream_counts = _upstream_lead_counts(dossier)
@@ -189,6 +194,10 @@ def evaluate_radar_dossier(
             "confirmed_upstream_lead_count": upstream_counts["confirmed_upstream_lead_count"],
             "review_needed_upstream_lead_count": upstream_counts["review_needed_upstream_lead_count"],
             "product_candidate_count": len(product_observations),
+            "visible_candidate_count": len(visible_rows),
+            "accepted_product_candidate_count": accepted_product_count,
+            "review_needed_candidate_count": review_needed_count,
+            "legal_baseline_visible_count": len(legal_visible_hits),
             "unexplained_drop_count": int(reconciliation.get("unexplained_drop_count") or 0),
             "present_not_projected_count": funnel_reason_counts.get("present_not_projected", 0),
         },
@@ -217,11 +226,15 @@ def evaluate_radar_dossier(
         "diagnostics": {
             "observed_entity_count": len(observed),
             "product_candidate_count": len(product_observations),
+            "visible_candidate_count": len(visible_rows),
+            "accepted_product_candidate_count": accepted_product_count,
+            "review_needed_candidate_count": review_needed_count,
+            "legal_baseline_visible_count": len(legal_visible_hits),
             **upstream_counts,
             "candidate_discovery_reconciliation": reconciliation,
             "product_acceptance_ledger_count": len(product_acceptance_ledger),
             "benchmark_target_path_reasons": funnel_reason_counts,
-            "source_lifecycle_count": len(source_index),
+            "source_lifecycle_count": len(sources_by_ref),
             "stopped_for_review_reason": dossier.get("stopped_for_review_reason"),
         },
     }
@@ -291,79 +304,8 @@ def _match(
         observed=observed,
         match_type=match_type,
         confidence=confidence,
-        evidence_quality=_evidence_quality(observed, source_index),
+        evidence_quality=evidence_quality(observed, source_index),
     )
-
-
-def _observed_entities(dossier: dict[str, Any]) -> list[RadarObservedEntity]:
-    observed: list[RadarObservedEntity] = []
-    for item in _list(dossier.get("candidates")):
-        _append_observed(observed, item, source="product_candidate", default_type="legal_entity")
-    for field_name, source, default_type in (
-        ("candidate_universe", "candidate_universe", "unknown_entity"),
-        ("entity_resolution_results", "entity_resolution", "unknown_entity"),
-        ("upstream_disambiguation_results", "upstream_disambiguation", "unknown_entity"),
-        ("linked_entity_facts", "linked_entity_fact", "unknown_entity"),
-        ("unresolved_candidate_gaps", "unresolved_gap", "unknown_entity"),
-    ):
-        for item in _list(dossier.get(field_name)):
-            _append_observed(observed, item, source=source, default_type=default_type)
-    return _dedupe_observed(observed)
-
-
-def _append_observed(observed: list[RadarObservedEntity], item: Any, *, source: str, default_type: str) -> None:
-    if not isinstance(item, dict):
-        return
-    name = _first_string(item, "legal_name", "name", "entity_name", "linked_legal_name", "canonical_name")
-    if not name:
-        return
-    observed.append(
-        RadarObservedEntity(
-            name=name,
-            entity_type=str(item.get("entity_type") or default_type),
-            source=source,
-            source_refs=tuple(sorted(_source_refs(item))),
-            review_flags=tuple(str(value) for value in item.get("review_flags", []) if isinstance(value, str)),
-            inn=_optional_digits(item.get("inn")),
-            ogrn=_optional_digits(item.get("ogrn")),
-            payload=item,
-        )
-    )
-
-
-def _dedupe_observed(items: list[RadarObservedEntity]) -> list[RadarObservedEntity]:
-    result: list[RadarObservedEntity] = []
-    seen: set[tuple[str, str, str]] = set()
-    for item in items:
-        key = (item.normalized_name, item.source, item.entity_type)
-        if key not in seen:
-            seen.add(key)
-            result.append(item)
-    return result
-
-
-def _source_index(dossier: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    result: dict[str, dict[str, Any]] = {}
-    for item in _list(dossier.get("sources")) + _list(dossier.get("source_lifecycle")):
-        if not isinstance(item, dict):
-            continue
-        ref = _first_string(item, "evidence_ref", "source_ref", "id")
-        if ref:
-            result[ref] = item
-    return result
-
-
-def _evidence_quality(observed: RadarObservedEntity, source_index: dict[str, dict[str, Any]]) -> str:
-    if not observed.source_refs:
-        return "weak"
-    sources = [source_index.get(ref, {}) for ref in observed.source_refs]
-    if any("sibur" in str(source.get("url") or source.get("title") or "").lower() for source in sources):
-        return "strong"
-    if any(source.get("state") == "used" or source.get("verification_state") == "reachable" for source in sources):
-        return "strong"
-    if any(source for source in sources):
-        return "medium"
-    return "weak"
 
 
 def _followup_buckets(
@@ -428,38 +370,6 @@ def _observed_payload(item: RadarObservedEntity) -> dict[str, Any]:
         "source_refs": list(item.source_refs),
         "review_flags": list(item.review_flags),
     }
-
-
-def _source_refs(payload: Any) -> set[str]:
-    refs: set[str] = set()
-    if isinstance(payload, dict):
-        for key, value in payload.items():
-            if key in {"source_ref", "source_refs", "evidence_ref", "evidence_refs"}:
-                if isinstance(value, str):
-                    refs.add(value)
-                elif isinstance(value, list):
-                    refs.update(str(item) for item in value if item)
-            elif isinstance(value, (dict, list)):
-                refs.update(_source_refs(value))
-    elif isinstance(payload, list):
-        for item in payload:
-            refs.update(_source_refs(item))
-    return refs
-
-
-def _first_string(payload: dict[str, Any], *keys: str) -> str:
-    for key in keys:
-        value = payload.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-    return ""
-
-
-def _optional_digits(value: Any) -> str | None:
-    if value is None:
-        return None
-    digits = re.sub(r"\D+", "", str(value))
-    return digits or None
 
 
 def _ratio(numerator: int, denominator: int) -> float | None:

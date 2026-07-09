@@ -49,6 +49,11 @@ Read it before changing this package.
 - `reconciliation.py`: `CandidateDiscoveryOutcomeReconciler` for public
   candidate, universe-only lead, diagnostic gap, product-acceptance, and
   projection-reason ledger output.
+- `public_surface.py`: `CandidateDiscoveryPublicSurfaceProjector` and
+  `CandidateDiscoveryProductAcceptancePromoter` for the `user_visible_candidates`
+  surface. It shows accepted product candidates and review-needed legal
+  candidates separately from universe-only diagnostics, and promotes only
+  already selected source-backed legal public rows.
 - `task_runner.py`: `TaskExecutionService` for provider-neutral task execution,
   gate passes, retries, and candidate task utilities.
 - `task_runner_payloads.py`: private small payload/schema helpers used by task execution.
@@ -120,8 +125,10 @@ to `CandidateDiscoveryOrchestrator`, `DiscoveryPhaseExecutor`,
 `GatePhaseExecutor`, `CoveragePhaseExecutor`, `ExpansionPhaseExecutor`,
 `CandidateDiscoverySignalHandoffProjector`,
 `SignalCompatibilityPhaseExecutor`, `FinalizationProjector`,
-`CandidateDiscoveryOutcomeReconciler`, `TaskExecutionService`, `ExecutionResultMerger`,
-`CandidateProjectionService`, `PipelineEventFactory`, `SmokeLimitPolicy`, or
+`CandidateDiscoveryOutcomeReconciler`,
+`CandidateDiscoveryPublicSurfaceProjector`, `TaskExecutionService`,
+`ExecutionResultMerger`, `CandidateProjectionService`,
+`PipelineEventFactory`, `SmokeLimitPolicy`, or
 `ExecutionMetadataFactory`. Private `_helper` functions are acceptable only for
 small local pure transformations and product-safe payload/summary builders.
 Do not hide phase behavior inside a large private function called by a service

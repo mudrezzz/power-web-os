@@ -282,6 +282,36 @@ It does not own retrieval, extraction, admission, product acceptance policy,
 signal monitoring, or benchmark scoring. It only makes the already projected
 candidate-discovery output auditable.
 
+### `CandidateDiscoveryPublicSurface`
+
+Owns the immutable projection payload for `user_visible_candidates`: accepted
+product rows and source-backed legal entities that must be visible for human
+review.
+
+It does not own candidate admission, strict product acceptance, API transport,
+or benchmark scoring.
+
+### `CandidateDiscoveryProductAcceptancePromoter`
+
+Owns conservative promotion of already selected public candidate rows. A
+source-backed `legal_entity` row that has reached the public candidate surface
+and has no explicit rejection / non-standalone marker may become an accepted
+product candidate even when upstream qualification still carries review flags.
+
+It does not promote arbitrary candidate-universe rows, benchmark-only gaps,
+production sites, branches, rejected entities, or signal-monitoring output.
+
+### `CandidateDiscoveryPublicSurfaceProjector`
+
+Owns the user-facing candidate surface. It keeps strict product candidates and
+review-needed legal candidates in one visible list with
+`candidate_surface_status`, `candidate_surface_reason`, and stable ranking.
+
+It does not own retrieval, extraction, product acceptance rules, benchmark
+scoring, or signal monitoring. Its job is to prevent source-backed legal
+entities from being buried only in `candidate_universe` when they should be
+visible to the user as review-needed candidates.
+
 ### `CandidateDiscoveryUpstreamAdmissionPolicy`
 
 Owns deterministic recall-first upstream retention:

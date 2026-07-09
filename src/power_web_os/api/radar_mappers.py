@@ -121,11 +121,12 @@ def candidates_response(
 ) -> RadarRunCandidatesResponse:
     artifact = output.artifact_payload
     execution_results = _dict(_dict(_dict(artifact).get("run_metadata")).get("execution_results"))
+    visible_candidates = _list(execution_results.get("user_visible_candidates")) or _list(artifact.get("candidates"))
     review_index = _review_index(reviews)
     return RadarRunCandidatesResponse(
         run_id=run.run_id,
         radar_id=run.radar_id,
-        candidates=[_candidate_response(item, review_index=review_index) for item in _list(artifact.get("candidates"))],
+        candidates=[_candidate_response(item, review_index=review_index) for item in visible_candidates],
         sources=[_source_response(item) for item in _list(artifact.get("sources"))],
         contract_validation=_list(artifact.get("contract_validation")),
         candidate_universe=_list(execution_results.get("candidate_universe")),
@@ -224,6 +225,7 @@ def _candidate_response(
         candidate_id=candidate_id,
         legal_name=str(payload.get("legal_name", "")),
         description=str(payload.get("description", "")),
+        entity_type=str(payload.get("entity_type") or "legal_entity"),
         score=CandidateScoreResponse(
             fit_score=_optional_int(score.get("fit_score")),
             intent_score=_optional_int(score.get("intent_score")),
@@ -251,6 +253,9 @@ def _candidate_response(
         product_acceptance_reason=str(payload.get("product_acceptance_reason") or ""),
         public_result_status=str(payload.get("public_result_status") or ""),
         public_projection_reason=str(payload.get("public_projection_reason") or ""),
+        candidate_surface_status=str(payload.get("candidate_surface_status") or ""),
+        candidate_surface_reason=str(payload.get("candidate_surface_reason") or ""),
+        candidate_surface_rank=_optional_int(payload.get("candidate_surface_rank")),
     )
 
 

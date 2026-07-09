@@ -151,6 +151,7 @@ class RadarCandidateResponse(BaseModel):
     candidate_id: str
     legal_name: str
     description: str = ""
+    entity_type: str = "legal_entity"
     score: CandidateScoreResponse
     review_flags: list[str] = Field(default_factory=list)
     evidence_refs: list[str] = Field(default_factory=list)
@@ -164,6 +165,9 @@ class RadarCandidateResponse(BaseModel):
     product_acceptance_reason: str = ""
     public_result_status: str = ""
     public_projection_reason: str = ""
+    candidate_surface_status: str = ""
+    candidate_surface_reason: str = ""
+    candidate_surface_rank: int | None = None
 
 
 class RadarSourceResponse(BaseModel):
@@ -365,6 +369,9 @@ class RadarRunDossierSummaryResponse(BaseModel):
     diagnostic_source_count: int = 0
     skipped_source_count: int = 0
     candidate_count: int = 0
+    visible_candidate_count: int = 0
+    accepted_product_candidate_count: int = 0
+    review_needed_candidate_count: int = 0
     smoke_candidate_cap: int | None = None
     promoted_candidate_count: int = 0
     diagnostic_candidate_count: int = 0

@@ -82,6 +82,7 @@ def benchmark_target_funnel(
             "projected": projected,
             "rejected": str(diagnostic.get("bucket") or "") == "explicitly_rejected",
             "path_reason": _target_path_reason(
+                entity_type=str(entity.entity_type),
                 generated=generated,
                 selected=selected,
                 admitted=admitted,
@@ -96,6 +97,7 @@ def benchmark_target_funnel(
 
 def _target_path_reason(
     *,
+    entity_type: str,
     generated: bool,
     selected: bool,
     admitted: bool,
@@ -112,6 +114,9 @@ def _target_path_reason(
     if not generated:
         return "not_generated"
     if not selected:
+        if entity_type == "legal_entity":
+            if bucket in {"expansion_not_selected", "completion_cap_exhausted", "completion_not_selected", ""}:
+                return "selection_cap_exhausted_for_protected_legal_target"
         return "not_selected"
     if not admitted:
         return "not_admitted"

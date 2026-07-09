@@ -152,6 +152,29 @@ def test_candidate_discovery_handoff_downgrades_raw_discovery_signal_negatives()
     assert_no_normal_negative_signal_projection(execution_results)
 
 
+def test_candidate_discovery_handoff_downgrades_missing_signal_defaults() -> None:
+    provider = ScriptedProvider([discovery_result_with_raw_negative_signal()])
+    radar = radar_definition()
+    radar["intent_signals"] = [
+        *radar["intent_signals"],
+        {"code": "S2", "label": "Second signal", "rule": "Find second signal."},
+        {"code": "S3", "label": "Third signal", "rule": "Find third signal."},
+    ]
+
+    _, _, execution_results = run_staged_radar_execution(
+        radar=radar,
+        execution_plan=base_plan(),
+        provider=provider,
+    )
+
+    signals = execution_results["user_visible_candidates"][0]["signals"]
+    assert [item["signal_code"] for item in signals] == ["S1", "S2", "S3"]
+    assert {item["status"] for item in signals} == {"unclear"}
+    assert {item["search_status"] for item in signals} == {"not_searched_pending_signal_monitoring"}
+    assert {item["not_searched_reason"] for item in signals} == {"pending_signal_monitoring"}
+    assert_no_normal_negative_signal_projection(execution_results)
+
+
 def test_weak_discovery_retries_same_source_then_continues_to_signal_search() -> None:
     provider = ScriptedProvider([weak_result(), strong_discovery_result(), signal_result()])
 

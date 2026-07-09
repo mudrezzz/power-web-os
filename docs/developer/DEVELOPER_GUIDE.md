@@ -300,6 +300,7 @@ power_web_os.application.radar.candidate_discovery.execution.expansion
 power_web_os.application.radar.candidate_discovery.execution.signals
 power_web_os.application.radar.candidate_discovery.execution.signal_modes
 power_web_os.application.radar.candidate_discovery.execution.finalization
+power_web_os.application.radar.candidate_discovery.execution.public_surface
 power_web_os.application.radar.candidate_discovery.execution.task_runner
 power_web_os.application.radar.candidate_discovery.execution.merge
 power_web_os.application.radar.candidate_discovery.execution.projection
@@ -335,7 +336,8 @@ Candidate-discovery execution phases must use the service contract from
   import paths.
 - Public execution helpers are also forbidden. Use service classes:
   `TaskExecutionService`, `ExecutionResultMerger`,
-  `CandidateProjectionService`, `PipelineEventFactory`, `SmokeLimitPolicy`, and
+  `CandidateProjectionService`, `PipelineEventFactory`,
+  `CandidateDiscoveryPublicSurfaceProjector`, `SmokeLimitPolicy`, and
   `ExecutionMetadataFactory`.
 - Private helpers must stay small and local. If a method only delegates to one
   large `_helper`, the code is still procedural debt and should be decomposed
@@ -344,6 +346,13 @@ Candidate-discovery execution phases must use the service contract from
   `Does not own`, and `Architecture` in its docstring, with a link to the
   matching handbook section. Do not merge a new execution service if a developer
   cannot understand its role from the class docstring plus the handbook.
+
+Candidate-discovery output has three distinct surfaces. `candidate_universe` is
+the broad upstream diagnostic truth. API/dossier `candidates` come from
+`user_visible_candidates` when present: accepted product candidates plus
+review-needed legal candidates. Strict product precision must use
+`accepted_product_candidate_count` / `product_candidate_count`, not the full
+visible candidate count.
 
 Direct checkout demo without installing:
 

@@ -11,6 +11,10 @@ def candidate_discovery_reconciliation(dossier: dict[str, Any]) -> dict[str, Any
         ledger = product_acceptance_ledger(dossier)
         product_candidate_count = _product_candidate_count(ledger) or int(reconciliation.get("product_candidate_count") or 0)
         normalized = dict(reconciliation)
+        visible_candidates = _list(dossier.get("candidates"))
+        normalized.setdefault("visible_candidate_count", len(visible_candidates))
+        normalized.setdefault("accepted_product_candidate_count", _accepted_product_candidate_count(visible_candidates))
+        normalized.setdefault("review_needed_candidate_count", _review_needed_candidate_count(visible_candidates))
         normalized["product_candidate_zero_explained"] = product_candidate_count == 0 and bool(
             normalized.get("product_candidate_zero_explained")
         )
@@ -20,9 +24,13 @@ def candidate_discovery_reconciliation(dossier: dict[str, Any]) -> dict[str, Any
         return {}
     unexplained = _unexplained_rows(ledger)
     product_candidate_count = _product_candidate_count(ledger)
+    visible_candidates = _list(dossier.get("candidates"))
     return {
         "ledger_entry_count": len(ledger),
         "unexplained_drop_count": len(unexplained),
+        "visible_candidate_count": len(visible_candidates),
+        "accepted_product_candidate_count": _accepted_product_candidate_count(visible_candidates),
+        "review_needed_candidate_count": _review_needed_candidate_count(visible_candidates),
         "product_candidate_zero_explained": product_candidate_count == 0 and all(
             str(item.get("product_acceptance_reason") or "").strip()
             for item in ledger
@@ -76,6 +84,31 @@ def _product_candidate_count(ledger: list[dict[str, Any]]) -> int:
         for item in ledger
         if str(item.get("product_acceptance_status") or "") == "product_candidate"
         and str(item.get("legal_name") or "").strip()
+    })
+
+
+def _accepted_product_candidate_count(candidates: list[Any]) -> int:
+    return len({
+        str(item.get("legal_name") or "").casefold()
+        for item in candidates
+        if isinstance(item, dict)
+        and str(item.get("legal_name") or "").strip()
+        and str(item.get("product_acceptance_status") or "product_candidate") == "product_candidate"
+    })
+
+
+def _review_needed_candidate_count(candidates: list[Any]) -> int:
+    return len({
+        str(item.get("legal_name") or "").casefold()
+        for item in candidates
+        if isinstance(item, dict)
+        and str(item.get("legal_name") or "").strip()
+        and str(item.get("product_acceptance_status") or "") != "product_candidate"
+        and (
+            str(item.get("candidate_surface_status") or "") == "review_needed_candidate"
+            or str(item.get("product_acceptance_status") or "") == "review_required"
+            or str(item.get("public_result_status") or "") == "review_needed_candidate"
+        )
     })
 
 

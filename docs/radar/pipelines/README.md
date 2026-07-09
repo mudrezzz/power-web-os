@@ -68,6 +68,11 @@ projects `not_searched_pending_signal_monitoring` handoff rows. The old inline
 signal-search path remains only as explicit `inline_compatibility` behavior for
 compatibility tests and hidden callers until final closure.
 
+As of slice `0.7.6.4.18.1.4`, candidate discovery reports a separate
+user-visible candidate surface. The candidate endpoint and dossier candidates
+contain accepted product candidates plus review-needed legal candidates; strict
+product acceptance remains a separate count used for precision.
+
 ## Skill invocation examples
 
 Use the existing generic skills with a pipeline id instead of creating separate
