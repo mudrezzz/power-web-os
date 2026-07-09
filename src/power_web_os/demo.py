@@ -385,8 +385,12 @@ def main() -> None:
         default=root / "demo" / "output" / "radar_benchmark_report.json",
     )
     parser.add_argument("--benchmark-poll-interval-seconds", type=float, default=5.0)
-    parser.add_argument("--benchmark-timeout-seconds", type=float, default=1200.0)
-    parser.add_argument("--benchmark-profile", choices=("benchmark_smoke", "benchmark_live"), default="benchmark_smoke")
+    parser.add_argument("--benchmark-timeout-seconds", type=float, default=2400.0)
+    parser.add_argument(
+        "--benchmark-profile",
+        choices=("benchmark_smoke", "benchmark_live", "blind_benchmark"),
+        default="benchmark_smoke",
+    )
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--latest", action="store_true")
     parser.add_argument("--baseline", type=Path, default=root / "demo" / "fixtures" / "radar_evaluation" / "sibur_contour_baseline.json")
@@ -394,7 +398,11 @@ def main() -> None:
     parser.add_argument("--signal-monitoring-fixture", type=Path, default=root / "demo" / "fixtures" / "radar_signal_monitoring" / "toir_recorded_signal_monitoring.json")
     parser.add_argument("--signal-monitoring-output", type=Path, default=root / "demo" / "output" / "radar_signal_monitoring_report.json")
     parser.add_argument("--probe-limit", type=int, default=5)
-    parser.add_argument("--profile", choices=("static", "recorded", "benchmark_smoke", "benchmark_live"), default="recorded")
+    parser.add_argument(
+        "--profile",
+        choices=("static", "recorded", "benchmark_smoke", "benchmark_live", "blind_benchmark"),
+        default="recorded",
+    )
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--show-runtime-config", action="store_true")
     parser.add_argument("--live-probes", action="store_true")
@@ -477,7 +485,11 @@ def main() -> None:
             raise SystemExit(1)
         return
     elif args.command == "run-radar-benchmark":
-        benchmark_profile = args.profile if args.profile in {"benchmark_smoke", "benchmark_live"} else args.benchmark_profile
+        benchmark_profile = (
+            args.profile
+            if args.profile in {"benchmark_smoke", "benchmark_live", "blind_benchmark"}
+            else args.benchmark_profile
+        )
         artifact = generate_radar_benchmark_report(
             api_url=args.api_url,
             profile=benchmark_profile,

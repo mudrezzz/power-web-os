@@ -309,10 +309,22 @@ class FinalizationProjector:
         context: CandidateDiscoveryExecutionContext,
         state: CandidateDiscoveryExecutionState,
     ) -> dict[str, Any]:
+        task_context = context.radar.get("task_context") if isinstance(context.radar.get("task_context"), dict) else {}
+        benchmark_target_hints = dict_list(task_context.get("benchmark_target_hints"))
+        benchmark_hints_used = bool(benchmark_target_hints)
+        benchmark_profile = str(task_context.get("benchmark_profile") or "")
         return {
             "retrieval_plan": context.retrieval_plan.model_dump(),
             "executed_task_count": len(state.executed_task_ids),
             "executed_task_ids": state.executed_task_ids,
+            "benchmark_profile": benchmark_profile,
+            "benchmark_mode": (
+                str(task_context.get("benchmark_mode") or ("guided" if benchmark_hints_used else "blind"))
+                if benchmark_profile
+                else ""
+            ),
+            "benchmark_hints_used": bool(task_context.get("benchmark_hints_used", benchmark_hints_used)),
+            "benchmark_target_hint_count": len(benchmark_target_hints),
             "gate_results": state.gate_results,
             "signal_task_count": state.signal_task_count,
             "signal_execution_mode": context.signal_execution_mode,

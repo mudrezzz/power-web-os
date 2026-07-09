@@ -367,6 +367,14 @@ explicit public projection/diagnostic reason rendered by the UI. Duplicate
 `candidate_id` rows must be merged before the API response; preserving a count
 by showing the same legal entity twice is a failed Radar surface DoD.
 
+Radar diagnostics must cite the exact run id. A radar detail defaults to the
+latest completed run, but the UI also exposes a compact run-history selector and
+supports direct inspection with `?runId=<radar-run-id>`. Candidate rows,
+counters, dossier, diagnostics, technical trace, and review actions must use the
+selected run id, not whichever run is latest at render time. If a requested run
+is missing or belongs to another radar, the UI must show an explicit error
+instead of silently falling back to latest.
+
 Direct checkout demo without installing:
 
 ```bash
@@ -746,9 +754,27 @@ benchmark smoke executed the required lanes or why a lane was blocked.
 `source_verification_cache_stats` should show duplicate URL checks reused from
 the per-run cache instead of spending repeated verification budget.
 
-The benchmark CLI waits up to 1200 seconds by default because low-cost
+The benchmark CLI waits up to 2400 seconds by default because low-cost
 OpenRouter provider routing can be slow; use budget counters, not wall-clock
 duration, to decide whether the smoke profile stayed bounded.
+
+Use `blind_benchmark` only when the question is independent discovery quality,
+not guided smoke mechanics:
+
+```powershell
+python -m power_web_os.demo run-radar-benchmark --api-url http://127.0.0.1:8001 --profile blind_benchmark --radar-id benchmark-sibur-holding-contour
+python -m power_web_os.demo evaluate-radar-benchmark --api-url http://127.0.0.1:8001 --radar-id benchmark-sibur-holding-contour --latest
+```
+
+Blind runs must have `benchmark_mode=blind`, `benchmark_hints_used=false`, no
+`benchmark_target_hints`, no `target_origin=benchmark_context`, and no
+`uncovered_baseline_target=true`. The baseline is used only by
+`evaluate-radar-benchmark` after the run. Do not mark a blind-benchmark slice
+done from raw logs; the evaluation report must include
+`blind_benchmark_closeout` with run mode, hints-used flag, strict/visible
+recall, accepted/review-needed counts, duplicate candidate ids, empty
+provenance count, false negatives, and top miss reasons. If strict recall is
+zero, create a follow-up RCA slice before closing the work.
 
 `0.7.6.3` adds an offline evaluation report for the SIBUR contour benchmark.
 It reads a persisted run and dossier through the API, compares the output with

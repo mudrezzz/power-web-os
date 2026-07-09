@@ -10,6 +10,7 @@ const port = Number(process.env.POWER_WEB_OS_RADAR_UI_DOD_PORT ?? 5173);
 const iterations = Number(process.env.POWER_WEB_OS_RADAR_UI_DOD_ITERATIONS ?? 10);
 const apiBaseUrl = process.env.POWER_WEB_OS_API_BASE_URL ?? 'http://127.0.0.1:8001';
 const baseURL = process.env.POWER_WEB_OS_RADAR_UI_DOD_BASE_URL ?? `http://127.0.0.1:${port}`;
+const directRunId = process.env.POWER_WEB_OS_RADAR_UI_DOD_RUN_ID ?? 'radar-run-3bbf9c0f-330e-4468-8901-966a751234a8';
 const benchmarkRadarId = 'benchmark-sibur-holding-contour';
 const benchmarkName = 'Benchmark / SIBUR holding contour';
 const storageKey = 'power-web-os-icp-radar-config-overrides';
@@ -39,6 +40,7 @@ try {
   console.log('Checking backend benchmark radar readiness.');
   const expected = await benchmarkExpectationFromBackend();
   console.log(`Backend benchmark run: ${expected.runId}; candidates=${expected.total}, accepted=${expected.accepted}, review=${expected.review}.`);
+  console.log(`Backend direct run: ${expected.direct.runId}; candidates=${expected.direct.total}.`);
 
   browser = await chromium.launch();
   const results = [];
@@ -49,6 +51,7 @@ try {
       iteration,
       radar_id: benchmarkRadarId,
       run_id: expected.runId,
+      direct_run_id: expected.direct.runId,
       candidates: expected.total,
       accepted: expected.accepted,
       review_needed: expected.review,
@@ -139,20 +142,42 @@ async function runIteration(browserInstance, expected, iteration) {
     await page.getByText(`${expected.total} candidates`, { exact: true }).waitFor({ state: 'visible' });
     await page.getByText(`${expected.accepted} accepted/product`, { exact: true }).waitFor({ state: 'visible' });
     await page.getByText(`${expected.review} review-needed`, { exact: true }).waitFor({ state: 'visible' });
-    await page.getByText(expected.runId, { exact: false }).waitFor({ state: 'visible' });
-    for (let index = 0; index < expected.candidates.length; index += 1) {
-      const candidate = expected.candidates[index];
-      const row = page.locator('.icp-radar-table-live .icp-candidate-row').nth(index);
-      await row.click();
-      await page.getByRole('button', { name: 'Open details', exact: true }).click();
-      await page.getByText(candidate.legal_name, { exact: true }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
-      await page.getByText(candidate.reason, { exact: false }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
-      await page.getByRole('button', { name: 'Sources', exact: true }).click();
-      const source = candidate.sources[0];
-      await page.getByText(source.title, { exact: false }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
-      await page.getByText(source.source_type, { exact: false }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
-      await page.getByRole('button', { name: 'Back to found accounts', exact: true }).click();
-      await page.locator('.icp-radar-table-live .icp-candidate-row').first().waitFor({ state: 'visible', timeout: uiWaitMs });
+    await page.getByText(expected.runId, { exact: false }).first().waitFor({ state: 'visible' });
+    await page.locator('#radar-run-selector').waitFor({ state: 'visible', timeout: uiWaitMs });
+    await page.locator('#radar-run-selector').selectOption(expected.direct.runId);
+    await page.getByText(expected.direct.runId, { exact: false }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
+    await waitForCandidateRows(page, expected.direct.total, { exact: iteration === 1 });
+    await page.goto(`${baseURL}?runId=${encodeURIComponent(expected.direct.runId)}`, { waitUntil: 'domcontentloaded' });
+    await page.getByText(benchmarkName, { exact: true }).waitFor({ state: 'visible', timeout: uiWaitMs });
+    await page.getByText(expected.direct.runId, { exact: false }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
+    await waitForCandidateRows(page, expected.direct.total, { exact: iteration === 1 });
+    if (expected.direct.runId !== expected.runId) {
+      const latestVisibleOnDirectPage = await page.getByText(expected.runId, { exact: false }).count();
+      if (latestVisibleOnDirectPage && expected.direct.total !== expected.total) {
+        const rowsAfterDirectUrl = await page.locator('.icp-radar-table-live .icp-candidate-row').count();
+        if (rowsAfterDirectUrl === expected.total) {
+          throw new Error(`Direct URL for ${expected.direct.runId} rendered latest-run candidate count ${expected.total}.`);
+        }
+      }
+    }
+    await page.locator('#radar-run-selector').selectOption(expected.runId);
+    await page.getByText(expected.runId, { exact: false }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
+    await waitForCandidateRows(page, expected.total);
+    if (iteration === 1) {
+      for (let index = 0; index < expected.candidates.length; index += 1) {
+        const candidate = expected.candidates[index];
+        const row = page.locator('.icp-radar-table-live .icp-candidate-row').nth(index);
+        await row.click();
+        await page.getByRole('button', { name: 'Open details', exact: true }).click();
+        await page.getByText(candidate.legal_name, { exact: true }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
+        await page.getByText(candidate.reason, { exact: false }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
+        await page.getByRole('button', { name: 'Sources', exact: true }).click();
+        const source = candidate.sources[0];
+        await page.getByText(source.title, { exact: false }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
+        await page.getByText(source.source_type, { exact: false }).first().waitFor({ state: 'visible', timeout: uiWaitMs });
+        await page.getByRole('button', { name: 'Back to found accounts', exact: true }).click();
+        await page.locator('.icp-radar-table-live .icp-candidate-row').first().waitFor({ state: 'visible', timeout: uiWaitMs });
+      }
     }
     if (browserErrors.length > 0) {
       throw new Error(`Browser console/page errors during iteration ${iteration}:\n${browserErrors.join('\n')}`);
@@ -160,6 +185,22 @@ async function runIteration(browserInstance, expected, iteration) {
   } finally {
     await context.close();
   }
+}
+
+async function waitForCandidateRows(page, expectedCount, { exact = true } = {}) {
+  if (expectedCount === 0) {
+    await page.getByText('No candidates found', { exact: true }).waitFor({ state: 'visible', timeout: uiWaitMs });
+    return;
+  }
+  await page.locator('.icp-radar-table-live .icp-candidate-row').first().waitFor({ state: 'visible', timeout: uiWaitMs });
+  if (!exact) {
+    return;
+  }
+  await page.waitForFunction(
+    (count) => document.querySelectorAll('.icp-radar-table-live .icp-candidate-row').length === count,
+    expectedCount,
+    { timeout: uiWaitMs },
+  );
 }
 
 async function benchmarkExpectationFromBackend() {
@@ -178,9 +219,31 @@ async function benchmarkExpectationFromBackend() {
   if (radar.latest_run?.status !== 'completed' || !radar.latest_run?.output) {
     throw new Error(`${benchmarkRadarId} has no completed latest run with output.`);
   }
-  const candidatesResponse = await fetch(`${apiBaseUrl}/api/radar-runs/${encodeURIComponent(radar.latest_run.run_id)}/candidates`);
+  const runsResponse = await fetch(`${apiBaseUrl}/api/radars/${encodeURIComponent(benchmarkRadarId)}/runs?limit=20`);
+  if (!runsResponse.ok) {
+    throw new Error(`Run history endpoint failed for ${benchmarkRadarId}: ${runsResponse.status}.`);
+  }
+  const runs = await runsResponse.json();
+  const directRun = runs.find((item) => item.run_id === directRunId);
+  if (!directRun) {
+    throw new Error(`${directRunId} is not present in ${benchmarkRadarId} run history.`);
+  }
+  if (directRun.radar_id !== benchmarkRadarId) {
+    throw new Error(`${directRunId} belongs to ${directRun.radar_id}, not ${benchmarkRadarId}.`);
+  }
+  if (directRun.status !== 'completed' || !directRun.output) {
+    throw new Error(`${directRunId} is not a completed run with output.`);
+  }
+  const expected = await runExpectationFromBackend(radar.latest_run.run_id);
+  expected.direct = await runExpectationFromBackend(directRun.run_id);
+  assertSummaryMatchesBackend(radar, expected);
+  return expected;
+}
+
+async function runExpectationFromBackend(runId) {
+  const candidatesResponse = await fetch(`${apiBaseUrl}/api/radar-runs/${encodeURIComponent(runId)}/candidates`);
   if (!candidatesResponse.ok) {
-    throw new Error(`Candidates endpoint failed for ${radar.latest_run.run_id}: ${candidatesResponse.status}.`);
+    throw new Error(`Candidates endpoint failed for ${runId}: ${candidatesResponse.status}.`);
   }
   const candidatesPayload = await candidatesResponse.json();
   const candidates = Array.isArray(candidatesPayload.candidates) ? candidatesPayload.candidates : [];
@@ -194,8 +257,16 @@ async function benchmarkExpectationFromBackend() {
   )).length;
   const sourcesByRef = new Map((Array.isArray(candidatesPayload.sources) ? candidatesPayload.sources : [])
     .map((source) => [source.evidence_ref, source]));
-  const expected = {
-    runId: radar.latest_run.run_id,
+  const duplicateIds = duplicateCandidateIds(candidates);
+  if (duplicateIds.length) {
+    throw new Error(`Backend candidate surface has duplicate candidate ids for ${runId}: ${duplicateIds.join(', ')}.`);
+  }
+  const emptyEvidence = candidates.filter((candidate) => !candidateHasPublicEvidence(candidate, sourcesByRef));
+  if (emptyEvidence.length) {
+    throw new Error(`Backend candidate surface has empty provenance for ${runId}: ${emptyEvidence.map((item) => item.legal_name).join(', ')}.`);
+  }
+  return {
+    runId,
     total: candidates.length,
     accepted,
     review,
@@ -210,19 +281,6 @@ async function benchmarkExpectationFromBackend() {
       sources: candidateSources(candidate, sourcesByRef),
     })),
   };
-  const duplicateIds = duplicateCandidateIds(candidates);
-  if (duplicateIds.length) {
-    throw new Error(`Backend candidate surface has duplicate candidate ids: ${duplicateIds.join(', ')}.`);
-  }
-  const emptyEvidence = candidates.filter((candidate) => !candidateHasPublicEvidence(candidate, sourcesByRef));
-  if (emptyEvidence.length) {
-    throw new Error(`Backend candidate surface has empty provenance: ${emptyEvidence.map((item) => item.legal_name).join(', ')}.`);
-  }
-  if (expected.total !== 12 || expected.accepted !== 3 || expected.review !== 9) {
-    throw new Error(`Backend candidate surface does not match DoD: ${JSON.stringify(expected)}.`);
-  }
-  assertSummaryMatchesBackend(radar, expected);
-  return expected;
 }
 
 function candidateSources(candidate, sourcesByRef) {

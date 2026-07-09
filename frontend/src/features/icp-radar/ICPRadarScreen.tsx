@@ -12,6 +12,7 @@ import {
 import { LiveRadarCandidateDetailView, LiveRadarShortlistTable } from './liveCandidateViews';
 import { RadarCatalogScreen } from './components/RadarCatalogScreen';
 import { RadarDetailHeader } from './components/RadarDetailHeader';
+import { RadarRunSelector } from './components/RadarRunSelector';
 import { LiveRadarOperationsTab } from './liveOperations';
 import './icpRadar.css';
 
@@ -126,6 +127,15 @@ export function ICPRadarScreen({
         radar={workspace.selectedRadar}
         validationErrors={workspace.validationErrors}
       />
+      {(workspace.selectedRun || workspace.selectedRunHistory.length > 0) && (
+        <RadarRunSelector
+          runs={workspace.selectedRunHistory}
+          selectedRun={workspace.selectedRun}
+          onSelectRun={(runId) => {
+            void workspace.selectRun(runId);
+          }}
+        />
+      )}
 
       {navigation.selectedTab === 'settings' && workspace.activeSettingsDraft ? (
         <Suspense fallback={(

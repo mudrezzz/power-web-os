@@ -72,5 +72,11 @@ def resolve_evaluation_run(
             latest_run = radar.get("latest_run")
             if not isinstance(latest_run, dict):
                 raise ValueError(f"Radar {radar_id} has no latest run to evaluate.")
-            return dict(latest_run)
+            latest_run_id = str(latest_run.get("run_id") or "")
+            if not latest_run_id:
+                raise ValueError(f"Radar {radar_id} latest run has no run_id.")
+            run = client.get_json(f"/api/radar-runs/{latest_run_id}")
+            if not isinstance(run, dict):
+                raise ValueError(f"Radar run {latest_run_id} was not found.")
+            return dict(run)
     raise ValueError(f"Radar {radar_id} was not found.")

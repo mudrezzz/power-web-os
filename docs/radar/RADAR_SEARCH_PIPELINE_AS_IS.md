@@ -807,6 +807,14 @@ Forbidden everywhere:
 The benchmark/evaluation layer reads persisted run output and dossier data. It
 does not call OpenRouter, DaData, or source providers.
 
+`benchmark_smoke` and `benchmark_live` are guided diagnostic profiles. For the
+SIBUR contour they can inject curated baseline hints into task context so the
+pipeline can test protected target generation, selection, and projection.
+`blind_benchmark` is different: candidate discovery receives no baseline hints
+and no protected benchmark targets. The same curated SIBUR baseline is loaded
+only after the run by evaluation, so a blind report measures what the pipeline
+found independently rather than what it was explicitly asked to probe.
+
 Current SIBUR evaluation channels:
 
 - `strict_recall` for legal-entity baseline hits;
@@ -829,6 +837,12 @@ Current SIBUR evaluation channels:
 - `benchmark_target_funnel`, which records generated, selected, admitted,
   executed, source-found, projected, rejected, and path-reason states for each
   baseline target;
+- `benchmark_context`, which records whether a run was guided or blind and
+  whether benchmark hints were actually present in the run task context;
+- `blind_benchmark_closeout`, which consolidates the post-run DoD fields for a
+  blind benchmark: hints-used flag, strict and visible recall, accepted and
+  review-needed counts, duplicate candidate ids, empty provenance count, false
+  negatives, and normalized miss reasons;
 - `candidate_discovery_reconciliation`, which reconciles public candidate rows,
   universe-only upstream leads, diagnostic gaps, product acceptance, and public
   projection reasons;

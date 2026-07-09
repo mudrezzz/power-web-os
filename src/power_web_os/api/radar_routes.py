@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from power_web_os.api.dependencies import RadarApiContext, get_radar_api_context
 from power_web_os.api.radar_dtos import (
@@ -86,6 +86,20 @@ def get_radar(radar_id: str, context: RadarContext) -> RadarDetailResponse:
         runs=runs,
         outputs_by_run_id=_outputs_for_runs(context, runs),
     )
+
+
+@router.get("/radars/{radar_id}/runs", response_model=list[RadarRunSummaryResponse])
+def list_radar_runs(
+    radar_id: str,
+    context: RadarContext,
+    limit: int = Query(default=20, ge=1, le=100),
+) -> list[RadarRunSummaryResponse]:
+    radar = context.radar_repository.get(radar_id)
+    if radar is None:
+        raise HTTPException(status_code=404, detail=f"Radar not found: {radar_id}")
+    runs = tuple(reversed(context.run_repository.list_for_radar(radar_id)))[:limit]
+    outputs = _outputs_for_runs(context, runs)
+    return [run_summary_response(run, output=outputs.get(run.run_id)) for run in runs]
 
 
 @router.put("/radars/{radar_id}/definition", response_model=RadarDetailResponse)

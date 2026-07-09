@@ -6,6 +6,7 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import inspect
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 import power_web_os.demo as demo
@@ -39,6 +40,17 @@ from power_web_os.persistence.seed import seed_radar_catalog
 
 def sqlite_url(path: Path) -> str:
     return f"sqlite:///{path.as_posix()}"
+
+
+def test_sqlite_engine_uses_wal_and_busy_timeout_for_dev_concurrency(tmp_path: Path) -> None:
+    engine = create_database_engine(database_url=sqlite_url(tmp_path / "concurrent-radar.db"))
+
+    with engine.connect() as connection:
+        journal_mode = connection.execute(text("PRAGMA journal_mode")).scalar_one()
+        busy_timeout = connection.execute(text("PRAGMA busy_timeout")).scalar_one()
+
+    assert str(journal_mode).lower() == "wal"
+    assert busy_timeout >= 120_000
 
 
 def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> None:

@@ -57,6 +57,7 @@ export function useRadarWorkspace({
   const [savedSettingsDraftSnapshot, setSavedSettingsDraftSnapshot] = useState('');
   const [editingBlock, setEditingBlock] = useState<SettingsBlockId | null>(null);
   const [settingsSaveError, setSettingsSaveError] = useState('');
+  const [appliedDirectRunId, setAppliedDirectRunId] = useState<string | null>(null);
 
   const mergedRadars = useMemo(() => mergeCatalogWithOverrides(catalog, radarOverrides), [catalog, radarOverrides]);
   const selectedRadar = mergedRadars.find((item) => item.radar_id === navigation.selectedRadarId) ?? null;
@@ -66,6 +67,8 @@ export function useRadarWorkspace({
   const selectedLiveArtifact = selectedRadar
     ? backend.liveRunArtifacts[selectedRadar.radar_id] ?? (selectedRadar.radar_id === 'toir-quick-live' ? liveRunArtifact : null)
     : null;
+  const selectedRun = selectedRadar ? backend.selectedRunByRadarId[selectedRadar.radar_id] ?? null : null;
+  const selectedRunHistory = selectedRadar ? backend.runHistoryByRadarId[selectedRadar.radar_id] ?? [] : [];
   const apiBackedLiveArtifact = Boolean(selectedLiveArtifact && backend.runState.mode === 'api');
   const radarViewModel = selectedRadar
     ? radarToViewModel(selectedRadar, activeFixtureRadarId, selectedFixtureArtifact, selectedLiveArtifact)
@@ -84,6 +87,22 @@ export function useRadarWorkspace({
     : null;
 
   useEffect(() => {
+    const runId = new URLSearchParams(window.location.search).get('runId');
+    if (!runId || appliedDirectRunId === runId || backend.runState.mode === 'loading') {
+      return;
+    }
+    setAppliedDirectRunId(runId);
+    void backend.selectRadarRunById(runId).then((radarId) => {
+      if (!radarId) {
+        return;
+      }
+      navigation.setSelectedRadarId(radarId);
+      navigation.setSelectedTab('shortlist');
+      navigation.clearCandidateState();
+    });
+  }, [appliedDirectRunId, backend, backend.runState.mode, navigation]);
+
+  useEffect(() => {
     if (
       selectedRadar
       && backend.runState.mode === 'api'
@@ -92,8 +111,12 @@ export function useRadarWorkspace({
     ) {
       void backend.loadRadarRunArtifact(selectedRadar.radar_id);
     }
+    if (selectedRadar && backend.runState.mode === 'api') {
+      void backend.loadRadarRunHistory(selectedRadar.radar_id);
+    }
   }, [
     backend.loadRadarRunArtifact,
+    backend.loadRadarRunHistory,
     backend.runState.mode,
     selectedLiveArtifact,
     selectedRadar?.radar_id,
@@ -275,6 +298,16 @@ export function useRadarWorkspace({
     resetSignalValidationDecision(radarId, candidateId, signalCode);
   }
 
+  async function selectRun(runId: string) {
+    if (!selectedRadar) {
+      return;
+    }
+    if (await backend.selectRadarRun(selectedRadar.radar_id, runId)) {
+      updateRunIdQuery(runId);
+      navigation.clearCandidateState();
+    }
+  }
+
   return {
     navigation,
     hasLocalChanges: Object.keys(radarOverrides).length > 0,
@@ -283,6 +316,8 @@ export function useRadarWorkspace({
     selectedRadarOverride,
     selectedFixtureArtifact,
     selectedLiveArtifact,
+    selectedRun,
+    selectedRunHistory,
     radarViewModel,
     detailCandidate,
     detailLiveCandidate,
@@ -309,6 +344,7 @@ export function useRadarWorkspace({
     preflightState: backend.preflightState,
     checkRadarSetup: backend.checkRadarSetup,
     runRadar: backend.runRadar,
+    selectRun,
     createRadar,
     deleteRadar,
     resetRadarToArtifact,
@@ -318,4 +354,10 @@ export function useRadarWorkspace({
     saveSettingsDraft,
     discardSettingsDraft,
   };
+}
+
+function updateRunIdQuery(runId: string) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('runId', runId);
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
 }

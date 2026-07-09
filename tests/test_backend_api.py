@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -197,6 +198,50 @@ def test_radar_catalog_and_detail_read_persisted_data(tmp_path: Path) -> None:
     detail = detail_response.json()
     assert detail["active_definition"]["definition_id"] == "radar-def-live"
     assert detail["runs"] == []
+
+
+def test_radar_run_history_endpoint_returns_recent_runs_newest_first(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    engine = create_database_engine(database_url=database_url)
+    session_factory = create_session_factory(engine)
+    queued_at = datetime(2026, 7, 9, 10, 0, tzinfo=timezone.utc)
+    with session_scope(session_factory) as session:
+        run_repo = SqlAlchemyRadarRunRepository(session)
+        output_repo = SqlAlchemyRadarRunOutputRepository(session)
+        for index in range(3):
+            run = run_repo.create(
+                RadarRunRecord(
+                    run_id=f"history-run-{index}",
+                    radar_id="toir-quick-live",
+                    status=RadarRunStatus.COMPLETED,
+                    queued_at=queued_at + timedelta(minutes=index),
+                    completed_at=queued_at + timedelta(minutes=index, seconds=30),
+                    run_metadata={"benchmark_mode": "blind" if index == 1 else "smoke"},
+                )
+            )
+            output_repo.upsert(
+                RadarRunOutputRecord(
+                    run_id=run.run_id,
+                    artifact_version="0.7.6-test",
+                    radar_payload={"radar_id": "toir-quick-live"},
+                    search_plan_payload={},
+                    sources_payload=[],
+                    candidates_payload=[{"candidate_id": f"candidate-{index}"}],
+                    contract_validation_payload=[],
+                    artifact_payload={"artifact_type": "icp_radar_live_run"},
+                )
+            )
+
+    client = TestClient(_app(tmp_path, database_url=database_url))
+
+    response = client.get("/api/radars/toir-quick-live/runs?limit=2")
+
+    assert response.status_code == 200
+    runs = response.json()
+    assert [item["run_id"] for item in runs] == ["history-run-2", "history-run-1"]
+    assert runs[0]["output"]["candidate_count"] == 1
+    assert runs[1]["run_metadata"]["benchmark_mode"] == "blind"
+    assert client.get("/api/radars/missing/runs").status_code == 404
 
 
 def test_radar_catalog_summary_uses_latest_visible_candidate_surface_counts(tmp_path: Path) -> None:

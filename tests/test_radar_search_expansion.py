@@ -135,6 +135,30 @@ def test_search_expansion_uses_benchmark_target_hints_only_for_benchmark_profile
     assert all(target.target_label != "Р“СѓР±РєРёРЅСЃРєРёР№ Р“РџР—" for target in non_benchmark_plan.targets)
 
 
+def test_blind_benchmark_does_not_generate_benchmark_context_targets() -> None:
+    radar = _radar_with_sources()
+    radar["task_context"] = {
+        "benchmark_profile": "blind_benchmark",
+        "benchmark_mode": "blind",
+        "benchmark_hints_used": False,
+        "benchmark_target_hints": [],
+        "benchmark_target_probe_minimums": {},
+        "coverage_completion_target_limit": 0,
+    }
+
+    payload = RadarSearchExpansionService(max_variants=8).plan_expansion(
+        radar=radar,
+        candidate_scope=[],
+        provider_metadata={},
+        coverage_checks=[{"completeness_risk": "high"}],
+        unresolved_candidate_gaps=[],
+    ).to_payload()
+
+    assert all(item["target_origin"] != "benchmark_context" for item in payload["targets"])
+    assert all(item["uncovered_baseline_target"] is False for item in payload["targets"])
+    assert all(item["target_origin"] != "benchmark_context" for item in payload["variants"])
+
+
 def test_benchmark_target_metadata_survives_dedupe_with_candidate_gap() -> None:
     radar = _radar_with_sources()
     radar["task_context"] = {

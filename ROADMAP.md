@@ -8786,7 +8786,7 @@ Principles:
 
 ### Slice 0.7.6.4.18.1.4.4: Blind benchmark profile and post-run baseline evaluation
 
-- Status: Ready
+- Status: Done
 - Goal: Add a true blind benchmark mode for candidate discovery: run without baseline hints or protected benchmark targets, then compare the completed result against the curated SIBUR baseline only after the run.
 - User value: A user can distinguish two different questions: whether the pipeline can pass a guided diagnostic smoke, and whether it can independently discover the expected SIBUR contour without being told the target names.
 - Problem statement: Current benchmark_smoke is intentionally guided: it uses the curated SIBUR baseline as target hints and protected coverage probes. That is useful for diagnosing pipeline mechanics, but it is not a blind quality measurement. We need a separate mode that does not inject baseline names into planning, expansion, or projection, then evaluates the result post-factum against the same baseline.
@@ -8810,30 +8810,99 @@ Principles:
   - Disable smoke caps: smoke_max_candidates=0 and smoke_max_signals=0. Keep signal_execution_mode=handoff.
   - Disable guided-target fields: benchmark_target_hints=[], benchmark_target_probe_minimums={}, coverage_completion_target_limit=0 or generic-only without baseline target ids.
   - Use the same curated 12-target SIBUR baseline for evaluation to keep smoke and blind numbers comparable.
+  - Add an explicit blind-run validation helper or CLI output section that prints the closeout DoD fields in one place, so the slice cannot be closed from scattered logs.
 - Tests:
-  - Unit/contract test: blind benchmark context contains no benchmark_target_hints and reports benchmark_hints_used=false.
-  - Search-expansion test: blind benchmark produces no target_origin=benchmark_context and no uncovered_baseline_target=true records.
+  - Unit/contract test: blind benchmark context contains no `benchmark_target_hints` and reports `benchmark_hints_used=false`.
+  - Search-expansion test: blind benchmark produces no `target_origin=benchmark_context` and no `uncovered_baseline_target=true` records.
   - Evaluation test: baseline is loaded only by post-run evaluation, not by run task_context.
   - API/CLI test: `run-radar-benchmark --profile blind_benchmark` is accepted and persisted with blind metadata.
-  - Regression test: benchmark_smoke still carries guided target hints and protected target guarantees.
-  - Final gate after 0.7.6.4.18.1.4.3: rebuild Docker, run SIBUR blind benchmark once, evaluate latest run, and report strict recall, visible recall, accepted/review-needed counts, false negatives, duplicate count, and evidence completeness.
+  - Public-surface regression: duplicate candidate ids = 0, visible candidates without provenance = 0, candidates endpoint/dossier counters agree, and handoff path does not emit `not_observed`.
+  - Regression test: `benchmark_smoke` still carries guided target hints and protected target guarantees.
+  - Final Docker/API gate: rebuild Docker, seed/check backend catalog, run SIBUR blind benchmark once, evaluate latest run, and report strict recall, visible recall, accepted/review-needed counts, false negatives, duplicate count, and evidence completeness.
+  - If blind run reaches bounded terminal state instead of `completed`, evaluation must still be present and interpretable; otherwise the slice remains open.
 - Docs:
   - Update Developer Guide and demo README with the difference between guided `benchmark_smoke` and blind benchmark.
-  - Update benchmark/evaluation docs to state that blind mode is post-run comparison only.
-  - Update roadmap closeout with the exact budget limits used and first observed blind benchmark numbers.
+  - Update benchmark/evaluation docs to state that blind mode is post-run comparison only and not a public quality claim.
+  - Update roadmap closeout with exact budget limits, run id, hints-used proof, first observed blind benchmark numbers, and false-negative RCA table.
+  - If the run exposes a process gap, add or update the relevant runbook/skill/check so future behavior-changing Radar slices automatically rebuild Docker, run the diagnostic, and propose roadmap corrections.
 - Demo impact: Demo tooling gains a clearer quality diagnostic: users can run guided smoke for pipeline mechanics and blind benchmark for independent discovery behavior. UI does not need a new screen in this slice, but reports should label the mode clearly.
 - Acceptance criteria:
   - `benchmark_smoke` remains guided and continues to use the 12-target diagnostic baseline.
   - New blind benchmark mode runs without baseline hints inside candidate discovery.
-  - Run metadata proves baseline hints were not used.
-  - Expansion diagnostics contain no benchmark-context/protected-baseline targets.
+  - Run metadata proves baseline hints were not used: `benchmark_hints_used=false`, `benchmark_mode=blind`, and no baseline-derived protected target state.
+  - Expansion diagnostics contain no `target_origin=benchmark_context`, no `uncovered_baseline_target=true`, and no protected-baseline scheduling.
   - Post-run evaluation compares the result against the 12-target SIBUR baseline and reports blind strict recall, visible recall, accepted/review-needed counts, false negatives, evidence completeness, duplicate count, and source quality.
-  - The slice is not Done until at least one rebuilt Docker/API blind benchmark completes or reaches a terminal bounded state with an interpretable post-run evaluation report.
+  - Public surface remains evidence-complete: duplicate candidate ids = 0, visible candidates without provenance = 0, candidate/detail/API counters agree, and no `not_observed` appears in candidate-discovery handoff mode.
+  - The slice is not Done until Docker is rebuilt and at least one API/CLI blind benchmark reaches `completed` or a bounded terminal state with artifact, candidate universe, public surface, and interpretable post-run evaluation report.
+  - Terminal states that are not acceptable for closeout: schema/extraction failure without salvage, API/job failure, empty artifact, missing candidate universe, missing evaluation report, or failed baseline comparison.
+  - Low recall is acceptable only as measured diagnostic evidence: if strict recall is 0, closeout must include a concrete follow-up RCA slice before this slice can be marked Done.
   - The result is not treated as a public quality claim.
 - Risks:
   - Without hints the first blind run may look worse than guided smoke; that is expected and useful evidence.
   - Budget too low can under-measure recall; budget too high can hide poor search strategy. Start with the bounded intermediate profile and adjust only with explicit RCA.
   - If evidence completeness remains broken, blind results will be hard to read; therefore this slice depends on 0.7.6.4.18.1.4.3.
+  - A technically successful blind run with unreadable misses is not useful; require path-level reasons before closing the slice.
+  - If the first blind result is poor, do not tune blindly inside this slice. Record the evidence and create a separate corrective RCA slice unless the defect is a small implementation bug in the blind/evaluation plumbing.
+- Completion DoD: Hard closeout formula: `run without hints -> artifact -> public surface -> post-run baseline comparison -> explicit miss diagnostics`.
+
+Required proof before Done:
+- Docker stack rebuilt and backend API available on `http://127.0.0.1:8001`.
+- One SIBUR blind benchmark run executed through normal API/CLI path, not by direct fixture injection.
+- Run metadata confirms no baseline hints entered planning, expansion, scheduling, projection, or candidate admission.
+- Evaluation report lists all 12 baseline targets and gives each miss a path-level reason: `not_generated`, `no_executable_query`, `not_selected`, `not_admitted`, `not_executed`, `source_not_found`, `present_not_projected`, or `explicitly_rejected`.
+- Roadmap closeout records run id, mode, hints-used flag, visible candidates, accepted candidates, review-needed candidates, duplicate ids, empty provenance count, strict recall, visible recall, false negatives, top miss reasons, and whether a follow-up corrective slice is required.
+- `benchmark_smoke` is rechecked so the guided diagnostic contour remains intact.
+
+### Slice 0.7.6.4.18.1.4.5: Radar run history selector and direct run inspection
+
+- Status: Done
+- Goal: Add a compact Radar run history selector so users can inspect a specific persisted run, including blind benchmark runs, instead of being forced to view only the latest run for a radar.
+- User value: A user can open Benchmark / SIBUR holding contour, select the exact blind run `radar-run-3bbf9c0f-330e-4468-8901-966a751234a8`, and see the candidates, dossier, diagnostics, and counters for that run even after a newer smoke run becomes latest.
+- Problem statement: The UI currently treats a radar detail as the latest-run surface. After running `benchmark_smoke` to validate guided diagnostics, the previous `blind_benchmark` result is still in the API/database but effectively disappears from the UI. This makes benchmark RCA confusing because the visible candidates may belong to a different run than the run being discussed.
+- Scope:
+  - Add a lightweight backend endpoint such as `GET /api/radars/{radar_id}/runs?limit=20` returning recent run summaries for a radar without full artifacts.
+  - Include run id, status, queued/started/completed timestamps, profile/mode where available, and compact output counts.
+  - Add a run selector/history control to Radar detail, defaulting to latest but allowing selection of an older completed run.
+  - Support direct inspection by URL query parameter, for example `?runId=radar-run-3bbf9c0f-330e-4468-8901-966a751234a8`.
+  - Reload candidates, dossier, diagnostics, artifact viewer, counters, and review overlays from the selected run id, not from latest.
+  - Show an explicit selected-run identity: latest vs selected historical run, run id, status, profile/mode, and completion time.
+- Out of scope:
+  - No candidate-discovery pipeline, scoring, acceptance, benchmark, or signal-monitoring behavior changes.
+  - No side-by-side run comparison screen.
+  - No new benchmark execution from the selector.
+  - No broad historical analytics, filtering, or retention policy changes.
+- Implementation notes:
+  - Keep the UI fix small: a selector/control inside the existing Radar detail screen, not a new product area.
+  - Use the existing Power Web OS app shell and design-system tokens; run ids and counters use mono typography.
+  - Do not silently fall back to latest when a requested run id is missing; show a readable error and keep the current run unchanged.
+  - If the selected run belongs to another radar, reject it with a clear message.
+  - Preserve current latest-run behavior when no run id is selected.
+  - Use Lucide icons where an icon is needed and route all visible strings through EN/RU i18n resources.
+- Tests:
+  - Backend test: recent runs endpoint returns only runs for the requested radar, sorted newest-first, without full artifact payloads.
+  - Backend test: unknown radar and wrong-radar run ids produce clear errors.
+  - Frontend/API adapter test: default detail opens latest run.
+  - Frontend test: selecting an older run reloads candidates/dossier/diagnostics for that selected run id.
+  - Frontend test: direct URL with `?runId=...` opens the selected persisted run.
+  - Frontend test: missing run id shows an error state instead of silently reverting to latest.
+  - Regression commands: `python -m pytest tests/test_backend_api.py tests/test_radar_jobs.py -q`, frontend tests/build, and a browser/Playwright DoD check against local Docker.
+- Docs:
+  - Update Developer Guide/demo README with how to open a specific Radar run from UI and why benchmark diagnostics should cite run id.
+  - Update Radar UI/docs notes to distinguish radar latest state from selected historical run state.
+- Demo impact: The demo becomes inspectable after multiple benchmark runs: users can open the benchmark radar, choose the blind run, then switch back to the latest smoke run without rerunning either job.
+- Acceptance criteria:
+  - `Benchmark / SIBUR holding contour` is visible in the catalog when backend returns it.
+  - Opening the radar still defaults to the latest completed run.
+  - The UI can select and display `radar-run-3bbf9c0f-330e-4468-8901-966a751234a8` even if latest is `radar-run-3aa622ff-e137-48aa-9f2c-15e74f594bfc` or another newer run.
+  - Selected run identity is visible: run id, status, profile/mode when available, and completion time.
+  - Candidate table, counters, dossier, diagnostics, and artifact viewer all use the selected run id.
+  - Direct URL with `?runId=...` opens that run and does not require rerunning benchmark.
+  - Unknown or wrong-radar run id shows a clear error, not a silent latest fallback.
+  - At 1280x720 and 1366x768 there is no text overlap or unusable selector layout.
+- Risks:
+  - If run selection state is mixed with latest-run polling state, UI may show counters from one run and candidates from another; tests must assert selected-run consistency.
+  - If local demo overrides still mask backend radars, the selector may appear to work only on fixture data; use the backend mode DoD path.
+  - Adding too much benchmark analytics here would expand scope; keep comparison/reporting for later slices.
 
 ### Slice 0.7.6.4.18.2: Signal monitoring live runtime and API wiring
 
@@ -8861,6 +8930,7 @@ Principles:
   - Deferred until 0.7.6.4.18.1.4 is validated, because signal monitoring should start from a user-facing candidate snapshot that exposes accepted and review-needed legal candidates, not only the strict accepted subset.
   - Deferred until 0.7.6.4.18.1.4.3 validates evidence-complete, duplicate-safe public candidate rows, because signal monitoring should not consume empty or duplicated candidate snapshots.
   - Deferred until 0.7.6.4.18.1.4.4 adds blind benchmark mode, so product work can separate guided diagnostic smoke from independent discovery quality evidence.
+  - Deferred until 0.7.6.4.18.1.4.5 adds run history/direct run inspection, because benchmark and RCA evidence must be visible in UI by exact run id, not only as the latest radar state.
 - Tests:
   - Recorded signal-monitoring tests for observed, searched-negative, not-searched, budget-limited, and review-needed states.
   - API/job smoke for starting and reading a signal-monitoring run.

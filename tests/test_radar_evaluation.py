@@ -299,6 +299,93 @@ def test_evaluation_counts_visible_candidate_surface_separately_from_product_acc
     assert report["metrics"]["false_negative_count"] == 1
 
 
+def test_blind_benchmark_evaluation_reports_closeout_without_run_hints() -> None:
+    baseline = RadarEvaluationBaseline(
+        baseline_id="blind-closeout",
+        version="v1",
+        radar_id=SIBUR_CONTOUR_RADAR_ID,
+        description="Blind benchmark closeout fixture.",
+        entities=(
+            RadarEvaluationEntity(
+                baseline_id="candidate-a",
+                canonical_name="Candidate A",
+                entity_type="legal_entity",
+            ),
+            RadarEvaluationEntity(
+                baseline_id="candidate-b",
+                canonical_name="Candidate B",
+                entity_type="legal_entity",
+            ),
+        ),
+    )
+    dossier = {
+        "summary": {"execution_outcome": "completed_with_candidates"},
+        "benchmark_profile": "blind_benchmark",
+        "benchmark_mode": "blind",
+        "benchmark_hints_used": False,
+        "benchmark_target_hint_count": 0,
+        "sources": [{"evidence_ref": "src_a", "url": "https://example.test/a", "state": "used"}],
+        "candidates": [
+            {
+                "candidate_id": "candidate-a",
+                "legal_name": "Candidate A",
+                "entity_type": "legal_entity",
+                "evidence_refs": ["src_a"],
+                "source_refs": ["src_a"],
+                "candidate_surface_status": "review_needed_candidate",
+                "product_acceptance_status": "review_required",
+                "candidate_surface_reason": "source_backed_legal_entity_requires_review",
+            }
+        ],
+        "candidate_universe": [],
+        "expansion_target_queue": [
+            {
+                "target_id": "known_subsidiary_or_legal_entity_target:candidate_b",
+                "target_label": "Candidate B",
+                "target_type": "known_subsidiary_or_legal_entity_target",
+                "target_origin": "radar_seed",
+                "uncovered_baseline_target": False,
+            }
+        ],
+        "targets_not_searched": [
+            {
+                "target_id": "known_subsidiary_or_legal_entity_target:candidate_b",
+                "target_label": "Candidate B",
+                "target_type": "known_subsidiary_or_legal_entity_target",
+                "not_searched_reason": "not_selected",
+            }
+        ],
+    }
+
+    report = evaluate_radar_dossier(
+        run={"run_id": "radar-run-blind", "radar_id": SIBUR_CONTOUR_RADAR_ID, "status": "completed"},
+        dossier=dossier,
+        baseline=baseline,
+    )
+
+    assert report["benchmark_context"] == {
+        "benchmark_profile": "blind_benchmark",
+        "benchmark_mode": "blind",
+        "benchmark_hints_used": False,
+        "benchmark_target_hint_count": 0,
+    }
+    assert report["metrics"]["strict_recall"] == 0.5
+    assert report["metrics"]["visible_recall"] == 0.5
+    assert report["metrics"]["duplicate_candidate_id_count"] == 0
+    assert report["metrics"]["empty_provenance_candidate_count"] == 0
+    closeout = report["blind_benchmark_closeout"]
+    assert closeout["run_mode"] == "blind"
+    assert closeout["hints_used"] is False
+    assert closeout["baseline_target_count"] == 2
+    assert closeout["false_negative_ids"] == ["candidate-b"]
+    assert closeout["top_miss_reasons"] == {"not_selected": 1}
+    assert closeout["requires_followup_rca"] is False
+    assert {
+        item["baseline_id"]: item["closeout_path_reason"]
+        for item in closeout["baseline_target_results"]
+    } == {"candidate-a": "projected", "candidate-b": "not_selected"}
+
+
 def test_evaluation_gives_specific_reason_for_generated_unselected_legal_target() -> None:
     baseline = RadarEvaluationBaseline(
         baseline_id="protected-legal-selection",
@@ -828,7 +915,8 @@ def test_latest_run_resolution_uses_api_catalog_without_enqueueing() -> None:
     run = resolve_evaluation_run(client=client, run_id=None, radar_id=SIBUR_CONTOUR_RADAR_ID, latest=True)
 
     assert run["run_id"] == "radar-run-latest"
-    assert client.paths == ["/api/radars"]
+    assert run["run_metadata"]["task_context"]["benchmark_profile"] == "blind_benchmark"
+    assert client.paths == ["/api/radars", "/api/radar-runs/radar-run-latest"]
 
 
 def test_evaluation_module_does_not_reference_provider_credentials_or_hidden_reasoning() -> None:
@@ -846,16 +934,31 @@ class _FakeEvaluationClient:
 
     def get_json(self, path: str) -> dict[str, Any] | list[Any]:
         self.paths.append(path)
-        return [
-            {
-                "radar_id": SIBUR_CONTOUR_RADAR_ID,
-                "latest_run": {
-                    "run_id": "radar-run-latest",
+        if path == "/api/radars":
+            return [
+                {
                     "radar_id": SIBUR_CONTOUR_RADAR_ID,
-                    "status": "completed",
+                    "latest_run": {
+                        "run_id": "radar-run-latest",
+                        "radar_id": SIBUR_CONTOUR_RADAR_ID,
+                        "status": "completed",
+                    },
+                }
+            ]
+        if path == "/api/radar-runs/radar-run-latest":
+            return {
+                "run_id": "radar-run-latest",
+                "radar_id": SIBUR_CONTOUR_RADAR_ID,
+                "status": "completed",
+                "run_metadata": {
+                    "task_context": {
+                        "benchmark_profile": "blind_benchmark",
+                        "benchmark_hints_used": False,
+                        "benchmark_target_hints": [],
+                    }
                 },
             }
-        ]
+        raise AssertionError(f"Unexpected path: {path}")
 
 
 def _sample_baseline() -> RadarEvaluationBaseline:

@@ -104,6 +104,45 @@ BENCHMARK_PROFILES: dict[str, dict[str, Any]] = {
         },
         "coverage_completion_target_limit": 3,
     },
+    "blind_benchmark": {
+        "run_profile": "live",
+        "max_web_tasks_per_subject": 2,
+        "max_discovery_tasks_per_rule": 5,
+        "max_gate_tasks_per_candidate_rule": 2,
+        "max_signal_tasks_per_candidate_signal": 0,
+        "max_total_web_tasks_per_run": 55,
+        "min_useful_sources_per_discovery_task": 2,
+        "min_candidates_per_discovery_task": 2,
+        "max_discovery_retries_per_task": 1,
+        "max_checkpoint_revisions_per_run": 2,
+        "max_checkpoint_retries_per_stage": 1,
+        "max_openrouter_calls_per_run": 36,
+        "max_openrouter_planner_calls_per_run": 3,
+        "max_openrouter_web_task_calls_per_run": 28,
+        "max_recall_expansion_openrouter_calls_per_run": 10,
+        "max_openrouter_server_tool_web_searches_per_run": 90,
+        "max_dadata_lookups_per_run": 10,
+        "max_source_verification_requests_per_run": 80,
+        "max_provider_retries_per_task": 1,
+        "openrouter_web_max_results_per_call": 5,
+        "openrouter_web_max_total_results_per_call": 10,
+        "smoke_max_candidates": 0,
+        "smoke_max_signals": 0,
+        "signal_execution_mode": "handoff",
+        "budget_reserve_limits": {
+            "official_coverage_probe": 8,
+            "open_web_coverage_probe": 5,
+            "production_site_coverage_probe": 3,
+        },
+        "semantic_task_reserve_limits": {
+            "recall_expansion": 10,
+            "official_coverage_probe": 8,
+            "open_web_coverage_probe": 5,
+            "production_site_coverage_probe": 3,
+        },
+        "benchmark_target_probe_minimums": {},
+        "coverage_completion_target_limit": 0,
+    },
 }
 
 
@@ -138,13 +177,20 @@ def benchmark_radar_ids(value: str) -> tuple[str, ...]:
 def benchmark_task_context(*, profile: str, radar_id: str) -> dict[str, Any]:
     if profile not in BENCHMARK_PROFILES:
         raise ValueError(f"Unsupported benchmark profile: {profile}")
+    hints = benchmark_target_hints(radar_id) if _benchmark_profile_uses_target_hints(profile) else []
     return {
         **BENCHMARK_PROFILES[profile],
         "benchmark_profile": profile,
+        "benchmark_mode": "guided" if _benchmark_profile_uses_target_hints(profile) else "blind",
+        "benchmark_hints_used": bool(hints),
         "source": "radar_benchmark_cli",
         "benchmark_radar_id": radar_id,
-        "benchmark_target_hints": benchmark_target_hints(radar_id),
+        "benchmark_target_hints": hints,
     }
+
+
+def _benchmark_profile_uses_target_hints(profile: str) -> bool:
+    return profile in {"benchmark_smoke", "benchmark_live"}
 
 
 def benchmark_target_hints(radar_id: str) -> list[dict[str, Any]]:
@@ -274,9 +320,13 @@ def benchmark_result_summary(
         execution_outcome=execution_outcome,
         budget_events=[*budget_events, *external_budget_events],
     )
+    benchmark_context = _benchmark_context_from_run_and_dossier(run, dossier, fallback_profile=profile)
     return {
         "radar_id": radar_id,
         "profile": profile,
+        "benchmark_mode": benchmark_context["benchmark_mode"],
+        "benchmark_hints_used": benchmark_context["benchmark_hints_used"],
+        "benchmark_target_hint_count": benchmark_context["benchmark_target_hint_count"],
         "run_id": run.get("run_id"),
         "status": status,
         "started_at": run.get("started_at"),
@@ -354,6 +404,39 @@ def benchmark_result_summary(
     }
 
 
+def _benchmark_context_from_run_and_dossier(
+    run: dict[str, Any],
+    dossier: dict[str, Any],
+    *,
+    fallback_profile: str,
+) -> dict[str, Any]:
+    run_metadata = _dict(run.get("run_metadata"))
+    task_context = _dict(run_metadata.get("task_context"))
+    profile = str(dossier.get("benchmark_profile") or task_context.get("benchmark_profile") or fallback_profile)
+    mode = str(dossier.get("benchmark_mode") or task_context.get("benchmark_mode") or "")
+    if mode:
+        resolved_mode = mode
+    else:
+        resolved_mode = "guided" if _benchmark_profile_uses_target_hints(profile) else "blind"
+    task_hints = _list(task_context.get("benchmark_target_hints"))
+    hint_count = _int(dossier.get("benchmark_target_hint_count"))
+    if not hint_count and task_hints:
+        hint_count = len(task_hints)
+    value = dossier.get("benchmark_hints_used")
+    if isinstance(value, bool):
+        hints_used = value
+    elif isinstance(task_context.get("benchmark_hints_used"), bool):
+        hints_used = bool(task_context.get("benchmark_hints_used"))
+    else:
+        hints_used = hint_count > 0
+    return {
+        "benchmark_profile": profile,
+        "benchmark_mode": resolved_mode,
+        "benchmark_hints_used": hints_used,
+        "benchmark_target_hint_count": hint_count,
+    }
+
+
 def _poll_run(
     *,
     client: RadarBenchmarkHttpClient,
@@ -426,6 +509,10 @@ def _dict(value: object) -> dict[str, Any]:
 
 def _list(value: object) -> list[Any]:
     return list(value) if isinstance(value, list) else []
+
+
+def _int(value: object) -> int:
+    return max(int(value), 0) if isinstance(value, int) else 0
 
 
 def _utc_now() -> str:

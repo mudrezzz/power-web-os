@@ -438,6 +438,12 @@ export class RadarApiClient {
     return this.request<RadarDetailDto>(`/api/radars/${encodeURIComponent(radarId)}`);
   }
 
+  listRadarRuns(radarId: string, limit = 20) {
+    return this.request<RadarRunSummaryDto[]>(
+      `/api/radars/${encodeURIComponent(radarId)}/runs?limit=${encodeURIComponent(String(limit))}`,
+    );
+  }
+
   getRadarPreflight(radarId: string) {
     return this.request<RadarPreflightDto>(`/api/radars/${encodeURIComponent(radarId)}/preflight`);
   }

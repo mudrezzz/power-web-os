@@ -64,6 +64,40 @@ def test_benchmark_live_context_protects_baseline_target_lanes() -> None:
     assert context["benchmark_target_hints"]
 
 
+def test_blind_benchmark_context_uses_no_baseline_hints() -> None:
+    context = benchmark_task_context(profile="blind_benchmark", radar_id="benchmark-sibur-holding-contour")
+
+    assert context["benchmark_profile"] == "blind_benchmark"
+    assert context["benchmark_mode"] == "blind"
+    assert context["benchmark_hints_used"] is False
+    assert context["benchmark_target_hints"] == []
+    assert context["run_profile"] == "live"
+    assert context["max_total_web_tasks_per_run"] == 55
+    assert context["max_openrouter_calls_per_run"] == 36
+    assert context["max_openrouter_planner_calls_per_run"] == 3
+    assert context["max_openrouter_web_task_calls_per_run"] == 28
+    assert context["max_recall_expansion_openrouter_calls_per_run"] == 10
+    assert context["max_openrouter_server_tool_web_searches_per_run"] == 90
+    assert context["max_dadata_lookups_per_run"] == 10
+    assert context["max_source_verification_requests_per_run"] == 80
+    assert context["smoke_max_candidates"] == 0
+    assert context["smoke_max_signals"] == 0
+    assert context["signal_execution_mode"] == "handoff"
+    assert context["benchmark_target_probe_minimums"] == {}
+    assert context["coverage_completion_target_limit"] == 0
+    assert context["budget_reserve_limits"] == {
+        "official_coverage_probe": 8,
+        "open_web_coverage_probe": 5,
+        "production_site_coverage_probe": 3,
+    }
+    assert context["semantic_task_reserve_limits"] == {
+        "recall_expansion": 10,
+        "official_coverage_probe": 8,
+        "open_web_coverage_probe": 5,
+        "production_site_coverage_probe": 3,
+    }
+
+
 def test_sibur_benchmark_task_context_includes_curated_target_hints() -> None:
     context = benchmark_task_context(profile="benchmark_smoke", radar_id="benchmark-sibur-holding-contour")
 
@@ -345,6 +379,27 @@ def test_benchmark_runner_queues_runs_and_writes_report_shape() -> None:
     assert client.posts[0][0] == "/api/radars/benchmark-sibur-holding-contour/runs"
     assert client.posts[0][1]["task_context"]["benchmark_profile"] == "benchmark_smoke"
     assert client.posts[0][1]["task_context"]["max_total_web_tasks_per_run"] == 18
+    _assert_safe(report)
+
+
+def test_benchmark_runner_accepts_blind_profile_without_hints() -> None:
+    client = _FakeBenchmarkClient()
+
+    report = run_radar_benchmark(
+        client=client,
+        radar_ids=("benchmark-sibur-holding-contour",),
+        profile="blind_benchmark",
+        poll_interval_seconds=0,
+        timeout_seconds=5,
+    )
+
+    task_context = client.posts[0][1]["task_context"]
+    assert report["profile"] == "blind_benchmark"
+    assert report["results"][0]["benchmark_mode"] == "blind"
+    assert report["results"][0]["benchmark_hints_used"] is False
+    assert task_context["benchmark_target_hints"] == []
+    assert task_context["benchmark_hints_used"] is False
+    assert task_context["benchmark_mode"] == "blind"
     _assert_safe(report)
 
 

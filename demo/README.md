@@ -384,6 +384,23 @@ minimums, completion slots, and reserve budgets; do not treat it as merely a
 longer smoke run. If smoke stops before the target funnel, inspect
 `post_extraction_salvage_*` and `extraction_recovery_records` first.
 
+Use `blind_benchmark` when you need to measure independent discovery rather
+than guided pipeline mechanics:
+
+```powershell
+python -m power_web_os.demo run-radar-benchmark --api-url http://127.0.0.1:8001 --profile blind_benchmark --radar-id benchmark-sibur-holding-contour
+python -m power_web_os.demo evaluate-radar-benchmark --api-url http://127.0.0.1:8001 --radar-id benchmark-sibur-holding-contour --latest
+```
+
+The blind profile runs with `benchmark_hints_used=false`,
+`benchmark_mode=blind`, no `benchmark_target_hints`, no
+`target_origin=benchmark_context`, and no `uncovered_baseline_target`
+scheduling. The SIBUR baseline is loaded only by the post-run evaluation. The
+evaluation report includes `blind_benchmark_closeout`; use that single section
+for DoD fields such as run mode, hints used, strict/visible recall, false
+negatives, duplicate candidate ids, empty provenance count, and top miss
+reasons.
+
 After `0.7.6.3`, evaluate the SIBUR benchmark against a small curated baseline:
 
 ```powershell
@@ -495,7 +512,7 @@ JSON/schema failure reason. When comparing model presets, inspect
 `provider_retry_records`, OpenRouter role counters, and final recall/precision
 together.
 
-The benchmark CLI poll timeout defaults to 1200 seconds. This timeout is not the
+The benchmark CLI poll timeout defaults to 2400 seconds. This timeout is not the
 main work limiter; external-call budgets are. With low-cost OpenRouter routing a
 bounded smoke can still take more than 15 minutes while staying within
 `openrouter:run`, `openrouter_recall_expansion:run`, DaData, source
@@ -628,6 +645,7 @@ unless you changed the uvicorn port.
 ```text
 http://127.0.0.1:8001/api/radars
 http://127.0.0.1:8001/api/radars/toir-quick-live
+http://127.0.0.1:8001/api/radars/toir-quick-live/runs?limit=20
 http://127.0.0.1:8001/api/radars/toir-quick-live/preflight
 http://127.0.0.1:8001/api/radar-runs/{run_id}
 http://127.0.0.1:8001/api/radar-runs/{run_id}/candidates
@@ -667,11 +685,15 @@ npm --prefix ./frontend run radar:benchmark-ui-dod
 It checks ten clean browser contexts against the Docker frontend/API on
 `http://127.0.0.1:5173` and `http://127.0.0.1:8001`, then verifies that
 `Benchmark / SIBUR holding contour` is visible, opens to the latest completed
-run, shows 12 unique candidates after duplicate-safe merge, 3 accepted/product,
-and 9 review-needed, and is not hidden by demo fallback or local overrides. The
-same gate opens each visible candidate and verifies a non-empty provenance
-surface: web source, registry evidence, projection evidence, or an explicit
-diagnostic reason. Set
+run, shows candidate/accepted/review-needed counts that match the selected run
+endpoint, and is not hidden by demo fallback or local overrides. The same gate
+opens each visible candidate and verifies a non-empty provenance surface: web
+source, registry evidence, projection evidence, or an explicit diagnostic
+reason. It also verifies the run-history selector and direct
+`?runId=...` inspection path for the configured benchmark run id. Use the
+selector when a benchmark RCA refers to an older blind run and a newer guided
+smoke run is already latest; candidates, counters, dossier, diagnostics, and
+trace should all follow the selected run id. Set
 `POWER_WEB_OS_RADAR_UI_DOD_START_VITE=1` only for a manual local Vite run with
 matching backend CORS origins.
 
