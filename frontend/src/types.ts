@@ -946,3 +946,90 @@ export type SignalMonitoringReportArtifactV2 = {
 };
 
 export type SignalMonitoringReportArtifact = SignalMonitoringReportArtifactV2;
+
+export type SignalMonitoringPresentationStatus =
+  | 'found_fresh'
+  | 'found_relevant_date_unknown'
+  | 'found_historical_not_counted'
+  | 'not_found_after_complete_coverage'
+  | 'coverage_incomplete'
+  | 'not_monitored';
+
+export type SignalMonitoringSurfaceEvidence = {
+  source_ref: string;
+  resolved: boolean;
+  resolution_reason: string;
+  title: string;
+  url: string;
+  snippet: string;
+  source_lane: string;
+  fact: string;
+  excerpt: string;
+  event_at: string;
+  published_at: string;
+  temporal_status: string;
+  date_basis: string;
+  date_confidence: string;
+  origin_run_id?: string;
+};
+
+export type SignalMonitoringSurfaceState = {
+  presentation_status: SignalMonitoringPresentationStatus;
+  technical_observation_status?: string;
+  technical_search_status?: string;
+  summary?: string;
+  score?: number;
+  coverage_complete?: boolean;
+  origin_run_id?: string;
+  latest_run_id?: string;
+  evidence: SignalMonitoringSurfaceEvidence[];
+  searched_sources?: SignalMonitoringSurfaceEvidence[];
+  history?: Array<{
+    run_id: string;
+    presentation_status: SignalMonitoringPresentationStatus;
+    technical_observation_status: string;
+    technical_search_status: string;
+  }>;
+};
+
+export type SignalMonitoringSurfaceOutcome = {
+  signal_code: string;
+  signal_label: string;
+  current: SignalMonitoringSurfaceState;
+  cumulative: SignalMonitoringSurfaceState;
+  new_in_selected_run: boolean;
+};
+
+export type SignalMonitoringCandidateSurface = {
+  candidate_id: string;
+  candidate_name: string;
+  monitored: boolean;
+  monitoring_status: SignalMonitoringPresentationStatus | 'review_needed';
+  outcomes: SignalMonitoringSurfaceOutcome[];
+};
+
+export type SignalMonitoringCandidateSurfaceArtifact = {
+  artifact_type: 'signal_monitoring_candidate_surface';
+  artifact_version: string;
+  pipeline_id: 'signal_monitoring';
+  radar_id: string;
+  selected_run_id: string;
+  source_candidate_run_id: string;
+  history_run_ids: string[];
+  summary: {
+    candidate_count: number;
+    monitored_candidate_count: number;
+    not_monitored_candidate_count: number;
+    criterion_count: number;
+    pair_count: number;
+    current_confirmed_count: number;
+    current_review_count: number;
+    current_searched_negative_count: number;
+    new_confirmed_count: number;
+    cumulative_confirmed_count: number;
+    cumulative_review_count: number;
+    unresolved_source_ref_count: number;
+  };
+  unresolved_source_refs: string[];
+  candidates: SignalMonitoringCandidateSurface[];
+};

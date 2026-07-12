@@ -9026,14 +9026,14 @@ Required proof before Done:
 
 ### Slice 0.7.6.4.18.3.1: Per-signal monitoring depth, cadence and source settings
 
-- Status: Blocked
+- Status: Ready
 - Goal: Expose persisted per-signal initial lookback, incremental overlap, cadence and source policy settings after the split UI contract is validated.
 - Scope: Persist per-criterion initial depth, overlap, cadence and source-lane policy; expose them through API and UI with validation.
 - Acceptance criteria: Each criterion has explicit persisted monitoring settings, runtime uses them without hidden defaults, and UI/API round-trip is covered.
 
 ### Slice 0.7.6.4.18.3.2: Signal monitoring evidence status language and report clarity
 
-- Status: Ready
+- Status: Done
 - Goal: Build an honest cumulative Signal Monitoring product surface: show all candidate-criterion results, resolve source provenance, distinguish current-run delta from previously retained state, and project the selected monitoring state onto the candidate list without merging pipeline ownership.
 - User value: A user sees what was actually found for each company, can open the supporting sources, understands what is new versus already known, and does not see false zero signal counts after a successful monitoring run.
 - Problem statement: The completed split UI proves separate runtimes and lineage but the current report is materially misleading: 12 means candidate-criterion pairs rather than findings; the frontend silently truncates the report to 6 rows; backend source_refs are rendered as zero evidence; incremental runs show only the current delta and hide previously retained evidence; and the main candidate list still displays candidate-discovery signal zeros instead of a joined monitoring projection.

@@ -35,6 +35,12 @@ SIGNAL_1822_VALIDATION = Path(
 )
 PIPELINE_SPLIT_UI_CONTRACT = Path("docs/radar/pipelines/RADAR_PIPELINE_SPLIT_UI_CONTRACT.md")
 PIPELINE_SPLIT_VALIDATION = Path("docs/radar/pipelines/validation/0.7.6.4.18.3/validation.json")
+SIGNAL_SURFACE_RCA = Path(
+    "docs/radar/pipelines/signal-monitoring/rca/SIGNAL_MONITORING_SURFACE_RCA_0.7.6.4.18.3.2.md"
+)
+SIGNAL_SURFACE_VALIDATION = Path(
+    "docs/radar/pipelines/validation/0.7.6.4.18.3.2/validation.json"
+)
 SKILL_PATHS = [
     Path(".agents/skills/radar-pipeline-to-be-design/SKILL.md"),
     Path(".agents/skills/radar-pipeline-as-is-sync/SKILL.md"),
@@ -240,4 +246,20 @@ def test_radar_pipeline_split_ui_contract_is_validated() -> None:
     assert validation["validation_status"] == "PASS"
     assert validation["candidate_run_id"].startswith("radar-run-")
     assert len(validation["signal_run_ids"]) >= 2
+    assert all(status == "PASS" for status in validation["checks"].values())
+
+
+def test_signal_monitoring_product_surface_is_semantically_validated() -> None:
+    contract = PIPELINE_SPLIT_UI_CONTRACT.read_text(encoding="utf-8")
+    rca = SIGNAL_SURFACE_RCA.read_text(encoding="utf-8")
+    validation = json.loads(SIGNAL_SURFACE_VALIDATION.read_text(encoding="utf-8"))
+
+    assert "candidate-criterion check is never presented as a found signal" in contract
+    assert "incremental report was a delta" in rca
+    assert validation["validation_status"] == "PASS"
+    assert validation["pair_count"] == 12
+    assert validation["initial"] == {"confirmed": 4, "review": 3, "searched_negative": 5}
+    assert validation["incremental"]["new_confirmed"] == 0
+    assert validation["incremental"]["cumulative_confirmed"] == 4
+    assert validation["unresolved_retained_evidence_count"] == 0
     assert all(status == "PASS" for status in validation["checks"].values())

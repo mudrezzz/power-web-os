@@ -11,10 +11,12 @@ import type {
   QualificationReviewDecision,
   SignalValidationDecision,
   SignalValidationOverlay,
+  SignalMonitoringCandidateSurface,
 } from '../../types';
 import { CandidateDetailTabs, Metric, ScoreBox } from './detailPrimitives';
 import { LiveRunDossierPanel, LiveRunJournalFallback } from './liveDossier';
 import { LiveSignalReviewTable } from './liveSignalReview';
+import { SignalMonitoringCandidateDetail } from './components/SignalMonitoringCandidateDetail';
 import { LiveRunTechnicalTracePanel } from './liveTrace';
 import {
   type CandidateDetailTab,
@@ -53,6 +55,7 @@ export function LiveRadarCandidateDetailView({
   radarId,
   radarName,
   signalValidation,
+  signalMonitoringCandidate,
 }: {
   activeTab: CandidateDetailTab;
   artifact: LiveICPRadarRunArtifact;
@@ -71,6 +74,7 @@ export function LiveRadarCandidateDetailView({
   radarId: string;
   radarName: string;
   signalValidation: SignalValidationOverlay;
+  signalMonitoringCandidate: SignalMonitoringCandidateSurface | null;
 }) {
   const { t } = useTranslation();
   const sourcesByRef = useMemo(() => new Map(artifact.sources.map((source) => [source.evidence_ref, source])), [artifact.sources]);
@@ -184,14 +188,18 @@ export function LiveRadarCandidateDetailView({
           <Card>
             <section className="icp-detail-section">
               <Eyebrow>{t('icpRadar.live.signals')}</Eyebrow>
-              <LiveSignalReviewTable
-                candidate={candidate}
-                onSignalDecisionChange={onSignalDecisionChange}
-                onSignalDecisionReset={onSignalDecisionReset}
-                radarId={radarId}
-                signalValidation={signalValidation}
-                sourcesByRef={sourcesByRef}
-              />
+              {signalMonitoringCandidate ? (
+                <SignalMonitoringCandidateDetail candidate={signalMonitoringCandidate} />
+              ) : (
+                <LiveSignalReviewTable
+                  candidate={candidate}
+                  onSignalDecisionChange={onSignalDecisionChange}
+                  onSignalDecisionReset={onSignalDecisionReset}
+                  radarId={radarId}
+                  signalValidation={signalValidation}
+                  sourcesByRef={sourcesByRef}
+                />
+              )}
             </section>
           </Card>
         )}

@@ -216,3 +216,11 @@ The first ICP Radar demo uses a ТОиР automation profile based on the SIBUR-s
 The radar itself is inspectable and locally editable as a configured object. The current catalog has multiple radars, and each selected radar has a `Settings` tab showing metadata, shared search base, account qualification rules, intent signals, fit/intent/tier scoring model, validator findings, run cadence, and whether the run is full or incremental. Saved changes are stored in browser `localStorage` and can be reset from the catalog; they do not modify generated demo artifacts.
 
 Each found signal should have evidence and a validation state. A user should be able to confirm, correct, reject, or mark a signal as stale. The final ICP score should update from validated signals and show the breakdown by fit, intent, tier classification, evidence, and manual validation decisions.
+
+In an API-backed Radar, the Signal Monitoring report distinguishes four human
+outcomes: fresh evidence found, relevant evidence with an uncertain date,
+historical evidence not counted as fresh, and no evidence after complete
+coverage. The report shows all candidate-criterion checks, source links and
+whether a finding is new in the selected run or was retained from an earlier
+run. Candidates that were not included in the selected monitoring run are
+labelled not monitored rather than shown as having zero signals.

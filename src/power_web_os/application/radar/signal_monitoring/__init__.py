@@ -38,6 +38,10 @@ from power_web_os.application.radar.signal_monitoring.service_factory import (
     SignalMonitoringRunServiceFactory,
 )
 from power_web_os.application.radar.signal_monitoring.source_strategy import SignalMonitoringSourceStrategy
+from power_web_os.application.radar.signal_monitoring.surface import (
+    SignalMonitoringCandidateSurfaceProjector,
+    SignalMonitoringCandidateSurfaceService,
+)
 
 __all__ = [
     "SignalAttemptRole",
@@ -64,6 +68,8 @@ __all__ = [
     "SignalMonitoringSourcePolicy",
     "SignalMonitoringSourceStrategy",
     "SignalMonitoringSourceStrategyResult",
+    "SignalMonitoringCandidateSurfaceProjector",
+    "SignalMonitoringCandidateSurfaceService",
     "SignalObservation",
     "SignalProviderAttemptRecord",
     "SignalSearchTask",

@@ -554,6 +554,12 @@ export class RadarApiClient {
     return this.request<unknown>(`/api/signal-monitoring-runs/${encodeURIComponent(runId)}/report`);
   }
 
+  getSignalMonitoringCandidateSurface(runId: string) {
+    return this.request<unknown>(
+      `/api/signal-monitoring-runs/${encodeURIComponent(runId)}/candidate-surface`,
+    );
+  }
+
   getRun(runId: string) {
     return this.request<RadarRunSummaryDto>(`/api/radar-runs/${encodeURIComponent(runId)}`);
   }

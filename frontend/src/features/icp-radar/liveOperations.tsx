@@ -3,7 +3,7 @@ import { Activity, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button, Card, Eyebrow } from '../../components/primitives';
 import type { SignalMonitoringRunSummaryDto } from '../../api/radarApi';
-import type { ICPRadarCatalogItem, LiveICPRadarRunArtifact, SignalMonitoringReportArtifact } from '../../types';
+import type { ICPRadarCatalogItem, LiveICPRadarRunArtifact, SignalMonitoringCandidateSurfaceArtifact, SignalMonitoringReportArtifact } from '../../types';
 import type { RadarPreflightControlState, RadarRunControlState } from './application/useRadarBackend';
 import type {
   SignalMonitoringPreflightControlState,
@@ -30,6 +30,7 @@ export function LiveRadarOperationsTab({
   radar,
   runState,
   signalMonitoringReport,
+  signalMonitoringSurface,
   signalPreflightState,
   signalRunHistory,
   signalRunState,
@@ -50,6 +51,7 @@ export function LiveRadarOperationsTab({
   radar: ICPRadarCatalogItem | null;
   runState: RadarRunControlState;
   signalMonitoringReport: SignalMonitoringReportArtifact | null;
+  signalMonitoringSurface: SignalMonitoringCandidateSurfaceArtifact | null;
   signalPreflightState: SignalMonitoringPreflightControlState;
   signalRunHistory: SignalMonitoringRunSummaryDto[];
   signalRunState: SignalMonitoringRunControlState;
@@ -91,6 +93,7 @@ export function LiveRadarOperationsTab({
         radar={radar}
         runState={runState}
         signalMonitoringReport={signalMonitoringReport}
+        signalMonitoringSurface={signalMonitoringSurface}
         signalPreflightState={signalPreflightState}
         signalRunHistory={signalRunHistory}
         signalRunState={signalRunState}

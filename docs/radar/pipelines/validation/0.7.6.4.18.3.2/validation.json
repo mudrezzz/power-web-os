@@ -1,0 +1,30 @@
+{
+  "schema_version": "radar_signal_surface_validation.v1",
+  "slice_id": "0.7.6.4.18.3.2",
+  "validation_status": "PASS",
+  "behavior_change": false,
+  "radar_id": "benchmark-sibur-holding-contour",
+  "candidate_run_id": "radar-run-3bbf9c0f-330e-4468-8901-966a751234a8",
+  "initial_signal_run_id": "signal-run-010ef75d-c626-44e3-a025-56c95522c1a8",
+  "incremental_signal_run_id": "signal-run-df00b3b8-267c-4091-a4dd-8167434e2cf3",
+  "candidate_count": 74,
+  "monitored_candidate_count": 6,
+  "not_monitored_candidate_count": 68,
+  "criterion_count": 2,
+  "pair_count": 12,
+  "initial": {"confirmed": 4, "review": 3, "searched_negative": 5},
+  "incremental": {"new_confirmed": 0, "cumulative_confirmed": 4, "review": 4, "searched_negative": 8},
+  "unresolved_retained_evidence_count": 0,
+  "checks": {
+    "all_pair_outcomes_visible": "PASS",
+    "check_count_language": "PASS",
+    "initial_semantics": "PASS",
+    "incremental_cumulative_semantics": "PASS",
+    "evidence_resolution": "PASS",
+    "origin_run_lineage": "PASS",
+    "candidate_list_overlay": "PASS",
+    "outside_scope_is_not_monitored": "PASS",
+    "english_1280x720": "PASS",
+    "russian_1366x768": "PASS"
+  }
+}

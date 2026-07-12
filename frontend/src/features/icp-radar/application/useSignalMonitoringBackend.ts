@@ -7,8 +7,9 @@ import {
   type SignalMonitoringRunRequestDto,
   type SignalMonitoringRunSummaryDto,
 } from '../../../api/radarApi';
-import type { SignalMonitoringReportArtifact } from '../../../types';
+import type { SignalMonitoringCandidateSurfaceArtifact, SignalMonitoringReportArtifact } from '../../../types';
 import { signalMonitoringReportFromJson } from '../signalMonitoringReport';
+import { signalMonitoringCandidateSurfaceFromJson } from '../signalMonitoringSurface';
 
 const terminalStatuses = new Set(['completed', 'failed']);
 const pollingIntervalMs = 2000;
@@ -34,6 +35,7 @@ export type SignalMonitoringBackendController = {
   signalRunHistoryByRadarId: Record<string, SignalMonitoringRunSummaryDto[]>;
   selectedSignalRunByRadarId: Record<string, SignalMonitoringRunSummaryDto>;
   signalReportByRunId: Record<string, SignalMonitoringReportArtifact>;
+  signalSurfaceByRunId: Record<string, SignalMonitoringCandidateSurfaceArtifact>;
   signalRunState: SignalMonitoringRunControlState;
   signalPreflightState: SignalMonitoringPreflightControlState;
   loadSignalRunHistory: (radarId: string) => Promise<SignalMonitoringRunSummaryDto[]>;
@@ -62,6 +64,9 @@ export function useSignalMonitoringBackend({
   >({});
   const selectedSignalRunRef = useRef<Record<string, SignalMonitoringRunSummaryDto>>({});
   const [signalReportByRunId, setSignalReportByRunId] = useState<Record<string, SignalMonitoringReportArtifact>>({});
+  const [signalSurfaceByRunId, setSignalSurfaceByRunId] = useState<
+    Record<string, SignalMonitoringCandidateSurfaceArtifact>
+  >({});
   const [signalRunState, setSignalRunState] = useState<SignalMonitoringRunControlState>({
     busy: false,
     runId: null,
@@ -86,12 +91,20 @@ export function useSignalMonitoringBackend({
 
   const loadSignalReport = useCallback(async (run: SignalMonitoringRunSummaryDto) => {
     try {
-      const payload = await api.getSignalMonitoringReport(run.run_id);
+      const [payload, surfacePayload] = await Promise.all([
+        api.getSignalMonitoringReport(run.run_id),
+        api.getSignalMonitoringCandidateSurface(run.run_id),
+      ]);
       const report = signalMonitoringReportFromJson(payload);
+      const surface = signalMonitoringCandidateSurfaceFromJson(surfacePayload);
       if (!report || report.run_id !== run.run_id || report.source_candidate_run_id !== run.source_run_id) {
         throw new Error(`Signal monitoring report ${run.run_id} has invalid pipeline lineage.`);
       }
+      if (!surface || surface.selected_run_id !== run.run_id || surface.source_candidate_run_id !== run.source_run_id) {
+        throw new Error(`Signal monitoring surface ${run.run_id} has invalid pipeline lineage.`);
+      }
       setSignalReportByRunId((current) => ({ ...current, [run.run_id]: report }));
+      setSignalSurfaceByRunId((current) => ({ ...current, [run.run_id]: surface }));
       setSignalRunState((current) => ({
         ...current,
         busy: false,
@@ -322,6 +335,7 @@ export function useSignalMonitoringBackend({
     signalRunHistoryByRadarId,
     selectedSignalRunByRadarId,
     signalReportByRunId,
+    signalSurfaceByRunId,
     signalRunState,
     signalPreflightState,
     loadSignalRunHistory,

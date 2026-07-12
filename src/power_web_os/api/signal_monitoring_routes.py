@@ -18,6 +18,7 @@ from power_web_os.application.radar.signal_monitoring.runtime import (
     QueuedSignalMonitoringRunService,
     SignalMonitoringRunCommand,
 )
+from power_web_os.application.radar.signal_monitoring.surface import SignalMonitoringCandidateSurfaceService
 from power_web_os.application.radar_records import RadarRunRecord
 
 router = APIRouter(prefix="/api", tags=["signal-monitoring"])
@@ -143,6 +144,19 @@ def get_signal_monitoring_report(run_id: str, context: RadarContext) -> dict[str
     if output is None:
         raise HTTPException(status_code=409, detail=f"Signal monitoring run has no persisted output: {run_id}")
     return dict(output.artifact_payload)
+
+
+@router.get("/signal-monitoring-runs/{run_id}/candidate-surface")
+def get_signal_monitoring_candidate_surface(run_id: str, context: RadarContext) -> dict[str, object]:
+    _signal_run(run_id, context)
+    try:
+        return SignalMonitoringCandidateSurfaceService(
+            run_repository=context.run_repository,
+            candidate_output_repository=context.output_repository,
+            signal_output_repository=context.signal_monitoring_output_repository,
+        ).build(run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 def _service(context: RadarApiContext) -> QueuedSignalMonitoringRunService:

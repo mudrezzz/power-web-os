@@ -735,7 +735,7 @@ def test_icp_radar_screen_is_default_and_loads_fixture_artifact() -> None:
         "icpRadar.columns.total",
         "icpRadar.columns.fit",
         "icpRadar.columns.intent",
-        "icpRadar.columns.trigger",
+            "icpRadar.live.monitoringColumn",
         "icpRadar.columns.tier",
         "icpRadar.columns.evidence",
         "icpRadar.columns.action",

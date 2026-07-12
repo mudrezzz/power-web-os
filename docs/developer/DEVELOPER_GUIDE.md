@@ -125,12 +125,24 @@ API routes. The Radar `Runs` tab shows two panels. Candidate history comes from
 `source_run_id`. Use `?runId=...&signalRunId=...` for direct inspection; missing
 or inconsistent runs must not fall back to latest.
 
+The product report reads
+`/api/signal-monitoring-runs/{run_id}/candidate-surface`. This application read
+model resolves evidence and returns current and cumulative state for every
+candidate-criterion check. Do not reconstruct cumulative monitoring history in
+React and do not reuse candidate-discovery signal score fields after handoff.
+The UI must distinguish checks from findings and mark candidates outside the
+selected monitoring scope as not monitored.
+
 Validate this contract after frontend or API wiring changes:
 
 ```powershell
 npm --prefix ./frontend run build
 npm --prefix ./frontend run radar:pipeline-split-ui-dod
 ```
+
+The browser gate validates semantic counts and evidence links for both the
+initial and incremental persisted signal runs, not only the presence of the two
+pipeline panels.
 
 Run Radar persistence migrations and seed the current demo catalog:
 

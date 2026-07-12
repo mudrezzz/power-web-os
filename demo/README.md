@@ -116,7 +116,10 @@ npm --prefix ./frontend run radar:pipeline-split-ui-dod
 
 The check requires one completed candidate run and two linked persisted signal
 runs. It validates direct URLs, lineage, separate budgets, missing-run errors,
-English at 1280x720 and Russian at 1366x768.
+English at 1280x720 and Russian at 1366x768. It also verifies all 12
+candidate-criterion checks, source links and the cumulative interpretation of
+the initial and incremental SIBUR signal runs. The report must say how many
+checks were performed, not imply that every check found a signal.
 
 Live Signal Monitoring through API and the dedicated worker queue:
 

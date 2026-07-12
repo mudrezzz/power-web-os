@@ -72,6 +72,7 @@ export function useRadarWorkspace({
   const selectedSignalRun = selectedRadar ? backend.selectedSignalRunByRadarId[selectedRadar.radar_id] ?? null : null;
   const selectedSignalRunHistory = selectedRadar ? backend.signalRunHistoryByRadarId[selectedRadar.radar_id] ?? [] : [];
   const selectedSignalReport = selectedSignalRun ? backend.signalReportByRunId[selectedSignalRun.run_id] ?? null : null;
+  const selectedSignalSurface = selectedSignalRun ? backend.signalSurfaceByRunId[selectedSignalRun.run_id] ?? null : null;
   const apiBackedLiveArtifact = Boolean(selectedLiveArtifact && backend.runState.mode === 'api');
   const radarViewModel = selectedRadar
     ? radarToViewModel(selectedRadar, activeFixtureRadarId, selectedFixtureArtifact, selectedLiveArtifact)
@@ -357,6 +358,7 @@ export function useRadarWorkspace({
     selectedSignalRun,
     selectedSignalRunHistory,
     selectedSignalReport,
+    selectedSignalSurface,
     radarViewModel,
     detailCandidate,
     detailLiveCandidate,

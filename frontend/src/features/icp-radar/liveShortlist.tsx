@@ -1,7 +1,12 @@
 import { ArrowRight, ChevronDown, ChevronRight, Radar, Settings, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../../components/primitives';
-import type { LiveICPRadarRunArtifact, LiveRadarCandidate } from '../../types';
+import type {
+  LiveICPRadarRunArtifact,
+  LiveRadarCandidate,
+  SignalMonitoringCandidateSurface,
+  SignalMonitoringCandidateSurfaceArtifact,
+} from '../../types';
 import { liveTotalScore, qualificationAssessmentTone, qualificationRuleText, qualificationStatusToAssessment } from './model';
 // Live shortlist deliberately mirrors fixture shortlist: table scan, inline preview, then explicit detail navigation.
 export function LiveRadarShortlistTable({
@@ -10,12 +15,14 @@ export function LiveRadarShortlistTable({
   onOpenDetails,
   onOpenSettings,
   onToggleCandidate,
+  signalMonitoringSurface,
 }: {
   artifact: LiveICPRadarRunArtifact | null;
   expandedCandidateId: string | null;
   onOpenDetails: (candidateId: string) => void;
   onOpenSettings: () => void;
   onToggleCandidate: (candidateId: string) => void;
+  signalMonitoringSurface: SignalMonitoringCandidateSurfaceArtifact | null;
 }) {
   const { t } = useTranslation();
 
@@ -73,13 +80,16 @@ export function LiveRadarShortlistTable({
                 <span>{t('icpRadar.columns.total')}</span>
                 <span>{t('icpRadar.columns.fit')}</span>
                 <span>{t('icpRadar.columns.intent')}</span>
-                <span>{t('icpRadar.columns.trigger')}</span>
+                <span data-testid="candidate-monitoring-column">{t('icpRadar.live.monitoringColumn')}</span>
                 <span>{t('icpRadar.columns.tier')}</span>
                 <span>{t('icpRadar.columns.evidence')}</span>
                 <span>{t('icpRadar.columns.action')}</span>
               </div>
               {artifact.candidates.map((candidate, index) => {
                 const expanded = expandedCandidateId === candidate.candidate_id;
+                const monitoring = signalMonitoringSurface?.candidates.find(
+                  (item) => item.candidate_id === candidate.candidate_id,
+                ) ?? null;
                 return (
                   <div className="icp-candidate-record" key={`${candidate.candidate_id}:${index}`}>
                     <button
@@ -103,7 +113,7 @@ export function LiveRadarShortlistTable({
                       </span>
                       <Mono>{candidate.score.fit_score}</Mono>
                       <Mono>{candidate.score.intent_score}</Mono>
-                      <Mono>{t('icpRadar.notAvailable')}</Mono>
+                      <span><MonitoringBadge monitoring={monitoring} /></span>
                       <span>
                         <Badge tone={liveSurfaceTone(candidate)}>{liveSurfaceLabel(candidate, t)}</Badge>
                       </span>
@@ -116,6 +126,7 @@ export function LiveRadarShortlistTable({
                     {expanded && (
                       <LiveRadarCandidatePreview
                         candidate={candidate}
+                        monitoring={monitoring}
                         onOpenDetails={() => onOpenDetails(candidate.candidate_id)}
                       />
                     )}
@@ -161,12 +172,15 @@ function liveSurfaceLabel(candidate: LiveRadarCandidate, t: (key: string, option
 
 export function LiveRadarCandidatePreview({
   candidate,
+  monitoring,
   onOpenDetails,
 }: {
   candidate: LiveRadarCandidate;
+  monitoring: SignalMonitoringCandidateSurface | null;
   onOpenDetails: () => void;
 }) {
   const { t } = useTranslation();
+  const monitoringOutcomes = monitoring?.outcomes ?? [];
   const topSignals = candidate.signals.filter((item) => item.status !== 'not_observed').slice(0, 5);
   return (
     <div className="icp-candidate-preview">
@@ -211,7 +225,20 @@ export function LiveRadarCandidatePreview({
           <section className="icp-preview-section">
             <Eyebrow>{t('icpRadar.canonicalPreview.signals')}</Eyebrow>
             <div className="criteria-list criteria-list-compact">
-              {(topSignals.length ? topSignals : candidate.signals.slice(0, 5)).map((item) => (
+              {monitoringOutcomes.length > 0 ? monitoringOutcomes.map((item) => (
+                <div className="criterion-row" key={item.signal_code}>
+                  <Mono>{item.signal_code}</Mono>
+                  <span>
+                    <strong>{item.signal_label}</strong>
+                    <small>{t(`icpRadar.live.pipeline.signal.presentationStatus.${item.cumulative.presentation_status}`)}</small>
+                  </span>
+                  <Badge tone={monitoringTone(item.cumulative.presentation_status)}>
+                    {item.new_in_selected_run
+                      ? t('icpRadar.live.pipeline.signal.newBadge')
+                      : t('icpRadar.live.pipeline.signal.cumulativeBadge')}
+                  </Badge>
+                </div>
+              )) : (topSignals.length ? topSignals : candidate.signals.slice(0, 5)).map((item) => (
                 <div className="criterion-row" key={item.signal_code}>
                   <Mono>{item.signal_code}</Mono>
                   <span>
@@ -232,4 +259,24 @@ export function LiveRadarCandidatePreview({
       </div>
     </div>
   );
+}
+
+function MonitoringBadge({ monitoring }: { monitoring: SignalMonitoringCandidateSurface | null }) {
+  const { t } = useTranslation();
+  const status = monitoring?.monitoring_status ?? 'not_monitored';
+  return (
+    <span data-monitoring-status={status}>
+      <Badge tone={monitoringTone(status)}>
+        {t(`icpRadar.live.pipeline.signal.candidateStatus.${status}`)}
+      </Badge>
+    </span>
+  );
+}
+
+function monitoringTone(status: string) {
+  if (status === 'found_fresh') return 'ally';
+  if (status === 'review_needed' || status === 'found_relevant_date_unknown' || status === 'coverage_incomplete') {
+    return 'unsurfaced';
+  }
+  return 'neutral';
 }

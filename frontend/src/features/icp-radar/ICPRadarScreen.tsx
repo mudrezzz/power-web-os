@@ -101,6 +101,9 @@ export function ICPRadarScreen({
         radarId={workspace.selectedRadar.radar_id}
         radarName={workspace.selectedRadar.name}
         signalValidation={workspace.liveSignalValidation}
+        signalMonitoringCandidate={workspace.selectedSignalSurface?.candidates.find(
+          (item) => item.candidate_id === workspace.detailLiveCandidate!.candidate_id,
+        ) ?? null}
       />
     );
   }
@@ -207,6 +210,7 @@ function RadarShortlist({
         onToggleCandidate={(candidateId) => navigation.setExpandedLiveCandidateId(
           navigation.expandedLiveCandidateId === candidateId ? null : candidateId,
         )}
+        signalMonitoringSurface={workspace.selectedSignalSurface}
       />
     );
   }

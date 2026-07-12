@@ -46,12 +46,21 @@ class _Provider:
 
     def run_signal_task(self, *, task: SignalSearchTask, attempt_role: SignalAttemptRole):
         _ = attempt_role
-        ref = f"api-source-{task.candidate_id}"
+        source_contract = task.source_contracts[0] if task.source_contracts else None
+        ref = source_contract.source_ref if source_contract else f"api-source-{task.candidate_id}"
+        url = source_contract.url if source_contract else f"https://example.test/{ref}"
         return SignalMonitoringProviderResult(
             runtime_name=self.runtime_name,
             model_id=self.model_id,
             payload={
-                "sources": [{"source_ref": ref, "title": "API source", "url": f"https://example.test/{ref}"}],
+                "sources": [{
+                    "source_ref": ref,
+                    "title": "API source",
+                    "url": url,
+                    "published_at": "2026-07-10",
+                    "date_basis": "provider_extracted",
+                    "date_confidence": "medium",
+                }],
                 "observations": [{
                     "candidate_id": task.candidate_id,
                     "signal_code": task.signal_code,
@@ -127,6 +136,28 @@ def test_signal_monitoring_api_queues_reads_and_persists_independent_run(tmp_pat
         signal_executor=SignalMonitoringExecutor(_Provider()),
         session_factory=app.state.session_factory,
     )
+
+    surface = client.get(f"/api/signal-monitoring-runs/{second['run_id']}/candidate-surface")
+    assert surface.status_code == 200
+    surface_payload = surface.json()
+    assert surface_payload["pipeline_id"] == "signal_monitoring"
+    assert surface_payload["source_candidate_run_id"] == "candidate-run-api"
+    assert surface_payload["summary"]["monitored_candidate_count"] == 2
+    assert surface_payload["summary"]["criterion_count"] == 1
+    assert surface_payload["summary"]["pair_count"] == 2
+    assert surface_payload["summary"]["new_confirmed_count"] == 0
+    assert surface_payload["summary"]["cumulative_confirmed_count"] == 2
+    assert surface_payload["summary"]["unresolved_source_ref_count"] == 0
+    assert all(
+        outcome["cumulative"]["evidence"]
+        for candidate in surface_payload["candidates"]
+        for outcome in candidate["outcomes"]
+    )
+    assert {
+        outcome["cumulative"]["origin_run_id"]
+        for candidate in surface_payload["candidates"]
+        for outcome in candidate["outcomes"]
+    } == {signal_run["run_id"]}
 
     history = client.get("/api/radars/signal-radar/signal-monitoring-runs").json()
     assert [item["run_id"] for item in history] == [second["run_id"], signal_run["run_id"]]

@@ -27,6 +27,8 @@ Signal monitoring owns recurring signal checks over known candidates:
   candidate-discovery run.
 - `runtime.py`: queued and persisted signal-run lifecycle services.
 - `artifact.py`: product-safe standalone signal report projection.
+- `surface.py`: cumulative product read model for current versus retained
+  candidate-criterion outcomes and resolvable evidence.
 - `service_factory.py`: application collaborator composition from provider
   ports.
 
@@ -61,3 +63,7 @@ Behavior-changing work starts from the current Signal Monitoring AS IS and a
 persisted-run RCA, then registers TO BE Markdown/PDF plus an acceptance
 manifest. It is complete only after the pipeline validator emits PASS and the
 validated behavior is reconciled back into AS IS.
+
+The cumulative surface is query-only. It may join completed signal reports
+that share Radar and source-run lineage, but it must not mutate reports,
+candidate-discovery artifacts, budgets or monitoring decisions.

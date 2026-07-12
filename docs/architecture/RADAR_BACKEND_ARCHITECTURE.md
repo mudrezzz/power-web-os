@@ -372,6 +372,12 @@ at runtime. Candidate discovery records the pre-signal checkpoint and projects
 signal-monitoring package owns actual signal evaluation semantics and budgets;
 candidate discovery keeps only explicit inline compatibility for old callers.
 
+As of slice `0.7.6.4.18.3.2`, signal monitoring also owns a query-only
+cumulative product surface in `signal_monitoring/surface.py`. It joins only
+completed signal runs with the same Radar and source candidate run, resolves
+product-safe evidence and separates current-run delta from retained state. It
+does not mutate signal reports or candidate-discovery artifacts.
+
 As of slice `0.7.6.4.18.1.4`, candidate discovery also separates three output
 surfaces. `candidate_universe` remains the broad upstream truth,
 `user_visible_candidates` is the product-facing candidate list, and strict

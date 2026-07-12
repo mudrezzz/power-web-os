@@ -3,7 +3,9 @@ import { chromium } from '@playwright/test';
 const apiBaseUrl = process.env.POWER_WEB_OS_API_BASE_URL ?? 'http://127.0.0.1:8001';
 const baseURL = process.env.POWER_WEB_OS_RADAR_UI_DOD_BASE_URL ?? 'http://127.0.0.1:5173';
 const preferredRadarId = process.env.POWER_WEB_OS_RADAR_SPLIT_RADAR_ID ?? 'benchmark-sibur-holding-contour';
-const waitMs = 90000;
+const initialRunId = process.env.POWER_WEB_OS_SIGNAL_INITIAL_RUN_ID ?? 'signal-run-010ef75d-c626-44e3-a025-56c95522c1a8';
+const incrementalRunId = process.env.POWER_WEB_OS_SIGNAL_INCREMENTAL_RUN_ID ?? 'signal-run-df00b3b8-267c-4091-a4dd-8167434e2cf3';
+const waitMs = 30000;
 
 const fixture = await loadSplitFixture();
 const browser = await chromium.launch();
@@ -30,6 +32,7 @@ try {
 }
 
 async function verifyScenario(browserInstance, expected, { locale, viewport }) {
+  console.log(`Checking ${locale} at ${viewport.width}x${viewport.height}.`);
   const errors = [];
   const context = await browserInstance.newContext({ viewport });
   await context.addInitScript((language) => {
@@ -45,13 +48,20 @@ async function verifyScenario(browserInstance, expected, { locale, viewport }) {
     await page.goto(`${baseURL}?signalRunId=${encodeURIComponent(expected.signal.run_id)}`, {
       waitUntil: 'domcontentloaded',
     });
-    await page.getByText(expected.radar.name, { exact: true }).waitFor({ state: 'visible', timeout: waitMs });
+    try {
+      await page.getByText(expected.radar.name, { exact: true }).waitFor({ state: 'visible', timeout: waitMs });
+    } catch (error) {
+      console.error(`Visible page text for ${locale}:\n${(await page.locator('body').innerText()).slice(0, 4000)}`);
+      console.error(`Browser errors for ${locale}:\n${errors.join('\n')}`);
+      throw error;
+    }
     await page.locator('#radar-run-selector').waitFor({ state: 'visible', timeout: waitMs });
     await page.locator('#signal-monitoring-run-selector').waitFor({ state: 'visible', timeout: waitMs });
     await assertSelectValue(page, '#radar-run-selector', expected.signal.source_run_id);
     await assertSelectValue(page, '#signal-monitoring-run-selector', expected.signal.run_id);
     await page.getByText(expected.signal.source_run_id, { exact: false }).first().waitFor({ state: 'visible' });
     await page.getByText(expected.signal.run_id, { exact: false }).first().waitFor({ state: 'visible' });
+    console.log(`Loaded linked runs for ${locale}.`);
 
     const url = new URL(page.url());
     if (url.searchParams.get('runId') !== expected.signal.source_run_id) {
@@ -82,17 +92,26 @@ async function verifyScenario(browserInstance, expected, { locale, viewport }) {
     await reportButton.click();
     await page.getByText(expected.report.artifact_version, { exact: true }).waitFor({ state: 'visible' });
     await page.getByText(expected.report.source_candidate_run_id, { exact: false }).last().waitFor({ state: 'visible' });
+    await assertSignalSurface(page, expected.incrementalSurface);
+    console.log(`Validated incremental surface for ${locale}.`);
 
-    const second = expected.signalHistory.find((run) => run.run_id !== expected.signal.run_id && run.output);
-    if (second) {
-      await page.locator('#signal-monitoring-run-selector').selectOption(second.run_id);
-      await assertSelectValue(page, '#signal-monitoring-run-selector', second.run_id);
-      await assertSelectValue(page, '#radar-run-selector', second.source_run_id);
+    const initial = expected.signalHistory.find((run) => run.run_id === initialRunId && run.output);
+    if (initial) {
+      await page.locator('#signal-monitoring-run-selector').selectOption(initial.run_id);
+      await assertSelectValue(page, '#signal-monitoring-run-selector', initial.run_id);
+      await assertSelectValue(page, '#radar-run-selector', initial.source_run_id);
       await page.waitForFunction(({ candidateRunId, signalRunId }) => {
         const params = new URL(window.location.href).searchParams;
         return params.get('runId') === candidateRunId && params.get('signalRunId') === signalRunId;
-      }, { candidateRunId: second.source_run_id, signalRunId: second.run_id }, { timeout: waitMs });
+      }, { candidateRunId: initial.source_run_id, signalRunId: initial.run_id }, { timeout: waitMs });
+      await assertSignalSurface(page, expected.initialSurface);
+      console.log(`Validated initial surface for ${locale}.`);
     }
+
+    await page.getByTestId('radar-tab-shortlist').click();
+    await page.getByTestId('candidate-monitoring-column').waitFor({ state: 'visible' });
+    await assertCandidateOverlay(page, expected.initialSurface);
+    console.log(`Validated candidate overlay for ${locale}.`);
     if (errors.length) {
       throw new Error(`Browser errors for ${locale} ${viewport.width}x${viewport.height}:\n${errors.join('\n')}`);
     }
@@ -117,23 +136,78 @@ async function verifyMissingRunIsExplicit(browserInstance) {
 }
 
 async function loadSplitFixture() {
-  const radars = await apiJson('/api/radars');
-  const ordered = [...radars].sort((left, right) => (
-    left.radar_id === preferredRadarId ? -1 : right.radar_id === preferredRadarId ? 1 : 0
-  ));
-  for (const radar of ordered) {
-    const signalHistory = await apiJson(`/api/radars/${encodeURIComponent(radar.radar_id)}/signal-monitoring-runs?limit=20`);
-    const completed = signalHistory.filter((run) => run.status === 'completed' && run.output);
-    if (completed.length < 2) continue;
-    const signal = completed[0];
-    const candidateRuns = await apiJson(`/api/radars/${encodeURIComponent(radar.radar_id)}/runs?limit=100`);
-    const candidate = candidateRuns.find((run) => run.run_id === signal.source_run_id && run.status === 'completed' && run.output);
-    if (!candidate) continue;
-    const report = await apiJson(`/api/signal-monitoring-runs/${encodeURIComponent(signal.run_id)}/report`);
-    if (report.source_candidate_run_id !== candidate.run_id || report.pipeline_id !== 'signal_monitoring') continue;
-    return { radar, candidate, signal, signalHistory: completed, report };
+  const radar = await apiJson(`/api/radars/${encodeURIComponent(preferredRadarId)}`);
+  const signalHistory = await apiJson(`/api/radars/${encodeURIComponent(radar.radar_id)}/signal-monitoring-runs?limit=20`);
+  const completed = signalHistory.filter((run) => run.status === 'completed' && run.output);
+  const signal = completed.find((run) => run.run_id === incrementalRunId);
+  const initial = completed.find((run) => run.run_id === initialRunId);
+  if (!signal || !initial) {
+    throw new Error(`Radar ${radar.radar_id} does not contain both required persisted signal runs.`);
   }
-  throw new Error('Backend has no radar with one completed candidate run and at least two linked completed signal runs.');
+  const candidateRuns = await apiJson(`/api/radars/${encodeURIComponent(radar.radar_id)}/runs?limit=100`);
+  const candidate = candidateRuns.find((run) => run.run_id === signal.source_run_id && run.status === 'completed' && run.output);
+  if (!candidate) throw new Error(`Source candidate run ${signal.source_run_id} is missing or incomplete.`);
+  const report = await apiJson(`/api/signal-monitoring-runs/${encodeURIComponent(signal.run_id)}/report`);
+  if (report.source_candidate_run_id !== candidate.run_id || report.pipeline_id !== 'signal_monitoring') {
+    throw new Error(`Signal run ${signal.run_id} has inconsistent source lineage.`);
+  }
+  const incrementalSurface = await apiJson(`/api/signal-monitoring-runs/${encodeURIComponent(signal.run_id)}/candidate-surface`);
+  const initialSurface = await apiJson(`/api/signal-monitoring-runs/${encodeURIComponent(initial.run_id)}/candidate-surface`);
+  return { radar, candidate, signal, signalHistory: completed, report, incrementalSurface, initialSurface };
+}
+
+async function assertSignalSurface(page, surface) {
+  await page.waitForFunction((expectedRunId) => {
+    return document.body.textContent?.includes(expectedRunId);
+  }, surface.selected_run_id, { timeout: waitMs });
+  const groups = page.locator('.radar-signal-candidate-group');
+  const outcomes = page.locator('.radar-signal-outcome-row');
+  if (await groups.count() !== surface.summary.monitored_candidate_count) {
+    throw new Error(`Expected ${surface.summary.monitored_candidate_count} candidate groups, got ${await groups.count()}.`);
+  }
+  if (await outcomes.count() !== surface.summary.pair_count) {
+    throw new Error(`Expected ${surface.summary.pair_count} pair outcomes, got ${await outcomes.count()}.`);
+  }
+  const summaryText = await page.getByTestId('signal-check-summary').textContent();
+  for (const value of [surface.summary.monitored_candidate_count, surface.summary.criterion_count, surface.summary.pair_count]) {
+    if (!summaryText?.includes(String(value))) throw new Error(`Signal check summary omits ${value}: ${summaryText}.`);
+  }
+  const metrics = await page.locator('.radar-signal-surface-summary > div').evaluateAll((items) => (
+    items.map((item) => Number(item.getAttribute('data-value')))
+  ));
+  const expectedCounts = [
+    surface.summary.new_confirmed_count,
+    surface.summary.cumulative_confirmed_count - surface.summary.new_confirmed_count,
+    surface.summary.current_review_count,
+    surface.summary.current_searched_negative_count,
+  ];
+  expectedCounts.forEach((count, index) => {
+    if (metrics[index] !== count) throw new Error(`Signal metric ${index} is ${metrics[index]}, expected ${count}.`);
+  });
+  const requiredEvidence = surface.candidates
+    .flatMap((candidate) => candidate.outcomes)
+    .filter((outcome) => ['found_fresh', 'found_relevant_date_unknown'].includes(outcome.cumulative.presentation_status));
+  if (requiredEvidence.some((outcome) => !outcome.cumulative.evidence.some((item) => item.resolved))) {
+    throw new Error('Backend surface contains retained/confirmed outcome without resolved evidence.');
+  }
+  if (await page.locator('.radar-signal-evidence-list a').count() === 0) {
+    throw new Error('Signal report rendered no source links.');
+  }
+}
+
+async function assertCandidateOverlay(page, surface) {
+  const monitored = surface.candidates.filter((candidate) => candidate.monitored);
+  for (const candidate of monitored) {
+    const row = page.locator('.icp-candidate-row').filter({ hasText: candidate.candidate_name }).first();
+    await row.waitFor({ state: 'visible', timeout: waitMs });
+    const status = await row.locator('[data-monitoring-status]').getAttribute('data-monitoring-status');
+    if (status !== candidate.monitoring_status) {
+      throw new Error(`Candidate ${candidate.candidate_id} monitoring overlay is ${status}, expected ${candidate.monitoring_status}.`);
+    }
+  }
+  if (surface.summary.not_monitored_candidate_count > 0 && await page.locator('[data-monitoring-status="not_monitored"]').count() === 0) {
+    throw new Error('Candidates outside monitoring scope are not marked explicitly.');
+  }
 }
 
 async function apiJson(path) {

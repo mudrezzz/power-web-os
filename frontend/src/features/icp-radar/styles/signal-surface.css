@@ -1,0 +1,182 @@
+/* Signal surface owns cumulative monitoring outcomes, evidence links, and candidate overlays. */
+
+.radar-signal-surface-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+.radar-signal-surface-summary > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.radar-signal-surface-summary span {
+  min-width: 0;
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.radar-signal-candidate-groups,
+.radar-signal-outcomes,
+.signal-monitoring-candidate-detail {
+  display: grid;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.radar-signal-candidate-group {
+  display: grid;
+  gap: var(--s-3);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--border);
+}
+
+.radar-signal-candidate-group > header,
+.radar-signal-outcome-heading,
+.signal-monitoring-candidate-detail article > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.radar-signal-candidate-group > header > div,
+.signal-monitoring-candidate-detail article > header > div {
+  display: grid;
+  gap: var(--s-1);
+  min-width: 0;
+}
+
+.radar-signal-candidate-group > header strong,
+.signal-monitoring-candidate-detail article > header strong {
+  overflow-wrap: anywhere;
+}
+
+.radar-signal-outcome-row,
+.signal-monitoring-candidate-detail article {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.radar-signal-outcome-heading {
+  justify-content: flex-start;
+}
+
+.radar-signal-outcome-heading strong {
+  flex: 1;
+  min-width: 0;
+}
+
+.radar-signal-outcome-state {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s-1) var(--s-3);
+  color: var(--fg2);
+  font: var(--body-sm);
+}
+
+.radar-signal-outcome-state small {
+  grid-column: 2;
+  color: var(--fg3);
+}
+
+.radar-signal-origin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.radar-signal-origin svg,
+.radar-signal-evidence-meta svg,
+.signal-monitoring-detail-evidence svg {
+  width: var(--s-4);
+  height: var(--s-4);
+  flex-shrink: 0;
+}
+
+.radar-signal-evidence-list,
+.signal-monitoring-detail-evidence {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.radar-signal-evidence-list > a,
+.radar-signal-evidence-unresolved,
+.signal-monitoring-detail-evidence > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+  min-width: 0;
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: inherit;
+  text-decoration: none;
+}
+
+.radar-signal-evidence-list > a:hover {
+  background: var(--surface-3);
+}
+
+.radar-signal-evidence-list > a > span:first-child,
+.radar-signal-evidence-unresolved > span:first-child,
+.signal-monitoring-detail-evidence > div > span:first-child {
+  display: grid;
+  gap: var(--s-1);
+  min-width: 0;
+}
+
+.radar-signal-evidence-list small,
+.radar-signal-evidence-unresolved small,
+.signal-monitoring-detail-evidence small {
+  color: var(--fg3);
+  overflow-wrap: anywhere;
+}
+
+.radar-signal-evidence-meta,
+.signal-monitoring-detail-evidence > div > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-shrink: 0;
+}
+
+.radar-signal-source-count {
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.signal-monitoring-candidate-detail article > p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.signal-monitoring-detail-evidence a {
+  display: inline-flex;
+  padding: var(--s-1);
+  border-radius: var(--r-sm);
+  color: var(--cobalt);
+}
+
+.signal-monitoring-detail-evidence a:focus-visible {
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}

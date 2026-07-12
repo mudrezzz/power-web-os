@@ -3,7 +3,7 @@ import { Activity, BellRing, Clock, Eye, ListChecks, Play, Radar } from 'lucide-
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../../components/primitives';
 import type { SignalMonitoringRunSummaryDto } from '../../api/radarApi';
-import type { ICPRadarCatalogItem, LiveICPRadarRunArtifact, SignalMonitoringReportArtifact } from '../../types';
+import type { ICPRadarCatalogItem, LiveICPRadarRunArtifact, SignalMonitoringCandidateSurfaceArtifact, SignalMonitoringReportArtifact } from '../../types';
 import type { RadarRunControlState } from './application/useRadarBackend';
 import type {
   SignalMonitoringPreflightControlState,
@@ -28,6 +28,7 @@ export function RadarPipelineControlPanel({
   radar,
   runState,
   signalMonitoringReport,
+  signalMonitoringSurface,
   signalPreflightState,
   signalRunHistory,
   signalRunState,
@@ -48,6 +49,7 @@ export function RadarPipelineControlPanel({
   radar: ICPRadarCatalogItem | null;
   runState: RadarRunControlState;
   signalMonitoringReport: SignalMonitoringReportArtifact | null;
+  signalMonitoringSurface: SignalMonitoringCandidateSurfaceArtifact | null;
   signalPreflightState: SignalMonitoringPreflightControlState;
   signalRunHistory: SignalMonitoringRunSummaryDto[];
   signalRunState: SignalMonitoringRunControlState;
@@ -57,7 +59,6 @@ export function RadarPipelineControlPanel({
   const { t } = useTranslation();
   const monitoring = radar?.definition.monitoring_policy;
   const signalSummary = signalMonitoringReport?.summary;
-  const signalRows = signalMonitoringReport?.signals.slice(0, 6) ?? [];
   const lastCandidateRun = candidateDiscoveryLastRunLabel(runState, radar, artifact, t);
   const candidateBudget = candidateBudgetSummary(artifact);
   return (
@@ -193,7 +194,7 @@ export function RadarPipelineControlPanel({
           {signalRunState.error && <p className="live-radar-run-error">{signalRunState.error}</p>}
         </div>
       </section>
-      {signalReportOpen && <SignalMonitoringReportView report={signalMonitoringReport} rows={signalRows} />}
+      {signalReportOpen && <SignalMonitoringReportView report={signalMonitoringReport} surface={signalMonitoringSurface} />}
     </Card>
   );
 }

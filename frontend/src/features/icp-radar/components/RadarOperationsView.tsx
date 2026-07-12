@@ -39,6 +39,7 @@ export function RadarOperationsView({
         signalMonitoringReport={workspace.runState.mode === 'api'
           ? workspace.selectedSignalReport
           : signalMonitoringReport}
+        signalMonitoringSurface={workspace.runState.mode === 'api' ? workspace.selectedSignalSurface : null}
         signalPreflightState={workspace.signalPreflightState}
         signalRunHistory={workspace.selectedSignalRunHistory}
         signalRunState={workspace.signalRunState}

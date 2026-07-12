@@ -6,11 +6,13 @@ Pipeline id: `signal-monitoring`
 
 Generated PDF: `docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.pdf`
 
-Current slice: `0.7.6.4.18.2.2: Signal event-time integrity, source capability binding and expanded live quality benchmark`
+Current product-surface slice: `0.7.6.4.18.3.2: Signal monitoring evidence status language and report clarity`
 
 Implemented TO BE: `docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.2.2.md`
 
 Validation report: `docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.2.2/VALIDATION_REPORT.md`
+
+Product-surface validation: `docs/radar/pipelines/validation/0.7.6.4.18.3.2/VALIDATION_REPORT.md`
 
 ## 1. Purpose And Boundary
 
@@ -94,6 +96,23 @@ The source lifecycle records planned, requested, retrieved, verified, linked,
 used, no-results, rejected and failed transitions. This makes a searched
 negative result auditable: the report shows where the pipeline searched, under
 which restrictions and what came back.
+
+## 4.1 Product-Facing Cumulative Surface
+
+The persisted report remains the immutable result of one signal run. The
+application read model in `signal_monitoring/surface.py` projects a cumulative
+product view for one selected run and its predecessors that share the same
+Radar and source candidate run.
+
+The view keeps current-run delta separate from cumulative state, resolves
+product-safe evidence from normalized report collections, and records the
+originating signal run. It presents candidate count, criterion count and
+candidate-criterion check count separately. A check is not a found signal.
+
+The same selected surface is rendered in the report, candidate list and
+candidate detail. Candidate identity and qualification still come exclusively
+from candidate discovery; candidates outside monitoring scope are explicitly
+marked not monitored.
 
 ## 5. Evidence Validation And Checkpoints
 

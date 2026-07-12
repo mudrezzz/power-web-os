@@ -144,6 +144,7 @@ export function RadarDetailHeader({
         <button
           aria-pressed={activeTab === 'shortlist'}
           className={`criteria-chip${activeTab === 'shortlist' ? ' criteria-chip-active' : ''}`}
+          data-testid="radar-tab-shortlist"
           type="button"
           onClick={() => onTabChange('shortlist')}
         >
