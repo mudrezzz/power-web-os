@@ -73,6 +73,7 @@ def test_signal_monitoring_api_queues_reads_and_persists_independent_run(tmp_pat
     )
     app.state.runtime_config_report = {"config": {"openrouter": {"api_key_present": True}}}
     client = TestClient(app)
+    candidate_before = client.get("/api/radar-runs/candidate-run-api/candidates").json()
 
     preflight = client.get(
         "/api/radars/signal-radar/signal-monitoring/preflight",
@@ -117,10 +118,25 @@ def test_signal_monitoring_api_queues_reads_and_persists_independent_run(tmp_pat
     assert payload["summary"]["task_count"] == 2
     assert len(payload["search_execution_receipts"]) == 2
 
+    second_request = {**request, "idempotency_key": "signal-api-twice"}
+    second = client.post("/api/radars/signal-radar/signal-monitoring-runs", json=second_request).json()
+    assert second["run_id"] != signal_run["run_id"]
+    assert second["source_run_id"] == "candidate-run-api"
+    execute_signal_monitoring_run_once(
+        run_id=second["run_id"],
+        signal_executor=SignalMonitoringExecutor(_Provider()),
+        session_factory=app.state.session_factory,
+    )
+
     history = client.get("/api/radars/signal-radar/signal-monitoring-runs").json()
-    assert [item["run_id"] for item in history] == [signal_run["run_id"]]
+    assert [item["run_id"] for item in history] == [second["run_id"], signal_run["run_id"]]
+    assert all(item["pipeline_id"] == "signal_monitoring" for item in history)
+    assert all(item["source_run_id"] == "candidate-run-api" for item in history)
     candidate_history = client.get("/api/radars/signal-radar/runs").json()
     assert [item["run_id"] for item in candidate_history] == ["candidate-run-api"]
+    assert client.get("/api/radar-runs/candidate-run-api/candidates").json() == candidate_before
+    catalog_radar = next(item for item in client.get("/api/radars").json() if item["radar_id"] == "signal-radar")
+    assert catalog_radar["latest_run"]["run_id"] == "candidate-run-api"
 
 
 def test_signal_monitoring_api_blocks_missing_credentials_and_invalid_source(tmp_path: Path) -> None:

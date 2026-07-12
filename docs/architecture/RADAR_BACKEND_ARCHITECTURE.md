@@ -24,6 +24,13 @@ validation, checkpoints and per-lane incremental windows inside
 `application/radar/signal_monitoring`. It may reuse provider-neutral shared
 contracts, but must not import candidate-discovery internals.
 
+The cross-pipeline product contract is documented in
+`docs/radar/pipelines/RADAR_PIPELINE_SPLIT_UI_CONTRACT.md`. Candidate and signal
+runs share lifecycle storage but retain separate histories and output
+repositories. Frontend lineage is explicit: a selected signal run resolves and
+selects its `source_run_id`; it must not mutate candidate catalog/latest state
+or read signal results from a candidate artifact.
+
 Behavior-changing Radar slices are governed by ADR
 `2026-07-10-radar-pipeline-acceptance-evidence-loop.md`: acceptance semantics
 remain pipeline-owned, machine validation produces evidence reports, and the

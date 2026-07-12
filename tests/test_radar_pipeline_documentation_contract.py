@@ -33,6 +33,8 @@ SIGNAL_1822_ACCEPTANCE = SIGNAL_1822_TO_BE_MD.with_suffix(".acceptance.json")
 SIGNAL_1822_VALIDATION = Path(
     "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.2.2/validation.json"
 )
+PIPELINE_SPLIT_UI_CONTRACT = Path("docs/radar/pipelines/RADAR_PIPELINE_SPLIT_UI_CONTRACT.md")
+PIPELINE_SPLIT_VALIDATION = Path("docs/radar/pipelines/validation/0.7.6.4.18.3/validation.json")
 SKILL_PATHS = [
     Path(".agents/skills/radar-pipeline-to-be-design/SKILL.md"),
     Path(".agents/skills/radar-pipeline-as-is-sync/SKILL.md"),
@@ -226,3 +228,16 @@ def test_signal_monitoring_quality_slice_is_traceable_to_finalized_as_is() -> No
         assert "0.7.6.4.18.2.2" in as_is
         assert all(requirement_id in as_is for requirement_id in requirement_ids)
         assert all(validation_results.get(requirement_id) == "PASS" for requirement_id in requirement_ids)
+
+
+def test_radar_pipeline_split_ui_contract_is_validated() -> None:
+    contract = PIPELINE_SPLIT_UI_CONTRACT.read_text(encoding="utf-8")
+    validation = json.loads(PIPELINE_SPLIT_VALIDATION.read_text(encoding="utf-8"))
+
+    assert "Status: Implemented by slice `0.7.6.4.18.3`" in contract
+    assert "source_run_id" in contract
+    assert "Candidate and signal budget counters" in contract
+    assert validation["validation_status"] == "PASS"
+    assert validation["candidate_run_id"].startswith("radar-run-")
+    assert len(validation["signal_run_ids"]) >= 2
+    assert all(status == "PASS" for status in validation["checks"].values())

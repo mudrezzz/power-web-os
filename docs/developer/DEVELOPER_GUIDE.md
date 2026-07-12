@@ -118,6 +118,20 @@ Vite origins by default; set
 `POWER_WEB_OS_CORS_ORIGINS` to a comma-separated list when using a different
 frontend host.
 
+Candidate discovery and Signal Monitoring use separate frontend controllers and
+API routes. The Radar `Runs` tab shows two panels. Candidate history comes from
+`/api/radars/{radar_id}/runs`; signal history and reports come only from the
+`signal-monitoring-runs` endpoints. Selecting a signal run also selects its
+`source_run_id`. Use `?runId=...&signalRunId=...` for direct inspection; missing
+or inconsistent runs must not fall back to latest.
+
+Validate this contract after frontend or API wiring changes:
+
+```powershell
+npm --prefix ./frontend run build
+npm --prefix ./frontend run radar:pipeline-split-ui-dod
+```
+
 Run Radar persistence migrations and seed the current demo catalog:
 
 ```bash

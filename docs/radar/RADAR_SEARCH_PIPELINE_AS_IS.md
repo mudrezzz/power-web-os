@@ -555,6 +555,8 @@ Current rules:
   generic `Monitor` result;
 - pending signal monitoring does not add `signal_requires_human_review` and
   does not create `not_observed`;
+- the Radar UI keeps candidate-discovery history, budget, diagnostics and
+  candidate surface separate from Signal Monitoring history and reports;
 - legal entities can become product candidates when evidence and resolution are
   sufficient;
 - weak legal-entity mentions can remain review-needed universe entries;

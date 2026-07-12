@@ -57,7 +57,7 @@ export function useRadarWorkspace({
   const [savedSettingsDraftSnapshot, setSavedSettingsDraftSnapshot] = useState('');
   const [editingBlock, setEditingBlock] = useState<SettingsBlockId | null>(null);
   const [settingsSaveError, setSettingsSaveError] = useState('');
-  const [appliedDirectRunId, setAppliedDirectRunId] = useState<string | null>(null);
+  const [appliedDirectSelection, setAppliedDirectSelection] = useState<string | null>(null);
 
   const mergedRadars = useMemo(() => mergeCatalogWithOverrides(catalog, radarOverrides), [catalog, radarOverrides]);
   const selectedRadar = mergedRadars.find((item) => item.radar_id === navigation.selectedRadarId) ?? null;
@@ -69,6 +69,9 @@ export function useRadarWorkspace({
     : null;
   const selectedRun = selectedRadar ? backend.selectedRunByRadarId[selectedRadar.radar_id] ?? null : null;
   const selectedRunHistory = selectedRadar ? backend.runHistoryByRadarId[selectedRadar.radar_id] ?? [] : [];
+  const selectedSignalRun = selectedRadar ? backend.selectedSignalRunByRadarId[selectedRadar.radar_id] ?? null : null;
+  const selectedSignalRunHistory = selectedRadar ? backend.signalRunHistoryByRadarId[selectedRadar.radar_id] ?? [] : [];
+  const selectedSignalReport = selectedSignalRun ? backend.signalReportByRunId[selectedSignalRun.run_id] ?? null : null;
   const apiBackedLiveArtifact = Boolean(selectedLiveArtifact && backend.runState.mode === 'api');
   const radarViewModel = selectedRadar
     ? radarToViewModel(selectedRadar, activeFixtureRadarId, selectedFixtureArtifact, selectedLiveArtifact)
@@ -87,20 +90,37 @@ export function useRadarWorkspace({
     : null;
 
   useEffect(() => {
-    const runId = new URLSearchParams(window.location.search).get('runId');
-    if (!runId || appliedDirectRunId === runId || backend.runState.mode === 'loading') {
+    const params = new URLSearchParams(window.location.search);
+    const runId = params.get('runId');
+    const signalRunId = params.get('signalRunId');
+    const selection = `${runId ?? ''}|${signalRunId ?? ''}`;
+    if ((!runId && !signalRunId) || appliedDirectSelection === selection || backend.runState.mode === 'loading') {
       return;
     }
-    setAppliedDirectRunId(runId);
-    void backend.selectRadarRunById(runId).then((radarId) => {
+    setAppliedDirectSelection(selection);
+    const directSelection = signalRunId
+      ? backend.selectSignalRunById(signalRunId)
+      : backend.selectRadarRunById(runId!);
+    void directSelection.then((radarId) => {
       if (!radarId) {
         return;
       }
       navigation.setSelectedRadarId(radarId);
-      navigation.setSelectedTab('shortlist');
+      navigation.setSelectedTab(signalRunId ? 'operations' : 'shortlist');
       navigation.clearCandidateState();
     });
-  }, [appliedDirectRunId, backend, backend.runState.mode, navigation]);
+  }, [appliedDirectSelection, backend, backend.runState.mode, navigation]);
+
+  useEffect(() => {
+    const requestedSignalRunId = new URLSearchParams(window.location.search).get('signalRunId');
+    if (
+      requestedSignalRunId
+      && selectedSignalRun?.run_id === requestedSignalRunId
+      && selectedRun?.run_id === selectedSignalRun.source_run_id
+    ) {
+      updateRunQuery(selectedRun.run_id, selectedSignalRun.run_id);
+    }
+  }, [selectedRun?.run_id, selectedSignalRun?.run_id, selectedSignalRun?.source_run_id]);
 
   useEffect(() => {
     if (
@@ -113,14 +133,17 @@ export function useRadarWorkspace({
     }
     if (selectedRadar && backend.runState.mode === 'api') {
       void backend.loadRadarRunHistory(selectedRadar.radar_id);
+      void backend.loadSignalRunHistory(selectedRadar.radar_id);
     }
   }, [
     backend.loadRadarRunArtifact,
     backend.loadRadarRunHistory,
+    backend.loadSignalRunHistory,
     backend.runState.mode,
     selectedLiveArtifact,
     selectedRadar?.radar_id,
     selectedRadar?.summary.last_run,
+    selectedRun?.run_id,
   ]);
 
   useEffect(() => {
@@ -303,7 +326,20 @@ export function useRadarWorkspace({
       return;
     }
     if (await backend.selectRadarRun(selectedRadar.radar_id, runId)) {
-      updateRunIdQuery(runId);
+      updateRunQuery(runId, null);
+      await backend.loadSignalRunHistory(selectedRadar.radar_id);
+      navigation.clearCandidateState();
+    }
+  }
+
+  async function selectSignalRun(runId: string) {
+    if (!selectedRadar) {
+      return;
+    }
+    const signalRun = selectedSignalRunHistory.find((run) => run.run_id === runId);
+    if (await backend.selectSignalRun(selectedRadar.radar_id, runId)) {
+      updateRunQuery(signalRun?.source_run_id ?? selectedRun?.run_id ?? null, runId);
+      navigation.setSelectedTab('operations');
       navigation.clearCandidateState();
     }
   }
@@ -318,6 +354,9 @@ export function useRadarWorkspace({
     selectedLiveArtifact,
     selectedRun,
     selectedRunHistory,
+    selectedSignalRun,
+    selectedSignalRunHistory,
+    selectedSignalReport,
     radarViewModel,
     detailCandidate,
     detailLiveCandidate,
@@ -342,9 +381,14 @@ export function useRadarWorkspace({
     resetSignalValidationDecision,
     runState: backend.runState,
     preflightState: backend.preflightState,
+    signalRunState: backend.signalRunState,
+    signalPreflightState: backend.signalPreflightState,
     checkRadarSetup: backend.checkRadarSetup,
+    checkSignalMonitoringSetup: backend.checkSignalMonitoringSetup,
     runRadar: backend.runRadar,
+    runSignalMonitoring: backend.runSignalMonitoring,
     selectRun,
+    selectSignalRun,
     createRadar,
     deleteRadar,
     resetRadarToArtifact,
@@ -356,8 +400,17 @@ export function useRadarWorkspace({
   };
 }
 
-function updateRunIdQuery(runId: string) {
+function updateRunQuery(runId: string | null, signalRunId: string | null) {
   const url = new URL(window.location.href);
-  url.searchParams.set('runId', runId);
+  if (runId) {
+    url.searchParams.set('runId', runId);
+  } else {
+    url.searchParams.delete('runId');
+  }
+  if (signalRunId) {
+    url.searchParams.set('signalRunId', signalRunId);
+  } else {
+    url.searchParams.delete('signalRunId');
+  }
   window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
 }

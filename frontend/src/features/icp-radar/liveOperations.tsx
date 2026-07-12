@@ -2,8 +2,13 @@ import { useState } from 'react';
 import { Activity, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button, Card, Eyebrow } from '../../components/primitives';
+import type { SignalMonitoringRunSummaryDto } from '../../api/radarApi';
 import type { ICPRadarCatalogItem, LiveICPRadarRunArtifact, SignalMonitoringReportArtifact } from '../../types';
 import type { RadarPreflightControlState, RadarRunControlState } from './application/useRadarBackend';
+import type {
+  SignalMonitoringPreflightControlState,
+  SignalMonitoringRunControlState,
+} from './application/useSignalMonitoringBackend';
 import { RadarPipelineControlPanel } from './livePipelineControls';
 import { LiveRadarPreflightPanel } from './livePreflightPanel';
 import { LiveRadarRunDiagnosticsView } from './liveRunDiagnostics';
@@ -15,6 +20,9 @@ export function LiveRadarOperationsTab({
   onCheckSetup,
   onOpenSettings,
   onRunRadar,
+  onRunSignalMonitoring,
+  onCheckSignalMonitoringSetup,
+  onSelectSignalRun,
   onToggleDiagnostics,
   onTogglePreflight,
   preflightOpen,
@@ -22,12 +30,19 @@ export function LiveRadarOperationsTab({
   radar,
   runState,
   signalMonitoringReport,
+  signalPreflightState,
+  signalRunHistory,
+  signalRunState,
+  selectedSignalRun,
 }: {
   artifact: LiveICPRadarRunArtifact | null;
   diagnosticsOpen: boolean;
   onCheckSetup: () => void;
   onOpenSettings: () => void;
   onRunRadar: () => void;
+  onRunSignalMonitoring: () => void;
+  onCheckSignalMonitoringSetup: () => void;
+  onSelectSignalRun: (runId: string) => void;
   onToggleDiagnostics: () => void;
   onTogglePreflight: () => void;
   preflightOpen: boolean;
@@ -35,6 +50,10 @@ export function LiveRadarOperationsTab({
   radar: ICPRadarCatalogItem | null;
   runState: RadarRunControlState;
   signalMonitoringReport: SignalMonitoringReportArtifact | null;
+  signalPreflightState: SignalMonitoringPreflightControlState;
+  signalRunHistory: SignalMonitoringRunSummaryDto[];
+  signalRunState: SignalMonitoringRunControlState;
+  selectedSignalRun: SignalMonitoringRunSummaryDto | null;
 }) {
   const { t } = useTranslation();
   const [signalReportOpen, setSignalReportOpen] = useState(false);
@@ -62,6 +81,9 @@ export function LiveRadarOperationsTab({
         diagnosticsOpen={diagnosticsOpen}
         onCheckSetup={onCheckSetup}
         onRunCandidateDiscovery={onRunRadar}
+        onRunSignalMonitoring={onRunSignalMonitoring}
+        onCheckSignalMonitoringSetup={onCheckSignalMonitoringSetup}
+        onSelectSignalRun={onSelectSignalRun}
         onToggleDiagnostics={onToggleDiagnostics}
         onTogglePreflight={onTogglePreflight}
         onToggleSignalReport={() => setSignalReportOpen((current) => !current)}
@@ -69,6 +91,10 @@ export function LiveRadarOperationsTab({
         radar={radar}
         runState={runState}
         signalMonitoringReport={signalMonitoringReport}
+        signalPreflightState={signalPreflightState}
+        signalRunHistory={signalRunHistory}
+        signalRunState={signalRunState}
+        selectedSignalRun={selectedSignalRun}
         signalReportOpen={signalReportOpen}
       />
 

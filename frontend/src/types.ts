@@ -673,6 +673,12 @@ export type LiveRadarRunDossier = {
     discovery_iteration_count?: number;
     analyzed_source_reasons?: string[];
   };
+  budget_summary: Record<string, unknown>;
+  budget_exhaustion_events: Array<Record<string, unknown>>;
+  external_call_budget_settings: Record<string, unknown>;
+  external_call_budget_counters: Record<string, number>;
+  external_call_budget_counters_by_role: Record<string, number>;
+  external_call_budget_exhaustion_events: Array<Record<string, unknown>>;
   candidate_universe: Array<{
     candidate_id: string;
     legal_name: string;
@@ -880,17 +886,23 @@ export type ICPRadarCatalogArtifact = {
   };
 };
 
-export type RadarPipelineId = 'candidate-discovery' | 'signal-monitoring';
+export type RadarPipelineId = 'candidate_discovery' | 'signal_monitoring';
 
 export type SignalMonitoringReportSummary = {
   candidate_count: number;
+  accepted_candidate_count: number;
+  review_needed_candidate_count: number;
   signal_rule_count: number;
   task_count: number;
   observation_count: number;
+  provider_call_count: number;
+  retry_count: number;
   new_signal_count: number;
   repeated_signal_count: number;
   searched_negative_count: number;
   not_searched_budget_limited_count: number;
+  observations_by_search_status: Record<string, number>;
+  observations_by_observation_status: Record<string, number>;
 };
 
 export type SignalMonitoringReportSignal = {
@@ -907,17 +919,30 @@ export type SignalMonitoringReportSignal = {
   source_ids: string[];
 };
 
-export type SignalMonitoringReportArtifact = {
+export type SignalMonitoringReportArtifactV2 = {
   artifact_type: 'radar_signal_monitoring_report';
   artifact_version: string;
+  pipeline_id: 'signal_monitoring';
   generated_at: string;
-  fixture_kind: string;
-  recorded_provider: boolean;
-  live_provider_calls: number;
   run_id: string;
+  signal_run_id: string;
   radar_id: string;
+  source_candidate_run_id: string;
+  completion_state: string;
+  candidate_scope_mode: string;
   model_profile_id: string;
+  provider_runtime: string;
   lookback_days: number;
   summary: SignalMonitoringReportSummary;
+  budgets: {
+    settings: Record<string, unknown>;
+    counters: Record<string, number>;
+    exhaustion_events: Array<Record<string, unknown>>;
+  };
   signals: SignalMonitoringReportSignal[];
+  fixture_kind?: string;
+  recorded_provider?: boolean;
+  live_provider_calls?: number;
 };
+
+export type SignalMonitoringReportArtifact = SignalMonitoringReportArtifactV2;

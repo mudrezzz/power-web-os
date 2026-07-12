@@ -12,8 +12,8 @@ import {
 import { LiveRadarCandidateDetailView, LiveRadarShortlistTable } from './liveCandidateViews';
 import { RadarCatalogScreen } from './components/RadarCatalogScreen';
 import { RadarDetailHeader } from './components/RadarDetailHeader';
+import { RadarOperationsView } from './components/RadarOperationsView';
 import { RadarRunSelector } from './components/RadarRunSelector';
-import { LiveRadarOperationsTab } from './liveOperations';
 import './icpRadar.css';
 
 const RadarSettings = lazy(() => import('./settings').then((module) => ({ default: module.RadarSettings })));
@@ -53,7 +53,7 @@ export function ICPRadarScreen({
   if (!workspace.selectedRadar) {
     return (
       <RadarCatalogScreen
-        backendError={backend.runState.error}
+        backendError={backend.signalRunState.error ?? backend.runState.error}
         backendMode={backend.runState.mode}
         hasLocalChanges={workspace.hasLocalChanges}
         radars={workspace.mergedRadars}
@@ -156,55 +156,23 @@ export function ICPRadarScreen({
           />
         </Suspense>
       ) : navigation.selectedTab === 'operations' ? (
-        <RadarOperations signalMonitoringReport={signalMonitoringReport} workspace={workspace} />
+        workspace.radarViewModel?.sourceKind === 'live' ? (
+          <RadarOperationsView signalMonitoringReport={signalMonitoringReport} workspace={workspace} />
+        ) : (
+          <Card>
+            <div className="icp-empty-shortlist">
+              <div>
+                <Eyebrow>{t('icpRadar.operations.eyebrow')}</Eyebrow>
+                <h2>{t('icpRadar.operations.fixtureTitle')}</h2>
+                <p>{t('icpRadar.operations.fixtureCopy')}</p>
+              </div>
+            </div>
+          </Card>
+        )
       ) : (
         <RadarShortlist workspace={workspace} />
       )}
     </section>
-  );
-}
-
-function RadarOperations({
-  signalMonitoringReport,
-  workspace,
-}: {
-  signalMonitoringReport: SignalMonitoringReportArtifact | null;
-  workspace: ReturnType<typeof useRadarWorkspace>;
-}) {
-  const { navigation } = workspace;
-  const { t } = useTranslation();
-  if (workspace.radarViewModel?.sourceKind === 'live') {
-    return (
-      <LiveRadarOperationsTab
-        artifact={workspace.selectedLiveArtifact}
-        diagnosticsOpen={navigation.runDiagnosticsOpen}
-        onCheckSetup={() => {
-          navigation.setRunPreflightOpen(true);
-          void workspace.checkRadarSetup(workspace.selectedRadar!.radar_id);
-        }}
-        onOpenSettings={() => navigation.setSelectedTab('settings')}
-        onRunRadar={() => workspace.runRadar(workspace.selectedRadar!.radar_id)}
-        onToggleDiagnostics={() => navigation.setRunDiagnosticsOpen(!navigation.runDiagnosticsOpen)}
-        onTogglePreflight={() => navigation.setRunPreflightOpen(!navigation.runPreflightOpen)}
-        preflightOpen={navigation.runPreflightOpen}
-        preflightState={workspace.preflightState}
-        radar={workspace.selectedRadar}
-        runState={workspace.runState}
-        signalMonitoringReport={signalMonitoringReport}
-      />
-    );
-  }
-
-  return (
-    <Card>
-      <div className="icp-empty-shortlist">
-        <div>
-          <Eyebrow>{t('icpRadar.operations.eyebrow')}</Eyebrow>
-          <h2>{t('icpRadar.operations.fixtureTitle')}</h2>
-          <p>{t('icpRadar.operations.fixtureCopy')}</p>
-        </div>
-      </div>
-    </Card>
   );
 }
 

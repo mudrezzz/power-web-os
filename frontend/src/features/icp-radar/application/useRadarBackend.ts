@@ -14,6 +14,10 @@ import {
   apiRunToLiveArtifact,
   catalogWithLiveRunArtifacts,
 } from '../adapters/apiRadarAdapter';
+import {
+  useSignalMonitoringBackend,
+  type SignalMonitoringBackendController,
+} from './useSignalMonitoringBackend';
 
 const terminalStatuses = new Set(['completed', 'failed']);
 const pollingIntervalMs = 2000;
@@ -60,7 +64,7 @@ export type RadarBackendController = {
   ) => Promise<boolean>;
   saveSignalReview: (decision: SignalValidationDecision | null) => Promise<boolean>;
   resetSignalReview: (radarId: string, candidateId: string, signalCode: string) => Promise<boolean>;
-};
+} & SignalMonitoringBackendController;
 
 export function useRadarBackend({
   fallbackCatalog,
@@ -331,6 +335,13 @@ export function useRadarBackend({
     }
   }, [api, selectRadarRun]);
 
+  const signalMonitoring = useSignalMonitoringBackend({
+    api,
+    mode: runState.mode,
+    selectedCandidateRunByRadarId: selectedRunByRadarId,
+    selectCandidateRun: selectRadarRun,
+  });
+
   const pollRun = useCallback(async (radarId: string, runId: string, startedAt: number) => {
     if (pollCancel.current) {
       return;
@@ -517,8 +528,9 @@ export function useRadarBackend({
   }, [api, refreshRunOutput, runState.mode]);
 
   return {
-    catalog: apiCatalog ?? fallbackCatalog,
-    liveRunArtifact: apiLiveArtifacts['toir-quick-live'] ?? fallbackLiveRunArtifact,
+    catalog: apiCatalog ?? (runState.mode === 'fallback' ? fallbackCatalog : null),
+    liveRunArtifact: apiLiveArtifacts['toir-quick-live']
+      ?? (runState.mode === 'fallback' ? fallbackLiveRunArtifact : null),
     liveRunArtifacts: apiLiveArtifacts,
     runHistoryByRadarId,
     selectedRunByRadarId,
@@ -534,6 +546,7 @@ export function useRadarBackend({
     saveQualificationReview,
     saveSignalReview,
     resetSignalReview,
+    ...signalMonitoring,
   };
 }
 

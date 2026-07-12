@@ -173,6 +173,38 @@
   font: var(--meta);
 }
 
+.radar-pipeline-lineage,
+.radar-signal-preflight,
+.radar-signal-report-lineage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.radar-pipeline-lineage .mono,
+.radar-signal-report-lineage .mono {
+  overflow-wrap: anywhere;
+}
+
+.radar-signal-preflight {
+  padding: var(--s-3);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.radar-pipeline-budget {
+  padding-top: var(--s-1);
+}
+
+.radar-pipeline-budget-heading {
+  margin-bottom: calc(var(--s-2) * -1);
+}
+
 .radar-pipeline-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

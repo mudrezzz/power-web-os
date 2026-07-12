@@ -245,6 +245,9 @@ def test_icp_radar_ui_separates_candidate_discovery_and_signal_monitoring() -> N
     app = Path("frontend/src/App.tsx").read_text(encoding="utf-8")
     api = Path("frontend/src/api/radarApi.ts").read_text(encoding="utf-8")
     backend_hook = Path("frontend/src/features/icp-radar/application/useRadarBackend.ts").read_text(encoding="utf-8")
+    signal_backend_hook = Path(
+        "frontend/src/features/icp-radar/application/useSignalMonitoringBackend.ts"
+    ).read_text(encoding="utf-8")
     controls = Path("frontend/src/features/icp-radar/livePipelineControls.tsx").read_text(encoding="utf-8")
     report_mapper = Path("frontend/src/features/icp-radar/signalMonitoringReport.ts").read_text(encoding="utf-8")
     report = Path("frontend/public/demo/radar_signal_monitoring_report.json").read_text(encoding="utf-8")
@@ -252,15 +255,22 @@ def test_icp_radar_ui_separates_candidate_discovery_and_signal_monitoring() -> N
 
     assert "/demo/radar_signal_monitoring_report.json" in app
     assert "const defaultBaseUrl = 'http://127.0.0.1:8001'" in api
-    assert "const requestTimeoutMs = 30000" in api
+    assert "const requestTimeoutMs = 60000" in api
     assert "controller.abort()" in api
     assert "signalMonitoringReportFromJson" in app
     assert "queueCandidateDiscoveryRun" in api
-    assert "pipeline_id: 'candidate-discovery'" in api
+    assert "pipeline_id: 'candidate_discovery'" in api
     assert "run_kind: 'candidate_discovery'" in api
-    assert "signalMonitoringRunSupport" in api
+    assert "signalMonitoringRunSupport" not in api
+    assert "queueSignalMonitoringRun" in api
+    assert "listSignalMonitoringRuns" in api
+    assert "getSignalMonitoringReport" in api
     assert "queueCandidateDiscoveryRun" in backend_hook
     assert "queueRadarRun(radarId" not in backend_hook
+    assert "source_run_id" in signal_backend_hook
+    assert "selectCandidateRun(radarId, run.source_run_id)" in signal_backend_hook
+    assert "candidate_scope_mode: 'accepted_and_review_needed'" in signal_backend_hook
+    assert "run_profile: 'signal_monitoring_smoke'" in signal_backend_hook
 
     for expected in [
         "candidateDiscoveryLastRunLabel",
@@ -269,9 +279,11 @@ def test_icp_radar_ui_separates_candidate_discovery_and_signal_monitoring() -> N
         "summaryLastRun !== 'not_run'",
         "icpRadar.live.pipeline.candidate.run",
         "icpRadar.live.pipeline.signal.run",
-        "disabled",
         "signalMonitoringReport",
         "onToggleSignalReport",
+        "SignalMonitoringRunSelector",
+        "onRunSignalMonitoring",
+        "onCheckSignalMonitoringSetup",
     ]:
         assert expected in controls
 
@@ -280,7 +292,9 @@ def test_icp_radar_ui_separates_candidate_discovery_and_signal_monitoring() -> N
         "Что нового произошло",
         "Run candidate discovery",
         "Check signals",
-        "Production execution will arrive after the backend API slice",
+        "Based on candidate run:",
+        "История мониторинга сигналов",
+        "Signal monitoring history",
     ]:
         assert expected in i18n
 

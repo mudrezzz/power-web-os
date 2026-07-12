@@ -13,7 +13,7 @@ the current candidate-discovery default.
 | Pipeline id | Purpose | Cadence | Current state |
 |---|---|---|---|
 | `candidate-discovery` | Find and qualify legal entities, sites, branches, projects, and review-needed upstream entities. | Infrequent: manual, monthly, quarterly, or after Radar settings change. | Implemented through the current Radar search pipeline with signal-monitoring handoff by default; docs still live at `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` until the migration slice splits the file. |
-| `signal-monitoring` | Monitor configured intent signals for known candidates over a recent time window. | Frequent: manual API/job execution now; scheduled cadence later. | Recorded and persisted live runtime, capability-driven source strategy, independent budgets/model profile, separate API/job/output contracts, and AS IS docs exist. Recurrence and full production UI remain planned. |
+| `signal-monitoring` | Monitor configured intent signals for known candidates over a recent time window. | Frequent: manual API/job execution now; scheduled cadence later. | Persisted live runtime, capability-driven source strategy, independent budgets/model profile, separate API/job/output contracts, and linked production UI controls exist. Recurrence remains planned. |
 | `power-web-discovery` | Discover people, roles, relationships, partner paths, buying committee structure, and access routes for accepted accounts. | Event-driven or account-workflow driven. | Planned. |
 
 ## Required files
@@ -72,6 +72,11 @@ As of slice `0.7.6.4.18.1.4`, candidate discovery reports a separate
 user-visible candidate surface. The candidate endpoint and dossier candidates
 contain accepted product candidates plus review-needed legal candidates; strict
 product acceptance remains a separate count used for precision.
+
+As of slice `0.7.6.4.18.3`, the Radar UI implements the cross-pipeline contract
+in `RADAR_PIPELINE_SPLIT_UI_CONTRACT.md`. Candidate and signal histories,
+actions, budgets and reports are separate. Selecting a signal run selects its
+persisted source candidate run so the UI cannot display inconsistent snapshots.
 
 ## Skill invocation examples
 

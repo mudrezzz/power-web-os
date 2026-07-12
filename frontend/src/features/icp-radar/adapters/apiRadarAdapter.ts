@@ -309,6 +309,12 @@ function runDossier(dossier: RadarRunDossierDto): LiveRadarRunDossier {
       discovery_iteration_count: numberField(dossier.coverage_summary.discovery_iteration_count, dossier.discovery_iteration_count),
       analyzed_source_reasons: stringArray(dossier.coverage_summary.analyzed_source_reasons),
     },
+    budget_summary: recordField(dossier.budget_summary),
+    budget_exhaustion_events: arrayField(dossier.budget_exhaustion_events),
+    external_call_budget_settings: recordField(dossier.external_call_budget_settings),
+    external_call_budget_counters: recordNumberField(dossier.external_call_budget_counters),
+    external_call_budget_counters_by_role: recordNumberField(dossier.external_call_budget_counters_by_role),
+    external_call_budget_exhaustion_events: arrayField(dossier.external_call_budget_exhaustion_events),
     candidate_universe: arrayField(dossier.candidate_universe).map((item) => ({
       candidate_id: stringField(item.candidate_id, ''),
       legal_name: stringField(item.legal_name, ''),

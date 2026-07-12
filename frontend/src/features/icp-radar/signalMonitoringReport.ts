@@ -7,28 +7,60 @@ export function signalMonitoringReportFromJson(payload: unknown): SignalMonitori
     return null;
   }
   const summary = isRecord(payload.summary) ? payload.summary : {};
+  const budgets = isRecord(payload.budgets) ? payload.budgets : {};
+  const counters = isRecord(budgets.counters)
+    ? budgets.counters
+    : isRecord(payload.budget_counters) ? payload.budget_counters : {};
+  const settings = isRecord(budgets.settings)
+    ? budgets.settings
+    : isRecord(payload.budget_settings) ? payload.budget_settings : {};
+  const exhaustionEvents = Array.isArray(budgets.exhaustion_events)
+    ? budgets.exhaustion_events.filter(isRecord)
+    : Array.isArray(payload.budget_exhaustion_events) ? payload.budget_exhaustion_events.filter(isRecord) : [];
+  const signals = signalRows(payload);
   return {
     artifact_type: 'radar_signal_monitoring_report',
     artifact_version: stringValue(payload.artifact_version),
+    pipeline_id: 'signal_monitoring',
     generated_at: stringValue(payload.generated_at),
     fixture_kind: stringValue(payload.fixture_kind),
     recorded_provider: Boolean(payload.recorded_provider),
     live_provider_calls: numberValue(payload.live_provider_calls),
     run_id: stringValue(payload.run_id),
+    signal_run_id: stringValue(payload.signal_run_id) || stringValue(payload.run_id),
     radar_id: stringValue(payload.radar_id),
+    source_candidate_run_id: stringValue(payload.source_candidate_run_id),
+    completion_state: stringValue(payload.completion_state) || 'completed',
+    candidate_scope_mode: stringValue(payload.candidate_scope_mode),
     model_profile_id: stringValue(payload.model_profile_id),
+    provider_runtime: stringValue(payload.provider_runtime),
     lookback_days: numberValue(payload.lookback_days),
     summary: {
       candidate_count: numberValue(summary.candidate_count),
+      accepted_candidate_count: numberValue(summary.accepted_candidate_count),
+      review_needed_candidate_count: numberValue(summary.review_needed_candidate_count),
       signal_rule_count: numberValue(summary.signal_rule_count),
       task_count: numberValue(summary.task_count),
       observation_count: numberValue(summary.observation_count),
-      new_signal_count: numberValue(summary.new_signal_count),
-      repeated_signal_count: numberValue(summary.repeated_signal_count),
-      searched_negative_count: numberValue(summary.searched_negative_count),
-      not_searched_budget_limited_count: numberValue(summary.not_searched_budget_limited_count),
+      provider_call_count: numberValue(summary.provider_call_count) || numberValue(counters.signal_provider_calls),
+      retry_count: numberValue(summary.retry_count) || numberValue(counters.signal_extraction_retries),
+      new_signal_count: numberValue(summary.new_signal_count)
+        || signals.filter((item) => item.novelty === 'new_signal').length,
+      repeated_signal_count: numberValue(summary.repeated_signal_count)
+        || signals.filter((item) => item.novelty.includes('duplicate')).length,
+      searched_negative_count: numberValue(summary.searched_negative_count)
+        || signals.filter((item) => item.observation_status === 'not_observed').length,
+      not_searched_budget_limited_count: numberValue(summary.not_searched_budget_limited_count)
+        || signals.filter((item) => item.search_status.includes('budget')).length,
+      observations_by_search_status: numberRecord(summary.observations_by_search_status),
+      observations_by_observation_status: numberRecord(summary.observations_by_observation_status),
     },
-    signals: signalRows(payload),
+    budgets: {
+      settings,
+      counters: numberRecord(counters),
+      exhaustion_events: exhaustionEvents,
+    },
+    signals,
   };
 }
 
@@ -78,6 +110,17 @@ function stringValue(value: unknown): string {
 
 function numberValue(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function numberRecord(value: unknown): Record<string, number> {
+  if (!isRecord(value)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, number] => (
+      typeof entry[1] === 'number' && Number.isFinite(entry[1])
+    )),
+  );
 }
 
 function stringList(value: unknown): string[] {

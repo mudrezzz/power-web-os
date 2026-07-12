@@ -67,10 +67,15 @@ Benchmark radars returned by the backend are protected from silent browser-local
 delete overrides. If local demo state attempted to hide one, the catalog keeps
 the backend radar visible and marks it so the user can reset demo changes.
 
-`frontend/public/demo/radar_signal_monitoring_report.json` is a recorded
-no-network signal-monitoring report used only to make the separate
-signal-monitoring contour visible in the UI. The production `Check signals`
-action stays disabled until a backend signal-monitoring API exists.
+Signal Monitoring uses its dedicated backend endpoints in API mode. Its
+application controller owns signal history, preflight, queueing, polling,
+report loading and source-run synchronization. Selecting a historical signal
+run automatically selects its `source_run_id`; candidate and signal reports are
+never rendered as an unrelated pair.
+
+`frontend/public/demo/radar_signal_monitoring_report.json` remains only as an
+explicitly labelled offline/demo fallback. It must not replace an empty backend
+signal history while API mode is active.
 
 ## How To Add A New Radar Type
 
@@ -123,5 +128,9 @@ action stays disabled until a backend signal-monitoring API exists.
   fallback/local overrides, or its UI counts diverge from the backend candidates
   endpoint. Set `POWER_WEB_OS_RADAR_UI_DOD_START_VITE=1` only for a manual local
   Vite run with matching backend CORS origins.
+- Candidate/signal pipeline wiring change: run
+  `npm --prefix ./frontend run radar:pipeline-split-ui-dod` against Docker. It
+  validates separate histories and budgets, source-run synchronization, direct
+  URL inspection, missing-run errors, EN/RU layout and persisted reports.
 - Settings/local overlay change: run `npm --prefix ./frontend run settings:toggle-smoke`.
 - Public behavior or architecture change: update developer docs, architecture docs, ADRs, and `ROADMAP.md`.

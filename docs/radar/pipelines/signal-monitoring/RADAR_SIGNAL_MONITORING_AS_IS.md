@@ -262,10 +262,18 @@ diagnostic run, bounded autofix/RCA loop, persisted validation report with
 `validation_status=PASS`, and final TO BE-to-AS IS reconciliation. The roadmap
 tracker refuses `Done` when this evidence is missing or failed.
 
-## 12. Out Of Scope
+## 12. Product UI Contract
+
+The Radar `Runs` tab exposes Signal Monitoring through its persisted API. It has
+its own preflight, run action, history selector, status, budget summary and
+report. Every selected signal run displays `source_run_id` and automatically
+selects that candidate-discovery run. Candidate history and counters remain
+unchanged by signal runs. The full cross-pipeline contract lives in
+`docs/radar/pipelines/RADAR_PIPELINE_SPLIT_UI_CONTRACT.md`.
+
+## 13. Out Of Scope
 
 - recurring scheduler and notification delivery;
-- full Signal Monitoring UI, planned in `0.7.6.4.18.3`;
 - persisted/UI per-criterion depth, cadence and source settings, planned in
   `0.7.6.4.18.3.1`;
 - candidate rediscovery or candidate-universe expansion;

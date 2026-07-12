@@ -102,11 +102,21 @@ one searched-negative signal, one budget-limited task, evidence refs, source
 strategy decisions, provider attempts, and signal budget counters.
 
 The frontend also includes a sanitized projection at
-`frontend/public/demo/radar_signal_monitoring_report.json`. It remains the
-Radar UI preview. Open a live Radar and use the `Runs` tab to inspect the
-candidate-discovery control, setup check, run diagnostics, and recorded
-signal-monitoring report. A separately persisted live backend path now exists;
-full production UI controls remain deferred to slice `0.7.6.4.18.3`.
+`frontend/public/demo/radar_signal_monitoring_report.json`. It is now only the
+explicit offline/demo fallback. In API mode, open a live Radar and use the
+`Runs` tab to inspect separate candidate-discovery and Signal Monitoring
+histories, controls, budgets and reports. Selecting a signal run synchronizes
+the candidate run to its persisted `source_run_id`.
+
+Validate the Docker-backed split UI with:
+
+```powershell
+npm --prefix ./frontend run radar:pipeline-split-ui-dod
+```
+
+The check requires one completed candidate run and two linked persisted signal
+runs. It validates direct URLs, lineage, separate budgets, missing-run errors,
+English at 1280x720 and Russian at 1366x768.
 
 Live Signal Monitoring through API and the dedicated worker queue:
 

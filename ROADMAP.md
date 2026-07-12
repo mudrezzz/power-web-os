@@ -8985,7 +8985,7 @@ Required proof before Done:
 
 ### Slice 0.7.6.4.18.3: Radar pipeline split validation and UI contract
 
-- Status: Ready
+- Status: Done
 - Goal: Validate and document that candidate discovery and signal monitoring are launched, budgeted, evaluated, persisted, and displayed as two separate Radar pipelines.
 - User value: The product and codebase make it obvious which pipeline found candidates and which pipeline monitored signals, so users can trust budget/status explanations.
 - Problem statement: Even after runtime separation, tests/docs/UI can drift back to a monolithic mental model unless there is a dedicated validation and contract slice.
@@ -9020,57 +9020,33 @@ Required proof before Done:
   - Roadmap can safely move to root namespace closure and then product work.
 - Risks:
   - UI and API may lag backend separation. Mitigate with contract tests that fail on ambiguous labels or merged budget/status fields.
+- Behavior change: false
+- Closeout: PASS: radar benchmark-sibur-holding-contour; candidate run radar-run-3bbf9c0f-330e-4468-8901-966a751234a8; signal runs signal-run-df00b3b8-267c-4091-a4dd-8167434e2cf3 and signal-run-010ef75d-c626-44e3-a025-56c95522c1a8; 6 candidates and 12 observations; source lineage, separate histories/budgets, direct URL, missing-run error, 1280x720 EN, 1366x768 RU, Docker rebuild and API restart round-trip validated.
+- Validation report: docs/radar/pipelines/validation/0.7.6.4.18.3/validation.json
 
 ### Slice 0.7.6.4.18.3.1: Per-signal monitoring depth, cadence and source settings
 
-- Status: Backlog
+- Status: Blocked
 - Goal: Expose persisted per-signal initial lookback, incremental overlap, cadence and source policy settings after the split UI contract is validated.
 - Scope: Persist per-criterion initial depth, overlap, cadence and source-lane policy; expose them through API and UI with validation.
 - Acceptance criteria: Each criterion has explicit persisted monitoring settings, runtime uses them without hidden defaults, and UI/API round-trip is covered.
 
 ### Slice 0.7.6.4.18.3.2: Signal monitoring evidence status language and report clarity
 
-- Status: Backlog
-- Goal: Make Signal Monitoring reports and UI explain evidence outcomes in user language instead of only technical observed/unclear/not_observed statuses.
-- User value: A user can read a Signal Monitoring report without decoding backend statuses: the report says whether we found a fresh signal, found relevant evidence without a reliable date, found old evidence and did not count it, or found nothing after full coverage.
-- Problem statement: After event-time and source-capability fixes, the backend can distinguish confirmed fresh evidence, unknown-date review evidence, historical out-of-window evidence, and searched-negative outcomes. The UI/report still risks flattening those into technical labels such as observed, unclear and not_observed. That hides the main product meaning and makes quality discussions harder than they need to be.
-- Scope:
-  - Add a presentation-level evidence outcome vocabulary for Signal Monitoring reports: "нашли свежее", "нашли релевантное без даты", "нашли старое, не засчитали", and "не нашли после полного покрытия".
-  - Expose the presentation category, human-readable reason, evidence count, source refs and coverage completeness in the Signal Monitoring report/API contract.
-  - Update UI cards/tables/copy so a user sees the four outcome meanings directly, in Russian and English.
-  - Update diagnostics/report exports so run closeout summaries use the same human vocabulary.
-  - Preserve the existing technical statuses as debug/API compatibility fields.
-- Out of scope:
-  - No change to signal-search planning, retrieval, evidence validation, source capability binding, watermarks, dedupe, scoring or budgets.
-  - No new provider calls or benchmark quality claim.
-  - No candidate-discovery behavior change.
-  - No per-signal cadence/depth settings; that remains `0.7.6.4.18.3.1`.
-- Implementation notes:
-  - Implement this as a projection/reporting layer over existing Signal Monitoring artifact fields such as observation status, temporal status, coverage completeness, evidence validation summary and source lifecycle.
-  - `not_observed` may be rendered as "не нашли после полного покрытия" only when required lanes are complete and receipts prove searched-negative coverage.
-  - Unknown-date relevant evidence must stay visible as review-needed evidence, not disappear into a generic unclear bucket.
-  - Historical evidence must show why it was not counted as fresh, including date basis and source provenance where available.
-- Tests:
-  - Backend mapper tests for the four presentation categories from representative artifact fragments.
-  - API/report contract tests that include category, reason, coverage completeness and source refs while preserving technical statuses.
-  - Frontend tests or Playwright coverage for all four labels and non-empty evidence/reason details.
-  - Regression: existing signal-monitoring recorded/live report tests remain green.
-  - Static checks: `npm --prefix ./frontend run build`, `python -m power_web_os.roadmap check`, `git diff --check`.
-- Docs:
-  - Update Signal Monitoring AS IS/report docs with the user-facing outcome vocabulary.
-  - Update Developer Guide/demo runbook so diagnostic summaries use the same terms.
-  - Add a short explanation that these are presentation categories, not a replacement for backend evidence states.
-- Demo impact: Demo reports become understandable for non-engineering review: a stakeholder can see fresh confirmed signals, relevant undated evidence for human review, old evidence rejected by window, and searched-negative results without reading raw JSON.
-- Acceptance criteria:
-  - Signal Monitoring UI/report shows all four human outcome categories when the underlying artifact contains matching cases: "нашли свежее", "нашли релевантное без даты", "нашли старое, не засчитали", and "не нашли после полного покрытия".
-  - A searched-negative result is not shown as "не нашли после полного покрытия" unless coverage is complete.
-  - Unknown-date relevant evidence is visible as human-review evidence with source provenance.
-  - Old out-of-window evidence is visible as "нашли старое, не засчитали" with date reason.
-  - Technical statuses remain available for diagnostics/API compatibility.
-  - No pipeline behavior changes are introduced by the presentation mapping.
-- Risks:
-  - User-facing labels can drift from backend semantics. Mitigate with mapper contract tests that cover every technical status/temporal-status combination.
-  - UI may oversimplify review-needed evidence. Mitigate by showing reason and source provenance next to the label.
+- Status: Ready
+- Goal: Build an honest cumulative Signal Monitoring product surface: show all candidate-criterion results, resolve source provenance, distinguish current-run delta from previously retained state, and project the selected monitoring state onto the candidate list without merging pipeline ownership.
+- User value: A user sees what was actually found for each company, can open the supporting sources, understands what is new versus already known, and does not see false zero signal counts after a successful monitoring run.
+- Problem statement: The completed split UI proves separate runtimes and lineage but the current report is materially misleading: 12 means candidate-criterion pairs rather than findings; the frontend silently truncates the report to 6 rows; backend source_refs are rendered as zero evidence; incremental runs show only the current delta and hide previously retained evidence; and the main candidate list still displays candidate-discovery signal zeros instead of a joined monitoring projection.
+- Scope: 1. Replace ambiguous result count with explicit pair, candidate, criterion, new, retained-review, historical and searched-negative counts. 2. Remove hidden six-row truncation and render all rows or explicit pagination with shown/total counts. 3. Map source_refs and evidence_refs into resolvable product-safe evidence cards. 4. Add cumulative state per candidate and criterion with current delta, retained state and origin run. 5. Link duplicate rows to originating run and evidence. 6. Overlay selected monitoring state onto the main candidate list while keeping candidate-discovery artifacts immutable. 7. Mark candidates outside monitoring scope as not monitored. 8. Add human outcome labels while preserving technical statuses.
+- Out of scope: No provider calls, planning changes, source-lane changes, scoring redesign, budget changes or live quality claim. No mutation of candidate-discovery artifacts or candidate universe. No per-signal cadence, depth, overlap or source settings; those remain in 0.7.6.4.18.3.1. No notification delivery or automatic scheduling.
+- Implementation notes: Build the cumulative join in a backend/application projection or API read model rather than independently in React. Use signal-run-010ef75d-c626-44e3-a025-56c95522c1a8 as the initial fixture and signal-run-df00b3b8-267c-4091-a4dd-8167434e2cf3 as the incremental fixture. The initial run has 4 observed, 3 review/unclear and 5 searched-negative outcomes; the incremental run has 0 new confirmed signals but must retain prior confirmed/review evidence. Resolve source_refs/evidence_refs centrally. The selected signal run controls only the monitoring overlay. Evidence with an unverified date cannot be presented as confirmed fresh without a valid temporal basis.
+- Tests: Backend read-model tests cover four human outcomes, cumulative state, origin lineage and source resolution. Contract tests prove 12 pairs are checks rather than 12 findings and source_refs do not render false zero evidence. Initial fixture proves 4 observed outcomes with sources. Incremental fixture proves 0 new while prior states remain visible. Main candidate overlay matches the selected signal run and out-of-scope candidates show not monitored. Playwright checks all 12 outcomes, sources, cumulative labels, RU/EN copy and no truncation. Signal runtime/API/persistence, candidate discovery, architecture, frontend build, roadmap check and diff check remain green.
+- Docs: Update Signal Monitoring AS IS, RADAR_PIPELINE_SPLIT_UI_CONTRACT.md, Developer Guide, User Guide and demo runbook. Record the RCA for signal-run-df00b3b8-267c-4091-a4dd-8167434e2cf3 and the failed 0.7.6.4.18.3 acceptance assumption. Strengthen the split UI validation gate to check semantic values and evidence links, not only panel presence and counts.
+- Demo impact: The demo shows six monitored companies and all twelve candidate-criterion outcomes, with four previously found signals from the initial run preserved in the incremental view, working source links, clear new-versus-known labels, and the same state visible in the main candidate table.
+- Acceptance criteria: Hard DoD: all 12 candidate-criterion outcomes are accessible with no hidden truncation; UI says 6 candidates x 2 criteria = 12 checks and never calls them 12 found signals; initial run 010ef shows exactly 4 confirmed, 3 review/unclear and 5 searched-negative outcomes; incremental run df00 shows 0 new while preserving cumulative prior states and origin links; every retained/confirmed row has resolvable provenance and no false zero evidence where source_refs exist; duplicate rows link to origin evidence; main list and detail show the selected monitoring overlay; out-of-scope candidates show not monitored; four human outcomes are distinct; unknown-date evidence is not shown as confirmed fresh without temporal basis; candidate and signal ownership/budgets remain separate; Docker, backend/API tests, frontend build and Playwright pass at 1280x720 and 1366x768 in RU/EN; validation report records both run IDs, counts, source resolution, cumulative checks and PASS.
+- Risks: Cumulative state could mix unrelated runs, so require the same radar and source candidate lineage. Historical evidence could look new, so always show origin run, novelty and checked window. Source refs are heterogeneous, so resolve through artifact sources, lifecycle and receipts with explicit unresolved diagnostics. The main-list overlay must keep identity and qualification from candidate discovery and signal outcomes from the selected monitoring run.
+- Behavior change: false
+- Pipeline: signal-monitoring
 
 ### Slice 0.7.6.4.19: Radar root namespace closure and compatibility sunset
 

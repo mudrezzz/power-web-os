@@ -86,11 +86,12 @@ The language switcher localizes UI chrome plus visible deterministic demo data s
 Live Radar separates results from operations. The `Found accounts` tab is only
 for the candidate table and candidate review flow. The `Runs` tab contains two
 pipeline controls: `Candidate discovery` answers "who should we monitor" and
-uses the existing backend run API to create a candidate-discovery run; `Signal
-monitoring` answers "what changed recently" for already known candidates. In
-the current UI signal monitoring is a recorded/no-network preview only: the
-report can be inspected, but the production `Check signals` action is disabled
-until the signal-monitoring backend API is implemented.
+uses the candidate run API; `Signal monitoring` answers "what changed recently"
+for already known candidates and uses its own preflight, history, run and report
+API. A selected signal run names and automatically selects its source candidate
+run. Both pipelines show separate budgets and statuses. The recorded/no-network
+report is used only when the backend is unavailable and is visibly labelled as
+demo fallback.
 
 The `ICP Radar` screen now starts with a list-first catalog of configured radars. Each row represents a configured ICP Radar with aligned columns for status, owner, cadence, last run, run mode, candidate count, needs-review count, and accepted count. Use `Create radar` to add a browser-local demo radar, or open `ТОиР / SIBUR` to inspect the active fixture-backed radar. Its `Found accounts` tab contains the current ranked table, and its `Settings` tab edits the radar definition by block: radar header, global search base, account qualification rules, monitoring, intent signals, scoring model, and validation.
 

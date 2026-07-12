@@ -1,4 +1,4 @@
-import type { QualificationAssessmentStatus, RadarPipelineId, SignalValidationStatus } from '../types';
+import type { QualificationAssessmentStatus, SignalValidationStatus } from '../types';
 
 const defaultBaseUrl = 'http://127.0.0.1:8001';
 const requestTimeoutMs = 60000;
@@ -112,10 +112,55 @@ export type RadarRunRequestDto = {
   task_context: Record<string, unknown>;
 };
 
-export type RadarPipelineRunSupport = {
-  pipeline_id: RadarPipelineId;
-  supported: boolean;
-  reason: string;
+export type SignalMonitoringRunRequestDto = {
+  source_candidate_run_id: string;
+  candidate_scope_mode: 'accepted_and_review_needed' | 'accepted_only';
+  candidate_ids: string[];
+  signal_codes: string[];
+  lookback_days: number | null;
+  run_profile: 'signal_monitoring_smoke' | 'signal_monitoring_quality';
+  idempotency_key?: string;
+  correlation_id?: string;
+  requester: string;
+};
+
+export type SignalMonitoringPreflightDto = {
+  artifact_type: string;
+  pipeline_id: 'signal_monitoring';
+  radar_id: string;
+  source_candidate_run_id: string;
+  ready_for_live_run: boolean;
+  issues: string[];
+  candidate_count: number;
+  signal_rule_count: number;
+  lookback_days: number;
+  budget: Record<string, unknown>;
+};
+
+export type SignalMonitoringOutputSummaryDto = {
+  artifact_version: string;
+  completion_state: string;
+  candidate_count: number;
+  observation_count: number;
+  provider_call_count: number;
+  updated_at: string | null;
+};
+
+export type SignalMonitoringRunSummaryDto = {
+  run_id: string;
+  radar_id: string;
+  pipeline_id: 'signal_monitoring';
+  source_run_id: string;
+  status: RadarRunStatus;
+  queued_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  idempotency_key: string | null;
+  correlation_id: string | null;
+  error_message: string | null;
+  error_metadata: Record<string, unknown>;
+  run_metadata: Record<string, unknown>;
+  output: SignalMonitoringOutputSummaryDto | null;
 };
 
 export type SourceUsageDto = {
@@ -360,6 +405,12 @@ export type RadarRunDossierDto = {
   source_obligation_decisions: Array<Record<string, unknown>>;
   source_obligation_summary: Record<string, unknown>;
   coverage_summary: Record<string, unknown>;
+  budget_summary: Record<string, unknown>;
+  budget_exhaustion_events: Array<Record<string, unknown>>;
+  external_call_budget_settings: Record<string, unknown>;
+  external_call_budget_counters: Record<string, number>;
+  external_call_budget_counters_by_role: Record<string, number>;
+  external_call_budget_exhaustion_events: Array<Record<string, unknown>>;
   candidate_universe: Array<Record<string, unknown>>;
   coverage_checks: Array<Record<string, unknown>>;
   coverage_warnings: string[];
@@ -467,18 +518,40 @@ export class RadarApiClient {
       ...request,
       task_context: {
         ...request.task_context,
-        pipeline_id: 'candidate-discovery',
+        pipeline_id: 'candidate_discovery',
         run_kind: 'candidate_discovery',
       },
     });
   }
 
-  signalMonitoringRunSupport(): RadarPipelineRunSupport {
-    return {
-      pipeline_id: 'signal-monitoring',
-      supported: false,
-      reason: 'signal_monitoring_backend_api_not_available',
-    };
+  getSignalMonitoringPreflight(radarId: string, request: SignalMonitoringRunRequestDto) {
+    const params = signalMonitoringQuery(request);
+    return this.request<SignalMonitoringPreflightDto>(
+      `/api/radars/${encodeURIComponent(radarId)}/signal-monitoring/preflight?${params.toString()}`,
+    );
+  }
+
+  queueSignalMonitoringRun(radarId: string, request: SignalMonitoringRunRequestDto) {
+    return this.request<SignalMonitoringRunSummaryDto>(
+      `/api/radars/${encodeURIComponent(radarId)}/signal-monitoring-runs`,
+      { method: 'POST', body: JSON.stringify(request) },
+    );
+  }
+
+  listSignalMonitoringRuns(radarId: string, limit = 20) {
+    return this.request<SignalMonitoringRunSummaryDto[]>(
+      `/api/radars/${encodeURIComponent(radarId)}/signal-monitoring-runs?limit=${encodeURIComponent(String(limit))}`,
+    );
+  }
+
+  getSignalMonitoringRun(runId: string) {
+    return this.request<SignalMonitoringRunSummaryDto>(
+      `/api/signal-monitoring-runs/${encodeURIComponent(runId)}`,
+    );
+  }
+
+  getSignalMonitoringReport(runId: string) {
+    return this.request<unknown>(`/api/signal-monitoring-runs/${encodeURIComponent(runId)}/report`);
   }
 
   getRun(runId: string) {
@@ -569,6 +642,24 @@ export class RadarApiClient {
     }
     return response.json() as Promise<T>;
   }
+}
+
+function signalMonitoringQuery(request: SignalMonitoringRunRequestDto) {
+  const params = new URLSearchParams({
+    source_candidate_run_id: request.source_candidate_run_id,
+    candidate_scope_mode: request.candidate_scope_mode,
+    run_profile: request.run_profile,
+  });
+  for (const candidateId of request.candidate_ids) {
+    params.append('candidate_ids', candidateId);
+  }
+  for (const signalCode of request.signal_codes) {
+    params.append('signal_codes', signalCode);
+  }
+  if (request.lookback_days !== null) {
+    params.set('lookback_days', String(request.lookback_days));
+  }
+  return params;
 }
 
 export function radarApiBaseUrl() {

@@ -1,0 +1,113 @@
+/* Radar run selectors own candidate and signal history controls and lineage metadata. */
+
+.radar-run-selector {
+  display: grid;
+  grid-template-columns: minmax(0, 0.65fr) minmax(220px, 0.75fr) minmax(0, 1.25fr);
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.radar-run-selector-head,
+.radar-run-selector-meta,
+.radar-run-selector-date {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.radar-run-selector-head {
+  gap: var(--s-3);
+}
+
+.radar-run-selector-head label {
+  display: block;
+  margin-top: var(--s-1);
+  font-weight: 650;
+}
+
+.section-icon-sm {
+  width: var(--s-9);
+  height: var(--s-9);
+}
+
+.radar-run-selector-control {
+  min-width: 0;
+}
+
+.radar-run-selector select {
+  width: 100%;
+  min-width: 0;
+  height: calc(var(--s-9) + var(--s-1));
+  padding: 0 var(--s-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font: var(--body);
+}
+
+.radar-run-selector select:focus {
+  border-color: var(--cobalt);
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+
+.radar-run-selector-meta {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.radar-run-selector-date {
+  gap: var(--s-1);
+}
+
+.radar-run-selector-date svg {
+  width: var(--s-4);
+  height: var(--s-4);
+  flex-shrink: 0;
+}
+
+.radar-run-selector-meta .mono {
+  max-width: calc(var(--s-20) * 3.2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.radar-run-selector-empty {
+  margin: 0;
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.radar-run-selector-signal {
+  grid-template-columns: minmax(0, 1fr);
+  padding: var(--s-3);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.radar-run-selector-signal .radar-run-selector-meta {
+  justify-content: flex-start;
+}
+
+.radar-run-selector-lineage {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  min-width: 0;
+}
+
+.radar-run-selector-lineage svg {
+  width: var(--s-4);
+  height: var(--s-4);
+  flex-shrink: 0;
+}

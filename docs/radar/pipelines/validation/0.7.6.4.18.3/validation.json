@@ -1,0 +1,33 @@
+{
+  "schema_version": "radar_cross_pipeline_ui_validation.v1",
+  "slice_id": "0.7.6.4.18.3",
+  "validation_status": "PASS",
+  "behavior_change": false,
+  "radar_id": "benchmark-sibur-holding-contour",
+  "candidate_run_id": "radar-run-3bbf9c0f-330e-4468-8901-966a751234a8",
+  "signal_run_ids": [
+    "signal-run-df00b3b8-267c-4091-a4dd-8167434e2cf3",
+    "signal-run-010ef75d-c626-44e3-a025-56c95522c1a8"
+  ],
+  "candidate_count": 6,
+  "observation_count": 12,
+  "checks": {
+    "separate_histories": "PASS",
+    "source_run_lineage": "PASS",
+    "signal_selection_syncs_candidate_run": "PASS",
+    "direct_url_pair": "PASS",
+    "separate_budget_surfaces": "PASS",
+    "api_mode_has_no_recorded_fallback": "PASS",
+    "missing_run_error_is_explicit": "PASS",
+    "english_1280x720": "PASS",
+    "russian_1366x768": "PASS",
+    "horizontal_overflow": "PASS",
+    "restart_round_trip": "PASS"
+  },
+  "commands": [
+    "python -m pytest tests/test_signal_monitoring_contracts.py tests/test_signal_monitoring_source_strategy.py tests/test_radar_signal_monitoring_recorded.py tests/test_persisted_signal_monitoring.py tests/test_signal_monitoring_api.py tests/test_signal_monitoring_jobs.py tests/test_backend_api.py tests/test_persisted_live_radar.py tests/test_radar_jobs.py tests/test_backend_architecture_contract.py tests/test_radar_backend_package_contract.py tests/test_frontend_demo_contract.py -q",
+    "npm --prefix ./frontend run build",
+    "docker compose up -d --build",
+    "npm --prefix ./frontend run radar:pipeline-split-ui-dod"
+  ]
+}

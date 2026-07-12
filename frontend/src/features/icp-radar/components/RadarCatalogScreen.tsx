@@ -58,7 +58,7 @@ export function RadarCatalogScreen({
               {t('icpRadar.resetDemoChanges')}
             </Button>
           )}
-          {backendMode === 'fallback' && backendError && (
+          {backendError && (
             <span className="icp-radar-backend-error">
               <Mono>{backendError}</Mono>
             </span>

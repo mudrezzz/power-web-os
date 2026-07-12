@@ -325,6 +325,7 @@ def test_icp_radar_css_is_owned_by_feature_module() -> None:
         "shortlist.css",
         "preview.css",
         "detail.css",
+        "runs.css",
         "trace.css",
         "diagnostics.css",
         "settings.css",
