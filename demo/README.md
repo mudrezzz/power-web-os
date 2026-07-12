@@ -102,11 +102,36 @@ one searched-negative signal, one budget-limited task, evidence refs, source
 strategy decisions, provider attempts, and signal budget counters.
 
 The frontend also includes a sanitized projection at
-`frontend/public/demo/radar_signal_monitoring_report.json`. It is only for the
+`frontend/public/demo/radar_signal_monitoring_report.json`. It remains the
 Radar UI preview. Open a live Radar and use the `Runs` tab to inspect the
 candidate-discovery control, setup check, run diagnostics, and recorded
-signal-monitoring report. The `Check signals` production action remains
-disabled until the signal-monitoring backend API exists.
+signal-monitoring report. A separately persisted live backend path now exists;
+full production UI controls remain deferred to slice `0.7.6.4.18.3`.
+
+Live Signal Monitoring through API and the dedicated worker queue:
+
+```powershell
+docker compose up -d --build
+python -m power_web_os.demo run-live-signal-monitoring `
+  --api-url http://127.0.0.1:8001 `
+  --radar-id benchmark-sibur-holding-contour `
+  --source-run-id <completed-candidate-run-id> `
+  --candidate-id <accepted-id-1> `
+  --candidate-id <accepted-id-2> `
+  --candidate-id <review-needed-id> `
+  --signal-code <signal-code-1> `
+  --signal-code <signal-code-2>
+```
+
+The live command never starts candidate discovery. It freezes candidate and
+source lineage from the supplied run, uses a separate signal budget and writes
+`demo/output/radar_signal_monitoring_report.json`.
+
+For search-quality acceptance, add `--signal-monitoring-profile
+signal_monitoring_quality --lookback-days 365`. Run once with the explicit
+initial window and a second time without a lookback override. The second report
+must show per-lane incremental windows and duplicate suppression. The smoke
+profile remains a wiring check and is not quality evidence.
 
 The committed `.env.example` uses a smoke-safe live Radar budget:
 `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=1` and

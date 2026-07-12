@@ -73,10 +73,16 @@ class RadarRunModel(Base):
             name="ck_radar_runs_status",
         ),
         UniqueConstraint("idempotency_key", name="uq_radar_runs_idempotency_key"),
+        CheckConstraint(
+            "pipeline_id in ('candidate_discovery', 'signal_monitoring')",
+            name="ck_radar_runs_pipeline_id",
+        ),
     )
 
     run_id: Mapped[str] = mapped_column(String(160), primary_key=True)
     radar_id: Mapped[str] = mapped_column(ForeignKey("radars.radar_id"), nullable=False, index=True)
+    pipeline_id: Mapped[str] = mapped_column(String(60), nullable=False, default="candidate_discovery", index=True)
+    source_run_id: Mapped[str | None] = mapped_column(ForeignKey("radar_runs.run_id"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(40), nullable=False, default=RadarRunStatus.QUEUED.value, index=True)
     queued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -96,6 +102,11 @@ class RadarRunModel(Base):
 
     radar: Mapped[RadarModel] = relationship(back_populates="runs")
     output: Mapped[RadarRunOutputModel | None] = relationship(back_populates="run", uselist=False)
+    signal_monitoring_output: Mapped[SignalMonitoringRunOutputModel | None] = relationship(
+        back_populates="run",
+        uselist=False,
+        foreign_keys="SignalMonitoringRunOutputModel.run_id",
+    )
     events: Mapped[list[RadarRunEventModel]] = relationship(back_populates="run")
     technical_traces: Mapped[list[RadarRunTechnicalTraceModel]] = relationship(back_populates="run")
 
@@ -120,6 +131,26 @@ class RadarRunOutputModel(Base):
     )
 
     run: Mapped[RadarRunModel] = relationship(back_populates="output")
+
+
+class SignalMonitoringRunOutputModel(Base):
+    __tablename__ = "radar_signal_monitoring_outputs"
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("radar_runs.run_id"), primary_key=True)
+    source_run_id: Mapped[str] = mapped_column(ForeignKey("radar_runs.run_id"), nullable=False, index=True)
+    artifact_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    input_snapshot_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    plan_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    observations_json: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    artifact_payload_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+    run: Mapped[RadarRunModel] = relationship(
+        back_populates="signal_monitoring_output", foreign_keys=[run_id]
+    )
 
 
 class RadarReviewDecisionModel(Base):

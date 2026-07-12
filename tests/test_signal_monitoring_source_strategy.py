@@ -80,6 +80,7 @@ def observed_payload(*, summary: str = "New TOIR tender", observed_at: str = "20
                 "title": "Tender",
                 "url": "https://example.test/signal",
                 "snippet": "Candidate A posted a TOIR tender.",
+                "published_at": observed_at,
             }
         ],
         "observations": [
@@ -90,7 +91,7 @@ def observed_payload(*, summary: str = "New TOIR tender", observed_at: str = "20
                 "summary": summary,
                 "score": 2,
                 "evidence_refs": ["src-signal"],
-                "observed_at": observed_at,
+                "event_at": observed_at,
             }
         ],
     }
@@ -153,6 +154,21 @@ def test_strategy_orders_signal_specific_before_generic_open_web() -> None:
     assert selected[:2] == ["signal_specific", "open_web"]
 
 
+def test_broad_web_source_in_criterion_policy_remains_separate_open_web_lane() -> None:
+    result = SignalMonitoringSourceStrategy().select_sources(
+        monitoring_input(
+            source_cards=[card("openrouter_web", source_type="search_engine", signal=True, broad=True)],
+            source_policy=SignalMonitoringSourcePolicy(
+                preferred_source_ids=["openrouter_web"],
+                allowed_source_ids=["openrouter_web"],
+            ),
+        )
+    )
+
+    selected = [decision for decision in result.decisions if decision.status == "selected"]
+    assert [decision.lane for decision in selected] == ["open_web"]
+
+
 def test_open_web_is_not_selected_when_policy_disallows_it() -> None:
     result = SignalMonitoringSourceStrategy().select_sources(
         monitoring_input(source_policy=SignalMonitoringSourcePolicy(allow_open_web=False))
@@ -202,7 +218,7 @@ def test_signal_capable_registry_like_connector_is_allowed_by_capability() -> No
     assert any(decision.source_id == "spark_like_registry" for decision in result.decisions if decision.status == "selected")
 
 
-def test_executor_calls_known_source_task_before_official_source_task() -> None:
+def test_executor_executes_known_and_official_lanes_without_losing_source_decisions() -> None:
     provider = ScriptedSignalProvider([searched_negative_payload(), observed_payload()])
     monitoring = monitoring_input(
         known_sources=[
@@ -213,6 +229,12 @@ def test_executor_calls_known_source_task_before_official_source_task() -> None:
                 source_id="candidate_site",
             )
         ],
+        configured_sources=[SignalSourceRef(
+            source_ref="configured:official_site",
+            title="Official site",
+            url="https://official.test",
+            source_id="official_site",
+        )],
         source_cards=[
             card("candidate_site", signal=True),
             card("official_site", signal=True),
@@ -222,11 +244,14 @@ def test_executor_calls_known_source_task_before_official_source_task() -> None:
 
     outcome = SignalMonitoringExecutor(provider).run(monitoring)
 
-    assert [task.source_lane for task in outcome.tasks] == ["known_source", "official_company"]
-    assert provider.calls[0][0].endswith("known_source-1")
-    assert provider.calls[1][0].endswith("official_company-2")
-    assert outcome.observations[0].observation_status == "not_observed"
-    assert outcome.observations[1].observation_status == "observed"
+    assert {task.source_lane for task in outcome.tasks} == {"known_source", "official_company"}
+    assert len(provider.calls) == 2
+    assert {item.status for item in outcome.source_lane_ledger} == {"executed"}
+    assert len(outcome.search_execution_receipts) == 2
+    assert any(
+        decision.lane == "official_company" and decision.status == "selected"
+        for decision in outcome.source_strategy_decisions
+    )
 
 
 def test_all_lanes_limited_produces_not_searched_policy_limited_not_not_observed() -> None:

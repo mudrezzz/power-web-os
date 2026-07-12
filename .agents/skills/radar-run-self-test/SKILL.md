@@ -89,6 +89,11 @@ wants tested.
 
 ## After Terminal State
 
+For a behavior-changing Radar slice, preserve the run ID and product-safe report
+as acceptance evidence. Compare it requirement-by-requirement with the slice
+acceptance manifest. A terminal run is not enough: missing required evidence
+keeps the slice In Progress.
+
 Run the `radar-run-diagnostics` workflow on the resulting run id:
 
 - completed runs still require critical algorithm review;

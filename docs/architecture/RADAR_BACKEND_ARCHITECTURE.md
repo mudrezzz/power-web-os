@@ -10,6 +10,25 @@ Candidate-discovery execution has a dedicated procedural handbook:
 Use it together with this document before changing phase executors, execution
 state, finalization, task running, or projection services.
 
+Signal Monitoring now has a standalone provider-neutral application runtime
+under `application/radar/signal_monitoring`. It consumes completed public
+candidate artifacts only through repository ports. FastAPI routes,
+SQLAlchemy repositories, Celery queues and the OpenRouter adapter remain
+outside that package. Generic run lifecycle is shared through `radar_runs`,
+while candidate and signal outputs use separate tables and contracts. See ADR
+`2026-07-10-radar-pipeline-run-lifecycle-and-outputs.md`.
+
+Signal Monitoring search execution owns deterministic multi-lane planning,
+backend acceptance, scheduling, execution receipts, source lifecycle, evidence
+validation, checkpoints and per-lane incremental windows inside
+`application/radar/signal_monitoring`. It may reuse provider-neutral shared
+contracts, but must not import candidate-discovery internals.
+
+Behavior-changing Radar slices are governed by ADR
+`2026-07-10-radar-pipeline-acceptance-evidence-loop.md`: acceptance semantics
+remain pipeline-owned, machine validation produces evidence reports, and the
+Roadmap CLI only owns completion enforcement.
+
 Root-level Radar namespace debt has its own inventory:
 `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md`. That file lists every
 root `live_radar_*`, `radar_search_*`, `radar_work_scheduler*`, and

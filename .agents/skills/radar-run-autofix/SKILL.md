@@ -189,6 +189,11 @@ When patching:
 
 ## Validation
 
+Autofix is limited to five corrective cycles. It may repair local defects that
+preserve the approved TO BE, but it must not weaken acceptance thresholds,
+remove mandatory requirement IDs, or rewrite the intended algorithm. A needed
+TO BE/DoD change stops the loop for explicit design revision.
+
 Each corrective patch must run the narrowest meaningful tests first, then
 broader tests when risk is meaningful. Prefer:
 

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from power_web_os.domain import Account, Playbook
+from power_web_os.demo_benchmark_cli import configure_benchmark_demo_arguments, run_benchmark_demo_command
 from power_web_os.icp_radar import icp_radar_artifact_to_payload
 from power_web_os.icp_radar_catalog import build_icp_radar_catalog
 from power_web_os.icp_radar_xlsx import load_icp_radar_workbook
@@ -21,10 +22,10 @@ from power_web_os.demo_preflight import build_radar_preflight_report, print_pref
 from power_web_os.planner import DeterministicAccessPlanner
 from power_web_os.radar import AccountRadar
 from power_web_os.application.radar_runtime_config import build_effective_runtime_config_report
-from power_web_os.radar_benchmark import generate_radar_benchmark_report
-from power_web_os.radar_coverage_probe import generate_radar_coverage_probe_report
-from power_web_os.radar_evaluation_runner import generate_radar_evaluation_report
-from power_web_os.radar_signal_monitoring import generate_recorded_signal_monitoring_report
+from power_web_os.signal_monitoring_live_demo import (
+    configure_signal_monitoring_demo_arguments,
+    run_signal_monitoring_demo_command,
+)
 from power_web_os.serialization import (
     access_plan_from_payload,
     account_from_payload,
@@ -310,7 +311,7 @@ def main() -> None:
 
     root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(prog="power-web-os-demo")
-    commands = ("print-plan", "generate-access-plan", "generate-account-radar", "generate-icp-radar", "generate-icp-radar-catalog", "seed-radar-db", "run-live-mini-icp-radar", "run-live-mini-icp-radar-persisted", "preflight-radar", "run-radar-benchmark", "evaluate-radar-benchmark", "probe-radar-coverage", "run-recorded-signal-monitoring")
+    commands = ("print-plan", "generate-access-plan", "generate-account-radar", "generate-icp-radar", "generate-icp-radar-catalog", "seed-radar-db", "run-live-mini-icp-radar", "run-live-mini-icp-radar-persisted", "preflight-radar", "run-radar-benchmark", "evaluate-radar-benchmark", "probe-radar-coverage", "run-recorded-signal-monitoring", "run-live-signal-monitoring")
     parser.add_argument("command", nargs="?", default="print-plan", choices=commands)
     parser.add_argument("--input", type=Path, default=root / "demo" / "sample_account.json")
     parser.add_argument("--output", type=Path, default=root / "demo" / "output" / "access_plan.json")
@@ -379,25 +380,8 @@ def main() -> None:
     parser.add_argument("--database-url", default=None)
     parser.add_argument("--radar-id", default="toir-quick-live")
     parser.add_argument("--api-url", default="http://127.0.0.1:8001")
-    parser.add_argument(
-        "--benchmark-output",
-        type=Path,
-        default=root / "demo" / "output" / "radar_benchmark_report.json",
-    )
-    parser.add_argument("--benchmark-poll-interval-seconds", type=float, default=5.0)
-    parser.add_argument("--benchmark-timeout-seconds", type=float, default=2400.0)
-    parser.add_argument(
-        "--benchmark-profile",
-        choices=("benchmark_smoke", "benchmark_live", "blind_benchmark"),
-        default="benchmark_smoke",
-    )
-    parser.add_argument("--run-id", default=None)
-    parser.add_argument("--latest", action="store_true")
-    parser.add_argument("--baseline", type=Path, default=root / "demo" / "fixtures" / "radar_evaluation" / "sibur_contour_baseline.json")
-    parser.add_argument("--evaluation-output", type=Path, default=root / "demo" / "output" / "radar_evaluation_report.json")
-    parser.add_argument("--signal-monitoring-fixture", type=Path, default=root / "demo" / "fixtures" / "radar_signal_monitoring" / "toir_recorded_signal_monitoring.json")
-    parser.add_argument("--signal-monitoring-output", type=Path, default=root / "demo" / "output" / "radar_signal_monitoring_report.json")
-    parser.add_argument("--probe-limit", type=int, default=5)
+    configure_benchmark_demo_arguments(parser, root=root)
+    configure_signal_monitoring_demo_arguments(parser, root=root)
     parser.add_argument(
         "--profile",
         choices=("static", "recorded", "benchmark_smoke", "benchmark_live", "blind_benchmark"),
@@ -415,6 +399,15 @@ def main() -> None:
     parser.add_argument("--dry-run-plan", action="store_true")
     parser.add_argument("--live", action="store_true")
     args = parser.parse_args()
+
+    signal_monitoring_artifact = run_signal_monitoring_demo_command(args)
+    if signal_monitoring_artifact is not None:
+        print(json.dumps(signal_monitoring_artifact, ensure_ascii=False, indent=2))
+        return
+    benchmark_artifact = run_benchmark_demo_command(args)
+    if benchmark_artifact is not None:
+        print(json.dumps(benchmark_artifact, ensure_ascii=False, indent=2))
+        return
 
     if args.command == "generate-access-plan":
         artifact = generate_access_plan_artifact(
@@ -484,26 +477,6 @@ def main() -> None:
         if not artifact.get("ready_for_live_run"):
             raise SystemExit(1)
         return
-    elif args.command == "run-radar-benchmark":
-        benchmark_profile = (
-            args.profile
-            if args.profile in {"benchmark_smoke", "benchmark_live", "blind_benchmark"}
-            else args.benchmark_profile
-        )
-        artifact = generate_radar_benchmark_report(
-            api_url=args.api_url,
-            profile=benchmark_profile,
-            radar_id=args.radar_id,
-            output_path=args.benchmark_output,
-            poll_interval_seconds=args.benchmark_poll_interval_seconds,
-            timeout_seconds=args.benchmark_timeout_seconds,
-        )
-    elif args.command == "evaluate-radar-benchmark":
-        artifact = generate_radar_evaluation_report(api_url=args.api_url, run_id=args.run_id, radar_id=args.radar_id, latest=args.latest, baseline_path=args.baseline, output_path=args.evaluation_output)
-    elif args.command == "probe-radar-coverage":
-        artifact = generate_radar_coverage_probe_report(api_url=args.api_url, run_id=args.run_id, radar_id=args.radar_id, latest=args.latest, baseline_path=args.baseline, output_path=root / "demo" / "output" / "radar_coverage_probe_report.json", probe_limit=args.probe_limit)
-    elif args.command == "run-recorded-signal-monitoring":
-        artifact = generate_recorded_signal_monitoring_report(fixture_path=args.signal_monitoring_fixture, output_path=args.signal_monitoring_output)
     else:
         artifact = build_demo_plan(args.input)
     print(json.dumps(artifact, ensure_ascii=False, indent=2))

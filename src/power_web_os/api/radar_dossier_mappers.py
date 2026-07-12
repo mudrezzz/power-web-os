@@ -19,6 +19,7 @@ from power_web_os.api.radar_mappers import journal_event_response
 from power_web_os.api.radar_public_provenance import public_candidate_rows
 from power_web_os.api.radar_source_lifecycle import source_lifecycle as _source_lifecycle
 from power_web_os.api.radar_source_lifecycle import source_lifecycle_summary as _source_lifecycle_summary
+from power_web_os.api.value_parsing import optional_int as _optional_int
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarReviewDecisionRecord,
@@ -495,7 +496,3 @@ def _int_dict(value: object) -> dict[str, int]:
 
 def _int(value: object, *, default: int) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) else default
-
-
-def _optional_int(value: object) -> int | None:
-    return value if isinstance(value, int) and not isinstance(value, bool) else None

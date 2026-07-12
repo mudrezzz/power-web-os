@@ -60,6 +60,11 @@ Use this format in `ROADMAP.md`:
 - Do not schedule a benchmark or broad live quality claim as the next task if
   known pipeline wiring, source-provider selection, extraction schema, or
   evidence-linking failures do not yet have fast tests.
+- Mark every behavior-changing Radar slice with tracker sections `Pipeline`,
+  `Behavior change: true`, `Acceptance manifest`, and `Validation report`.
+  Its DoD must follow AS IS -> run RCA -> TO BE/manifest -> tests/live evidence
+  -> validation PASS -> finalized AS IS. Plan process/tooling corrections when
+  observed behavior contradicts a previously completed slice.
 
 ## Completion checklist
 

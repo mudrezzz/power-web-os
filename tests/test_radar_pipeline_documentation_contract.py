@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from pypdf import PdfReader
@@ -18,6 +19,20 @@ SIGNAL_TO_BE_PDF = Path(
 )
 SIGNAL_AS_IS_MD = Path("docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md")
 SIGNAL_AS_IS_PDF = Path("docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.pdf")
+SIGNAL_1821_TO_BE_MD = Path(
+    "docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.2.1.md"
+)
+SIGNAL_1821_ACCEPTANCE = SIGNAL_1821_TO_BE_MD.with_suffix(".acceptance.json")
+SIGNAL_1821_VALIDATION = Path(
+    "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.2.1/validation.json"
+)
+SIGNAL_1822_TO_BE_MD = Path(
+    "docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.2.2.md"
+)
+SIGNAL_1822_ACCEPTANCE = SIGNAL_1822_TO_BE_MD.with_suffix(".acceptance.json")
+SIGNAL_1822_VALIDATION = Path(
+    "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.2.2/validation.json"
+)
 SKILL_PATHS = [
     Path(".agents/skills/radar-pipeline-to-be-design/SKILL.md"),
     Path(".agents/skills/radar-pipeline-as-is-sync/SKILL.md"),
@@ -172,3 +187,42 @@ def test_signal_monitoring_as_is_exists_after_recorded_runtime_slice() -> None:
         assert marker not in text
     for marker in FORBIDDEN_PRODUCT_MARKERS:
         assert marker not in text
+
+
+def test_signal_monitoring_slice_acceptance_is_traceable_to_finalized_as_is() -> None:
+    manifest = json.loads(SIGNAL_1821_ACCEPTANCE.read_text(encoding="utf-8"))
+    validation = json.loads(SIGNAL_1821_VALIDATION.read_text(encoding="utf-8"))
+    to_be = SIGNAL_1821_TO_BE_MD.read_text(encoding="utf-8")
+    as_is = SIGNAL_AS_IS_MD.read_text(encoding="utf-8")
+    requirement_ids = {item["id"] for item in manifest["requirements"] if item["mandatory"]}
+    validation_results = {item["requirement_id"]: item["status"] for item in validation["requirements"]}
+
+    assert "Status: Implemented" in to_be
+    assert "0.7.6.4.18.2.1" in as_is
+    assert validation["validation_status"] == "PASS"
+    assert requirement_ids
+    assert all(requirement_id in to_be for requirement_id in requirement_ids)
+    assert all(requirement_id in as_is for requirement_id in requirement_ids)
+    assert all(validation_results.get(requirement_id) == "PASS" for requirement_id in requirement_ids)
+    assert all(item.get("test_node_ids") for item in manifest["requirements"] if item["mandatory"])
+
+
+def test_signal_monitoring_quality_slice_is_traceable_to_finalized_as_is() -> None:
+    manifest = json.loads(SIGNAL_1822_ACCEPTANCE.read_text(encoding="utf-8"))
+    to_be = SIGNAL_1822_TO_BE_MD.read_text(encoding="utf-8")
+    as_is = SIGNAL_AS_IS_MD.read_text(encoding="utf-8")
+    requirement_ids = {item["id"] for item in manifest["requirements"] if item.get("mandatory", True)}
+
+    assert manifest["slice_id"] == "0.7.6.4.18.2.2"
+    assert "SM-PROC-02" in requirement_ids
+    assert requirement_ids
+    assert all(requirement_id in to_be for requirement_id in requirement_ids)
+    assert all(item.get("test_node_ids") for item in manifest["requirements"] if item.get("mandatory", True))
+    if "Status: Implemented" in to_be:
+        assert SIGNAL_1822_VALIDATION.exists()
+        validation = json.loads(SIGNAL_1822_VALIDATION.read_text(encoding="utf-8"))
+        validation_results = {item["requirement_id"]: item["status"] for item in validation["requirements"]}
+        assert validation["validation_status"] == "PASS"
+        assert "0.7.6.4.18.2.2" in as_is
+        assert all(requirement_id in as_is for requirement_id in requirement_ids)
+        assert all(validation_results.get(requirement_id) == "PASS" for requirement_id in requirement_ids)

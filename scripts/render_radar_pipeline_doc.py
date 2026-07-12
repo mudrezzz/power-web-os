@@ -64,6 +64,7 @@ class DiagramSpec:
 
 DIAGRAMS = {
     "high_level_pipeline": DiagramSpec("Figure 1. End-to-end Radar execution flow", "timeline"),
+    "signal_monitoring_pipeline": DiagramSpec("Figure 1. End-to-end Radar execution flow", "signal_monitoring"),
     "planner_sequence": DiagramSpec("Figure 2. Planner, source cards, and backend validation", "swimlane"),
     "checkpoint_loop": DiagramSpec("Figure 3. Checkpoint decision and recovery loop", "checkpoint"),
     "source_lifecycle": DiagramSpec("Figure 4. Source lifecycle and rejection branches", "source_lifecycle"),
@@ -90,7 +91,7 @@ class RadarDiagram(Flowable):
 
     def wrap(self, available_width: float, available_height: float) -> tuple[float, float]:
         self.width = available_width
-        if self.diagram_id in {"high_level_pipeline", "planner_sequence", "checkpoint_loop", "to_be_strategy_pipeline"}:
+        if self.diagram_id in {"high_level_pipeline", "signal_monitoring_pipeline", "planner_sequence", "checkpoint_loop", "to_be_strategy_pipeline"}:
             self.height = 11.6 * cm
         elif self.diagram_id in {"as_is_to_be_lifecycle", "to_be_expansion_target_queue"}:
             self.height = 10.2 * cm
@@ -105,6 +106,7 @@ class RadarDiagram(Flowable):
         self._caption(spec.caption)
         {
             "timeline": self._draw_timeline,
+            "signal_monitoring": self._draw_signal_monitoring,
             "swimlane": self._draw_swimlane,
             "checkpoint": self._draw_checkpoint,
             "source_lifecycle": self._draw_source_lifecycle,
@@ -162,6 +164,26 @@ class RadarDiagram(Flowable):
         for idx, (title, body, fill) in enumerate(steps):
             y = top_y - idx * 43
             self._box(0, y, box_w, box_h, title, body, fill)
+            if last_y is not None:
+                self._arrow(self.width / 2, last_y, self.width / 2, y + box_h)
+            last_y = y
+
+    def _draw_signal_monitoring(self) -> None:
+        steps = [
+            ("1. Candidate handoff", "Load one completed candidate-discovery run and public provenance.", SOFT_BLUE),
+            ("2. Freeze input", "Snapshot candidates, signal rules, source policy, lookback and signal budget.", SOFT_GREEN),
+            ("3. Queue signal run", "Persist source_run_id and send only signal_run_id to the signal queue.", SOFT_AMBER),
+            ("4. Plan bounded tasks", "Build candidate by signal tasks and choose eligible source lanes.", SOFT_BLUE),
+            ("5. Search and recover", "Call live or recorded provider; retry primary and backup within limits.", SOFT_GREEN),
+            ("6. Validate and dedupe", "Resolve evidence refs and compare fingerprints with earlier signal runs.", SOFT_AMBER),
+            ("7. Persist report", "Store observations, attempts, budgets, diagnostics and terminal state.", SOFT_GRAY),
+        ]
+        box_h = 34
+        top_y = self.height - 72
+        last_y = None
+        for idx, (title, body, fill) in enumerate(steps):
+            y = top_y - idx * 43
+            self._box(0, y, self.width, box_h, title, body, fill)
             if last_y is not None:
                 self._arrow(self.width / 2, last_y, self.width / 2, y + box_h)
             last_y = y

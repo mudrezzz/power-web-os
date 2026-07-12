@@ -9,9 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from power_web_os.api.config import ApiSettings, get_api_settings
-from power_web_os.api.dependencies import default_job_queue
+from power_web_os.api.dependencies import default_job_queue, default_signal_monitoring_job_queue
 from power_web_os.api.radar_routes import router as radar_router
-from power_web_os.application.ports import JobQueue
+from power_web_os.api.signal_monitoring_routes import router as signal_monitoring_router
+from power_web_os.application.ports import JobQueue, SignalMonitoringJobQueue
 from power_web_os.application.radar_runtime_config import (
     build_effective_runtime_config_report,
     runtime_config_api_overrides,
@@ -30,6 +31,7 @@ def create_app(
     settings: ApiSettings | None = None,
     *,
     job_queue_factory: Callable[[], JobQueue] | None = None,
+    signal_monitoring_job_queue_factory: Callable[[], SignalMonitoringJobQueue] | None = None,
 ) -> FastAPI:
     api_settings = settings or get_api_settings()
     app = FastAPI(
@@ -47,6 +49,9 @@ def create_app(
     engine = create_database_engine(database_url=api_settings.database_url)
     app.state.session_factory = create_session_factory(engine)
     app.state.job_queue_factory = job_queue_factory or default_job_queue
+    app.state.signal_monitoring_job_queue_factory = (
+        signal_monitoring_job_queue_factory or default_signal_monitoring_job_queue
+    )
     app.state.radar_max_web_tasks_per_subject = api_settings.radar_max_web_tasks_per_subject
     app.state.radar_max_discovery_tasks_per_rule = api_settings.radar_max_discovery_tasks_per_rule
     app.state.radar_max_gate_tasks_per_candidate_rule = api_settings.radar_max_gate_tasks_per_candidate_rule
@@ -95,6 +100,7 @@ def create_app(
         return dict(app.state.runtime_config_report)
 
     app.include_router(radar_router)
+    app.include_router(signal_monitoring_router)
     return app
 
 

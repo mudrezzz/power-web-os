@@ -1,0 +1,79 @@
+{
+  "schema_version": "radar_pipeline_acceptance.v1",
+  "slice_id": "0.7.6.4.18.2.1",
+  "pipeline_id": "signal-monitoring",
+  "behavior_change": true,
+  "to_be_markdown": "docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.2.1.md",
+  "to_be_pdf": "docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.2.1.pdf",
+  "as_is_markdown": "docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md",
+  "as_is_pdf": "docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.pdf",
+  "baseline_diagnostic": "docs/radar/pipelines/signal-monitoring/diagnostics/SIGNAL_RUN_c8adb584_BASELINE.md",
+  "validation_json": "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.2.1/validation.json",
+  "validation_markdown": "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.2.1/VALIDATION_REPORT.md",
+  "requirements": [
+    {"id": "SM-PLAN-01", "mandatory": true, "description": "Every selected source decision has an explicit scheduling or execution outcome.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_multilane_plan_executes_known_official_and_open_web_with_receipts"]},
+    {"id": "SM-SRC-01", "mandatory": true, "description": "Known-source tasks carry concrete product-safe source contracts.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_multilane_plan_executes_known_official_and_open_web_with_receipts"]},
+    {"id": "SM-SRC-02", "mandatory": true, "description": "Official source tasks constrain a concrete domain.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_multilane_plan_executes_known_official_and_open_web_with_receipts"]},
+    {"id": "SM-SRC-03", "mandatory": true, "description": "Open-web retrieval is represented by a separate task.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_multilane_plan_executes_known_official_and_open_web_with_receipts"]},
+    {"id": "SM-AUD-01", "mandatory": true, "description": "Every executed task has a product-safe search execution receipt.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_multilane_plan_executes_known_official_and_open_web_with_receipts"]},
+    {"id": "SM-OBS-01", "mandatory": true, "description": "Incomplete required-lane coverage cannot project not_observed.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_incomplete_required_lane_cannot_become_not_observed"]},
+    {"id": "SM-WIN-01", "mandatory": true, "description": "Initial lookback precedence is explicit and falls back to 365 days.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_explicit_window_override_has_priority_over_criterion_policy", "tests/test_signal_monitoring_search_pipeline.py::test_window_policy_uses_365_default_then_incremental_lane_watermark", "tests/test_persisted_signal_monitoring.py::test_signal_monitoring_lookback_defaults_to_365_when_radar_policy_is_missing"]},
+    {"id": "SM-WIN-02", "mandatory": true, "description": "Incremental windows use candidate, criterion and lane watermarks.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_window_policy_uses_365_default_then_incremental_lane_watermark"]},
+    {"id": "SM-WIN-03", "mandatory": true, "description": "Failed or unsearched lanes do not advance watermarks.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_failed_lane_does_not_advance_its_watermark"]},
+    {"id": "SM-VAL-01", "mandatory": true, "description": "Positive evidence validates entity, criterion, date and source references.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_valid_positive_requires_entity_criterion_date_source_and_official_domain"]},
+    {"id": "SM-VAL-02", "mandatory": true, "description": "Irrelevant documents do not become observed signals.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_evidence_outside_window_is_review_needed_not_observed", "tests/test_radar_signal_monitoring_recorded.py::test_recorded_positive_control_benchmark_meets_quality_dod"]},
+    {"id": "SM-DED-01", "mandatory": true, "description": "Incremental overlap does not publish old evidence as new.", "test_node_ids": ["tests/test_persisted_signal_monitoring.py::test_persisted_signal_monitoring_uses_separate_run_output_and_incremental_dedupe"]},
+    {"id": "SM-ARCH-01", "mandatory": true, "description": "Signal monitoring remains independent from candidate-discovery internals.", "test_node_ids": ["tests/test_backend_architecture_contract.py::test_radar_signal_monitoring_does_not_import_candidate_discovery_internals"]},
+    {"id": "SM-PROC-01", "mandatory": true, "description": "TO BE, tests, validation and finalized AS IS evidence are traceable.", "test_node_ids": ["tests/test_radar_pipeline_documentation_contract.py::test_signal_monitoring_as_is_exists_after_recorded_runtime_slice"]}
+  ],
+  "recorded_acceptance": {
+    "minimum_positive_controls": 4,
+    "required_positive_recall": 1.0,
+    "maximum_false_positive_controls": 0,
+    "required_lane_ledger_coverage": 1.0,
+    "required_receipt_coverage": 1.0
+  },
+  "live_acceptance": {
+    "minimum_candidates": 2,
+    "minimum_signal_criteria": 2,
+    "initial_lookback_days": 365,
+    "minimum_known_events_found": 2,
+    "maximum_false_positive_controls": 0,
+    "negative_controls": [
+      {
+        "candidate_id": "sibur-khimprom",
+        "signal_code": "S2",
+        "requested_url_contains": "/polief/"
+      }
+    ],
+    "requires_second_incremental_run": true,
+    "requires_restart_roundtrip": true
+  },
+  "retrospective": [
+    {
+      "code": "LIVE-SCHEMA-01",
+      "finding": "Live provider confidence aliases were broader than the application contract.",
+      "resolution": "Normalize provider confidence values before contract validation and cover aliases with adapter tests."
+    },
+    {
+      "code": "LIVE-LANE-01",
+      "finding": "A broad OpenRouter capability card could collapse official and open-web routing.",
+      "resolution": "Compile explicit lane tasks and require a terminal ledger entry for every selected decision."
+    },
+    {
+      "code": "LIVE-ENTITY-01",
+      "finding": "Known-source retrieval could return evidence for another SIBUR entity.",
+      "resolution": "Validate candidate identity and enforce the requested known-source URL family before accepting evidence."
+    },
+    {
+      "code": "LIVE-DED-01",
+      "finding": "Summary-based fingerprints were unstable across incremental provider responses.",
+      "resolution": "Persist candidate-signal-source URL keys and suppress overlap matches independently of generated wording."
+    },
+    {
+      "code": "PROCESS-IMAGE-01",
+      "finding": "One verification run used a stale API image after a worker-only rebuild.",
+      "resolution": "Rebuild the complete Docker stack before final live evidence and inspect the queued input snapshot before acceptance."
+    }
+  ]
+}

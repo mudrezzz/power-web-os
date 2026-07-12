@@ -53,6 +53,18 @@ def test_sqlite_engine_uses_wal_and_busy_timeout_for_dev_concurrency(tmp_path: P
     assert busy_timeout >= 120_000
 
 
+def test_sqlite_engine_supports_delete_journal_for_docker_bind_mounts(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("POWER_WEB_OS_SQLITE_JOURNAL_MODE", "DELETE")
+    engine = create_database_engine(database_url=sqlite_url(tmp_path / "docker-shared.db"))
+
+    with engine.connect() as connection:
+        journal_mode = connection.execute(text("PRAGMA journal_mode")).scalar_one()
+        busy_timeout = connection.execute(text("PRAGMA busy_timeout")).scalar_one()
+
+    assert str(journal_mode).lower() == "delete"
+    assert busy_timeout >= 120_000
+
+
 def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> None:
     engine = create_database_engine(database_url=sqlite_url(tmp_path / "radars.db"))
     Base.metadata.create_all(engine)
@@ -374,6 +386,7 @@ def test_alembic_initial_migration_creates_radar_tables(tmp_path: Path) -> None:
         "radar_review_decisions",
         "radar_run_events",
         "radar_run_technical_traces",
+        "radar_signal_monitoring_outputs",
         "alembic_version",
     } <= table_names
 
@@ -396,4 +409,5 @@ def test_alembic_respects_database_url_environment_for_seed_command_path(tmp_pat
         "radar_review_decisions",
         "radar_run_events",
         "radar_run_technical_traces",
+        "radar_signal_monitoring_outputs",
     } <= table_names

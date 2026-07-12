@@ -54,6 +54,8 @@ class RadarDefinitionRecord:
 class RadarRunRecord:
     run_id: str
     radar_id: str
+    pipeline_id: str = "candidate_discovery"
+    source_run_id: str | None = None
     status: RadarRunStatus = RadarRunStatus.QUEUED
     queued_at: datetime | None = None
     started_at: datetime | None = None
@@ -84,6 +86,21 @@ class RadarRunOutputRecord:
     candidates_payload: list[dict[str, Any]]
     contract_validation_payload: list[dict[str, Any]] = field(default_factory=list)
     artifact_payload: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SignalMonitoringRunOutputRecord:
+    """Persisted output owned by the standalone signal-monitoring pipeline."""
+
+    run_id: str
+    source_run_id: str
+    artifact_version: str
+    input_snapshot_payload: dict[str, Any]
+    plan_payload: dict[str, Any]
+    observations_payload: list[dict[str, Any]]
+    artifact_payload: dict[str, Any]
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

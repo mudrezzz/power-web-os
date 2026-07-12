@@ -1,0 +1,90 @@
+{
+  "fixture_kind": "recorded_positive_control",
+  "run_id": "signal-run-recorded-positive-controls",
+  "radar_id": "signal-quality-radar",
+  "model_profile_id": "signal_monitoring_default",
+  "as_of": "2026-07-10T12:00:00Z",
+  "lookback_days": 365,
+  "candidates": [
+    {
+      "candidate_id": "candidate-alpha",
+      "display_name": "Candidate Alpha",
+      "source_refs": ["known-alpha"],
+      "product_acceptance_status": "product_candidate"
+    },
+    {
+      "candidate_id": "candidate-beta",
+      "display_name": "Candidate Beta",
+      "source_refs": ["known-beta"],
+      "product_acceptance_status": "product_candidate"
+    }
+  ],
+  "signal_rules": [
+    {"signal_code": "S1", "label": "Reliability activity"},
+    {"signal_code": "S2", "label": "Modernization investment"}
+  ],
+  "known_sources": [
+    {"source_ref": "known-alpha", "source_id": "candidate_site", "title": "Alpha news", "url": "https://alpha.test/news"},
+    {"source_ref": "known-beta", "source_id": "candidate_site", "title": "Beta news", "url": "https://beta.test/news"}
+  ],
+  "configured_sources": [
+    {"source_ref": "configured:official_site", "source_id": "official_site", "title": "Official group site", "url": "https://official.test"}
+  ],
+  "source_policy": {
+    "enabled": true,
+    "allowed_source_ids": ["candidate_site", "official_site", "openrouter_web"],
+    "official_source_ids": ["official_site"],
+    "reuse_known_sources": true,
+    "allow_open_web": true
+  },
+  "source_cards": [
+    {"source_id": "candidate_site", "source_type": "web", "supports_signal_evidence": true},
+    {"source_id": "official_site", "source_type": "url", "supports_signal_evidence": true},
+    {"source_id": "openrouter_web", "source_type": "open_web", "supports_signal_evidence": true, "supports_broad_discovery": true}
+  ],
+  "budget": {
+    "max_signal_tasks": 16,
+    "max_signal_provider_calls": 24,
+    "max_signal_extraction_retries": 4,
+    "max_signal_backup_retries": 2,
+    "max_signal_lookback_queries": 20,
+    "allow_backup_retry": true
+  },
+  "positive_controls": [
+    {"candidate_id": "candidate-alpha", "signal_code": "S1"},
+    {"candidate_id": "candidate-alpha", "signal_code": "S2"},
+    {"candidate_id": "candidate-beta", "signal_code": "S1"},
+    {"candidate_id": "candidate-beta", "signal_code": "S2"}
+  ],
+  "negative_control_task_ids": [
+    "signal-candidate-alpha-S1-open_web-3",
+    "signal-candidate-beta-S2-official_company-2"
+  ],
+  "provider_payloads": {
+    "signal-candidate-alpha-S1-known_source-1": {
+      "sources": [{"source_ref": "alpha-reliability", "title": "Candidate Alpha reliability program", "url": "https://alpha.test/news/reliability", "event_at": "2026-05-10"}],
+      "observations": [{"candidate_id": "candidate-alpha", "signal_code": "S1", "status": "observed", "summary": "Alpha launched a reliability program.", "score": 2, "evidence_refs": ["alpha-reliability"], "event_at": "2026-05-10", "confidence": "strong"}]
+    },
+    "signal-candidate-alpha-S2-official_company-2": {
+      "sources": [{"source_ref": "alpha-modernization", "title": "Candidate Alpha modernization", "url": "https://official.test/alpha/modernization", "event_at": "2026-04-12"}],
+      "observations": [{"candidate_id": "candidate-alpha", "signal_code": "S2", "status": "observed", "summary": "Alpha commissioned new equipment.", "score": 2, "evidence_refs": ["alpha-modernization"], "event_at": "2026-04-12", "confidence": "strong"}]
+    },
+    "signal-candidate-beta-S1-open_web-3": {
+      "sources": [{"source_ref": "beta-reliability", "title": "Candidate Beta turnaround", "url": "https://industry.test/beta/turnaround", "event_at": "2026-03-18"}],
+      "observations": [{"candidate_id": "candidate-beta", "signal_code": "S1", "status": "observed", "summary": "Beta completed a maintenance turnaround.", "score": 2, "evidence_refs": ["beta-reliability"], "event_at": "2026-03-18", "confidence": "strong"}]
+    },
+    "signal-candidate-beta-S2-known_source-1": {
+      "sources": [{"source_ref": "beta-modernization", "title": "Candidate Beta capacity investment", "url": "https://beta.test/news/capacity", "event_at": "2026-02-20"}],
+      "observations": [{"candidate_id": "candidate-beta", "signal_code": "S2", "status": "observed", "summary": "Beta invested in additional production capacity.", "score": 2, "evidence_refs": ["beta-modernization"], "event_at": "2026-02-20", "confidence": "strong"}]
+    },
+    "signal-candidate-alpha-S1-open_web-3": {
+      "sources": [{"source_ref": "alpha-irrelevant", "title": "Alpha sports event", "url": "https://media.test/alpha/sports", "event_at": "2026-05-11"}],
+      "observations": []
+    },
+    "signal-candidate-beta-S2-official_company-2": {
+      "sources": [{"source_ref": "beta-irrelevant", "title": "Beta charity event", "url": "https://official.test/beta/charity", "event_at": "2026-03-01"}],
+      "observations": []
+    }
+  },
+  "default_provider_payload": {"sources": [], "observations": []}
+}

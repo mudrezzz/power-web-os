@@ -81,6 +81,13 @@ Example invocation:
 - Explicit out of scope.
 - Open questions.
 
+For every slice marked `Pipeline` and `Behavior change: true`, also create an
+adjacent `.acceptance.json`. It must list stable requirement IDs, mandatory
+flags, exact pytest node IDs, runtime acceptance thresholds, AS IS/TO BE paths,
+and validation-report paths. Register the manifest in the roadmap tracker.
+Derive the TO BE from the current AS IS plus persisted run RCA; do not start
+from the desired code structure alone.
+
 ## Rules
 
 - Do not implement production code in this skill.

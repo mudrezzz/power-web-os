@@ -29,6 +29,7 @@ from power_web_os.application.radar.candidate_discovery.execution.finalization_m
     _apply_smoke_candidate_promotion_cap,
     _benchmark_recall_target_summary,
     _budget_metadata,
+    _coverage_metadata,
     _external_budget_events,
     _legal_subsidiary_completion_summary,
 )
@@ -294,7 +295,7 @@ class FinalizationProjector:
         metadata.update(self._checkpoint_metadata(context, state))
         metadata.update(self._extraction_metadata(state, extraction_issues, repair_results))
         metadata.update(self._universe_metadata(state, observations, universe_payload, unresolved_gaps))
-        metadata.update(self._coverage_metadata(context, state))
+        metadata.update(_coverage_metadata(context, state))
         metadata.update(smoke_metadata)
         metadata["candidate_discovery_reconciliation"] = outcome_reconciliation
         metadata["user_visible_candidates"] = user_visible_candidates
@@ -488,15 +489,4 @@ class FinalizationProjector:
             "entity_resolution_warnings": state.provider_metadata.get("entity_resolution_warnings", []),
         }
 
-    @staticmethod
-    def _coverage_metadata(
-        context: CandidateDiscoveryExecutionContext,
-        state: CandidateDiscoveryExecutionState,
-    ) -> dict[str, Any]:
-        return {
-            "coverage_checks": state.coverage_checks,
-            "coverage_warnings": sorted(set(state.coverage_warnings)),
-            "discovery_iteration_count": state.discovery_iteration_count,
-            "max_discovery_iterations": context.max_discovery_iterations,
-            "max_candidate_universe_size": context.max_candidate_universe_size,
-        }
+__all__ = ["FinalizationProjector"]

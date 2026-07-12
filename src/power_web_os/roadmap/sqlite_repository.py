@@ -122,6 +122,14 @@ class SQLiteRoadmapRepository:
         self.upsert_slice(roadmap_slice)
         self.add_event(SliceEvent(slice_id=slice_id, event_type="status_updated", note=note or status))
 
+    def set_section(self, slice_id: str, key: str, value: str) -> None:
+        roadmap_slice = self.get_slice(slice_id)
+        if roadmap_slice is None:
+            raise KeyError(f"Unknown slice id: {slice_id}")
+        roadmap_slice.sections[key] = value
+        self.upsert_slice(roadmap_slice)
+        self.add_event(SliceEvent(slice_id=slice_id, event_type="section_updated", note=key))
+
     def add_event(self, event: SliceEvent) -> None:
         self.initialize()
         with self._connect() as conn:

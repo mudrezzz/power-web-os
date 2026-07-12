@@ -37,6 +37,10 @@ Read these sources in order:
    them in prose.
 5. Regenerate PDF.
 6. Run documentation contract tests.
+7. Read the acceptance manifest and generated Markdown/JSON validation report.
+8. Record the slice ID and any accepted deviations in AS IS, set the TO BE
+   status to `Implemented`, rerun the pipeline validator, and require final
+   `validation_status=PASS` before roadmap closeout.
 
 Path rules:
 
@@ -53,6 +57,8 @@ Path rules:
 - Do not silently convert benchmark or RCA findings into product truth.
 - Do not include secrets, raw prompts, hidden reasoning, headers, tokens, or raw
   provider dumps.
+- Do not finalize AS IS from unit tests alone when the manifest requires
+  persisted live evidence.
 
 ## Completion Checklist
 

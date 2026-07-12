@@ -81,6 +81,16 @@ def _budget_metadata(context: Any, state: Any) -> dict[str, Any]:
     return metadata
 
 
+def _coverage_metadata(context: Any, state: Any) -> dict[str, Any]:
+    return {
+        "coverage_checks": state.coverage_checks,
+        "coverage_warnings": sorted(set(state.coverage_warnings)),
+        "discovery_iteration_count": state.discovery_iteration_count,
+        "max_discovery_iterations": context.max_discovery_iterations,
+        "max_candidate_universe_size": context.max_candidate_universe_size,
+    }
+
+
 def _benchmark_recall_target_summary(provider_metadata: dict[str, Any]) -> dict[str, Any]:
     targets = dict_list(provider_metadata.get("expansion_target_queue"))
     if not targets:

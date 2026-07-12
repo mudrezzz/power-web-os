@@ -268,6 +268,15 @@ Before finishing:
    - which docs were updated
    - remaining risks or next tasks
 
+For every Radar slice whose tracker metadata contains `Pipeline` and
+`Behavior change: true`, completion additionally requires the evidence loop:
+current AS IS and persisted-run RCA, reviewed TO BE Markdown/PDF, an adjacent
+acceptance manifest with mandatory requirement IDs and test node IDs, persisted
+runtime evidence, a machine-generated PASS validation report, and a finalized
+AS IS change record. The roadmap CLI must reject `Done` while this evidence is
+missing or failed. Autofix may make at most five local corrective passes and
+must not weaken the approved TO BE or DoD.
+
 ## Skills routing
 
 Use these skills when available:

@@ -6,8 +6,6 @@ application records, while callers own transactions and use only ports.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -30,6 +28,15 @@ from power_web_os.persistence.models import (
     RadarReviewDecisionModel,
     RadarRunTechnicalTraceModel,
     utc_now,
+)
+from power_web_os.persistence.record_mappers import (
+    definition_record as _definition_record,
+    radar_record as _radar_record,
+    review_decision_record as _review_decision_record,
+    run_event_record as _run_event_record,
+    run_output_record as _run_output_record,
+    run_record as _run_record,
+    technical_trace_record as _technical_trace_record,
 )
 
 
@@ -107,6 +114,8 @@ class SqlAlchemyRadarRunRepository:
         model = RadarRunModel(
             run_id=record.run_id,
             radar_id=record.radar_id,
+            pipeline_id=record.pipeline_id,
+            source_run_id=record.source_run_id,
             status=record.status.value,
             queued_at=record.queued_at or now,
             started_at=record.started_at,
@@ -133,25 +142,41 @@ class SqlAlchemyRadarRunRepository:
         ).first()
         return _run_record(model) if model is not None else None
 
-    def list_for_radar(self, radar_id: str) -> tuple[RadarRunRecord, ...]:
-        stmt = select(RadarRunModel).where(RadarRunModel.radar_id == radar_id).order_by(RadarRunModel.queued_at)
-        return tuple(_run_record(model) for model in self._session.scalars(stmt).all())
-
-    def latest_for_radar(self, radar_id: str) -> RadarRunRecord | None:
+    def list_for_radar(
+        self,
+        radar_id: str,
+        *,
+        pipeline_id: str = "candidate_discovery",
+    ) -> tuple[RadarRunRecord, ...]:
         stmt = (
             select(RadarRunModel)
-            .where(RadarRunModel.radar_id == radar_id)
+            .where(RadarRunModel.radar_id == radar_id, RadarRunModel.pipeline_id == pipeline_id)
+            .order_by(RadarRunModel.queued_at)
+        )
+        return tuple(_run_record(model) for model in self._session.scalars(stmt).all())
+
+    def latest_for_radar(self, radar_id: str, *, pipeline_id: str = "candidate_discovery") -> RadarRunRecord | None:
+        stmt = (
+            select(RadarRunModel)
+            .where(RadarRunModel.radar_id == radar_id, RadarRunModel.pipeline_id == pipeline_id)
             .order_by(RadarRunModel.queued_at.desc())
             .limit(1)
         )
         model = self._session.scalars(stmt).first()
         return _run_record(model) if model is not None else None
 
-    def latest_summary_for_radar(self, radar_id: str) -> RadarRunRecord | None:
+    def latest_summary_for_radar(
+        self,
+        radar_id: str,
+        *,
+        pipeline_id: str = "candidate_discovery",
+    ) -> RadarRunRecord | None:
         stmt = (
             select(
                 RadarRunModel.run_id,
                 RadarRunModel.radar_id,
+                RadarRunModel.pipeline_id,
+                RadarRunModel.source_run_id,
                 RadarRunModel.status,
                 RadarRunModel.queued_at,
                 RadarRunModel.started_at,
@@ -162,7 +187,7 @@ class SqlAlchemyRadarRunRepository:
                 RadarRunModel.created_at,
                 RadarRunModel.updated_at,
             )
-            .where(RadarRunModel.radar_id == radar_id)
+            .where(RadarRunModel.radar_id == radar_id, RadarRunModel.pipeline_id == pipeline_id)
             .order_by(RadarRunModel.queued_at.desc())
             .limit(1)
         )
@@ -172,6 +197,8 @@ class SqlAlchemyRadarRunRepository:
         return RadarRunRecord(
             run_id=row.run_id,
             radar_id=row.radar_id,
+            pipeline_id=row.pipeline_id,
+            source_run_id=row.source_run_id,
             status=RadarRunStatus(row.status),
             queued_at=row.queued_at,
             started_at=row.started_at,
@@ -185,8 +212,11 @@ class SqlAlchemyRadarRunRepository:
             updated_at=row.updated_at,
         )
 
-    def count_for_radar(self, radar_id: str) -> int:
-        stmt = select(func.count()).select_from(RadarRunModel).where(RadarRunModel.radar_id == radar_id)
+    def count_for_radar(self, radar_id: str, *, pipeline_id: str = "candidate_discovery") -> int:
+        stmt = select(func.count()).select_from(RadarRunModel).where(
+            RadarRunModel.radar_id == radar_id,
+            RadarRunModel.pipeline_id == pipeline_id,
+        )
         return int(self._session.scalar(stmt) or 0)
 
     def update_status(
@@ -417,123 +447,3 @@ class SqlAlchemyRadarRunTechnicalTraceRepository:
             select(func.max(RadarRunTechnicalTraceModel.sequence)).where(RadarRunTechnicalTraceModel.run_id == run_id)
         )
         return int(value or 0) + 1
-
-
-def _radar_record(model: RadarModel) -> RadarRecord:
-    return RadarRecord(
-        radar_id=model.radar_id,
-        name=model.name,
-        status=model.status,
-        owner=model.owner,
-        profile=dict(model.profile_json),
-        summary=dict(model.summary_json),
-        artifact_path=model.artifact_path,
-        created_at=_aware_utc(model.created_at),
-        updated_at=_aware_utc(model.updated_at),
-    )
-
-
-def _definition_record(model: RadarDefinitionModel) -> RadarDefinitionRecord:
-    return RadarDefinitionRecord(
-        definition_id=model.definition_id,
-        radar_id=model.radar_id,
-        definition_payload=dict(model.definition_json),
-        definition_version=model.definition_version,
-        is_active=model.is_active,
-        created_at=_aware_utc(model.created_at),
-        updated_at=_aware_utc(model.updated_at),
-    )
-
-
-def _run_record(model: RadarRunModel) -> RadarRunRecord:
-    return RadarRunRecord(
-        run_id=model.run_id,
-        radar_id=model.radar_id,
-        status=RadarRunStatus(model.status),
-        queued_at=_aware_utc(model.queued_at),
-        started_at=_aware_utc(model.started_at),
-        completed_at=_aware_utc(model.completed_at),
-        idempotency_key=model.idempotency_key,
-        correlation_id=model.correlation_id,
-        error_message=model.error_message,
-        error_metadata=dict(model.error_metadata_json),
-        run_metadata=dict(model.run_metadata_json),
-        created_at=_aware_utc(model.created_at),
-        updated_at=_aware_utc(model.updated_at),
-    )
-
-
-def _run_output_record(model: RadarRunOutputModel) -> RadarRunOutputRecord:
-    return RadarRunOutputRecord(
-        run_id=model.run_id,
-        artifact_version=model.artifact_version,
-        radar_payload=dict(model.radar_payload_json),
-        search_plan_payload=dict(model.search_plan_json),
-        sources_payload=[dict(item) for item in model.sources_json],
-        candidates_payload=[dict(item) for item in model.candidates_json],
-        contract_validation_payload=[dict(item) for item in model.contract_validation_json],
-        artifact_payload=dict(model.artifact_payload_json),
-        created_at=_aware_utc(model.created_at),
-        updated_at=_aware_utc(model.updated_at),
-    )
-
-
-def _review_decision_record(model: RadarReviewDecisionModel) -> RadarReviewDecisionRecord:
-    return RadarReviewDecisionRecord(
-        decision_id=model.decision_id,
-        run_id=model.run_id,
-        radar_id=model.radar_id,
-        candidate_id=model.candidate_id,
-        subject_type=model.subject_type,
-        subject_id=model.subject_id,
-        status=model.status,
-        reviewer=model.reviewer,
-        comment=model.comment,
-        decision_payload=dict(model.decision_payload_json),
-        score_impact=dict(model.score_impact_json),
-        reviewed_at=_aware_utc(model.reviewed_at),
-        created_at=_aware_utc(model.created_at),
-        updated_at=_aware_utc(model.updated_at),
-    )
-
-
-def _run_event_record(model: RadarRunEventModel) -> RadarRunEventRecord:
-    return RadarRunEventRecord(
-        event_id=model.event_id,
-        run_id=model.run_id,
-        sequence=model.sequence,
-        event_type=model.event_type,
-        phase=model.phase,
-        actor=model.actor,
-        node_name=model.node_name,
-        visibility=model.visibility,
-        summary=model.summary,
-        payload=dict(model.payload_json),
-        source_refs=[str(item) for item in model.source_refs_json],
-        candidate_refs=[str(item) for item in model.candidate_refs_json],
-        created_at=_aware_utc(model.created_at),
-    )
-
-
-def _technical_trace_record(model: RadarRunTechnicalTraceModel) -> RadarRunTechnicalTraceRecord:
-    return RadarRunTechnicalTraceRecord(
-        trace_id=model.trace_id,
-        run_id=model.run_id,
-        sequence=model.sequence,
-        phase=model.phase,
-        node_name=model.node_name,
-        trace_type=model.trace_type,
-        title=model.title,
-        summary=model.summary,
-        duration_ms=model.duration_ms,
-        payload=dict(model.payload_json),
-        redaction_report=dict(model.redaction_report_json),
-        created_at=_aware_utc(model.created_at),
-    )
-
-
-def _aware_utc(value: datetime | None) -> datetime | None:
-    # SQLite returns timezone-naive values even for timezone=True columns.
-    if value is None or value.tzinfo is not None:
-        return value
-    return value.replace(tzinfo=UTC)

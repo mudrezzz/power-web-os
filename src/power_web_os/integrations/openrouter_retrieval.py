@@ -9,6 +9,7 @@ from power_web_os.application.radar.candidate_discovery.retrieval.web_retrieval 
     RadarRetrievedSource,
     RadarWebRetrievalResult,
 )
+from power_web_os.integrations.openrouter_annotations import normalized_openrouter_annotations
 
 
 def retrieval_result_from_openrouter_response(
@@ -47,27 +48,17 @@ def _sources_from_annotations(
     provider_id: str,
     engine: str,
 ) -> list[RadarRetrievedSource]:
-    if not isinstance(annotations, list):
-        return []
     sources: list[RadarRetrievedSource] = []
-    for rank, annotation in enumerate(annotations, start=1):
-        if not isinstance(annotation, dict):
-            continue
-        url_info = annotation.get("url_citation") or annotation
-        if not isinstance(url_info, dict) or not url_info.get("url"):
-            continue
+    for item in normalized_openrouter_annotations(annotations):
         sources.append(RadarRetrievedSource(
-            source_ref=f"retrieved_{rank}",
-            title=str(url_info.get("title") or url_info.get("url") or ""),
-            url=str(url_info.get("url") or ""),
-            snippet=str(url_info.get("content") or url_info.get("snippet") or ""),
-            rank=rank,
-            citation_index=rank,
+            source_ref=str(item["source_ref"]),
+            title=str(item["title"]),
+            url=str(item["url"]),
+            snippet=str(item["snippet"]),
+            rank=int(item["rank"]),
+            citation_index=int(item["citation_index"]),
             provider_id=provider_id,
             engine=engine,
-            raw_metadata={
-                "start_index": url_info.get("start_index"),
-                "end_index": url_info.get("end_index"),
-            },
+            raw_metadata=dict(item["raw_metadata"]),
         ))
     return sources

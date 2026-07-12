@@ -8906,7 +8906,7 @@ Required proof before Done:
 
 ### Slice 0.7.6.4.18.2: Signal monitoring live runtime and API wiring
 
-- Status: Blocked
+- Status: Done
 - Goal: Add the first bounded live/scheduled signal-monitoring runtime over accepted candidate-discovery snapshots with independent signal budgets, provider calls, persistence/API surfaces, and no candidate-discovery budget coupling.
 - User value: A user can monitor intent changes for known candidates after discovery, with its own cadence, budget, and report, instead of rerunning full candidate discovery to refresh signals.
 - Problem statement: Signal monitoring currently has contracts, source strategy, budgets, model profile isolation, and a recorded demo loop, but no first-class live/API/job runtime equivalent to candidate discovery. Therefore the product cannot yet launch or evaluate signal monitoring independently.
@@ -8950,9 +8950,42 @@ Required proof before Done:
 - Risks:
   - Persistence/API may be tempted to reuse candidate-discovery fields ambiguously. Require explicit pipeline id/type in persisted/API surfaces.
 
+### Slice 0.7.6.4.18.2.1: Signal monitoring search planning, evidence validation and positive-control benchmark
+
+- Status: Done
+- Goal: Build an auditable multi-lane signal-search pipeline and prove it through an AS IS -> TO BE -> validation -> AS IS evidence loop.
+- Scope: Multi-lane signal planning, plan acceptance, scheduling, retrieval receipts, evidence validation, checkpoints, initial/incremental windows, positive controls, acceptance validator and process gates.
+- Tests: Mapped unit/recorded/API/job/architecture tests plus two persisted Docker/API quality runs and restart round-trip.
+- Docs: Baseline RCA, TO BE Markdown/PDF, acceptance manifest, validation Markdown/JSON, ADR, procedural skills and finalized Signal Monitoring AS IS Markdown/PDF.
+- Acceptance criteria: All mandatory SM-* requirements PASS; first live run finds at least two valid controls; second run proves per-lane incremental windows and dedupe; no opaque sources, orphan decisions, false not_observed or failed watermark advances.
+- Acceptance manifest: docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.2.1.acceptance.json
+- Behavior change: true
+- Closeout: PASS. Baseline RCA: signal-run-c8adb584-da26-4c31-84d1-37c067e7cf89. Initial live quality run: signal-run-9d018757-a96c-4902-92ac-b0bdb4d3bb50; source radar-run-3bbf9c0f-330e-4468-8901-966a751234a8; 2 candidates, 2 criteria, 14 executed tasks/receipts, 4 observed outcomes, POLIEF negative control rejected. Incremental run: signal-run-863de7ce-cdab-456f-91f8-917c0a875452; 14 executed tasks/receipts, 16 lane watermarks and 35 previous source keys loaded, 2 repeats suppressed, 0 old events republished, 0 failed watermark advances. Both reports remained readable after API restart. All SM-* requirements PASS in validation report. Retrospective fixed provider aliases, lane collapse, cross-entity known-source evidence, unstable summary fingerprints and stale-image verification procedure.
+- Pipeline: signal-monitoring
+- Validation report: docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.2.1/validation.json
+
+### Slice 0.7.6.4.18.2.2: Signal event-time integrity, source capability binding and expanded live quality benchmark
+
+- Status: Done
+- Goal: Make Signal Monitoring recall-first but temporally honest: retain relevant unknown-date evidence for human review, prevent cross-entity source contamination, and prove live quality on a broader six-candidate benchmark.
+- User value: Users see potentially useful evidence even when its publication date cannot be established, while confirmed fresh signals, unknown-date review items and known out-of-window evidence remain clearly distinguishable.
+- Problem statement: The 0.7.6.4.18.2.1 live pair proved runtime and incremental mechanics but exposed a quality gap: retrieved_at was accepted as event freshness, identity/group sources were scheduled as candidate signal sources, three observed outcomes had score zero, and the live positive-control gate counted arbitrary observed pairs instead of matching curated event URLs and dates.
+- Scope: Introduce separate retrieved_at, published_at and event_at semantics with extraction method/confidence; retain relevant unknown-date evidence as review_needed_date_unknown; reject known out-of-window evidence; add generic source capabilities and candidate/source ownership checks; strengthen multilingual query variants and bounded transport retries; normalize observed scoring; expand live controls to 6 candidates, at least 3 accepted and 3 review-needed, 2 criteria and at least 12 candidate-criterion pairs; run initial and incremental persisted quality benchmarks.
+- Out of scope: No company-specific production hardcodes; no candidate rediscovery; no signal scheduling UI; no notification delivery; no public quality claim from one benchmark pair; no automatic acceptance of unknown-date evidence as confirmed observed.
+- Implementation notes: Use generic source capabilities identity_only, official_press, event_feed, project_or_asset_history, registry, generic_web and unknown. Identity-only evidence may support entity linkage but not a fresh signal. Candidate ownership is resolved from candidate id, legal name, aliases, source candidate_id, URL/text identity and domain/path context. Unknown or conflicting dates are retained for review. Quality profile limits: 48 tasks, 60 provider calls, 8 extraction retries, 4 backup retries, 120 source verifications, 60 lookback queries, one query revision per candidate/criterion and at most two known sources per pair.
+- Tests: Red tests for retrieved_at not satisfying freshness; missing date retained as review_needed_date_unknown; known out-of-window article rejected; generic cross-entity and identity-only source filtering without SIBUR/POLIEF/Wikipedia hardcodes; observed score contract; transport retry. Recorded controls must match explicit candidate, criterion, URL and date. Docker/API DoD uses 6 candidates and 2 criteria, then repeats incrementally and validates persistence after API restart.
+- Docs: Create baseline RCA from signal-run-9d018757-a96c-4902-92ac-b0bdb4d3bb50 and signal-run-863de7ce-cdab-456f-91f8-917c0a875452; create TO BE Markdown/PDF and acceptance manifest; after PASS reconcile Signal Monitoring AS IS Markdown/PDF, validation JSON/Markdown, Developer Guide, demo runbook and process retrospective.
+- Demo impact: The quality demo shows confirmed fresh signals, unknown-date review items and out-of-window rejections separately, with source ownership, date provenance and review reason visible for every retained item.
+- Acceptance criteria: DoD is mandatory: at least 6 candidates (minimum 3 accepted and 3 review-needed), 2 criteria and 12 candidate-criterion pairs; all evidence is classified as confirmed in-window, review-needed unknown/conflicting date, or rejected out-of-window; missing date evidence remains visible for human review but never counts as confirmed positive control; retrieved_at never substitutes for publication/event time; January 2024 controls are rejected for a 2025-2026 window; zero cross-entity known-source tasks and zero identity-only sources used as fresh-signal evidence; zero production hardcodes for benchmark companies; at least 4 explicit positive controls matched by candidate, criterion, URL and expected date; at least 2 negative controls remain unconfirmed; at least 1 unknown-date control remains visible for review; every confirmed observed item has non-zero score and resolvable evidence; transport error exercises bounded retry; second run republishes zero old events; every miss/rejection has an explicit reason; Docker rebuild, two persisted API runs, restart round-trip and acceptance validator all PASS. Slice cannot close from unit/recorded tests alone.
+- Risks: Recall may fall if source capabilities are too strict, so unknown and ambiguous evidence must be retained for review rather than discarded. Date extraction can conflict across metadata, URL and text, so provenance and confidence are mandatory. Expanded live benchmark costs more, so budgets remain bounded and fast recorded gates run before Docker live calls.
+- Acceptance manifest: docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.2.2.acceptance.json
+- Behavior change: true
+- Pipeline: signal-monitoring
+- Validation report: docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.2.2/validation.json
+
 ### Slice 0.7.6.4.18.3: Radar pipeline split validation and UI contract
 
-- Status: Backlog
+- Status: Ready
 - Goal: Validate and document that candidate discovery and signal monitoring are launched, budgeted, evaluated, persisted, and displayed as two separate Radar pipelines.
 - User value: The product and codebase make it obvious which pipeline found candidates and which pipeline monitored signals, so users can trust budget/status explanations.
 - Problem statement: Even after runtime separation, tests/docs/UI can drift back to a monolithic mental model unless there is a dedicated validation and contract slice.
@@ -8987,6 +9020,57 @@ Required proof before Done:
   - Roadmap can safely move to root namespace closure and then product work.
 - Risks:
   - UI and API may lag backend separation. Mitigate with contract tests that fail on ambiguous labels or merged budget/status fields.
+
+### Slice 0.7.6.4.18.3.1: Per-signal monitoring depth, cadence and source settings
+
+- Status: Backlog
+- Goal: Expose persisted per-signal initial lookback, incremental overlap, cadence and source policy settings after the split UI contract is validated.
+- Scope: Persist per-criterion initial depth, overlap, cadence and source-lane policy; expose them through API and UI with validation.
+- Acceptance criteria: Each criterion has explicit persisted monitoring settings, runtime uses them without hidden defaults, and UI/API round-trip is covered.
+
+### Slice 0.7.6.4.18.3.2: Signal monitoring evidence status language and report clarity
+
+- Status: Backlog
+- Goal: Make Signal Monitoring reports and UI explain evidence outcomes in user language instead of only technical observed/unclear/not_observed statuses.
+- User value: A user can read a Signal Monitoring report without decoding backend statuses: the report says whether we found a fresh signal, found relevant evidence without a reliable date, found old evidence and did not count it, or found nothing after full coverage.
+- Problem statement: After event-time and source-capability fixes, the backend can distinguish confirmed fresh evidence, unknown-date review evidence, historical out-of-window evidence, and searched-negative outcomes. The UI/report still risks flattening those into technical labels such as observed, unclear and not_observed. That hides the main product meaning and makes quality discussions harder than they need to be.
+- Scope:
+  - Add a presentation-level evidence outcome vocabulary for Signal Monitoring reports: "нашли свежее", "нашли релевантное без даты", "нашли старое, не засчитали", and "не нашли после полного покрытия".
+  - Expose the presentation category, human-readable reason, evidence count, source refs and coverage completeness in the Signal Monitoring report/API contract.
+  - Update UI cards/tables/copy so a user sees the four outcome meanings directly, in Russian and English.
+  - Update diagnostics/report exports so run closeout summaries use the same human vocabulary.
+  - Preserve the existing technical statuses as debug/API compatibility fields.
+- Out of scope:
+  - No change to signal-search planning, retrieval, evidence validation, source capability binding, watermarks, dedupe, scoring or budgets.
+  - No new provider calls or benchmark quality claim.
+  - No candidate-discovery behavior change.
+  - No per-signal cadence/depth settings; that remains `0.7.6.4.18.3.1`.
+- Implementation notes:
+  - Implement this as a projection/reporting layer over existing Signal Monitoring artifact fields such as observation status, temporal status, coverage completeness, evidence validation summary and source lifecycle.
+  - `not_observed` may be rendered as "не нашли после полного покрытия" only when required lanes are complete and receipts prove searched-negative coverage.
+  - Unknown-date relevant evidence must stay visible as review-needed evidence, not disappear into a generic unclear bucket.
+  - Historical evidence must show why it was not counted as fresh, including date basis and source provenance where available.
+- Tests:
+  - Backend mapper tests for the four presentation categories from representative artifact fragments.
+  - API/report contract tests that include category, reason, coverage completeness and source refs while preserving technical statuses.
+  - Frontend tests or Playwright coverage for all four labels and non-empty evidence/reason details.
+  - Regression: existing signal-monitoring recorded/live report tests remain green.
+  - Static checks: `npm --prefix ./frontend run build`, `python -m power_web_os.roadmap check`, `git diff --check`.
+- Docs:
+  - Update Signal Monitoring AS IS/report docs with the user-facing outcome vocabulary.
+  - Update Developer Guide/demo runbook so diagnostic summaries use the same terms.
+  - Add a short explanation that these are presentation categories, not a replacement for backend evidence states.
+- Demo impact: Demo reports become understandable for non-engineering review: a stakeholder can see fresh confirmed signals, relevant undated evidence for human review, old evidence rejected by window, and searched-negative results without reading raw JSON.
+- Acceptance criteria:
+  - Signal Monitoring UI/report shows all four human outcome categories when the underlying artifact contains matching cases: "нашли свежее", "нашли релевантное без даты", "нашли старое, не засчитали", and "не нашли после полного покрытия".
+  - A searched-negative result is not shown as "не нашли после полного покрытия" unless coverage is complete.
+  - Unknown-date relevant evidence is visible as human-review evidence with source provenance.
+  - Old out-of-window evidence is visible as "нашли старое, не засчитали" with date reason.
+  - Technical statuses remain available for diagnostics/API compatibility.
+  - No pipeline behavior changes are introduced by the presentation mapping.
+- Risks:
+  - User-facing labels can drift from backend semantics. Mitigate with mapper contract tests that cover every technical status/temporal-status combination.
+  - UI may oversimplify review-needed evidence. Mitigate by showing reason and source provenance next to the label.
 
 ### Slice 0.7.6.4.19: Radar root namespace closure and compatibility sunset
 
@@ -9027,6 +9111,82 @@ Required proof before Done:
   - New package-owned paths are the only documented extension paths.
 - Risks:
   - Hidden external callers may still import old paths. Mitigate with compatibility shims unless a removal decision is explicit.
+
+### Slice 0.7.6.5.1: Configurable candidate filtering policy and reversible public projection
+
+- Status: Backlog
+- Goal: Add a configurable, typed candidate-filtering policy to each Radar so users can choose how broadly source-backed upstream leads are shown without changing search depth, deleting the raw candidate universe, or weakening strict product acceptance.
+- User value: A user can run candidate discovery once and choose a broad, balanced, or strict candidate view appropriate to the Radar use case. Broad mode preserves recall and exposes review-needed leads; strict mode keeps the working list focused; every hidden candidate remains traceable and can be recovered without another provider run.
+- Problem statement: Candidate discovery is now intentionally recall-first and a blind run can return many provenance-backed leads. That is correct upstream behavior, but different Radars need different working-list precision. A single implicit projection rule cannot serve exploratory market mapping, normal ABM review, and high-confidence account selection. If filtering is implemented by tightening retrieval or deleting candidate-universe rows, the project will regress to false-negative-heavy behavior. If it is implemented as an untyped task_context flag, historical runs and UI counts will become ambiguous.
+- Scope:
+  - Add a frozen typed value object `CandidateFilteringPolicy` and enum-like mode contract with `broad`, `balanced`, and `strict` modes.
+  - Persist the selected mode in Radar settings and snapshot the effective policy name, version, and resolved thresholds into every candidate-discovery run artifact/metadata.
+  - Keep `candidate_universe` as the complete provenance-backed upstream truth. Apply filtering only when projecting the user-visible candidate surface.
+  - Define deterministic mode semantics:
+  - `broad`: show every unique provenance-backed legal candidate, including review-needed leads;
+  - `balanced`: show accepted candidates plus review-needed candidates supported by an official/registry source or by at least two independent sources with medium/high upstream confidence;
+  - `strict`: show accepted product candidates only.
+  - Preserve strict product acceptance as an independent decision. Filtering mode may hide or show review-needed rows but must not promote them to `product_candidate`.
+  - Add a policy decision record for every retained upstream lead: visible/hidden result, mode, policy version, matched rule, and product-safe reason.
+  - Add backend projection/preview support so an existing completed run can report broad/balanced/strict counts and candidate ids without repeating retrieval, extraction, registry calls, or OpenRouter calls.
+  - Add Radar settings UI for candidate filtering with clear RU/EN labels, concise consequences, and preview counts from the latest compatible completed run.
+  - Show both `found upstream` and `visible under current filter` counts so strict mode cannot be mistaken for poor discovery.
+  - Keep historical runs immutable: changing Radar settings affects future runs; previewing another mode over an old artifact does not rewrite that run.
+- Out of scope:
+  - No change to search depth, query planning, expansion budgets, provider model selection, retries, or source routing.
+  - No deletion of filtered candidates from candidate_universe, artifacts, diagnostics, or acceptance ledgers.
+  - No automatic product-acceptance promotion based only on a looser display mode.
+  - No coupling between candidate filtering and signal-monitoring scope; monitoring input selection remains an explicit separate contract.
+  - No arbitrary per-field advanced threshold editor in the first slice; the public contract is three versioned presets.
+  - No public quality claim from one live run.
+- Implementation notes:
+  - Put the policy owner in a package-owned candidate-discovery module such as `radar/candidate_discovery/universe/filtering.py`; do not add root-level `live_radar_*` behavior.
+  - `CandidateDiscoveryUpstreamAdmissionPolicy` remains recall-first and must not depend on filtering mode. `CandidateDiscoveryPublicSurfaceProjector` consumes the policy after reconciliation/evidence enrichment. `CandidateDiscoveryProductAcceptancePromoter` remains the owner of strict acceptance and must not infer acceptance from display mode.
+  - Prefer an explicit result object such as `CandidateFilteringDecision` over booleans. It should carry candidate id, visibility, mode, reason code, evidence summary, and policy version.
+  - Use stable generic reason codes, for example `visible_product_candidate`, `visible_source_backed_review`, `hidden_insufficient_independent_evidence`, `hidden_low_upstream_confidence`, and `hidden_not_product_accepted_in_strict_mode`.
+  - The default mode for existing Radars and compatibility callers is `broad`, preserving the current recall-first public behavior.
+  - Policy presets are domain configuration, not benchmark profiles and not execution-budget profiles. Do not encode them in `benchmark_smoke`, `blind_benchmark`, or provider model-profile configuration.
+  - The same artifact projected under the three modes must satisfy strict subset monotonicity: `strict candidates <= balanced candidates <= broad candidates` by candidate id.
+  - Add an ADR for the separation between discovery breadth, public filtering, strict product acceptance, and signal-monitoring input scope.
+  - Schedule after `0.7.6.4.19`; it must not delay `0.7.6.4.18.2`, `0.7.6.4.18.3`, or root namespace closure.
+- Tests:
+  - Unit tests for each deterministic policy rule and reason code, including official source, registry evidence, two independent open-web sources, one weak source, invalid/unresolved provenance, and already accepted candidates.
+  - Property/contract test on one fixed artifact: strict candidate ids are a subset of balanced ids, balanced ids are a subset of broad ids, and candidate_universe content/count/checksum is unchanged.
+  - Regression test: accepted product candidate ids and accepted count are identical in all three modes.
+  - Regression test: every visible row remains duplicate-safe and evidence-complete; duplicate ids and empty provenance counts stay zero.
+  - Regression test: every hidden provenance-backed lead has a filtering decision and product-safe reason; unexplained drops stay zero.
+  - API tests for Radar settings persistence, effective run-policy snapshot, historical immutability, and no-provider re-projection/preview.
+  - Frontend tests for mode selection, found-vs-visible counters, preview counts, saved settings, RU/EN copy, and explicit distinction between review-needed and accepted candidates.
+  - Signal-monitoring isolation test proving filtering mode does not silently redefine the monitored candidate set.
+  - Required fast gates: candidate-discovery policy/public-surface/API tests, backend architecture/package contracts, frontend build and targeted UI tests, roadmap check, and `git diff --check`.
+  - Final Docker gate: rebuild the stack, use a completed evidence-rich blind artifact to compare all three modes without provider calls, then run one bounded candidate-discovery smoke proving the configured policy snapshot is persisted.
+- Docs:
+  - Add an ADR documenting four separate concepts: search depth, upstream retention, public candidate filtering, and strict product acceptance.
+  - Update Radar backend architecture and candidate-discovery execution handbook with policy ownership and dependency rules.
+  - Update candidate-discovery README with the extension path and rule that upstream admission cannot depend on display filtering.
+  - Update Developer Guide and user/demo documentation with the three modes, found-vs-visible counters, historical run immutability, and preview-without-rerun behavior.
+  - Update AS IS Markdown/PDF only if implemented pipeline projection behavior changes.
+- Demo impact: Radar settings gain a candidate-filtering control. On an evidence-rich blind result the demo can show, for example, a broad list of all reviewable leads, a smaller balanced working list, and a strict accepted-only list while the same upstream-found count remains visible. Switching the preview must not spend provider budget.
+- Acceptance criteria:
+  - Existing Radars default to `broad`; their current provenance-backed visible candidate behavior does not narrow after migration.
+  - The same completed artifact can be evaluated under `broad`, `balanced`, and `strict` without executing any provider call.
+  - Candidate-id sets are monotonic: `strict` is a subset of `balanced`, and `balanced` is a subset of `broad`.
+  - Candidate universe count/content is identical across modes; filtering never deletes upstream evidence.
+  - Accepted product candidate ids/counts are identical across modes; display policy never weakens strict acceptance.
+  - Every visible candidate has resolvable provenance, and public output contains zero duplicate candidate ids.
+  - Every hidden provenance-backed lead has an explicit filtering reason; unexplained-drop count is zero.
+  - Run metadata/API/UI expose effective filtering mode and policy version, and historical run interpretation does not change when Radar settings are edited later.
+  - UI simultaneously shows upstream-found count, visible count, accepted count, and review-needed count.
+  - Changing or previewing filtering mode does not rerun candidate discovery and does not consume OpenRouter, registry, verification, or signal-monitoring budget.
+  - Filtering mode does not silently alter the signal-monitoring input set.
+  - Docker/UI DoD proves all three modes on one real persisted artifact and a bounded new run persists the configured mode.
+  - The slice cannot be marked Done from unit tests alone; closeout must include the tested run/artifact id and the broad/balanced/strict metric table.
+- Risks:
+  - Users may interpret a strict visible count as low recall. Mitigate by always displaying upstream-found and hidden-by-filter counts.
+  - Preset thresholds can drift if spread across UI, API, and execution code. Mitigate with one versioned backend policy owner and API-delivered descriptions/preview counts.
+  - Re-projecting historical artifacts could be mistaken for rewriting history. Mitigate by keeping stored effective policy immutable and labeling alternative-mode results as preview.
+  - Balanced thresholds may need later tuning. Keep reason codes and evaluation counters explicit so tuning is evidence-based and version the policy when semantics change.
+  - Signal monitoring may need its own accepted-only vs accepted-plus-review scope. Keep that as a separate future setting rather than deriving it from candidate display filtering.
 
 ### Slice 0.7: Human review queue loop
 

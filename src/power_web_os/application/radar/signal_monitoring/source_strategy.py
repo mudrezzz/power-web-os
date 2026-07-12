@@ -19,6 +19,7 @@ from power_web_os.application.radar.signal_monitoring.contracts import (
     SignalMonitoringSourceLane,
     SignalMonitoringSourcePolicy,
     SignalMonitoringSourceStrategyResult,
+    SignalSourceBindingDecision,
     SignalSourceRef,
 )
 
@@ -29,6 +30,7 @@ class SignalMonitoringSourceStrategy:
     def select_sources(self, monitoring_input: SignalMonitoringInput) -> SignalMonitoringSourceStrategyResult:
         policy = monitoring_input.source_policy
         cards = {card.source_id: card for card in monitoring_input.source_cards}
+        configured_sources = {source.source_id: source for source in monitoring_input.configured_sources if source.source_id}
         decisions: list[SignalMonitoringSourceDecision] = []
         diagnostics: list[SignalMonitoringDiagnostic] = []
 
@@ -37,16 +39,18 @@ class SignalMonitoringSourceStrategy:
         selected_refs: set[str] = set()
 
         if policy.reuse_known_sources:
-            for source in _candidate_known_sources(monitoring_input):
+            for candidate_id, source, binding in _candidate_known_sources(monitoring_input):
                 decision = _known_source_decision(
+                    candidate_id=candidate_id,
                     source=source,
+                    binding=binding,
                     card=cards.get(source.source_id),
                     policy=policy,
                     selected_refs=selected_refs,
                 )
                 decisions.append(decision)
                 if decision.status == "selected":
-                    selected_refs.update(decision.source_refs)
+                    selected_refs.add(f"{decision.candidate_id}:{source.source_ref}")
                     if decision.source_id:
                         selected_source_ids.add(decision.source_id)
         else:
@@ -61,8 +65,10 @@ class SignalMonitoringSourceStrategy:
                 lane="official_company",
                 source_id=source_id,
                 card=cards.get(source_id),
+                configured_source=configured_sources.get(source_id),
                 policy=policy,
                 selected_source_ids=selected_source_ids,
+                required=True,
             )
             decisions.append(decision)
             if decision.status == "selected":
@@ -76,21 +82,30 @@ class SignalMonitoringSourceStrategy:
         for source_id in explicit_signal_sources:
             if source_id in set(policy.official_source_ids):
                 continue
+            card = cards.get(source_id)
+            if card is not None and _is_open_web_card(card):
+                continue
             decision = _card_source_decision(
                 lane="signal_specific",
                 source_id=source_id,
-                card=cards.get(source_id),
+                card=card,
+                configured_source=configured_sources.get(source_id),
                 policy=policy,
                 selected_source_ids=selected_source_ids,
+                required=True,
             )
             decisions.append(decision)
             if decision.status == "selected":
                 selected_source_ids.add(source_id)
 
         for hint in policy.signal_source_hints:
+            card = cards.get(hint.source_id)
+            if card is not None and _is_open_web_card(card):
+                continue
             decision = _hint_source_decision(
                 hint=hint,
-                card=cards.get(hint.source_id),
+                card=card,
+                configured_source=configured_sources.get(hint.source_id),
                 policy=policy,
                 selected_source_ids=selected_source_ids,
             )
@@ -106,6 +121,7 @@ class SignalMonitoringSourceStrategy:
                     lane="open_web",
                     card=card,
                     reason="Open web signal search is allowed by policy and connector capability.",
+                    required=True,
                 ))
                 selected_source_ids.add(card.source_id)
         else:
@@ -123,6 +139,7 @@ class SignalMonitoringSourceStrategy:
                     message=_diagnostic_message(decision),
                     details={
                         "decision_id": decision.decision_id,
+                        "candidate_id": decision.candidate_id,
                         "lane": decision.lane,
                         "source_id": decision.source_id,
                         "source_ref": decision.source_ref,
@@ -172,38 +189,42 @@ def _required_source_diagnostics(
     return decisions
 
 
-def _candidate_known_sources(monitoring_input: SignalMonitoringInput) -> list[SignalSourceRef]:
-    candidate_ids = {candidate.candidate_id for candidate in monitoring_input.candidates}
-    candidate_source_refs = {
-        source_ref
-        for candidate in monitoring_input.candidates
-        for source_ref in candidate.source_refs
-        if source_ref
+def _candidate_known_sources(
+    monitoring_input: SignalMonitoringInput,
+) -> list[tuple[str, SignalSourceRef, SignalSourceBindingDecision | None]]:
+    source_by_ref = {source.source_ref: source for source in monitoring_input.known_sources}
+    binding_by_key = {
+        (binding.candidate_id, binding.source_ref): binding
+        for binding in monitoring_input.source_binding_decisions
     }
     useful_states = {"used", "retrieved", "analyzed", "verified", "linked", "unknown"}
-    result: list[SignalSourceRef] = []
-    seen: set[str] = set()
-    for source in monitoring_input.known_sources:
-        if source.lifecycle_state not in useful_states:
-            continue
-        if source.source_ref not in candidate_source_refs and source.candidate_id not in candidate_ids:
-            continue
-        if source.source_ref in seen:
-            continue
-        seen.add(source.source_ref)
-        result.append(source)
+    result: list[tuple[str, SignalSourceRef, SignalSourceBindingDecision | None]] = []
+    seen: set[tuple[str, str]] = set()
+    for candidate in monitoring_input.candidates:
+        for source_ref in candidate.source_refs:
+            source = source_by_ref.get(source_ref)
+            if source is None or source.lifecycle_state not in useful_states:
+                continue
+            key = (candidate.candidate_id, source.source_ref)
+            if key in seen:
+                continue
+            seen.add(key)
+            result.append((candidate.candidate_id, source, binding_by_key.get(key)))
     return result
 
 
 def _known_source_decision(
     *,
+    candidate_id: str,
     source: SignalSourceRef,
+    binding: SignalSourceBindingDecision | None,
     card: RadarPlannerSourceCard | None,
     policy: SignalMonitoringSourcePolicy,
     selected_refs: set[str],
 ) -> SignalMonitoringSourceDecision:
-    if source.source_ref in selected_refs:
+    if f"{candidate_id}:{source.source_ref}" in selected_refs:
         return _decision(
+            candidate_id=candidate_id,
             lane="known_source",
             status="skipped",
             source_id=source.source_id,
@@ -211,8 +232,32 @@ def _known_source_decision(
             source_refs=[source.source_ref],
             reason="known_source_already_selected",
         )
+    if binding is not None and not binding.scheduled_as_known_source:
+        return _decision(
+            candidate_id=candidate_id,
+            lane="known_source",
+            status="rejected",
+            source_id=source.source_id,
+            source_ref=source.source_ref,
+            source_refs=[source.source_ref],
+            reason=binding.reason,
+            supports_signal_evidence=False,
+            severity="warning",
+        )
+    if not source.url.strip():
+        return _decision(
+            candidate_id=candidate_id,
+            lane="known_source",
+            status="rejected",
+            source_id=source.source_id,
+            source_ref=source.source_ref,
+            source_refs=[source.source_ref],
+            reason="known_source_not_retrievable",
+            severity="warning",
+        )
     if source.source_id and not _source_allowed(source.source_id, policy):
         return _decision(
+            candidate_id=candidate_id,
             lane="known_source",
             status="rejected",
             source_id=source.source_id,
@@ -223,6 +268,7 @@ def _known_source_decision(
         )
     if card is not None and not card.supports_signal_evidence:
         return _decision(
+            candidate_id=candidate_id,
             lane="known_source",
             status="rejected",
             source_id=source.source_id,
@@ -234,6 +280,7 @@ def _known_source_decision(
             severity="warning",
         )
     return _decision(
+        candidate_id=candidate_id,
         lane="known_source",
         status="selected",
         source_id=source.source_id,
@@ -241,6 +288,7 @@ def _known_source_decision(
         source_refs=[source.source_ref],
         connector_profile_id=card.connector_profile_id if card else "",
         supports_signal_evidence=card.supports_signal_evidence if card else True,
+        required=True,
         reason="Known candidate-discovery source is reusable for signal search.",
     )
 
@@ -250,8 +298,10 @@ def _card_source_decision(
     lane: SignalMonitoringSourceLane,
     source_id: str,
     card: RadarPlannerSourceCard | None,
+    configured_source: SignalSourceRef | None,
     policy: SignalMonitoringSourcePolicy,
     selected_source_ids: set[str],
+    required: bool = False,
 ) -> SignalMonitoringSourceDecision:
     if source_id in selected_source_ids:
         return _decision(lane=lane, status="skipped", source_id=source_id, reason="source_already_selected")
@@ -273,6 +323,8 @@ def _card_source_decision(
         lane=lane,
         card=card,
         reason="Source selected for signal evidence by source policy and capability.",
+        configured_source=configured_source,
+        required=required,
     )
 
 
@@ -280,6 +332,7 @@ def _hint_source_decision(
     *,
     hint: SignalMonitoringSourceHint,
     card: RadarPlannerSourceCard | None,
+    configured_source: SignalSourceRef | None,
     policy: SignalMonitoringSourcePolicy,
     selected_source_ids: set[str],
 ) -> SignalMonitoringSourceDecision:
@@ -287,8 +340,10 @@ def _hint_source_decision(
         lane="signal_specific",
         source_id=hint.source_id,
         card=card,
+        configured_source=configured_source,
         policy=policy,
         selected_source_ids=selected_source_ids,
+        required=True,
     )
     if decision.status == "selected":
         return decision.model_copy(update={"reason": f"Signal-specific source hint selected: {hint.label or hint.source_id}."})
@@ -313,8 +368,16 @@ def _open_web_cards(
         for card in candidates
         if _source_allowed(card.source_id, policy)
         and card.supports_signal_evidence
-        and (card.supports_broad_discovery or card.source_type in {"web", "search", "open_web"})
+        and _is_open_web_card(card)
     ]
+
+
+def _is_open_web_card(card: RadarPlannerSourceCard) -> bool:
+    return card.supports_broad_discovery or card.source_type in {
+        "search",
+        "search_engine",
+        "open_web",
+    }
 
 
 def _selected_card_decision(
@@ -322,6 +385,8 @@ def _selected_card_decision(
     lane: SignalMonitoringSourceLane,
     card: RadarPlannerSourceCard,
     reason: str,
+    configured_source: SignalSourceRef | None = None,
+    required: bool = False,
 ) -> SignalMonitoringSourceDecision:
     return _decision(
         lane=lane,
@@ -329,6 +394,9 @@ def _selected_card_decision(
         source_id=card.source_id,
         connector_profile_id=card.connector_profile_id,
         supports_signal_evidence=card.supports_signal_evidence,
+        source_ref=configured_source.source_ref if configured_source else "",
+        source_refs=[configured_source.source_ref] if configured_source else [],
+        required=required,
         reason=reason,
     )
 
@@ -342,6 +410,7 @@ def _decision(
     lane: SignalMonitoringSourceLane,
     status: str,
     reason: str,
+    candidate_id: str = "",
     source_id: str = "",
     source_ref: str = "",
     source_refs: list[str] | None = None,
@@ -351,8 +420,10 @@ def _decision(
     severity: str = "info",
 ) -> SignalMonitoringSourceDecision:
     key = source_ref or source_id or "none"
+    prefix = f"{candidate_id}:" if candidate_id else ""
     return SignalMonitoringSourceDecision(
-        decision_id=f"{lane}:{status}:{key}:{reason}",
+        decision_id=f"{lane}:{status}:{prefix}{key}:{reason}",
+        candidate_id=candidate_id,
         lane=lane,
         status=status,  # type: ignore[arg-type]
         reason=reason,

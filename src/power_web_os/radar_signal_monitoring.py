@@ -24,7 +24,7 @@ from power_web_os.application.radar.signal_monitoring.contracts import (
 from power_web_os.application.radar.signal_monitoring.executor import SignalMonitoringExecutor
 
 
-SIGNAL_MONITORING_REPORT_VERSION = "0.7.6.4.5"
+SIGNAL_MONITORING_REPORT_VERSION = "0.7.6.4.18.2.1"
 
 
 @dataclass(slots=True)
@@ -86,10 +86,13 @@ def _monitoring_input_from_fixture(fixture: dict[str, Any]) -> SignalMonitoringI
         candidates=[SignalMonitoringCandidate.model_validate(item) for item in _list(fixture.get("candidates"))],
         signal_rules=[SignalMonitoringSignalRule.model_validate(item) for item in _list(fixture.get("signal_rules"))],
         known_sources=[SignalSourceRef.model_validate(item) for item in _list(fixture.get("known_sources"))],
+        configured_sources=[SignalSourceRef.model_validate(item) for item in _list(fixture.get("configured_sources"))],
         source_policy=SignalMonitoringSourcePolicy.model_validate(_dict(fixture.get("source_policy"))),
         source_cards=[RadarPlannerSourceCard.model_validate(item) for item in _list(fixture.get("source_cards"))],
         budget=SignalMonitoringBudget.model_validate(_dict(fixture.get("budget"))),
-        lookback_days=int(fixture.get("lookback_days") or 7),
+        lookback_days=int(fixture.get("lookback_days") or 365),
+        lookback_basis="explicit_override",
+        as_of=str(fixture.get("as_of") or ""),
         previous_signal_fingerprints=[str(item) for item in _list(fixture.get("previous_signal_fingerprints"))],
     )
 
@@ -100,6 +103,21 @@ def _report_from_outcome(*, fixture: dict[str, Any], fixture_path: Path, outcome
     search_status_counts = Counter(item["search_status"] for item in observations)
     observation_status_counts = Counter(item["observation_status"] for item in observations)
     signal_code_counts = Counter(item["signal_code"] for item in observations)
+    task_observations = [item.model_dump(mode="json") for item in outcome.task_observations]
+    positive_controls = {
+        (str(item.get("candidate_id") or ""), str(item.get("signal_code") or ""))
+        for item in _list(fixture.get("positive_controls"))
+    }
+    observed_pairs = {
+        (item["candidate_id"], item["signal_code"])
+        for item in observations
+        if item["observation_status"] == "observed" and item["search_status"] == "searched"
+    }
+    negative_task_ids = {str(item) for item in _list(fixture.get("negative_control_task_ids"))}
+    false_positive_tasks = [
+        item["task_id"] for item in task_observations
+        if item["task_id"] in negative_task_ids and item["observation_status"] == "observed"
+    ]
     return {
         "artifact_type": "radar_signal_monitoring_report",
         "artifact_version": SIGNAL_MONITORING_REPORT_VERSION,
@@ -112,7 +130,7 @@ def _report_from_outcome(*, fixture: dict[str, Any], fixture_path: Path, outcome
         "radar_id": outcome.radar_id,
         "model_profile_id": outcome.model_profile_id,
         "model_profile_summary": outcome.model_profile_summary,
-        "lookback_days": int(fixture.get("lookback_days") or 7),
+        "lookback_days": int(fixture.get("lookback_days") or 365),
         "summary": {
             "candidate_count": len(_list(fixture.get("candidates"))),
             "signal_rule_count": len(_list(fixture.get("signal_rules"))),
@@ -130,6 +148,33 @@ def _report_from_outcome(*, fixture: dict[str, Any], fixture_path: Path, outcome
         "signal_rules": _safe_signal_rules(fixture),
         "tasks": tasks,
         "observations": observations,
+        "task_observations": task_observations,
+        "search_plan": outcome.search_plan.model_dump(mode="json") if outcome.search_plan else {},
+        "plan_acceptance": outcome.plan_acceptance.model_dump(mode="json") if outcome.plan_acceptance else {},
+        "source_lane_ledger": [item.model_dump(mode="json") for item in outcome.source_lane_ledger],
+        "search_execution_receipts": [item.model_dump(mode="json") for item in outcome.search_execution_receipts],
+        "source_lifecycle": [item.model_dump(mode="json") for item in outcome.source_lifecycle],
+        "window_policy": {
+            "initial_lookback_days": int(fixture.get("lookback_days") or 365),
+            "lookback_basis": "explicit_override",
+            "as_of": str(fixture.get("as_of") or ""),
+            "incremental_overlap_days": int(fixture.get("incremental_overlap_days") or 2),
+        },
+        "watermarks_before": [item.model_dump(mode="json") for item in outcome.watermarks_before],
+        "watermarks_after": [item.model_dump(mode="json") for item in outcome.watermarks_after],
+        "evidence_validation_records": [item.model_dump(mode="json") for item in outcome.evidence_validation_records],
+        "checkpoint_decisions": [item.model_dump(mode="json") for item in outcome.checkpoint_decisions],
+        "quality_control_summary": {
+            "expected_positive_count": len(positive_controls),
+            "detected_positive_count": len(positive_controls.intersection(observed_pairs)),
+            "positive_recall": (
+                len(positive_controls.intersection(observed_pairs)) / len(positive_controls)
+                if positive_controls else None
+            ),
+            "negative_control_task_count": len(negative_task_ids),
+            "false_positive_control_count": len(false_positive_tasks),
+            "false_positive_task_ids": false_positive_tasks,
+        },
         "source_strategy_decisions": [item.model_dump(mode="json") for item in outcome.source_strategy_decisions],
         "source_strategy_diagnostics": [item.model_dump(mode="json") for item in outcome.source_strategy_diagnostics],
         "provider_attempts": [item.model_dump(mode="json") for item in outcome.provider_attempts],

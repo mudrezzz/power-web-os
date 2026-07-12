@@ -62,6 +62,8 @@ class RadarRunRequest(BaseModel):
 class RadarRunSummaryResponse(BaseModel):
     run_id: str
     radar_id: str
+    pipeline_id: str = "candidate_discovery"
+    source_run_id: str | None = None
     status: str
     queued_at: datetime | None = None
     started_at: datetime | None = None

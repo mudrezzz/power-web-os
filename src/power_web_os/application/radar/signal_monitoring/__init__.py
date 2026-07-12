@@ -4,6 +4,7 @@ from power_web_os.application.radar.signal_monitoring.contracts import (
     SignalAttemptRole,
     SignalEvidence,
     SignalMonitoringBudget,
+    SignalMonitoringCandidateScopeMode,
     SignalMonitoringCandidate,
     SignalMonitoringDiagnostic,
     SignalMonitoringEvidenceProvider,
@@ -23,21 +24,40 @@ from power_web_os.application.radar.signal_monitoring.contracts import (
     SignalSourceRef,
 )
 from power_web_os.application.radar.signal_monitoring.executor import SignalMonitoringExecutor
+from power_web_os.application.radar.signal_monitoring.input_assembler import (
+    SignalMonitoringInputAssembler,
+    SignalMonitoringInputError,
+)
+from power_web_os.application.radar.signal_monitoring.runtime import (
+    PersistedSignalMonitoringRunExecutor,
+    QueuedSignalMonitoringRunService,
+    SignalMonitoringRunCommand,
+)
+from power_web_os.application.radar.signal_monitoring.service_factory import (
+    SignalMonitoringRunComposition,
+    SignalMonitoringRunServiceFactory,
+)
 from power_web_os.application.radar.signal_monitoring.source_strategy import SignalMonitoringSourceStrategy
 
 __all__ = [
     "SignalAttemptRole",
     "SignalEvidence",
     "SignalMonitoringBudget",
+    "SignalMonitoringCandidateScopeMode",
     "SignalMonitoringCandidate",
     "SignalMonitoringDiagnostic",
     "SignalMonitoringEvidenceProvider",
     "SignalMonitoringExecutor",
     "SignalMonitoringInput",
+    "SignalMonitoringInputAssembler",
+    "SignalMonitoringInputError",
     "SignalMonitoringOutcome",
     "SignalMonitoringPlan",
     "SignalMonitoringProviderResult",
     "SignalMonitoringRun",
+    "SignalMonitoringRunCommand",
+    "SignalMonitoringRunComposition",
+    "SignalMonitoringRunServiceFactory",
     "SignalMonitoringSignalRule",
     "SignalMonitoringSourceDecision",
     "SignalMonitoringSourceHint",
@@ -48,4 +68,6 @@ __all__ = [
     "SignalProviderAttemptRecord",
     "SignalSearchTask",
     "SignalSourceRef",
+    "QueuedSignalMonitoringRunService",
+    "PersistedSignalMonitoringRunExecutor",
 ]

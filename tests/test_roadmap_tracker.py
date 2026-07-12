@@ -68,6 +68,8 @@ def test_sqlite_repository_crud_and_ordering(tmp_path: Path) -> None:
 
     repository.update_status("0.7.6.4.1", "Done", note="validated")
     assert repository.get_slice("0.7.6.4.1").status == "Done"  # type: ignore[union-attr]
+    repository.set_section("0.7.6.4.1", "Pipeline", "signal-monitoring")
+    assert repository.get_slice("0.7.6.4.1").sections["Pipeline"] == "signal-monitoring"  # type: ignore[union-attr]
 
     repository.add_link(SliceLink(slice_id="0.7.6.4.1", link_type="doc", target="docs/example.md"))
     repository.set_meta("next_recommended_task", "Slice 0.7.6.4.1")
@@ -138,6 +140,7 @@ def test_cli_import_list_show_render_and_check(tmp_path: Path) -> None:
     run_cli("render", "--output", str(roadmap))
     assert run_cli("check", "--roadmap", str(roadmap), "--export", str(export_path)).returncode == 0
     run_cli("set-meta", "next_recommended_task", "Slice 0.7.6.4.1")
+    run_cli("set-section", "0.7.6.4.1", "Owner", "Radar")
 
 
 def test_current_roadmap_tracker_artifacts_are_up_to_date() -> None:

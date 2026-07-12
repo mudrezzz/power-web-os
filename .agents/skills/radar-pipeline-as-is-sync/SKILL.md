@@ -67,6 +67,8 @@ without arguments still renders the current AS IS document.
   source lifecycle, extension points, and tests when affected.
 - The document contains no secrets, raw prompts, raw hidden reasoning, headers,
   tokens, or raw provider dumps.
+- Every mandatory acceptance requirement ID appears in the finalized AS IS
+  change record and in the validation report for the slice.
 
 ## Completion Checklist
 

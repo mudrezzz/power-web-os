@@ -341,6 +341,11 @@ def _outputs_for_runs(context: RadarApiContext, runs: tuple[RadarRunRecord, ...]
     return outputs
 
 
+def _require_radar(radar_id: str, context: RadarApiContext) -> None:
+    if context.radar_repository.get(radar_id) is None:
+        raise HTTPException(status_code=404, detail=f"Radar not found: {radar_id}")
+
+
 def _latest_output_for_runs(context: RadarApiContext, runs: tuple[RadarRunRecord, ...]) -> dict[str, RadarRunOutputRecord]:
     if not runs:
         return {}

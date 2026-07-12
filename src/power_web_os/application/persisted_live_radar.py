@@ -126,6 +126,8 @@ class PersistedLiveRadarRunExecutor:
         run = self._run_repository.get(run_id)
         if run is None:
             raise KeyError(f"Radar run not found: {run_id}")
+        if run.pipeline_id != "candidate_discovery":
+            raise ValueError("Signal-monitoring run cannot be executed by candidate discovery.")
         if run.status.is_terminal:
             return run
 

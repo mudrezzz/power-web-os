@@ -9,6 +9,7 @@ import sys
 from power_web_os.roadmap.exporter import export_slices_jsonl, render_slices_jsonl
 from power_web_os.roadmap.importer import import_slices_from_markdown
 from power_web_os.roadmap.models import RoadmapSlice, SliceLink, VALID_STATUSES
+from power_web_os.roadmap.radar_completion_gate import radar_completion_problems
 from power_web_os.roadmap.renderer import render_roadmap, write_roadmap
 from power_web_os.roadmap.sqlite_repository import SQLiteRoadmapRepository
 
@@ -45,6 +46,11 @@ def build_parser() -> argparse.ArgumentParser:
     status_parser.add_argument("slice_id")
     status_parser.add_argument("status", choices=sorted(VALID_STATUSES))
     status_parser.add_argument("--note", default="")
+
+    section_parser = subparsers.add_parser("set-section")
+    section_parser.add_argument("slice_id")
+    section_parser.add_argument("key")
+    section_parser.add_argument("value")
 
     link_parser = subparsers.add_parser("link")
     link_parser.add_argument("slice_id")
@@ -123,8 +129,19 @@ def _run(args: argparse.Namespace, repository: SQLiteRoadmapRepository) -> int:
         print(f"Added slice {args.id}")
         return 0
     if args.command == "update-status":
+        if args.status == "Done":
+            roadmap_slice = repository.get_slice(args.slice_id)
+            if roadmap_slice is None:
+                raise KeyError(f"Unknown slice id: {args.slice_id}")
+            problems = radar_completion_problems(roadmap_slice)
+            if problems:
+                raise ValueError("\n".join(problems))
         repository.update_status(args.slice_id, args.status, note=args.note)
         print(f"Updated {args.slice_id} to {args.status}")
+        return 0
+    if args.command == "set-section":
+        repository.set_section(args.slice_id, args.key, args.value)
+        print(f"Updated {args.slice_id} section {args.key}")
         return 0
     if args.command == "link":
         repository.add_link(
@@ -154,6 +171,9 @@ def _run(args: argparse.Namespace, repository: SQLiteRoadmapRepository) -> int:
             problems.append(f"{args.roadmap} is stale")
         if actual_export != expected_export:
             problems.append(f"{args.export} is stale")
+        for roadmap_slice in repository.list_slices():
+            if roadmap_slice.status == "Done":
+                problems.extend(radar_completion_problems(roadmap_slice))
         if problems:
             for problem in problems:
                 print(problem, file=sys.stderr)

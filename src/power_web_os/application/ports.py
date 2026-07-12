@@ -18,6 +18,7 @@ from power_web_os.application.radar_records import (
     RadarRunStatus,
     RadarReviewDecisionRecord,
     RadarRunTechnicalTraceRecord,
+    SignalMonitoringRunOutputRecord,
 )
 
 
@@ -50,7 +51,12 @@ class RadarRunRepository(Protocol):
 
     def find_by_idempotency_key(self, idempotency_key: str) -> RadarRunRecord | None: ...
 
-    def list_for_radar(self, radar_id: str) -> tuple[RadarRunRecord, ...]: ...
+    def list_for_radar(
+        self,
+        radar_id: str,
+        *,
+        pipeline_id: str = "candidate_discovery",
+    ) -> tuple[RadarRunRecord, ...]: ...
 
     def update_status(
         self,
@@ -71,6 +77,16 @@ class RadarRunOutputRepository(Protocol):
     def upsert(self, record: RadarRunOutputRecord) -> RadarRunOutputRecord: ...
 
     def get(self, run_id: str) -> RadarRunOutputRecord | None: ...
+
+
+class SignalMonitoringRunOutputRepository(Protocol):
+    """Application port for pipeline-specific signal monitoring artifacts."""
+
+    def upsert(self, record: SignalMonitoringRunOutputRecord) -> SignalMonitoringRunOutputRecord: ...
+
+    def get(self, run_id: str) -> SignalMonitoringRunOutputRecord | None: ...
+
+    def list_for_radar(self, radar_id: str) -> tuple[SignalMonitoringRunOutputRecord, ...]: ...
 
 
 class RadarReviewDecisionRepository(Protocol):
@@ -123,6 +139,12 @@ class JobQueue(Protocol):
     """Application port for future async execution adapters."""
 
     def enqueue_radar_run(self, run: RadarRunRecord) -> None: ...
+
+
+class SignalMonitoringJobQueue(Protocol):
+    """Queue only a durable signal-monitoring run identifier."""
+
+    def enqueue_signal_monitoring_run(self, run: RadarRunRecord) -> None: ...
 
 
 class RadarRunExecutor(Protocol):

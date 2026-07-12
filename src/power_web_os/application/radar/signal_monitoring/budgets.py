@@ -24,6 +24,8 @@ class SignalMonitoringBudgetTracker:
             "signal_source_verifications": 0,
             "signal_lookback_queries": 0,
         }
+        self.exhaustion_events: list[dict[str, str | int]] = []
+        self._retries_by_task: dict[str, int] = {}
 
     def task_budget_exhausted(self) -> bool:
         return self.counters["signal_tasks_executed"] >= self.max_signal_tasks()
@@ -31,15 +33,30 @@ class SignalMonitoringBudgetTracker:
     def provider_budget_exhausted(self) -> bool:
         return self.counters["signal_provider_calls"] >= self.max_signal_provider_calls()
 
-    def retry_budget_available(self) -> bool:
-        return self.counters["signal_extraction_retries"] < self.max_signal_extraction_retries()
+    def retry_budget_available(self, task_id: str = "") -> bool:
+        per_task = self._retries_by_task.get(task_id, 0)
+        return (
+            per_task < self.monitoring_input.budget.max_retries_per_task
+            and self.counters["signal_extraction_retries"] < self.max_signal_extraction_retries()
+        )
+
+    def backup_retry_budget_available(self) -> bool:
+        limit = self.monitoring_input.budget.max_signal_backup_retries
+        return limit is None or self.counters["signal_backup_retries"] < limit
 
     def lookback_budget_exhausted(self) -> bool:
         limit = self.monitoring_input.budget.max_signal_lookback_queries
         return limit is not None and self.counters["signal_lookback_queries"] >= limit
 
+    def source_verification_budget_available(self, count: int) -> bool:
+        limit = self.monitoring_input.budget.max_signal_source_verifications
+        return limit is None or self.counters["signal_source_verifications"] + count <= limit
+
     def record_lookback_query(self) -> None:
         self.counters["signal_lookback_queries"] += 1
+
+    def record_source_verifications(self, count: int) -> None:
+        self.counters["signal_source_verifications"] += max(0, count)
 
     def record_searched_task(self) -> None:
         self.counters["tasks_executed"] += 1
@@ -49,13 +66,32 @@ class SignalMonitoringBudgetTracker:
         self.counters["provider_calls"] += 1
         self.counters["signal_provider_calls"] += 1
 
-    def record_primary_retry(self) -> None:
+    def record_primary_retry(self, task_id: str = "") -> None:
         self.counters["retries"] += 1
         self.counters["signal_extraction_retries"] += 1
+        self._retries_by_task[task_id] = self._retries_by_task.get(task_id, 0) + 1
 
     def record_backup_retry(self) -> None:
         self.counters["backup_retries"] += 1
         self.counters["signal_backup_retries"] += 1
+
+    def record_exhaustion(self, *, budget: str, task_id: str, limit: int) -> None:
+        event = {"budget": budget, "task_id": task_id, "limit": limit}
+        if event not in self.exhaustion_events:
+            self.exhaustion_events.append(event)
+
+    def settings_payload(self) -> dict[str, int | bool | None]:
+        budget = self.monitoring_input.budget
+        return {
+            "max_signal_tasks": self.max_signal_tasks(),
+            "max_signal_provider_calls": self.max_signal_provider_calls(),
+            "max_retries_per_task": budget.max_retries_per_task,
+            "max_signal_extraction_retries": self.max_signal_extraction_retries(),
+            "max_signal_backup_retries": budget.max_signal_backup_retries,
+            "max_signal_source_verifications": budget.max_signal_source_verifications,
+            "max_signal_lookback_queries": budget.max_signal_lookback_queries,
+            "allow_backup_retry": budget.allow_backup_retry,
+        }
 
     def max_signal_tasks(self) -> int:
         budget = self.monitoring_input.budget

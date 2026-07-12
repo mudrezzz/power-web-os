@@ -75,6 +75,11 @@ Implement one small, complete, tested, documented product increment.
      cause is a process gap rather than only a code defect.
   Do not treat "tests passed" as enough evidence for a behavior-changing Radar
   slice.
+- For tracker slices marked `Pipeline` and `Behavior change: true`, load the
+  registered acceptance manifest before code changes. Keep the slice In
+  Progress until every mandatory requirement has test evidence, required live
+  reports are persisted, `radar_pipeline_validation` writes PASS, TO BE is
+  marked Implemented, and AS IS contains the finalized slice change record.
 - Do not normalize broken LLM/provider output into apparently successful
   product states. Missing source refs, invalid schemas, evidence-linking
   failures, and budget/policy skips should become explicit diagnostic states and

@@ -1,0 +1,259 @@
+{
+  "schema_version": "radar_pipeline_acceptance.v2",
+  "slice_id": "0.7.6.4.18.2.2",
+  "pipeline_id": "signal-monitoring",
+  "behavior_change": true,
+  "to_be_markdown": "docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.2.2.md",
+  "to_be_pdf": "docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.2.2.pdf",
+  "as_is_markdown": "docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md",
+  "as_is_pdf": "docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.pdf",
+  "baseline_diagnostic": "docs/radar/pipelines/signal-monitoring/diagnostics/SIGNAL_RUN_9d018757_863de7ce_QUALITY_RCA.md",
+  "validation_json": "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.2.2/validation.json",
+  "validation_markdown": "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.2.2/VALIDATION_REPORT.md",
+  "requirements": [
+    {
+      "id": "SM-TIME-01",
+      "description": "Retrieval time never satisfies publication or event freshness.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_search_pipeline.py::test_retrieved_at_does_not_confirm_freshness_without_event_or_publication_date"
+      ]
+    },
+    {
+      "id": "SM-TIME-02",
+      "description": "Unknown or conflicting dates remain visible for human review.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_search_pipeline.py::test_retrieved_at_does_not_confirm_freshness_without_event_or_publication_date",
+        "tests/test_signal_monitoring_search_pipeline.py::test_conflicting_dates_are_retained_for_human_review"
+      ]
+    },
+    {
+      "id": "SM-TIME-03",
+      "description": "Known out-of-window evidence cannot become a confirmed signal.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_search_pipeline.py::test_evidence_outside_window_is_review_needed_not_observed"
+      ]
+    },
+    {
+      "id": "SM-CAP-01",
+      "description": "Every source has auditable capability classification.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_source_binding.py::test_sources_receive_generic_capability_and_basis"
+      ]
+    },
+    {
+      "id": "SM-BIND-01",
+      "description": "Cross-entity sources never become candidate known-source tasks.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_source_binding.py::test_cross_entity_source_is_retained_but_not_scheduled"
+      ]
+    },
+    {
+      "id": "SM-BIND-02",
+      "description": "Identity and registry evidence cannot confirm fresh signals.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_source_binding.py::test_identity_only_source_cannot_confirm_fresh_signal"
+      ]
+    },
+    {
+      "id": "SM-QUERY-01",
+      "description": "Candidate aliases and bounded query revision remain auditable.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_search_pipeline.py::test_candidate_alias_is_used_only_for_bounded_revision"
+      ]
+    },
+    {
+      "id": "SM-RETRY-01",
+      "description": "Transport failures receive one bounded primary retry.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_search_pipeline.py::test_provider_transport_error_gets_bounded_primary_retry"
+      ]
+    },
+    {
+      "id": "SM-SCORE-01",
+      "description": "Confirmed observed evidence has non-zero score.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_search_pipeline.py::test_valid_positive_requires_entity_criterion_date_source_and_official_domain"
+      ]
+    },
+    {
+      "id": "SM-BENCH-01",
+      "description": "Live quality scope contains six candidates and twelve pairs.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_quality_benchmark.py::test_expanded_quality_manifest_has_six_candidates_and_twelve_pairs"
+      ]
+    },
+    {
+      "id": "SM-BENCH-02",
+      "description": "All explicit positive controls match candidate criterion URL and time.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_quality_benchmark.py::test_control_evaluator_matches_explicit_positive_controls"
+      ]
+    },
+    {
+      "id": "SM-BENCH-03",
+      "description": "Negative controls remain unconfirmed and unknown-date evidence remains reviewable.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_quality_benchmark.py::test_control_evaluator_separates_negative_and_unknown_date_controls"
+      ]
+    },
+    {
+      "id": "SM-DED-02",
+      "description": "Incremental run republishes neither confirmed nor review evidence.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_search_pipeline.py::test_incremental_signal_monitoring_dedupes_unknown_review_evidence"
+      ]
+    },
+    {
+      "id": "SM-AUD-02",
+      "description": "Every retained rejected or missed item has reason and provenance.",
+      "test_node_ids": [
+        "tests/test_signal_monitoring_search_pipeline.py::test_temporal_and_binding_decisions_have_product_safe_reasons"
+      ]
+    },
+    {
+      "id": "SM-ARCH-02",
+      "description": "Signal application stays independent from candidate discovery HTTP and provider SDKs.",
+      "test_node_ids": [
+        "tests/test_backend_architecture_contract.py::test_radar_signal_monitoring_does_not_import_candidate_discovery_internals"
+      ]
+    },
+    {
+      "id": "SM-PROC-02",
+      "description": "RCA TO BE tests live validation and AS IS are fully traceable.",
+      "test_node_ids": [
+        "tests/test_radar_pipeline_documentation_contract.py::test_signal_monitoring_quality_slice_is_traceable_to_finalized_as_is"
+      ]
+    }
+  ],
+  "recorded_acceptance": {
+    "required_positive_recall": 1.0,
+    "maximum_false_positive_controls": 0,
+    "minimum_unknown_date_reviews": 1
+  },
+  "live_acceptance": {
+    "source_candidate_run_id": "radar-run-3bbf9c0f-330e-4468-8901-966a751234a8",
+    "candidate_ids": [
+      "ао-сибур-химпром",
+      "ао-воронежсинтезкаучук",
+      "ао-красноярский-завод-синтетического-каучука",
+      "ао-камтэкс-полиэфиры",
+      "ао-пермские-полиэфиры",
+      "ппо-ао-воронежсинтезкаучук-нефтегазстройпрофсоюза-россии"
+    ],
+    "accepted_candidate_count": 3,
+    "review_candidate_count": 3,
+    "signal_codes": [
+      "S1",
+      "S2"
+    ],
+    "initial_lookback_days": 365,
+    "positive_controls": [
+      {
+        "id": "khimprom-modernization-automation-2025",
+        "candidate_id": "ао-сибур-химпром",
+        "signal_code": "S2",
+        "url": "https://www.kommersant.ru/doc/8232236",
+        "accepted_urls": [
+          "https://www.kommersant.ru/doc/8232236",
+          "https://www.business-class.su/news/2025/12/02/top-300-sibur-himprom-strategiya-otvetstvennosti-k-prirode-lyudyam-i-gorodu"
+        ],
+        "date_start": "2025-11-27",
+        "date_end": "2025-12-02"
+      },
+      {
+        "id": "voronezh-commissioning-2026",
+        "candidate_id": "ао-воронежсинтезкаучук",
+        "signal_code": "S1",
+        "url": "https://www.sibur.ru/voronejkauchuk/press-center/progress-realizatsii-stroitelstva-proizvodstva-n-butillitiya-dostig-80/",
+        "accepted_urls": [
+          "https://www.sibur.ru/voronejkauchuk/press-center/progress-realizatsii-stroitelstva-proizvodstva-n-butillitiya-dostig-80/",
+          "https://www.sibur.ru/voronejkauchuk/press-center/voronezhsintezkauchuk-napravil-bolee-3-mlrd-rubley-na-povyshenie-nadezhnosti-i-ekologichnosti-predpr/",
+          "https://poligraf.media/biznes/20260310/voronezhsintezkauchuk-himicheskaya-zhemchuzhina-sektora-gaza",
+          "https://www.kommersant.ru/doc/8195024"
+        ],
+        "date_start": "2026-01-01",
+        "date_end": "2026-06-30"
+      },
+      {
+        "id": "voronezh-special-component-2026",
+        "candidate_id": "ао-воронежсинтезкаучук",
+        "signal_code": "S2",
+        "url": "https://www.sibur.ru/voronejkauchuk/press-center/sibur-zavershil-stroitelstvo-proizvodstva-klyuchevogo-spetskomponenta-dlya-proizvodstva-shin-i-dorozh/",
+        "accepted_urls": [
+          "https://www.sibur.ru/voronejkauchuk/press-center/sibur-zavershil-stroitelstvo-proizvodstva-klyuchevogo-spetskomponenta-dlya-proizvodstva-shin-i-dorozh/",
+          "https://www.sibur.ru/voronejkauchuk/press-center/sibur-stroit-sobstvennoe-proizvodstvo-n-butillitiya-dlya-proizvodstva-shin-i-dorozhnog/",
+          "https://rupec.ru/news/56408/",
+          "https://abireg.ru/newsitem/112663/"
+        ],
+        "date_start": "2025-12-26",
+        "date_end": "2026-03-31"
+      },
+      {
+        "id": "voronezh-kommersant-plant-2026",
+        "candidate_id": "ао-воронежсинтезкаучук",
+        "signal_code": "S2",
+        "url": "https://www.kommersant.ru/doc/8195024",
+        "accepted_urls": [
+          "https://www.kommersant.ru/doc/8195024",
+          "https://voronezh-news.net/economy/2026/04/01/451836.html"
+        ],
+        "date_start": "2026-01-01",
+        "date_end": "2026-06-30"
+      }
+    ],
+    "negative_controls": [
+      {
+        "id": "voronezh-old-abireg-repair",
+        "candidate_id": "ао-воронежсинтезкаучук",
+        "signal_code": "S1",
+        "url": "https://abireg.ru/newsitem/10718/",
+        "expected_reason": "rejected_out_of_window"
+      },
+      {
+        "id": "kzsk-old-kommersant-modernization",
+        "candidate_id": "ао-красноярский-завод-синтетического-каучука",
+        "signal_code": "S2",
+        "url": "https://www.kommersant.ru/doc/5379680",
+        "expected_reason": "rejected_out_of_window"
+      },
+      {
+        "id": "khimprom-old-interfax-investment",
+        "candidate_id": "ао-сибур-химпром",
+        "signal_code": "S2",
+        "url": "https://www.interfax.ru/business/1010244",
+        "expected_reason": "rejected_out_of_window"
+      },
+      {
+        "id": "voronezh-conflicting-smotrim-date",
+        "candidate_id": "ао-воронежсинтезкаучук",
+        "signal_code": "S1",
+        "url": "https://smotrim.ru/article/1969598",
+        "expected_reason": "review_needed_date_conflict"
+      }
+    ],
+    "unknown_date_controls": [
+      {
+        "id": "khimprom-official-turnaround-date-unknown",
+        "candidate_id": "ао-сибур-химпром",
+        "signal_code": "S1",
+        "url": "https://www.sibur.ru/SiburKhimprom/press-center/ostanovochnyy-remont-na-sibur-khimprome-prokhodit-bezopasno-dlya-atmosfery/",
+        "accepted_urls": [
+          "https://www.sibur.ru/SiburKhimprom/press-center/ostanovochnyy-remont-na-sibur-khimprome-prokhodit-bezopasno-dlya-atmosfery/",
+          "https://www.sibur.ru/SiburKhimprom/press-center/v-svyazi-s-planovym-izmeneniem-rezhima-raboty-oborudovaniya-na-ao-sibur-khimprom-mogut-nablyudatsya-1/",
+          "https://tass.ru/ekonomika/19788075",
+          "https://tu-sibur.ru/news/7463/"
+        ],
+        "expected_reason": "review_needed_date_unknown"
+      }
+    ],
+    "requires_second_incremental_run": true,
+    "requires_restart_roundtrip": true
+  },
+  "retrospective": [
+    {
+      "code": "SM-QUAL-CTRL-RCA-01",
+      "finding": "The initial live controls included URL-level expectations that were not naturally reachable by the normal run, and one turnaround URL did not prove a 2026 event. Controls were corrected to public source-backed evidence seen by blind live search while keeping production code free of benchmark names or URLs.",
+      "resolution": "Positive controls now use explicit accepted URL sets for the same public event because live web search may return equivalent official or media coverage; negative and unknown controls validate retained/rejected evidence inside the artifact and require at least two negative matches."
+    }
+  ]
+}

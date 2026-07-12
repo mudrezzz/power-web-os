@@ -25,6 +25,10 @@ from power_web_os.api.radar_dtos import (
     SignalResponse,
     SourceUsageResponse,
 )
+from power_web_os.api.signal_monitoring_dtos import (
+    SignalMonitoringOutputSummaryResponse,
+    SignalMonitoringRunSummaryResponse,
+)
 from power_web_os.api.radar_public_provenance import public_candidate_rows, public_candidate_sources
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
@@ -34,6 +38,7 @@ from power_web_os.application.radar_records import (
     RadarRunEventRecord,
     RadarRunRecord,
     RadarRunTechnicalTraceRecord,
+    SignalMonitoringRunOutputRecord,
 )
 
 
@@ -104,6 +109,8 @@ def run_summary_response(
     return RadarRunSummaryResponse(
         run_id=run.run_id,
         radar_id=run.radar_id,
+        pipeline_id=run.pipeline_id,
+        source_run_id=run.source_run_id,
         status=run.status.value,
         queued_at=run.queued_at,
         started_at=run.started_at,
@@ -124,6 +131,41 @@ def output_summary_response(output: RadarRunOutputRecord) -> RadarRunOutputSumma
         candidate_count=len(output.candidates_payload),
         contract_issue_count=len(output.contract_validation_payload),
         updated_at=output.updated_at,
+    )
+
+
+def signal_monitoring_run_summary_response(
+    run: RadarRunRecord,
+    *,
+    output: SignalMonitoringRunOutputRecord | None,
+) -> SignalMonitoringRunSummaryResponse:
+    summary = _dict(output.artifact_payload.get("summary")) if output else {}
+    return SignalMonitoringRunSummaryResponse(
+        run_id=run.run_id,
+        radar_id=run.radar_id,
+        pipeline_id=run.pipeline_id,
+        source_run_id=str(run.source_run_id or ""),
+        status=run.status.value,
+        queued_at=run.queued_at,
+        started_at=run.started_at,
+        completed_at=run.completed_at,
+        idempotency_key=run.idempotency_key,
+        correlation_id=run.correlation_id,
+        error_message=run.error_message,
+        error_metadata=run.error_metadata,
+        run_metadata=run.run_metadata,
+        output=(
+            SignalMonitoringOutputSummaryResponse(
+                artifact_version=output.artifact_version,
+                completion_state=str(output.artifact_payload.get("completion_state") or "completed"),
+                candidate_count=int(summary.get("candidate_count") or 0),
+                observation_count=int(summary.get("observation_count") or 0),
+                provider_call_count=int(summary.get("provider_call_count") or 0),
+                updated_at=output.updated_at,
+            )
+            if output
+            else None
+        ),
     )
 
 

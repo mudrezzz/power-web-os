@@ -13,7 +13,7 @@ the current candidate-discovery default.
 | Pipeline id | Purpose | Cadence | Current state |
 |---|---|---|---|
 | `candidate-discovery` | Find and qualify legal entities, sites, branches, projects, and review-needed upstream entities. | Infrequent: manual, monthly, quarterly, or after Radar settings change. | Implemented through the current Radar search pipeline with signal-monitoring handoff by default; docs still live at `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` until the migration slice splits the file. |
-| `signal-monitoring` | Monitor configured intent signals for known candidates over a recent time window. | Frequent: weekly or another product-configured monitoring cadence. | No-network application contracts, recorded TOIR loop, capability-driven source strategy, independent signal budgets, config-backed signal model profile, AS IS docs, and recorded UI preview exist. Live runtime, scheduler, and production UI execution are still planned. |
+| `signal-monitoring` | Monitor configured intent signals for known candidates over a recent time window. | Frequent: manual API/job execution now; scheduled cadence later. | Recorded and persisted live runtime, capability-driven source strategy, independent budgets/model profile, separate API/job/output contracts, and AS IS docs exist. Recurrence and full production UI remain planned. |
 | `power-web-discovery` | Discover people, roles, relationships, partner paths, buying committee structure, and access routes for accepted accounts. | Event-driven or account-workflow driven. | Planned. |
 
 ## Required files
@@ -96,12 +96,18 @@ Path mapping:
 
 For every substantial pipeline change:
 
-1. Create a TO BE Markdown and PDF for the target `pipeline_id`.
-2. Review the intended algorithm, roles, context handoffs, budgets, model
+1. Read the current AS IS and diagnose a persisted baseline run.
+2. Create a TO BE Markdown/PDF and adjacent `.acceptance.json` for the target `pipeline_id`.
+3. Review the intended algorithm, roles, context handoffs, budgets, model
    roles, source capabilities, diagnostic states, and tests.
-3. Implement the slice.
-4. Sync the pipeline AS IS Markdown and PDF.
-5. Record validation evidence in `ROADMAP.md`.
+4. Implement the slice and collect mapped test plus persisted runtime evidence.
+5. Generate Markdown/JSON validation reports with `RadarPipelineSliceValidator`.
+6. Sync the pipeline AS IS Markdown/PDF and mark TO BE `Implemented`.
+7. Require final `validation_status=PASS` before Roadmap `Done`.
+
+The tracker sections `Pipeline`, `Behavior change`, `Acceptance manifest`, and
+`Validation report` activate this gate. Requirement IDs must be traceable across
+TO BE, manifest, validation report and the finalized AS IS change record.
 
 ## Model-profile rule
 

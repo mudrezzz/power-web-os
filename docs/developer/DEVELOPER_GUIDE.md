@@ -198,7 +198,7 @@ is `docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md`.
 Signal monitoring has its own model-role profile and budget rules so tuning the
 frequent monitoring loop does not silently change candidate discovery.
 
-The current `signal-monitoring` implementation is still no-network. Its
+The `signal-monitoring` application core remains provider-neutral. Its
 package-owned contracts, source strategy, support components, and recorded
 executor live under
 `src/power_web_os/application/radar/signal_monitoring`. Root-level
@@ -215,6 +215,27 @@ python -m power_web_os.demo run-recorded-signal-monitoring \
   --signal-monitoring-fixture demo/fixtures/radar_signal_monitoring/toir_recorded_signal_monitoring.json \
   --signal-monitoring-output demo/output/radar_signal_monitoring_report.json
 ```
+
+Run the separately persisted live pipeline through Docker API and its own
+Celery queue:
+
+```powershell
+docker compose up -d --build
+python -m power_web_os.demo run-live-signal-monitoring `
+  --api-url http://127.0.0.1:8001 `
+  --radar-id benchmark-sibur-holding-contour `
+  --source-run-id <completed-candidate-run-id> `
+  --candidate-id <accepted-id-1> `
+  --candidate-id <accepted-id-2> `
+  --candidate-id <review-needed-id> `
+  --signal-code <signal-code-1> `
+  --signal-code <signal-code-2>
+```
+
+The command performs preflight, queues a `signal-run-*`, polls it, reads the
+persisted report and prints one closeout summary. Candidate discovery is not
+rerun. Signal tasks use the `signal_monitoring_default` model profile and a
+separate bounded budget.
 
 The command writes a product-safe report with new signals, duplicate old
 signals, searched-negative states, budget-limited tasks, evidence refs, source
@@ -244,6 +265,15 @@ Use the project skills for the documentation loop:
 
 Future Radar pipeline slices are not complete until the AS IS Markdown/PDF and
 the documentation contract test are current.
+
+Behavior-changing Radar slices additionally use a machine-enforced evidence
+loop. Add tracker sections `Pipeline`, `Behavior change: true`, `Acceptance
+manifest`, and `Validation report`; create stable requirement IDs with exact
+pytest node IDs; collect required persisted run reports; then run
+`python -m power_web_os.radar_pipeline_validation`. The Roadmap CLI rejects
+`Done` until the generated JSON report is `PASS`, TO BE is marked
+`Implemented`, and AS IS contains the slice change record. See ADR
+`2026-07-10-radar-pipeline-acceptance-evidence-loop.md`.
 
 ## How To Add Radar Backend Code After 0.7.6.4.8
 

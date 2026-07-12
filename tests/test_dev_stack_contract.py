@@ -28,6 +28,7 @@ def test_docker_compose_uses_shared_sqlite_and_redis_contract() -> None:
     assert "POWER_WEB_OS_DATABASE_URL: sqlite:////app/demo/output/power_web_os.sqlite3" in compose
     assert "POWER_WEB_OS_CELERY_BROKER_URL: redis://redis:6379/0" in compose
     assert "POWER_WEB_OS_CELERY_RESULT_BACKEND: redis://redis:6379/1" in compose
+    assert compose.count("POWER_WEB_OS_SQLITE_JOURNAL_MODE: DELETE") == 3
     assert compose.count("./demo/output:/app/demo/output") >= 3
     assert compose.count("./.env:/app/.env:ro") >= 3
     assert compose.count("env_file:") >= 3

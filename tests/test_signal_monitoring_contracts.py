@@ -97,6 +97,7 @@ def observed_payload(*, summary: str = "New TOIR tender", observed_at: str = "20
                 "title": "Tender",
                 "url": "https://example.test/signal",
                 "snippet": "Candidate A posted a TOIR tender.",
+                "published_at": observed_at,
             }
         ],
         "observations": [
@@ -107,7 +108,7 @@ def observed_payload(*, summary: str = "New TOIR tender", observed_at: str = "20
                 "summary": summary,
                 "score": 2,
                 "evidence_refs": ["src-signal"],
-                "observed_at": observed_at,
+                "event_at": observed_at,
             }
         ],
     }
@@ -139,9 +140,20 @@ def test_signal_found_projects_observed_and_searched_state() -> None:
     assert outcome.budget_counters["provider_calls"] == 1
     assert outcome.budget_counters["signal_provider_calls"] == 1
     assert outcome.budget_counters["signal_tasks_executed"] == 1
+    assert outcome.budget_counters["signal_source_verifications"] == 1
     assert outcome.model_profile_id == "signal_monitoring_default"
     assert outcome.model_profile_summary["pipeline_id"] == "signal-monitoring"
     assert provider.calls == [("signal-candidate-a-toir_tender-open_web-1", "primary")]
+
+
+def test_provider_confidence_alias_is_normalized_without_failing_run() -> None:
+    payload = observed_payload()
+    payload["observations"][0]["confidence"] = "high"
+
+    outcome = SignalMonitoringExecutor(ScriptedSignalProvider([payload])).run(base_input())
+
+    assert outcome.observations[0].observation_status == "observed"
+    assert outcome.observations[0].evidence[0].confidence == "strong"
 
 
 def test_run_and_plan_contracts_wrap_input_and_tasks() -> None:
@@ -172,6 +184,18 @@ def test_searched_negative_is_not_observed_only_after_search() -> None:
     assert observation.search_status == "searched"
 
 
+def test_same_evidence_url_is_duplicate_even_when_model_summary_changes() -> None:
+    monitoring_input = base_input(previous_signal_source_keys=[
+        "candidate-a|toir_tender|https://example.test/signal"
+    ])
+
+    outcome = SignalMonitoringExecutor(ScriptedSignalProvider([
+        observed_payload(summary="The model paraphrased the same event.")
+    ])).run(monitoring_input)
+
+    assert outcome.task_observations[0].search_status == "duplicate_existing_signal"
+
+
 def test_budget_limited_task_is_not_projected_as_not_observed() -> None:
     provider = ScriptedSignalProvider([observed_payload()])
     monitoring_input = base_input(budget=SignalMonitoringBudget(max_signal_tasks=0, max_provider_calls=10))
@@ -195,6 +219,36 @@ def test_signal_provider_call_budget_blocks_provider_call() -> None:
     assert observation.search_status == "not_searched_budget_limited"
     assert outcome.budget_counters["signal_provider_calls"] == 0
     assert provider.calls == []
+
+
+def test_smoke_task_planning_selects_one_lane_per_candidate_signal_pair() -> None:
+    provider = ScriptedSignalProvider([searched_negative_payload()] * 6)
+    candidates = [
+        SignalMonitoringCandidate(
+            candidate_id=f"candidate-{index}",
+            display_name=f"Candidate {index}",
+            source_refs=[f"source-{index}"],
+        )
+        for index in range(3)
+    ]
+    rules = [
+        SignalMonitoringSignalRule(signal_code=f"S{index}", label=f"Signal {index}")
+        for index in range(2)
+    ]
+
+    result = SignalMonitoringExecutor(provider).run(base_input(
+        candidates=candidates,
+        signal_rules=rules,
+        budget=SignalMonitoringBudget(max_signal_tasks=6, max_signal_provider_calls=8),
+    ))
+
+    assert len(result.tasks) == 6
+    assert {(task.candidate_id, task.signal_code) for task in result.tasks} == {
+        (candidate.candidate_id, rule.signal_code)
+        for candidate in candidates
+        for rule in rules
+    }
+    assert len(provider.calls) == 6
 
 
 def test_policy_limited_task_is_not_executed() -> None:
@@ -269,6 +323,7 @@ def test_repairable_payload_is_fixed_without_backup() -> None:
             "source_ref": "src-signal",
             "title": "Tender",
             "url": "https://example.test/signal",
+            "snippet": "Candidate A published a tender.",
         },
         "observations": {
             "candidate_id": "candidate-a",
@@ -276,6 +331,7 @@ def test_repairable_payload_is_fixed_without_backup() -> None:
             "status": "observed",
             "summary": "New TOIR tender",
             "evidence_refs": ["src-signal"],
+            "event_at": "2026-06-30",
         },
     }
     primary = ScriptedSignalProvider([repairable])

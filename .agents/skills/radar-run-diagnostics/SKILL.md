@@ -104,6 +104,11 @@ Answer in Russian unless the user asks otherwise. Keep the report readable:
 Avoid dumping large JSON. Quote only compact field names, counts, status values,
 and short snippets needed to support the conclusion.
 
+For a pipeline slice with an acceptance manifest, map every material finding to
+its requirement ID. Distinguish a code defect from a failed planning/testing
+assumption, and propose changes to tests, skills, ADRs or tracker gates when the
+same process could allow the defect again.
+
 ## Safety
 
 - Never print `.env`, API keys, tokens, bearer strings, authorization headers,

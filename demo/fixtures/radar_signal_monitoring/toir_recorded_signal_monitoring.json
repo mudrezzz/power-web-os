@@ -3,6 +3,7 @@
   "run_id": "signal-run-recorded-toir-0.7.6.4.5",
   "radar_id": "benchmark-sibur-holding-contour",
   "model_profile_id": "signal_monitoring_default",
+  "as_of": "2026-07-03T12:00:00Z",
   "lookback_days": 7,
   "candidates": [
     {
@@ -73,7 +74,7 @@
     {
       "source_ref": "sibur-known-sources",
       "title": "Recorded SIBUR source bundle for TOIR monitoring",
-      "url": "https://recorded.example.test/sibur/toir-monitoring",
+      "url": "https://recorded.example.test",
       "snippet": "Recorded candidate-discovery source bundle reused for signal monitoring.",
       "source_id": "sibur_known_sources",
       "lifecycle_state": "used"
@@ -124,7 +125,7 @@
           "summary": "Recorded tender signal: Нижнекамскнефтехим ищет подрядчика на ремонт промышленного оборудования.",
           "score": 2,
           "evidence_refs": ["src-nknh-tender"],
-          "observed_at": "2026-07-01",
+          "event_at": "2026-07-01",
           "confidence": "strong"
         }
       ]
@@ -166,7 +167,7 @@
           "summary": "Recorded article says Nizhnekamskneftekhim expanded 1C TOIR maintenance planning.",
           "score": 2,
           "evidence_refs": ["src-nknh-toir-1c"],
-          "observed_at": "2026-06-27",
+          "event_at": "2026-06-27",
           "confidence": "medium"
         }
       ]
@@ -189,7 +190,7 @@
           "summary": "Recorded tender signal: Казаньоргсинтез ищет подрядчика на сервис и ремонтные работы.",
           "score": 2,
           "evidence_refs": ["src-kos-tender"],
-          "observed_at": "2026-07-02",
+          "event_at": "2026-07-02",
           "confidence": "strong"
         }
       ]
@@ -212,7 +213,7 @@
           "summary": "Recorded vacancy signal: открыта вакансия инженера по планированию ремонтов с EAM/CMMS.",
           "score": 2,
           "evidence_refs": ["src-kos-vacancy"],
-          "observed_at": "2026-07-02",
+          "event_at": "2026-07-02",
           "confidence": "strong"
         }
       ]
@@ -235,7 +236,7 @@
           "summary": "Recorded article signal: Казаньоргсинтез развивает цифровое планирование ремонтов и EAM-практики.",
           "score": 2,
           "evidence_refs": ["src-kos-digital"],
-          "observed_at": "2026-07-01",
+          "event_at": "2026-07-01",
           "confidence": "medium"
         }
       ]

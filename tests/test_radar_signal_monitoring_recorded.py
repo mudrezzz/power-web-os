@@ -9,6 +9,7 @@ from power_web_os.radar_signal_monitoring import generate_recorded_signal_monito
 
 
 FIXTURE = Path("demo/fixtures/radar_signal_monitoring/toir_recorded_signal_monitoring.json")
+QUALITY_FIXTURE = Path("demo/fixtures/radar_signal_monitoring/signal_monitoring_positive_controls.json")
 
 
 def test_recorded_toir_signal_monitoring_loop_projects_required_states(tmp_path: Path) -> None:
@@ -19,7 +20,7 @@ def test_recorded_toir_signal_monitoring_loop_projects_required_states(tmp_path:
     assert output.exists()
     assert json.loads(output.read_text(encoding="utf-8")) == report
     assert report["artifact_type"] == "radar_signal_monitoring_report"
-    assert report["artifact_version"] == "0.7.6.4.5"
+    assert report["artifact_version"] == "0.7.6.4.18.2.1"
     assert report["recorded_provider"] is True
     assert report["live_provider_calls"] == 0
     assert report["summary"]["candidate_count"] == 5
@@ -106,3 +107,18 @@ def test_demo_command_writes_recorded_signal_monitoring_report(tmp_path: Path) -
     report = json.loads(output.read_text(encoding="utf-8"))
     assert report["summary"]["not_searched_budget_limited_count"] >= 1
     assert '"artifact_type": "radar_signal_monitoring_report"' in completed.stdout
+
+
+def test_recorded_positive_control_benchmark_meets_quality_dod(tmp_path: Path) -> None:
+    report = generate_recorded_signal_monitoring_report(
+        fixture_path=QUALITY_FIXTURE,
+        output_path=tmp_path / "quality-report.json",
+    )
+
+    quality = report["quality_control_summary"]
+    assert quality["expected_positive_count"] == 4
+    assert quality["detected_positive_count"] == 4
+    assert quality["positive_recall"] == 1.0
+    assert quality["false_positive_control_count"] == 0
+    assert {item["status"] for item in report["source_lane_ledger"]} == {"executed"}
+    assert len(report["search_execution_receipts"]) == len(report["tasks"])
