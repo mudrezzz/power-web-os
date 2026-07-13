@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { EditableRadarDefinitionDraft, RadarEditorState } from '../../types';
+import type { RadarRunConfigurationDto } from '../../api/radarApi';
 import { GlobalSearchEditor, GlobalSearchSummary } from './settingsSearch';
 import { MonitoringEditor, MonitoringSummary } from './settingsMonitoring';
 import { QualificationRulesEditor, RuleGroupSummary } from './settingsQualification';
@@ -20,6 +21,7 @@ export function RadarSettings({
   onEdit,
   onSave,
   validationErrors,
+  runConfiguration,
 }: {
   dirty: boolean;
   draft: EditableRadarDefinitionDraft;
@@ -29,6 +31,7 @@ export function RadarSettings({
   onEdit: (block: SettingsBlockId | null) => void;
   onSave: () => void;
   validationErrors: string[];
+  runConfiguration: RadarRunConfigurationDto | null;
 }) {
   const { t } = useTranslation();
   const editorState: RadarEditorState = {
@@ -39,6 +42,20 @@ export function RadarSettings({
 
   return (
     <div className="icp-settings-stack">
+      <div className="settings-configuration-context">
+        <section>
+          <strong>{t('icpRadar.settings.activeDefinition')}</strong>
+          <span>{draft.definition_version ?? t('icpRadar.unknown')}</span>
+        </section>
+        {runConfiguration && (
+          <section>
+            <strong>{t('icpRadar.settings.historicalSnapshot')}</strong>
+            <span>{runConfiguration.run_id}</span>
+            <span>{runConfiguration.definition_version || t('icpRadar.unknown')}</span>
+            <span>{runConfiguration.run_profile || t('icpRadar.unknown')}</span>
+          </section>
+        )}
+      </div>
       {editorState.dirty && (
         <div className="icp-editor-errors" role="status">
           <span>{t('icpRadar.unsavedChanges')}</span>

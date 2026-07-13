@@ -14,6 +14,7 @@ from power_web_os.application.radar_records import (
     RadarRecord,
     RadarRunEventRecord,
     RadarRunOutputRecord,
+    RadarRunOutputSummaryRecord,
     RadarRunRecord,
     RadarRunStatus,
     RadarReviewDecisionRecord,
@@ -77,6 +78,8 @@ class RadarRunOutputRepository(Protocol):
     def upsert(self, record: RadarRunOutputRecord) -> RadarRunOutputRecord: ...
 
     def get(self, run_id: str) -> RadarRunOutputRecord | None: ...
+
+    def get_summary(self, run_id: str) -> RadarRunOutputSummaryRecord | None: ...
 
 
 class SignalMonitoringRunOutputRepository(Protocol):

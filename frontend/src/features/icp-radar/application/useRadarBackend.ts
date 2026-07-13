@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { RadarApiClient, RadarApiError, type RadarPreflightDto, type RadarRunSummaryDto } from '../../../api/radarApi';
+import { RadarApiClient, RadarApiError, type RadarPreflightDto, type RadarRunConfigurationDto, type RadarRunSummaryDto } from '../../../api/radarApi';
 import type {
   ICPRadarCatalogArtifact,
   ICPRadarCatalogItem,
@@ -41,6 +41,11 @@ export type RadarPreflightControlState = {
   error: string | null;
 };
 
+export type RadarResourceState = {
+  status: 'idle' | 'loading' | 'loaded' | 'empty' | 'failed';
+  error: string | null;
+};
+
 export type RadarBackendController = {
   catalog: ICPRadarCatalogArtifact | null;
   liveRunArtifact: LiveICPRadarRunArtifact | null;
@@ -49,6 +54,12 @@ export type RadarBackendController = {
   selectedRunByRadarId: Record<string, RadarRunSummaryDto>;
   runState: RadarRunControlState;
   preflightState: RadarPreflightControlState;
+  definitionStateByRadarId: Record<string, RadarResourceState>;
+  runResourceStateByKey: Record<string, RadarResourceState>;
+  configurationByRunId: Record<string, RadarRunConfigurationDto>;
+  loadRadarDefinition: (radarId: string) => Promise<ICPRadarCatalogItem | null>;
+  loadRadarRunResource: (radarId: string, resource: 'journal' | 'dossier' | 'trace') => Promise<void>;
+  loadRadarRunConfiguration: (runId: string) => Promise<RadarRunConfigurationDto | null>;
   loadRadarRunArtifact: (radarId: string) => Promise<void>;
   loadRadarRunHistory: (radarId: string) => Promise<RadarRunSummaryDto[]>;
   selectRadarRun: (radarId: string, runId: string) => Promise<boolean>;
@@ -79,6 +90,9 @@ export function useRadarBackend({
   const [apiLiveArtifacts, setApiLiveArtifacts] = useState<Record<string, LiveICPRadarRunArtifact>>({});
   const [runHistoryByRadarId, setRunHistoryByRadarId] = useState<Record<string, RadarRunSummaryDto[]>>({});
   const [selectedRunByRadarId, setSelectedRunByRadarId] = useState<Record<string, RadarRunSummaryDto>>({});
+  const [definitionStateByRadarId, setDefinitionStateByRadarId] = useState<Record<string, RadarResourceState>>({});
+  const [runResourceStateByKey, setRunResourceStateByKey] = useState<Record<string, RadarResourceState>>({});
+  const [configurationByRunId, setConfigurationByRunId] = useState<Record<string, RadarRunConfigurationDto>>({});
   const [runState, setRunState] = useState<RadarRunControlState>({
     mode: 'loading',
     apiBaseUrl: api.baseUrl,
@@ -96,17 +110,19 @@ export function useRadarBackend({
   const activeRunByRadarId = useRef<Record<string, string>>({});
   const latestRunByRadarId = useRef<Record<string, RadarRunSummaryDto>>({});
   const detailsByRadarId = useRef<Record<string, ICPRadarCatalogItem>>({});
+  const definitionRequestByRadarId = useRef<Record<string, number>>({});
+  const loadedDefinitionByRadarId = useRef<Record<string, boolean>>({});
+  const runResources = useRef<Record<string, {
+    journal?: Awaited<ReturnType<RadarApiClient['getRunJournal']>>;
+    dossier?: Awaited<ReturnType<RadarApiClient['getRunDossier']>>;
+    trace?: Awaited<ReturnType<RadarApiClient['getRunTechnicalTrace']>>;
+  }>>({});
   const explicitRunSelectionByRadarId = useRef<Record<string, boolean>>({});
   const pollCancel = useRef(false);
 
   const loadRunArtifact = useCallback(async (run: RadarRunSummaryDto, radar: ICPRadarCatalogItem) => {
-    const [candidates, journal, dossier, technicalTrace] = await Promise.all([
-      api.getRunCandidates(run.run_id),
-      api.getRunJournal(run.run_id),
-      api.getRunDossier(run.run_id),
-      api.getRunTechnicalTrace(run.run_id),
-    ]);
-    return apiRunToLiveArtifact(run, candidates, radar, journal, dossier, technicalTrace);
+    const candidates = await api.getRunCandidates(run.run_id);
+    return apiRunToLiveArtifact(run, candidates, radar);
   }, [api]);
 
   useEffect(() => {
@@ -148,34 +164,6 @@ export function useRadarBackend({
         return;
       }
 
-      const detailResults = await Promise.allSettled(summaries.map((item) => api.getRadar(item.radar_id)));
-      if (cancelled) {
-        return;
-      }
-      const details = detailResults.flatMap((entry) => (entry.status === 'fulfilled' ? [entry.value] : []));
-      const detailCatalog = apiDetailsToCatalogArtifact(details, fallbackCatalog);
-      const detailItemsById = new Map(detailCatalog.radars.map((radar) => [radar.radar_id, radar]));
-      const mergedRadars = summaryCatalog.radars.map((radar) => detailItemsById.get(radar.radar_id) ?? radar);
-      for (const detailRadar of detailCatalog.radars) {
-        if (!mergedRadars.some((radar) => radar.radar_id === detailRadar.radar_id)) {
-          mergedRadars.push(detailRadar);
-        }
-      }
-      const baseCatalog = { ...summaryCatalog, radars: mergedRadars };
-      detailsByRadarId.current = Object.fromEntries(baseCatalog.radars.map((radar) => [radar.radar_id, radar]));
-      const nextHistoryByRadarId: Record<string, RadarRunSummaryDto[]> = {};
-      const nextSelectedRuns: Record<string, RadarRunSummaryDto> = {};
-      for (const detail of details) {
-        nextHistoryByRadarId[detail.radar_id] = runsNewestFirst(detail.runs);
-        if (detail.latest_run?.status === 'completed' && !explicitRunSelectionByRadarId.current[detail.radar_id]) {
-          activeRunByRadarId.current[detail.radar_id] = detail.latest_run.run_id;
-          latestRunByRadarId.current[detail.radar_id] = detail.latest_run;
-          nextSelectedRuns[detail.radar_id] = detail.latest_run;
-        }
-      }
-      setRunHistoryByRadarId(nextHistoryByRadarId);
-      setSelectedRunByRadarId((current) => ({ ...current, ...nextSelectedRuns }));
-      setApiCatalog(baseCatalog);
     }
     loadCatalog();
     return () => {
@@ -183,6 +171,93 @@ export function useRadarBackend({
       pollCancel.current = true;
     };
   }, [api, fallbackCatalog]);
+
+  const loadRadarDefinition = useCallback(async (radarId: string) => {
+    if (loadedDefinitionByRadarId.current[radarId]) {
+      return detailsByRadarId.current[radarId];
+    }
+    const requestId = (definitionRequestByRadarId.current[radarId] ?? 0) + 1;
+    definitionRequestByRadarId.current[radarId] = requestId;
+    setDefinitionStateByRadarId((current) => ({
+      ...current,
+      [radarId]: { status: 'loading', error: null },
+    }));
+    try {
+      const detail = await api.getRadar(radarId);
+      if (definitionRequestByRadarId.current[radarId] !== requestId) {
+        return null;
+      }
+      const radar = apiDetailToCatalogItem(detail);
+      detailsByRadarId.current[radarId] = radar;
+      loadedDefinitionByRadarId.current[radarId] = Boolean(detail.active_definition);
+      setApiCatalog((current) => current ? {
+        ...current,
+        radars: current.radars.map((item) => item.radar_id === radarId ? radar : item),
+      } : current);
+      setDefinitionStateByRadarId((current) => ({
+        ...current,
+        [radarId]: { status: detail.active_definition ? 'loaded' : 'empty', error: null },
+      }));
+      return radar;
+    } catch (error) {
+      if (definitionRequestByRadarId.current[radarId] === requestId) {
+        setDefinitionStateByRadarId((current) => ({
+          ...current,
+          [radarId]: { status: 'failed', error: errorMessage(error) },
+        }));
+      }
+      return null;
+    }
+  }, [api]);
+
+  const loadRadarRunResource = useCallback(async (
+    radarId: string,
+    resource: 'journal' | 'dossier' | 'trace',
+  ) => {
+    const run = selectedRunByRadarId[radarId] ?? latestRunByRadarId.current[radarId];
+    const radar = detailsByRadarId.current[radarId];
+    if (!run || !radar || run.status !== 'completed') {
+      return;
+    }
+    const key = `${run.run_id}:${resource}`;
+    if (runResourceStateByKey[key]?.status === 'loaded') {
+      return;
+    }
+    setRunResourceStateByKey((current) => ({ ...current, [key]: { status: 'loading', error: null } }));
+    try {
+      const candidates = await api.getRunCandidates(run.run_id);
+      const cache = runResources.current[run.run_id] ?? {};
+      if (resource === 'journal') cache.journal = await api.getRunJournal(run.run_id);
+      if (resource === 'dossier') cache.dossier = await api.getRunDossier(run.run_id);
+      if (resource === 'trace') cache.trace = await api.getRunTechnicalTrace(run.run_id);
+      runResources.current[run.run_id] = cache;
+      if ((selectedRunByRadarId[radarId] ?? latestRunByRadarId.current[radarId])?.run_id !== run.run_id) {
+        return;
+      }
+      const artifact = apiRunToLiveArtifact(run, candidates, radar, cache.journal, cache.dossier, cache.trace);
+      setApiLiveArtifacts((current) => ({ ...current, [radarId]: artifact }));
+      setRunResourceStateByKey((current) => ({ ...current, [key]: { status: 'loaded', error: null } }));
+    } catch (error) {
+      setRunResourceStateByKey((current) => ({
+        ...current,
+        [key]: { status: 'failed', error: errorMessage(error) },
+      }));
+    }
+  }, [api, runResourceStateByKey, selectedRunByRadarId]);
+
+  const loadRadarRunConfiguration = useCallback(async (runId: string) => {
+    if (configurationByRunId[runId]) {
+      return configurationByRunId[runId];
+    }
+    try {
+      const configuration = await api.getRunConfiguration(runId);
+      setConfigurationByRunId((current) => ({ ...current, [runId]: configuration }));
+      return configuration;
+    } catch (error) {
+      setRunState((current) => ({ ...current, error: errorMessage(error) }));
+      return null;
+    }
+  }, [api, configurationByRunId]);
 
   const refreshRunOutput = useCallback(async (run: RadarRunSummaryDto, radar: ICPRadarCatalogItem | null) => {
     if (!radar) {
@@ -536,6 +611,12 @@ export function useRadarBackend({
     selectedRunByRadarId,
     runState,
     preflightState,
+    definitionStateByRadarId,
+    runResourceStateByKey,
+    configurationByRunId,
+    loadRadarDefinition,
+    loadRadarRunResource,
+    loadRadarRunConfiguration,
     loadRadarRunArtifact,
     loadRadarRunHistory,
     selectRadarRun,

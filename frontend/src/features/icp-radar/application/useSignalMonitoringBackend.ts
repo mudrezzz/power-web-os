@@ -39,6 +39,7 @@ export type SignalMonitoringBackendController = {
   signalRunState: SignalMonitoringRunControlState;
   signalPreflightState: SignalMonitoringPreflightControlState;
   loadSignalRunHistory: (radarId: string) => Promise<SignalMonitoringRunSummaryDto[]>;
+  loadSignalReport: (runId: string) => Promise<void>;
   selectSignalRun: (radarId: string, runId: string) => Promise<boolean>;
   selectSignalRunById: (runId: string) => Promise<string | null>;
   checkSignalMonitoringSetup: (radarId: string) => Promise<void>;
@@ -89,22 +90,25 @@ export function useSignalMonitoringBackend({
     selectedSignalRunRef.current = selectedSignalRunByRadarId;
   }, [selectedSignalRunByRadarId]);
 
-  const loadSignalReport = useCallback(async (run: SignalMonitoringRunSummaryDto) => {
+  const loadSignalOutput = useCallback(async (
+    run: SignalMonitoringRunSummaryDto,
+    includeReport: boolean,
+  ) => {
     try {
-      const [payload, surfacePayload] = await Promise.all([
-        api.getSignalMonitoringReport(run.run_id),
-        api.getSignalMonitoringCandidateSurface(run.run_id),
-      ]);
-      const report = signalMonitoringReportFromJson(payload);
+      const surfacePayload = await api.getSignalMonitoringCandidateSurface(run.run_id);
       const surface = signalMonitoringCandidateSurfaceFromJson(surfacePayload);
-      if (!report || report.run_id !== run.run_id || report.source_candidate_run_id !== run.source_run_id) {
-        throw new Error(`Signal monitoring report ${run.run_id} has invalid pipeline lineage.`);
-      }
       if (!surface || surface.selected_run_id !== run.run_id || surface.source_candidate_run_id !== run.source_run_id) {
         throw new Error(`Signal monitoring surface ${run.run_id} has invalid pipeline lineage.`);
       }
-      setSignalReportByRunId((current) => ({ ...current, [run.run_id]: report }));
       setSignalSurfaceByRunId((current) => ({ ...current, [run.run_id]: surface }));
+      let report: SignalMonitoringReportArtifact | null = null;
+      if (includeReport) {
+        report = signalMonitoringReportFromJson(await api.getSignalMonitoringReport(run.run_id));
+        if (!report || report.run_id !== run.run_id || report.source_candidate_run_id !== run.source_run_id) {
+          throw new Error(`Signal monitoring report ${run.run_id} has invalid pipeline lineage.`);
+        }
+        setSignalReportByRunId((current) => ({ ...current, [run.run_id]: report! }));
+      }
       setSignalRunState((current) => ({
         ...current,
         busy: false,
@@ -127,6 +131,12 @@ export function useSignalMonitoringBackend({
       return null;
     }
   }, [api]);
+
+  const loadSignalReport = useCallback(async (runId: string) => {
+    const run = Object.values(selectedSignalRunRef.current).find((item) => item.run_id === runId)
+      ?? await api.getSignalMonitoringRun(runId);
+    await loadSignalOutput(run, true);
+  }, [api, loadSignalOutput]);
 
   const selectSignalRun = useCallback(async (radarId: string, runId: string) => {
     try {
@@ -154,14 +164,14 @@ export function useSignalMonitoringBackend({
         outputPending: run.status === 'completed' && !run.output,
       });
       if (run.status === 'completed') {
-        await loadSignalReport(run);
+        await loadSignalOutput(run, false);
       }
       return true;
     } catch (error) {
       setSignalRunState((current) => ({ ...current, busy: false, error: errorMessage(error) }));
       return false;
     }
-  }, [api, loadSignalReport, selectCandidateRun, selectedCandidateRunByRadarId]);
+  }, [api, loadSignalOutput, selectCandidateRun, selectedCandidateRunByRadarId]);
 
   const loadSignalRunHistory = useCallback(async (radarId: string) => {
     if (mode !== 'api') {
@@ -264,7 +274,7 @@ export function useSignalMonitoringBackend({
         outputPending: run.status === 'completed' && !run.output,
       });
       if (run.status === 'completed') {
-        await loadSignalReport(run);
+        await loadSignalOutput(run, false);
         return;
       }
       if (run.status === 'failed' || Date.now() - startedAt > pollingDeadlineMs) {
@@ -276,7 +286,7 @@ export function useSignalMonitoringBackend({
     } catch (error) {
       setSignalRunState((current) => ({ ...current, busy: false, error: errorMessage(error) }));
     }
-  }, [api, loadSignalReport]);
+  }, [api, loadSignalOutput]);
 
   const runSignalMonitoring = useCallback(async (radarId: string) => {
     if (mode !== 'api' || signalRunState.busy) {
@@ -322,14 +332,14 @@ export function useSignalMonitoringBackend({
         outputPending: false,
       });
       if (run.status === 'completed') {
-        await loadSignalReport(run);
+        await loadSignalOutput(run, false);
       } else {
         await pollSignalRun(radarId, run.run_id, Date.now());
       }
     } catch (error) {
       setSignalRunState((current) => ({ ...current, busy: false, error: errorMessage(error) }));
     }
-  }, [api, loadSignalReport, mode, pollSignalRun, requestForRadar, signalRunState.busy]);
+  }, [api, loadSignalOutput, mode, pollSignalRun, requestForRadar, signalRunState.busy]);
 
   return {
     signalRunHistoryByRadarId,
@@ -339,6 +349,7 @@ export function useSignalMonitoringBackend({
     signalRunState,
     signalPreflightState,
     loadSignalRunHistory,
+    loadSignalReport,
     selectSignalRun,
     selectSignalRunById,
     checkSignalMonitoringSetup,

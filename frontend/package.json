@@ -10,6 +10,7 @@
     "visual:smoke": "node scripts/visual-smoke.mjs",
     "radar:benchmark-ui-dod": "node scripts/radar-benchmark-ui-dod.mjs",
     "radar:pipeline-split-ui-dod": "node scripts/radar-pipeline-split-ui-dod.mjs",
+    "radar:settings-lazy-loading-dod": "node scripts/radar-settings-lazy-loading-dod.mjs",
     "settings:toggle-smoke": "node scripts/settings-toggle-smoke.mjs"
   },
   "dependencies": {

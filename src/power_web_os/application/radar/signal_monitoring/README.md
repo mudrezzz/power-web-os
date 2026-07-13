@@ -13,6 +13,7 @@ Signal monitoring owns recurring signal checks over known candidates:
 - `source_strategy.py`: deterministic source-lane selection from source policy,
   source cards, and reusable known sources.
 - `planning.py`: multi-lane planning input, deterministic plan construction and backend acceptance.
+- `policy.py`: effective per-signal depth, overlap, cadence and source-lane normalization.
 - `scheduling.py`: explicit scheduled/budget-limited lane ledger.
 - `windows.py`: initial and per-lane incremental window policy.
 - `receipts.py`: product-safe execution receipts and source lifecycle.

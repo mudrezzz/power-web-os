@@ -160,6 +160,26 @@ def test_icp_radar_backend_live_artifact_viewer_is_not_hardcoded_to_quick_radar(
     assert "radar.radar_id === 'toir-quick-live'" not in adapter
 
 
+def test_radar_workspace_uses_selected_resource_lazy_loading() -> None:
+    backend = read("frontend/src/features/icp-radar/application/useRadarBackend.ts")
+    workspace = read("frontend/src/features/icp-radar/application/useRadarWorkspace.ts")
+    signal_backend = read("frontend/src/features/icp-radar/application/useSignalMonitoringBackend.ts")
+
+    catalog_effect = backend[backend.index("async function loadCatalog"):backend.index("const loadRadarDefinition")]
+    assert "api.getRadar(" not in catalog_effect
+    assert "Promise.allSettled" not in catalog_effect
+    artifact_loader = backend[backend.index("const loadRunArtifact"):backend.index("useEffect(() =>")]
+    assert "getRunCandidates" in artifact_loader
+    assert "getRunDossier" not in artifact_loader
+    assert "getRunJournal" not in artifact_loader
+    assert "getRunTechnicalTrace" not in artifact_loader
+    assert "loadRadarDefinition(selectedRadar.radar_id)" in workspace
+    assert "loadRadarRunResource(selectedRadar.radar_id, 'dossier')" in workspace
+    assert "loadRadarRunResource(selectedRadar.radar_id, 'trace')" in workspace
+    assert "loadSignalOutput(run, false)" in signal_backend
+    assert "loadSignalReport" in signal_backend
+
+
 def test_icp_radar_benchmark_radars_are_protected_from_silent_local_delete() -> None:
     settings_model = read("frontend/src/features/icp-radar/settingsModel.ts")
     catalog_screen = read("frontend/src/features/icp-radar/components/RadarCatalogScreen.tsx")
@@ -178,7 +198,8 @@ def test_icp_radar_catalog_does_not_silently_fallback_while_backend_is_loading()
 
     assert "const activeIcpRadarCatalog = icpRadarBackend.catalog;" in app
     assert "apiCatalog ?? (runState.mode === 'fallback' ? fallbackCatalog : null)" in backend
-    assert "Promise.allSettled(summaries.map((item) => api.getRadar(item.radar_id)))" in backend
+    assert "Promise.allSettled(summaries.map((item) => api.getRadar(item.radar_id)))" not in backend
+    assert "const loadRadarDefinition" in backend
     assert "loadCompletedRunArtifacts" not in backend
     assert "loadRadarRunArtifact" in backend
     assert "backend.loadRadarRunArtifact(selectedRadar.radar_id)" in workspace

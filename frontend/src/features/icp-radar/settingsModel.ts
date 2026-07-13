@@ -267,6 +267,13 @@ export function newIntentSignal(sourceIds: string[]): IntentSignalDefinition {
         },
       })),
     },
+    monitoring_policy: {
+      enabled: true,
+      initial_lookback_days: 365,
+      incremental_overlap_days: 2,
+      cadence: 'manual',
+      source_lanes: ['known_source', 'official_company', 'signal_specific', 'open_web'],
+    },
   };
 }
 
@@ -580,6 +587,13 @@ export function normalizeIntentSignal(signal: IntentSignalDefinition): IntentSig
   const code = fallbackSignal.code || fallbackSignal.signal_id || `S${Date.now()}`;
   const scoringRubric = fallbackSignal.scoring_rubric ?? { scale: [0, 1, 2], rules: [] };
   const scale = arrayOf(scoringRubric.scale).length ? arrayOf(scoringRubric.scale).map(Number) : [0, 1, 2];
+  const monitoring = fallbackSignal.monitoring_policy ?? {
+    enabled: true,
+    initial_lookback_days: null,
+    incremental_overlap_days: 2,
+    cadence: 'manual',
+    source_lanes: ['known_source', 'official_company', 'signal_specific', 'open_web'],
+  };
   return {
     signal_id: fallbackSignal.signal_id || `signal-${code}`,
     code,
@@ -597,6 +611,15 @@ export function normalizeIntentSignal(signal: IntentSignalDefinition): IntentSig
           rule_group: normalizeRuleGroup(sourceRule?.rule_group, `rubric-${code}-${score}`),
         };
       }),
+    },
+    monitoring_policy: {
+      enabled: monitoring.enabled !== false,
+      initial_lookback_days: monitoring.initial_lookback_days == null ? null : Number(monitoring.initial_lookback_days),
+      incremental_overlap_days: Number(monitoring.incremental_overlap_days ?? 2),
+      cadence: monitoring.cadence || 'manual',
+      source_lanes: arrayOf(monitoring.source_lanes).length
+        ? arrayOf(monitoring.source_lanes).map(String)
+        : ['known_source', 'official_company', 'signal_specific', 'open_web'],
     },
   };
 }

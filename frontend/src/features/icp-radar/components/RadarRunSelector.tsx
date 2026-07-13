@@ -99,7 +99,7 @@ function runMode(run: RadarRunSummaryDto) {
 }
 
 function stringMetadata(run: RadarRunSummaryDto, key: string) {
-  const value = run.run_metadata[key];
+  const value = run.display_metadata?.[key] ?? run.run_metadata[key];
   return typeof value === 'string' && value.trim() ? value.trim() : '';
 }
 

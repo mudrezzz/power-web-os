@@ -114,6 +114,18 @@ class QueuedSignalMonitoringRunService:
             "candidate_count": len(monitoring_input.candidates),
             "signal_rule_count": len(monitoring_input.signal_rules),
             "lookback_days": monitoring_input.lookback_days,
+            "effective_signal_policies": [
+                {
+                    "signal_code": rule.signal_code,
+                    "enabled": rule.enabled,
+                    "initial_lookback_days": rule.initial_lookback_days or monitoring_input.lookback_days,
+                    "incremental_overlap_days": rule.incremental_overlap_days,
+                    "cadence": rule.cadence,
+                    "source_lanes": list(rule.source_lanes),
+                    "basis": dict(rule.policy_basis),
+                }
+                for rule in monitoring_input.signal_rules
+            ],
             "budget": monitoring_input.budget.model_dump(mode="json"),
             "source_candidate_run_id": monitoring_input.source_candidate_run_id,
         }

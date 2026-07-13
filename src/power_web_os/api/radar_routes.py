@@ -15,6 +15,7 @@ from power_web_os.api.radar_dtos import (
     RadarRunDossierResponse,
     RadarRunJournalResponse,
     RadarRunRequest,
+    RadarRunConfigurationResponse,
     RadarRunReviewsResponse,
     RadarRunSummaryResponse,
     RadarRunTechnicalTraceResponse,
@@ -62,7 +63,7 @@ def list_radars(context: RadarContext) -> list[RadarSummaryResponse]:
     for radar in context.radar_repository.list():
         latest_run = context.run_repository.latest_summary_for_radar(radar.radar_id)
         runs = (latest_run,) if latest_run else ()
-        outputs = _latest_output_for_runs(context, runs)
+        outputs = _output_summaries_for_runs(context, runs)
         responses.append(
             radar_summary_response(
                 radar,
@@ -75,16 +76,21 @@ def list_radars(context: RadarContext) -> list[RadarSummaryResponse]:
 
 
 @router.get("/radars/{radar_id}", response_model=RadarDetailResponse)
-def get_radar(radar_id: str, context: RadarContext) -> RadarDetailResponse:
+def get_radar(
+    radar_id: str,
+    context: RadarContext,
+    include_runs: bool = False,
+) -> RadarDetailResponse:
     radar = context.radar_repository.get(radar_id)
     if radar is None:
         raise HTTPException(status_code=404, detail=f"Radar not found: {radar_id}")
-    runs = context.run_repository.list_for_radar(radar_id)
+    runs = context.run_repository.list_for_radar(radar_id) if include_runs else ()
+    summaries = _output_summaries_for_runs(context, runs)
     return radar_detail_response(
         radar,
         active_definition=context.definition_repository.get_active(radar_id),
         runs=runs,
-        outputs_by_run_id=_outputs_for_runs(context, runs),
+        outputs_by_run_id=summaries,
     )
 
 
@@ -98,8 +104,25 @@ def list_radar_runs(
     if radar is None:
         raise HTTPException(status_code=404, detail=f"Radar not found: {radar_id}")
     runs = tuple(reversed(context.run_repository.list_for_radar(radar_id)))[:limit]
-    outputs = _outputs_for_runs(context, runs)
-    return [run_summary_response(run, output=outputs.get(run.run_id)) for run in runs]
+    outputs = _output_summaries_for_runs(context, runs)
+    return [run_summary_response(run, output=outputs.get(run.run_id), include_run_metadata=False) for run in runs]
+
+
+@router.get("/radar-runs/{run_id}/configuration", response_model=RadarRunConfigurationResponse)
+def get_radar_run_configuration(run_id: str, context: RadarContext) -> RadarRunConfigurationResponse:
+    run, output = _run_and_output(run_id, context)
+    snapshot = output.radar_payload if isinstance(output.radar_payload, dict) else {}
+    definition = snapshot.get("definition") if isinstance(snapshot.get("definition"), dict) else snapshot
+    task_context = run.run_metadata.get("task_context") if isinstance(run.run_metadata.get("task_context"), dict) else {}
+    return RadarRunConfigurationResponse(
+        run_id=run.run_id,
+        radar_id=run.radar_id,
+        definition_id=str(definition.get("definition_id") or snapshot.get("definition_id") or ""),
+        definition_version=str(snapshot.get("definition_version") or ""),
+        definition_payload=dict(definition),
+        run_profile=str(task_context.get("run_profile") or ""),
+        task_context_overrides=dict(task_context),
+    )
 
 
 @router.put("/radars/{radar_id}/definition", response_model=RadarDetailResponse)
@@ -122,12 +145,11 @@ def update_radar_definition(
         )
     except RadarDefinitionUpdateError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    runs = context.run_repository.list_for_radar(radar_id)
     return radar_detail_response(
         radar,
         active_definition=context.definition_repository.get_active(radar_id),
-        runs=runs,
-        outputs_by_run_id=_outputs_for_runs(context, runs),
+        runs=(),
+        outputs_by_run_id={},
     )
 
 
@@ -339,6 +361,15 @@ def _outputs_for_runs(context: RadarApiContext, runs: tuple[RadarRunRecord, ...]
         if output is not None:
             outputs[run.run_id] = output
     return outputs
+
+
+def _output_summaries_for_runs(context: RadarApiContext, runs: tuple[RadarRunRecord, ...]) -> dict[str, object]:
+    summaries = {}
+    for run in runs:
+        summary = context.output_repository.get_summary(run.run_id)
+        if summary is not None:
+            summaries[run.run_id] = summary
+    return summaries
 
 
 def _require_radar(radar_id: str, context: RadarApiContext) -> None:

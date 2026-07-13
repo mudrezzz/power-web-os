@@ -24,6 +24,12 @@ validation, checkpoints and per-lane incremental windows inside
 `application/radar/signal_monitoring`. It may reuse provider-neutral shared
 contracts, but must not import candidate-discovery internals.
 
+Radar catalog/detail transport is split by cost. Catalog and run history use
+scalar summaries and never deserialize full run artifacts. Active definition
+and immutable selected-run configuration are separate resources. Signal
+criterion policies are application inputs to window resolution and planning;
+infrastructure persists them but does not interpret their semantics.
+
 The cross-pipeline product contract is documented in
 `docs/radar/pipelines/RADAR_PIPELINE_SPLIT_UI_CONTRACT.md`. Candidate and signal
 runs share lifecycle storage but retain separate histories and output

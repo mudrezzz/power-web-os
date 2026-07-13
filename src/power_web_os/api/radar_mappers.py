@@ -30,11 +30,13 @@ from power_web_os.api.signal_monitoring_dtos import (
     SignalMonitoringRunSummaryResponse,
 )
 from power_web_os.api.radar_public_provenance import public_candidate_rows, public_candidate_sources
+from power_web_os.api.radar_summary_support import display_metadata, is_accepted_candidate, is_review_candidate
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRecord,
     RadarReviewDecisionRecord,
     RadarRunOutputRecord,
+    RadarRunOutputSummaryRecord,
     RadarRunEventRecord,
     RadarRunRecord,
     RadarRunTechnicalTraceRecord,
@@ -46,7 +48,7 @@ def radar_summary_response(
     radar: RadarRecord,
     *,
     runs: tuple[RadarRunRecord, ...] = (),
-    outputs_by_run_id: dict[str, RadarRunOutputRecord] | None = None,
+    outputs_by_run_id: dict[str, RadarRunOutputRecord | RadarRunOutputSummaryRecord] | None = None,
     include_run_metadata: bool = False,
     run_count: int | None = None,
 ) -> RadarSummaryResponse:
@@ -74,7 +76,7 @@ def radar_detail_response(
     *,
     active_definition: RadarDefinitionRecord | None,
     runs: tuple[RadarRunRecord, ...],
-    outputs_by_run_id: dict[str, RadarRunOutputRecord],
+    outputs_by_run_id: dict[str, RadarRunOutputRecord | RadarRunOutputSummaryRecord],
 ) -> RadarDetailResponse:
     summary = radar_summary_response(
         radar,
@@ -85,7 +87,7 @@ def radar_detail_response(
     return RadarDetailResponse(
         **summary.model_dump(),
         active_definition=definition_response(active_definition) if active_definition else None,
-        runs=[run_summary_response(run, output=outputs_by_run_id.get(run.run_id)) for run in runs],
+        runs=[run_summary_response(run, output=outputs_by_run_id.get(run.run_id), include_run_metadata=False) for run in runs],
     )
 
 
@@ -103,7 +105,7 @@ def definition_response(record: RadarDefinitionRecord) -> RadarDefinitionRespons
 def run_summary_response(
     run: RadarRunRecord,
     *,
-    output: RadarRunOutputRecord | None,
+    output: RadarRunOutputRecord | RadarRunOutputSummaryRecord | None,
     include_run_metadata: bool = True,
 ) -> RadarRunSummaryResponse:
     return RadarRunSummaryResponse(
@@ -120,16 +122,31 @@ def run_summary_response(
         error_message=run.error_message,
         error_metadata=run.error_metadata,
         run_metadata=run.run_metadata if include_run_metadata else {},
+        display_metadata=display_metadata(run.run_metadata),
         output=output_summary_response(output) if output else None,
     )
 
 
-def output_summary_response(output: RadarRunOutputRecord) -> RadarRunOutputSummaryResponse:
+def output_summary_response(output: RadarRunOutputRecord | RadarRunOutputSummaryRecord) -> RadarRunOutputSummaryResponse:
+    if isinstance(output, RadarRunOutputSummaryRecord):
+        return RadarRunOutputSummaryResponse(
+            artifact_version=output.artifact_version,
+            source_count=output.source_count,
+            candidate_count=output.candidate_count,
+            contract_issue_count=output.contract_issue_count,
+            visible_candidate_count=output.visible_candidate_count,
+            accepted_candidate_count=output.accepted_candidate_count,
+            review_needed_candidate_count=output.review_needed_candidate_count,
+            updated_at=output.updated_at,
+        )
     return RadarRunOutputSummaryResponse(
         artifact_version=output.artifact_version,
         source_count=len(output.sources_payload),
         candidate_count=len(output.candidates_payload),
         contract_issue_count=len(output.contract_validation_payload),
+        visible_candidate_count=len(output.candidates_payload),
+        accepted_candidate_count=sum(is_accepted_candidate(item) for item in output.candidates_payload),
+        review_needed_candidate_count=sum(is_review_candidate(item) for item in output.candidates_payload),
         updated_at=output.updated_at,
     )
 
@@ -171,10 +188,15 @@ def signal_monitoring_run_summary_response(
 
 def _catalog_summary(
     radar_summary: dict[str, Any],
-    latest_output: RadarRunOutputRecord | None,
+    latest_output: RadarRunOutputRecord | RadarRunOutputSummaryRecord | None,
 ) -> dict[str, Any]:
     summary = dict(radar_summary)
     if latest_output is None:
+        return summary
+    if isinstance(latest_output, RadarRunOutputSummaryRecord):
+        summary["candidate_count"] = latest_output.visible_candidate_count
+        summary["accepted_count"] = latest_output.accepted_candidate_count
+        summary["needs_review_count"] = latest_output.review_needed_candidate_count
         return summary
     candidates = _visible_candidates(latest_output)
     summary["candidate_count"] = len(candidates)

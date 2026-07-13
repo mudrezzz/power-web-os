@@ -1,0 +1,32 @@
+{
+  "schema_version": "radar_pipeline_acceptance.v2",
+  "slice_id": "0.7.6.4.18.3.1",
+  "pipeline_id": "signal-monitoring",
+  "behavior_change": true,
+  "to_be_markdown": "docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.3.1.md",
+  "to_be_pdf": "docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.3.1.pdf",
+  "as_is_markdown": "docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md",
+  "as_is_pdf": "docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.pdf",
+  "validation_json": "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.3.1/validation.json",
+  "validation_markdown": "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.3.1/VALIDATION_REPORT.md",
+  "requirements": [
+    {"id":"SM-CFG-01","mandatory":true,"description":"Per-signal policy survives persistence and restart.","test_node_ids":["tests/test_signal_monitoring_settings.py::test_per_signal_policy_round_trip"]},
+    {"id":"SM-CFG-02","mandatory":true,"description":"Effective policy precedence and basis are explicit.","test_node_ids":["tests/test_signal_monitoring_settings.py::test_effective_signal_policy_precedence_is_auditable"]},
+    {"id":"SM-CFG-03","mandatory":true,"description":"Only criterion-enabled source lanes are planned.","test_node_ids":["tests/test_signal_monitoring_settings.py::test_per_signal_source_lanes_limit_planning"]},
+    {"id":"SM-WIN-04","mandatory":true,"description":"Criterion overlap controls incremental windows without failed watermark advance.","test_node_ids":["tests/test_signal_monitoring_settings.py::test_per_signal_overlap_controls_incremental_window"]},
+    {"id":"RADAR-API-01","mandatory":true,"description":"Detail and history payloads meet 250 KB budgets.","test_node_ids":["tests/test_backend_api.py::test_radar_detail_and_history_are_lightweight"]},
+    {"id":"RADAR-LAZY-01","mandatory":true,"description":"Frontend hydrates only selected Radar and selected resources.","test_node_ids":["tests/test_frontend_architecture_contract.py::test_radar_workspace_uses_selected_resource_lazy_loading"]},
+    {"id":"RADAR-UI-01","mandatory":true,"description":"Ten cold opens show the complete benchmark definition.","test_node_ids":["tests/test_frontend_demo_contract.py::test_radar_settings_lazy_loading_dod_script_is_registered"]},
+    {"id":"RADAR-UI-02","mandatory":true,"description":"Loading error stale and dirty states never become an empty definition.","test_node_ids":["tests/test_frontend_demo_contract.py::test_radar_settings_lazy_loading_dod_script_is_registered"]},
+    {"id":"SM-PROC-03","mandatory":true,"description":"TO BE validation and AS IS traceability is complete.","test_node_ids":["tests/test_radar_pipeline_documentation_contract.py::test_signal_monitoring_settings_slice_is_traceable_to_finalized_as_is"]}
+  ],
+  "runtime_acceptance": {
+    "maximum_detail_bytes": 256000,
+    "maximum_history_bytes": 256000,
+    "cold_open_count": 10,
+    "expected_rules": 2,
+    "expected_signals": 3,
+    "expected_sources": 3,
+    "automatic_jobs_created": 0
+  }
+}

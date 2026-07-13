@@ -27,7 +27,7 @@ export function CandidateDetailTabs({
   const { t } = useTranslation();
   const tabs: CandidateDetailTab[] = showTrace
     ? ['overview', 'qualification', 'signals', 'sources', 'journal', 'trace']
-    : ['overview', 'qualification', 'signals', 'sources', 'journal'];
+    : ['overview', 'qualification', 'signals', 'sources', 'journal', 'trace'];
   return (
     <div className="icp-candidate-detail-tabs" aria-label={t('icpRadar.canonicalDetail.tabsAria')}>
       {tabs.map((tab) => (

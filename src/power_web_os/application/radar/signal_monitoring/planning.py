@@ -60,14 +60,20 @@ class SignalMonitoringSearchPlanner:
         tasks: list[SignalSearchTask] = []
         for candidate in monitoring.candidates:
             for rule in monitoring.signal_rules:
+                if not rule.enabled:
+                    continue
                 decisions = _candidate_decisions(
                     candidate.candidate_id,
                     candidate.source_refs,
                     selected,
                     rule_source_ids=rule.source_ids,
-                ) or [None]
-                for lane_index, decision in enumerate(decisions, start=1):
-                    lane = decision.lane if decision else "open_web"
+                )
+                decisions = [decision for decision in decisions if decision.lane in rule.source_lanes]
+                lane_decisions = [(decision.lane, decision) for decision in decisions]
+                if not lane_decisions and rule.source_lanes:
+                    fallback_lane = "open_web" if "open_web" in rule.source_lanes else rule.source_lanes[0]
+                    lane_decisions = [(fallback_lane, None)]
+                for lane_index, (lane, decision) in enumerate(lane_decisions, start=1):
                     contracts = _source_contracts(decision, sources)
                     candidate_sources = [
                         sources[ref]

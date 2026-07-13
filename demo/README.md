@@ -822,7 +822,8 @@ Signal validation is visible in the demo: users can confirm, correct, reject, or
 - The planner is deterministic.
 - ICP Radar fixture review remains browser-local demo state.
 - `ТОиР Quick Live Radar` is experimental. It uses OpenRouter through the backend worker when credentials are valid, and it can legitimately return no candidates.
-- ICP Radar settings edits are browser-local demo drafts only; production persistence, schedule execution, live source setup, and shortlist recalculation are not implemented yet.
+- API-backed ICP Radar settings persist in the active backend definition. Per-signal depth, overlap, cadence policy and source lanes survive restart; automatic schedule execution remains out of scope.
+- Validate selected-resource loading with `npm --prefix ./frontend run radar:settings-lazy-loading-dod`. The gate performs ten cold benchmark openings and enforces 250 KB detail/history limits.
 - ICP Radar candidate detail is read-only.
 - `Take into work` is visible as a planned affordance and does not change state yet.
 - DaData is backend-executed through source policy, but the UI source editor does

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button, Mono } from '../../components/primitives';
 import type { EditableRadarDefinitionDraft, IntentSignalDefinition, RadarDefinition } from '../../types';
 import { globalSignalRubric, newIntentSignal, primaryRuleDescription, replaceAt, sameRubric, setPrimaryRuleDescription, signalRuleText, sourcePolicySummary } from './model';
-import { BooleanPill, TextAreaField, ToggleField } from './settingsFields';
+import { BooleanPill, NumberField, SelectField, TextAreaField, ToggleField } from './settingsFields';
 import { SimpleSourcePolicyEditor } from './settingsQualification';
 
 export function IntentSignalsSummary({ definition }: { definition: RadarDefinition }) {
@@ -16,6 +16,7 @@ export function IntentSignalsSummary({ definition }: { definition: RadarDefiniti
         <span>{t('icpRadar.settings.signalCode')}</span>
         <span>{t('icpRadar.settings.signalDetection')}</span>
         <span>{t('icpRadar.settings.sources')}</span>
+        <span>{t('icpRadar.settings.signalPolicy')}</span>
         <span>{t('icpRadar.settings.crossValidationShort')}</span>
         <span>{t('icpRadar.settings.additionalSourcesShort')}</span>
         <span>{t('icpRadar.settings.scaleOverrideShort')}</span>
@@ -28,6 +29,10 @@ export function IntentSignalsSummary({ definition }: { definition: RadarDefiniti
             <small>{signal.signal_id}</small>
           </span>
           <span>{sourcePolicySummary(signal.source_policy, t)}</span>
+          <span>
+            <strong>{t(`icpRadar.settings.cadence.${signal.monitoring_policy.cadence}`)}</strong>
+            <small>{t('icpRadar.settings.signalLookbackDays', { count: signal.monitoring_policy.initial_lookback_days ?? 365 })}</small>
+          </span>
           <BooleanPill active={signal.source_policy.source_logic === 'AND'} />
           <BooleanPill active={signal.source_policy.allow_additional_sources} />
           <BooleanPill active={!sameRubric(signal.scoring_rubric, globalRubric)} />
@@ -96,6 +101,51 @@ export function IntentSignalsEditor({
             onChange={(description) => onDraftChange({ ...draft, intent_signals: replaceAt(draft.intent_signals, index, { ...signal, trigger_rule_group: setPrimaryRuleDescription(signal.trigger_rule_group, description) }) })}
           />
           <SimpleSourcePolicyEditor globalSources={globalSources} policy={signal.source_policy} onChange={(source_policy) => onDraftChange({ ...draft, intent_signals: replaceAt(draft.intent_signals, index, { ...signal, source_policy }) })} />
+          <div className="signal-monitoring-policy-editor">
+            <ToggleField
+              checked={signal.monitoring_policy.enabled}
+              label={t('icpRadar.settings.signalMonitoringEnabled')}
+              onChange={(enabled) => onDraftChange({ ...draft, intent_signals: replaceAt(draft.intent_signals, index, { ...signal, monitoring_policy: { ...signal.monitoring_policy, enabled } }) })}
+            />
+            <NumberField
+              label={t('icpRadar.settings.initialLookbackDays')}
+              min={1}
+              max={3650}
+              value={signal.monitoring_policy.initial_lookback_days ?? 365}
+              onChange={(initial_lookback_days) => onDraftChange({ ...draft, intent_signals: replaceAt(draft.intent_signals, index, { ...signal, monitoring_policy: { ...signal.monitoring_policy, initial_lookback_days } }) })}
+            />
+            <NumberField
+              label={t('icpRadar.settings.incrementalOverlapDays')}
+              min={0}
+              max={Math.min(90, signal.monitoring_policy.initial_lookback_days ?? 365)}
+              value={signal.monitoring_policy.incremental_overlap_days}
+              onChange={(incremental_overlap_days) => onDraftChange({ ...draft, intent_signals: replaceAt(draft.intent_signals, index, { ...signal, monitoring_policy: { ...signal.monitoring_policy, incremental_overlap_days } }) })}
+            />
+            <SelectField
+              label={t('icpRadar.settings.signalCadence')}
+              options={['manual', 'daily', 'weekly', 'monthly']}
+              optionLabel={(value) => t(`icpRadar.settings.cadence.${value}`)}
+              value={signal.monitoring_policy.cadence}
+              onChange={(cadence) => onDraftChange({ ...draft, intent_signals: replaceAt(draft.intent_signals, index, { ...signal, monitoring_policy: { ...signal.monitoring_policy, cadence } }) })}
+            />
+            <div className="signal-source-lane-options">
+              <strong>{t('icpRadar.settings.signalSourceLanes')}</strong>
+              {(['known_source', 'official_company', 'signal_specific', 'open_web'] as const).map((lane) => (
+                <ToggleField
+                  key={lane}
+                  checked={signal.monitoring_policy.source_lanes.includes(lane)}
+                  label={t(`icpRadar.settings.sourceLane.${lane}`)}
+                  onChange={(checked) => {
+                    const source_lanes = checked
+                      ? [...signal.monitoring_policy.source_lanes, lane]
+                      : signal.monitoring_policy.source_lanes.filter((item) => item !== lane);
+                    onDraftChange({ ...draft, intent_signals: replaceAt(draft.intent_signals, index, { ...signal, monitoring_policy: { ...signal.monitoring_policy, source_lanes } }) });
+                  }}
+                />
+              ))}
+            </div>
+            <small>{t('icpRadar.settings.cadencePolicyOnly')}</small>
+          </div>
           <SignalRubricOverride
             globalRubric={globalRubric}
             signal={signal}

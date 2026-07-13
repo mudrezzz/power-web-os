@@ -113,6 +113,15 @@ class SignalScoringRubric:
 
 
 @dataclass(frozen=True, slots=True)
+class SignalMonitoringCriterionPolicy:
+    enabled: bool = True
+    initial_lookback_days: int | None = None
+    incremental_overlap_days: int = 2
+    cadence: str = "manual"
+    source_lanes: tuple[str, ...] = ("known_source", "official_company", "signal_specific", "open_web")
+
+
+@dataclass(frozen=True, slots=True)
 class IntentSignalDefinition:
     signal_id: str
     code: str
@@ -121,6 +130,7 @@ class IntentSignalDefinition:
     trigger_rule_group: RuleGroup
     source_policy: SourcePolicy
     scoring_rubric: SignalScoringRubric
+    monitoring_policy: SignalMonitoringCriterionPolicy = SignalMonitoringCriterionPolicy()
 
 
 @dataclass(frozen=True, slots=True)
@@ -415,6 +425,7 @@ class RadarDefinitionValidator:
         for signal in definition.intent_signals:
             signal_path = f"intent_signals.{signal.signal_id}"
             self._validate_source_policy(signal.source_policy, f"{signal_path}.source_policy", source_ids, errors, warnings)
+            self._validate_signal_monitoring_policy(signal, signal_path, errors)
             self._validate_rule_group(
                 signal.trigger_rule_group,
                 path=f"{signal_path}.trigger_rule_group",
@@ -446,6 +457,26 @@ class RadarDefinitionValidator:
             )
         return RadarValidationReport(errors=tuple(errors), warnings=tuple(warnings), info=tuple(info))
 
+    @staticmethod
+    def _validate_signal_monitoring_policy(
+        signal: IntentSignalDefinition,
+        path: str,
+        errors: list[RadarValidationIssue],
+    ) -> None:
+        policy = signal.monitoring_policy
+        if policy.initial_lookback_days is not None and not 1 <= policy.initial_lookback_days <= 3650:
+            errors.append(RadarValidationIssue("error", "invalid_signal_initial_lookback", "Use 1..3650 days.", f"{path}.monitoring_policy.initial_lookback_days"))
+        if not 0 <= policy.incremental_overlap_days <= 90:
+            errors.append(RadarValidationIssue("error", "invalid_signal_overlap", "Use 0..90 days.", f"{path}.monitoring_policy.incremental_overlap_days"))
+        if policy.initial_lookback_days is not None and policy.incremental_overlap_days > policy.initial_lookback_days:
+            errors.append(RadarValidationIssue("error", "signal_overlap_exceeds_lookback", "Overlap cannot exceed initial lookback.", f"{path}.monitoring_policy.incremental_overlap_days"))
+        if policy.cadence not in {"manual", "daily", "weekly", "monthly"}:
+            errors.append(RadarValidationIssue("error", "invalid_signal_cadence", policy.cadence, f"{path}.monitoring_policy.cadence"))
+        allowed = {"known_source", "official_company", "signal_specific", "open_web"}
+        if policy.enabled and not policy.source_lanes:
+            errors.append(RadarValidationIssue("error", "missing_signal_source_lane", "Select at least one source lane.", f"{path}.monitoring_policy.source_lanes"))
+        if set(policy.source_lanes) - allowed:
+            errors.append(RadarValidationIssue("error", "invalid_signal_source_lane", "Unknown source lane.", f"{path}.monitoring_policy.source_lanes"))
     @staticmethod
     def _require(
         value: str,
@@ -814,6 +845,13 @@ def intent_signal_to_payload(signal: IntentSignalDefinition) -> dict[str, Any]:
         "trigger_rule_group": rule_group_to_payload(signal.trigger_rule_group),
         "source_policy": source_policy_to_payload(signal.source_policy),
         "scoring_rubric": scoring_rubric_to_payload(signal.scoring_rubric),
+        "monitoring_policy": {
+            "enabled": signal.monitoring_policy.enabled,
+            "initial_lookback_days": signal.monitoring_policy.initial_lookback_days,
+            "incremental_overlap_days": signal.monitoring_policy.incremental_overlap_days,
+            "cadence": signal.monitoring_policy.cadence,
+            "source_lanes": list(signal.monitoring_policy.source_lanes),
+        },
     }
 
 

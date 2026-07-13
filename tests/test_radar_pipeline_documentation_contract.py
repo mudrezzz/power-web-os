@@ -33,6 +33,13 @@ SIGNAL_1822_ACCEPTANCE = SIGNAL_1822_TO_BE_MD.with_suffix(".acceptance.json")
 SIGNAL_1822_VALIDATION = Path(
     "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.2.2/validation.json"
 )
+SIGNAL_1831_TO_BE_MD = Path(
+    "docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.3.1.md"
+)
+SIGNAL_1831_ACCEPTANCE = SIGNAL_1831_TO_BE_MD.with_suffix(".acceptance.json")
+SIGNAL_1831_VALIDATION = Path(
+    "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.3.1/validation.json"
+)
 PIPELINE_SPLIT_UI_CONTRACT = Path("docs/radar/pipelines/RADAR_PIPELINE_SPLIT_UI_CONTRACT.md")
 PIPELINE_SPLIT_VALIDATION = Path("docs/radar/pipelines/validation/0.7.6.4.18.3/validation.json")
 SIGNAL_SURFACE_RCA = Path(
@@ -234,6 +241,24 @@ def test_signal_monitoring_quality_slice_is_traceable_to_finalized_as_is() -> No
         assert "0.7.6.4.18.2.2" in as_is
         assert all(requirement_id in as_is for requirement_id in requirement_ids)
         assert all(validation_results.get(requirement_id) == "PASS" for requirement_id in requirement_ids)
+
+
+def test_signal_monitoring_settings_slice_is_traceable_to_finalized_as_is() -> None:
+    manifest = json.loads(SIGNAL_1831_ACCEPTANCE.read_text(encoding="utf-8"))
+    validation = json.loads(SIGNAL_1831_VALIDATION.read_text(encoding="utf-8"))
+    to_be = SIGNAL_1831_TO_BE_MD.read_text(encoding="utf-8")
+    as_is = SIGNAL_AS_IS_MD.read_text(encoding="utf-8")
+    requirement_ids = {item["id"] for item in manifest["requirements"] if item.get("mandatory", True)}
+    validation_results = {item["requirement_id"]: item["status"] for item in validation["requirements"]}
+
+    assert "Status: Implemented" in to_be
+    assert validation["validation_status"] == "PASS"
+    assert validation["runtime"]["cold_open_passes"] == 10
+    assert validation["runtime"]["detail_bytes"] <= 250_000
+    assert validation["runtime"]["history_bytes"] <= 250_000
+    assert all(requirement_id in to_be for requirement_id in requirement_ids)
+    assert all(requirement_id in as_is for requirement_id in requirement_ids)
+    assert all(validation_results.get(requirement_id) == "PASS" for requirement_id in requirement_ids)
 
 
 def test_radar_pipeline_split_ui_contract_is_validated() -> None:

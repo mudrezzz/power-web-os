@@ -971,3 +971,16 @@ def test_live_mini_icp_radar_catalog_and_frontend_contract() -> None:
         "technical trace",
     ]:
         assert i18n_key in i18n
+
+
+def test_radar_settings_lazy_loading_dod_script_is_registered() -> None:
+    package = Path("frontend/package.json").read_text(encoding="utf-8")
+    script = Path("frontend/scripts/radar-settings-lazy-loading-dod.mjs").read_text(encoding="utf-8")
+
+    assert '"radar:settings-lazy-loading-dod"' in package
+    assert "const attempts = 10" in script
+    assert "catalog_detail_requests_before_open: 0" in script
+    assert "detailBytes > 250_000" in script
+    assert "historyBytes > 250_000" in script
+    assert "Expected 2/3/3 settings" in script
+    assert "Radar settings could not be loaded" in script

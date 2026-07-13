@@ -121,6 +121,12 @@ class RadarRunOutputModel(Base):
     sources_json: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
     candidates_json: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
     contract_validation_json: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    source_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    candidate_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    contract_issue_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    visible_candidate_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    accepted_candidate_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    review_needed_candidate_count: Mapped[int] = mapped_column(nullable=False, default=0)
     artifact_payload_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(

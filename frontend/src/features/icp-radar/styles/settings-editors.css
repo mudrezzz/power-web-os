@@ -412,3 +412,25 @@
   font: var(--label);
 }
 
+.signal-monitoring-policy-editor {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-3) 0;
+}
+
+.signal-source-lane-options {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.settings-configuration-context {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--s-3);
+}
+
+.settings-configuration-context section {
+  display: grid;
+  gap: var(--s-1);
+  min-width: 0;
+}

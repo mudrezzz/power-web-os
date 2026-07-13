@@ -7,6 +7,7 @@ export function ScoringModelSummary({ definition }: { definition: RadarDefinitio
   const { t } = useTranslation();
   return (
     <>
+      <Badge tone="unsurfaced">{t('icpRadar.settings.scoringRuntimePending')}</Badge>
       <div className="icp-settings-formula-grid">
         {[
           [t('icpRadar.fit'), presetLabel(definition.scoring_model.fit_model.formula_preset, t)],
@@ -42,6 +43,7 @@ export function ScoringModelEditor({
   }
   return (
     <div className="criteria-editor-list">
+      <Badge tone="unsurfaced">{t('icpRadar.settings.scoringRuntimePending')}</Badge>
       <FormulaModelEditor
         codes={draft.account_qualification.rule_group.rules.map((rule) => rule.rule_id)}
         label={t('icpRadar.fit')}

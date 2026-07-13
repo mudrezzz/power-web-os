@@ -11,7 +11,6 @@ import type {
 } from './application/useSignalMonitoringBackend';
 import { SignalMonitoringRunSelector } from './components/SignalMonitoringRunSelector';
 import { SignalMonitoringReportView } from './components/SignalMonitoringReportView';
-
 // Radar pipeline controls make candidate discovery and signal monitoring visibly separate without owning API transport.
 export function RadarPipelineControlPanel({
   artifact,
@@ -19,6 +18,7 @@ export function RadarPipelineControlPanel({
   onCheckSetup,
   onRunCandidateDiscovery,
   onRunSignalMonitoring,
+  onOpenSignalReport,
   onCheckSignalMonitoringSetup,
   onSelectSignalRun,
   onToggleDiagnostics,
@@ -40,6 +40,7 @@ export function RadarPipelineControlPanel({
   onCheckSetup: () => void;
   onRunCandidateDiscovery: () => void;
   onRunSignalMonitoring: () => void;
+  onOpenSignalReport: () => void;
   onCheckSignalMonitoringSetup: () => void;
   onSelectSignalRun: (runId: string) => void;
   onToggleDiagnostics: () => void;
@@ -114,7 +115,6 @@ export function RadarPipelineControlPanel({
             </Button>
           </div>
         </div>
-
         <div className="radar-pipeline-card">
           <header>
             <span className="section-icon">
@@ -181,8 +181,11 @@ export function RadarPipelineControlPanel({
             >
               {signalPreflightState.busy ? t('icpRadar.live.pipeline.signal.checking') : t('icpRadar.live.pipeline.signal.checkSetup')}
             </Button>
-            {signalMonitoringReport && (
-              <Button icon={<Eye aria-hidden="true" />} variant="default" onClick={onToggleSignalReport}>
+            {selectedSignalRun?.status === 'completed' && (
+              <Button icon={<Eye aria-hidden="true" />} variant="default" onClick={() => {
+                if (!signalMonitoringReport) onOpenSignalReport();
+                onToggleSignalReport();
+              }}>
                 {signalReportOpen ? t('icpRadar.live.pipeline.signal.hideReport') : t('icpRadar.live.pipeline.signal.showReport')}
               </Button>
             )}
@@ -198,7 +201,6 @@ export function RadarPipelineControlPanel({
     </Card>
   );
 }
-
 function candidateDiscoveryLastRunLabel(
   runState: RadarRunControlState,
   radar: ICPRadarCatalogItem | null,
@@ -223,7 +225,6 @@ function candidateDiscoveryLastRunLabel(
   }
   return { kind: 'text' as const, label: fallback };
 }
-
 function PipelineRunStatus({ state }: { state: RadarRunControlState }) {
   const { t } = useTranslation();
   const status = state.status ?? (state.mode === 'api' ? 'ready' : state.mode);

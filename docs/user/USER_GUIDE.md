@@ -197,7 +197,8 @@ The generated JSON artifact is also available at:
 
 ## Current Limitations
 
-- ICP Radar settings can be edited as local browser demo drafts. Production persistence, run scheduling, live source setup, and shortlist recalculation are not implemented yet.
+- In API mode ICP Radar settings are loaded from and saved to the active backend definition. Each signal can configure first-search depth, incremental overlap, cadence policy and allowed source channels. Automatic scheduling is not implemented yet; cadence is shown as policy only.
+- The settings screen separately shows the current active definition and the immutable configuration snapshot of the selected historical run.
 - ICP Radar fixture signal and qualification validation is still browser-local in the UI.
   API-backed live run review decisions are saved through backend review endpoints.
 - `Take into work` does not create accepted accounts yet.

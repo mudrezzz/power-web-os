@@ -6,11 +6,13 @@ Pipeline id: `signal-monitoring`
 
 Generated PDF: `docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.pdf`
 
-Current product-surface slice: `0.7.6.4.18.3.2: Signal monitoring evidence status language and report clarity`
+Current configuration slice: `0.7.6.4.18.3.1: Radar effective configuration, lazy loading and per-signal monitoring settings`
 
-Implemented TO BE: `docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.2.2.md`
+Implemented TO BE: `docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.3.1.md`
 
 Validation report: `docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.2.2/VALIDATION_REPORT.md`
+
+Configuration validation: `docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.3.1/VALIDATION_REPORT.md`
 
 Product-surface validation: `docs/radar/pipelines/validation/0.7.6.4.18.3.2/VALIDATION_REPORT.md`
 
@@ -191,6 +193,19 @@ Overlap dedupe uses both exact fingerprints and stable
 `candidate + criterion + canonical evidence URL` keys. Different provider
 wording therefore cannot republish an old event as new (`SM-DED-01`).
 
+## 6.1 Effective Per-Signal Policy
+
+Every signal criterion owns an additive `monitoring_policy`: enabled state,
+initial lookback, incremental overlap, cadence and enabled source lanes. Initial
+window precedence is explicit run override, criterion policy, Radar policy and
+finally the visible 365-day system default. Incremental overlap is resolved for
+the same candidate, criterion and lane as its watermark. The planner intersects
+criterion lanes with global source policy and never schedules a disabled lane.
+
+Preflight and persisted artifacts expose the effective values and their basis.
+Cadence is configuration only; this slice does not create automatic jobs. These
+contracts implement `SM-CFG-01`, `SM-CFG-02`, `SM-CFG-03` and `SM-WIN-04`.
+
 ## 7. Budgets And Models
 
 Signal Monitoring owns independent counters and never reads or mutates
@@ -221,6 +236,22 @@ GET  /api/radars/{radar_id}/signal-monitoring-runs
 GET  /api/signal-monitoring-runs/{run_id}
 GET  /api/signal-monitoring-runs/{run_id}/report
 ```
+
+Radar configuration loading is resource-oriented. `GET /api/radars` is a
+summary catalog; `GET /api/radars/{radar_id}` returns the active definition and
+no history by default; the 20-run history contains only display metadata and
+scalar output counts. Full run metadata and immutable configuration snapshots
+are direct-run resources. The frontend requests definition/history only after
+one Radar is opened, candidates only for the selected run, and dossier,
+journal, trace and full signal report only on explicit interaction. This is the
+implemented `RADAR-API-01` and `RADAR-LAZY-01` contract.
+
+Settings distinguish active definition from a selected run snapshot. Loading,
+failure, stale response and dirty local draft are explicit states; local demo
+overrides do not silently replace backend definitions in API mode. Docker UI
+acceptance opened the benchmark Radar ten cold times at 1280x720 and 1366x768,
+always showing 2 qualification rules, 3 signals and 3 sources (`RADAR-UI-01`,
+`RADAR-UI-02`). The complete traceability gate is `SM-PROC-03`.
 
 Recorded contract execution remains available through:
 

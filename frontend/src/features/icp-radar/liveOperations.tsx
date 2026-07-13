@@ -19,6 +19,7 @@ export function LiveRadarOperationsTab({
   diagnosticsOpen,
   onCheckSetup,
   onOpenSettings,
+  onOpenSignalReport,
   onRunRadar,
   onRunSignalMonitoring,
   onCheckSignalMonitoringSetup,
@@ -40,6 +41,7 @@ export function LiveRadarOperationsTab({
   diagnosticsOpen: boolean;
   onCheckSetup: () => void;
   onOpenSettings: () => void;
+  onOpenSignalReport: () => void;
   onRunRadar: () => void;
   onRunSignalMonitoring: () => void;
   onCheckSignalMonitoringSetup: () => void;
@@ -89,6 +91,7 @@ export function LiveRadarOperationsTab({
         onToggleDiagnostics={onToggleDiagnostics}
         onTogglePreflight={onTogglePreflight}
         onToggleSignalReport={() => setSignalReportOpen((current) => !current)}
+        onOpenSignalReport={onOpenSignalReport}
         preflightOpen={preflightOpen}
         radar={radar}
         runState={runState}

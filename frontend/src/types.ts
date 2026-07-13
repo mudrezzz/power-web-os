@@ -268,6 +268,15 @@ export type IntentSignalDefinition = {
   trigger_rule_group: RuleGroup;
   source_policy: SourcePolicy;
   scoring_rubric: SignalScoringRubric;
+  monitoring_policy: SignalMonitoringCriterionPolicy;
+};
+
+export type SignalMonitoringCriterionPolicy = {
+  enabled: boolean;
+  initial_lookback_days: number | null;
+  incremental_overlap_days: number;
+  cadence: 'manual' | 'daily' | 'weekly' | 'monthly' | string;
+  source_lanes: Array<'known_source' | 'official_company' | 'signal_specific' | 'open_web' | string>;
 };
 
 export type MonitoringPolicy = {
@@ -314,6 +323,8 @@ export type RadarValidationReport = {
 
 export type RadarDefinition = {
   definition_id: string;
+  definition_version?: string;
+  updated_at?: string | null;
   metadata: RadarMetadata;
   global_search_policy: GlobalSearchPolicy;
   account_qualification: AccountQualificationModel;

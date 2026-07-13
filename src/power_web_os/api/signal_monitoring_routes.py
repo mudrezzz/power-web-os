@@ -37,7 +37,7 @@ def signal_monitoring_preflight(
     candidate_scope_mode: Literal["accepted_and_review_needed", "accepted_only"] = "accepted_and_review_needed",
     candidate_ids: list[str] = Query(default=[]),
     signal_codes: list[str] = Query(default=[]),
-    lookback_days: int | None = Query(default=None, ge=1, le=365),
+    lookback_days: int | None = Query(default=None, ge=1, le=3650),
     run_profile: Literal["signal_monitoring_smoke", "signal_monitoring_quality"] = "signal_monitoring_smoke",
 ) -> SignalMonitoringPreflightResponse:
     _require_radar(radar_id, context)
@@ -63,6 +63,7 @@ def signal_monitoring_preflight(
         signal_rule_count=int(payload.get("signal_rule_count") or 0),
         lookback_days=int(payload.get("lookback_days") or 0),
         budget=dict(payload.get("budget") or {}),
+        effective_signal_policies=list(payload.get("effective_signal_policies") or []),
     )
 
 

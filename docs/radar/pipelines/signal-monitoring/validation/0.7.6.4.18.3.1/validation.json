@@ -1,0 +1,30 @@
+{
+  "schema_version": "radar_pipeline_validation.v1",
+  "slice_id": "0.7.6.4.18.3.1",
+  "pipeline_id": "signal-monitoring",
+  "validation_status": "PASS",
+  "generated_at": "2026-07-12T12:00:00Z",
+  "test_exit_code": 0,
+  "runtime": {
+    "radar_id": "benchmark-sibur-holding-contour",
+    "cold_open_passes": 10,
+    "detail_bytes": 16313,
+    "history_bytes": 17367,
+    "catalog_detail_requests_before_open": 0,
+    "rule_count": 2,
+    "signal_count": 3,
+    "source_count": 3,
+    "definition_version_after_restart": "0.7.6.4.18.3.1"
+  },
+  "requirements": [
+    {"requirement_id":"SM-CFG-01","status":"PASS","evidence":["API -> DB -> restart -> API round-trip retained all three signal policies"]},
+    {"requirement_id":"SM-CFG-02","status":"PASS","evidence":["preflight effective_signal_policies and artifact window_policy.criteria"]},
+    {"requirement_id":"SM-CFG-03","status":"PASS","evidence":["tests/test_signal_monitoring_settings.py::test_per_signal_source_lanes_limit_planning"]},
+    {"requirement_id":"SM-WIN-04","status":"PASS","evidence":["tests/test_signal_monitoring_settings.py::test_per_signal_overlap_controls_incremental_window"]},
+    {"requirement_id":"RADAR-API-01","status":"PASS","evidence":["detail_bytes=16313","history_bytes=17367"]},
+    {"requirement_id":"RADAR-LAZY-01","status":"PASS","evidence":["catalog_detail_requests_before_open=0","selected resources load on interaction"]},
+    {"requirement_id":"RADAR-UI-01","status":"PASS","evidence":["cold_open_passes=10","2 rules, 3 signals, 3 sources"]},
+    {"requirement_id":"RADAR-UI-02","status":"PASS","evidence":["permanent-loading race found by Docker gate and fixed with stable loader/cache"]},
+    {"requirement_id":"SM-PROC-03","status":"PASS","evidence":["TO BE -> manifest -> tests -> validation -> AS IS"]}
+  ]
+}

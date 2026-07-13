@@ -51,7 +51,13 @@ export function apiDetailsToCatalogArtifact(
 }
 
 export function apiDetailToCatalogItem(detail: RadarDetailDto | RadarSummaryDto): ICPRadarCatalogItem {
-  const definition = ('active_definition' in detail ? detail.active_definition?.definition_payload : undefined) as RadarDefinition | undefined;
+  const definitionRecord = 'active_definition' in detail ? detail.active_definition : null;
+  const definition = definitionRecord ? {
+    ...(definitionRecord.definition_payload as RadarDefinition),
+    definition_id: definitionRecord.definition_id,
+    definition_version: definitionRecord.definition_version,
+    updated_at: definitionRecord.updated_at,
+  } : undefined;
   const latestRunAt = detail.latest_run?.completed_at ?? detail.latest_run?.queued_at ?? '';
   return {
     radar_id: detail.radar_id,

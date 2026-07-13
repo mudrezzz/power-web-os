@@ -73,6 +73,7 @@ class RadarRunSummaryResponse(BaseModel):
     error_message: str | None = None
     error_metadata: dict[str, Any] = Field(default_factory=dict)
     run_metadata: dict[str, Any] = Field(default_factory=dict)
+    display_metadata: dict[str, Any] = Field(default_factory=dict)
     output: "RadarRunOutputSummaryResponse | None" = None
 
 
@@ -81,7 +82,21 @@ class RadarRunOutputSummaryResponse(BaseModel):
     source_count: int
     candidate_count: int
     contract_issue_count: int
+    visible_candidate_count: int = 0
+    accepted_candidate_count: int = 0
+    review_needed_candidate_count: int = 0
     updated_at: datetime | None = None
+
+
+class RadarRunConfigurationResponse(BaseModel):
+    run_id: str
+    radar_id: str
+    definition_id: str = ""
+    definition_version: str = ""
+    definition_payload: dict[str, Any] = Field(default_factory=dict)
+    run_profile: str = ""
+    task_context_overrides: dict[str, Any] = Field(default_factory=dict)
+    snapshot_basis: str = "artifact_snapshot"
 
 
 class SourceUsageResponse(BaseModel):

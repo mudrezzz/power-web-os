@@ -34,6 +34,7 @@ SignalSearchStatus = Literal[
 SignalAttemptRole = Literal["primary", "primary_retry", "backup_retry"]
 SignalEntityType = Literal["legal_entity", "branch", "production_site", "project", "asset", "unknown_entity"]
 SignalMonitoringSourceLane = Literal["known_source", "official_company", "signal_specific", "open_web"]
+SignalMonitoringCadence = Literal["manual", "daily", "weekly", "monthly"]
 SignalMonitoringSourceDecisionStatus = Literal["selected", "skipped", "rejected"]
 SignalMonitoringDiagnosticSeverity = Literal["info", "warning", "blocking"]
 SignalMonitoringCandidateScopeMode = Literal["accepted_and_review_needed", "accepted_only"]
@@ -94,6 +95,13 @@ class SignalMonitoringSignalRule(BaseModel):
     expected_evidence: list[str] = Field(default_factory=list)
     query_template: str = "{candidate} {signal}"
     initial_lookback_days: int | None = Field(default=None, ge=1, le=3650)
+    enabled: bool = True
+    incremental_overlap_days: int = Field(default=2, ge=0, le=90)
+    cadence: SignalMonitoringCadence = "manual"
+    source_lanes: list[SignalMonitoringSourceLane] = Field(
+        default_factory=lambda: ["known_source", "official_company", "signal_specific", "open_web"]
+    )
+    policy_basis: dict[str, str] = Field(default_factory=dict)
     source_ids: list[str] = Field(default_factory=list)
 
 

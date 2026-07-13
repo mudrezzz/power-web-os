@@ -59,9 +59,17 @@ export function useRadarWorkspace({
   const [settingsSaveError, setSettingsSaveError] = useState('');
   const [appliedDirectSelection, setAppliedDirectSelection] = useState<string | null>(null);
 
-  const mergedRadars = useMemo(() => mergeCatalogWithOverrides(catalog, radarOverrides), [catalog, radarOverrides]);
+  const effectiveOverrides = useMemo(() => (
+    backend.runState.mode === 'api'
+      ? Object.fromEntries(Object.entries(radarOverrides).filter(([, value]) => value.override_type === 'created'))
+      : radarOverrides
+  ), [backend.runState.mode, radarOverrides]);
+  const mergedRadars = useMemo(() => mergeCatalogWithOverrides(catalog, effectiveOverrides), [catalog, effectiveOverrides]);
   const selectedRadar = mergedRadars.find((item) => item.radar_id === navigation.selectedRadarId) ?? null;
   const selectedRadarOverride = selectedRadar ? radarOverrides[selectedRadar.radar_id] : undefined;
+  const selectedDefinitionState = selectedRadar
+    ? backend.definitionStateByRadarId[selectedRadar.radar_id] ?? { status: 'idle' as const, error: null }
+    : { status: 'idle' as const, error: null };
   const activeFixtureRadarId = catalog?.workflow_metadata.active_fixture_radar_id ?? 'toir-sibur';
   const selectedFixtureArtifact = selectedRadar?.radar_id === activeFixtureRadarId ? artifact : null;
   const selectedLiveArtifact = selectedRadar
@@ -69,6 +77,7 @@ export function useRadarWorkspace({
     : null;
   const selectedRun = selectedRadar ? backend.selectedRunByRadarId[selectedRadar.radar_id] ?? null : null;
   const selectedRunHistory = selectedRadar ? backend.runHistoryByRadarId[selectedRadar.radar_id] ?? [] : [];
+  const selectedRunConfiguration = selectedRun ? backend.configurationByRunId[selectedRun.run_id] ?? null : null;
   const selectedSignalRun = selectedRadar ? backend.selectedSignalRunByRadarId[selectedRadar.radar_id] ?? null : null;
   const selectedSignalRunHistory = selectedRadar ? backend.signalRunHistoryByRadarId[selectedRadar.radar_id] ?? [] : [];
   const selectedSignalReport = selectedSignalRun ? backend.signalReportByRunId[selectedSignalRun.run_id] ?? null : null;
@@ -124,9 +133,16 @@ export function useRadarWorkspace({
   }, [selectedRun?.run_id, selectedSignalRun?.run_id, selectedSignalRun?.source_run_id]);
 
   useEffect(() => {
+    if (selectedRadar && backend.runState.mode === 'api') {
+      void backend.loadRadarDefinition(selectedRadar.radar_id);
+    }
+  }, [backend.loadRadarDefinition, backend.runState.mode, selectedRadar?.radar_id]);
+
+  useEffect(() => {
     if (
       selectedRadar
       && backend.runState.mode === 'api'
+      && selectedDefinitionState.status === 'loaded'
       && selectedRadar.summary.last_run === 'backend_run'
       && !selectedLiveArtifact
     ) {
@@ -141,6 +157,7 @@ export function useRadarWorkspace({
     backend.loadRadarRunHistory,
     backend.loadSignalRunHistory,
     backend.runState.mode,
+    selectedDefinitionState.status,
     selectedLiveArtifact,
     selectedRadar?.radar_id,
     selectedRadar?.summary.last_run,
@@ -154,12 +171,25 @@ export function useRadarWorkspace({
       setEditingBlock(null);
       return;
     }
+    if (backend.runState.mode === 'api' && selectedDefinitionState.status !== 'loaded') {
+      return;
+    }
     const nextDraft = draftFromRadar(selectedRadar);
+    if (settingsDirty && settingsDraft?.definition_id === nextDraft.definition_id) {
+      setSettingsSaveError(t('icpRadar.settings.backendDefinitionChanged'));
+      return;
+    }
     setSettingsDraft(nextDraft);
     setSavedSettingsDraftSnapshot(JSON.stringify(nextDraft));
     setEditingBlock(null);
     setSettingsSaveError('');
-  }, [selectedRadar?.radar_id]);
+  }, [selectedRadar?.radar_id, selectedRadar?.definition.definition_version, selectedDefinitionState.status]);
+
+  useEffect(() => {
+    if (navigation.selectedTab === 'settings' && selectedRun && backend.runState.mode === 'api') {
+      void backend.loadRadarRunConfiguration(selectedRun.run_id);
+    }
+  }, [backend.loadRadarRunConfiguration, backend.runState.mode, navigation.selectedTab, selectedRun?.run_id]);
 
   function createRadar() {
     const template = artifact?.radar.definition ?? catalog?.radars[0]?.definition;
@@ -333,6 +363,20 @@ export function useRadarWorkspace({
     }
   }
 
+  function selectCandidateDetailTab(tab: Parameters<typeof navigation.setCandidateDetailTab>[0]) {
+    navigation.setCandidateDetailTab(tab);
+    if (!selectedRadar || backend.runState.mode !== 'api') {
+      return;
+    }
+    if (tab === 'journal') {
+      void backend.loadRadarRunResource(selectedRadar.radar_id, 'dossier');
+      void backend.loadRadarRunResource(selectedRadar.radar_id, 'journal');
+    }
+    if (tab === 'trace') {
+      void backend.loadRadarRunResource(selectedRadar.radar_id, 'trace');
+    }
+  }
+
   async function selectSignalRun(runId: string) {
     if (!selectedRadar) {
       return;
@@ -351,10 +395,12 @@ export function useRadarWorkspace({
     mergedRadars,
     selectedRadar,
     selectedRadarOverride,
+    selectedDefinitionState,
     selectedFixtureArtifact,
     selectedLiveArtifact,
     selectedRun,
     selectedRunHistory,
+    selectedRunConfiguration,
     selectedSignalRun,
     selectedSignalRunHistory,
     selectedSignalReport,
@@ -389,7 +435,9 @@ export function useRadarWorkspace({
     checkSignalMonitoringSetup: backend.checkSignalMonitoringSetup,
     runRadar: backend.runRadar,
     runSignalMonitoring: backend.runSignalMonitoring,
+    loadSignalReport: backend.loadSignalReport,
     selectRun,
+    selectCandidateDetailTab,
     selectSignalRun,
     createRadar,
     deleteRadar,

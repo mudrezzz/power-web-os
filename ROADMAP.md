@@ -9026,10 +9026,74 @@ Required proof before Done:
 
 ### Slice 0.7.6.4.18.3.1: Per-signal monitoring depth, cadence and source settings
 
-- Status: Ready
+- Status: Done
 - Goal: Expose persisted per-signal initial lookback, incremental overlap, cadence and source policy settings after the split UI contract is validated.
 - Scope: Persist per-criterion initial depth, overlap, cadence and source-lane policy; expose them through API and UI with validation.
 - Acceptance criteria: Each criterion has explicit persisted monitoring settings, runtime uses them without hidden defaults, and UI/API round-trip is covered.
+
+### Slice 0.7.6.4.18.3.1.1: Radar catalog counter reconciliation and API fallback recovery
+
+- Status: Ready
+- Goal: Make Radar catalog counters use the same canonical candidate surface as run detail and recover automatically from temporary backend unavailability without leaving users on stale demo zeros.
+- User value: A user sees one trustworthy set of candidate counters in the Radar catalog and in run detail. Temporary backend startup latency cannot strand the UI on demo data, and older persisted runs remain honestly classified instead of appearing empty.
+- Problem statement: The Radar catalog is materially inconsistent with run detail. When the frontend catalog request fails once during startup, useRadarBackend switches to demo fallback and never retries; that fallback contains zero counts for Benchmark / SIBUR holding contour and TOIR Quick Live Radar while TOIR / SIBUR happens to show its static fixture count of 33. Separately, the new scalar radar_run_outputs summaries are computed from raw candidates_json, while /api/radar-runs/{run_id}/candidates can project a larger canonical public surface from the artifact. Current evidence: benchmark latest run radar-run-3aa622ff-e137-48aa-9f2c-15e74f594bfc has 10 public candidates (3 accepted, 7 review-needed), but the catalog API summary reports 3 candidates and internally inconsistent accepted=3/review=3; Quick Live latest run radar-run-ef74d8c0-8e19-43eb-9936-cfc0a44c383b has 2 public candidates, but legacy rows are reported as accepted=0/review=0. A user can therefore see candidates inside a Radar while its catalog card shows zeros or contradictory counters.
+- Scope:
+  - Introduce one canonical candidate-surface summary projection shared by the candidates endpoint, run summaries and catalog summaries.
+  - Persist candidate_count, accepted_count and needs_review_count from the canonical visible public surface, not from raw extraction candidates_json.
+  - Backfill existing radar_run_outputs scalar summaries from the same projection without rerunning Radar or calling providers.
+  - Treat every visible legacy candidate that is not explicitly accepted as review-needed unless it is explicitly rejected and therefore absent from the public surface.
+  - Enforce the invariant accepted_count + needs_review_count = visible_candidate_count and expose an explicit diagnostic if an artifact cannot be classified.
+  - Refactor frontend catalog loading into a retryable operation. After a transient API failure, show an explicit demo/degraded state, retry with bounded backoff, provide a manual reconnect action, and atomically replace fallback data after API recovery without requiring a page reload.
+  - Refresh lightweight catalog summaries after a candidate-discovery run completes and when the user returns to the catalog, without eager detail/artifact loading.
+  - Keep local demo overrides unable to overwrite recovered backend counters silently.
+- Out of scope:
+  - No candidate-discovery search, admission, scoring, filtering, provider, checkpoint, budget or signal-monitoring behavior changes.
+  - No new Radar or Signal Monitoring runs and no OpenRouter/registry token spend.
+  - No redesign of the Radar catalog layout.
+  - No change to historical-run selection semantics: the catalog represents the latest completed candidate-discovery run, while detail may display an explicitly selected historical run.
+  - No public quality claim.
+- Implementation notes:
+  - Put canonical summary logic in a backend/application read-model helper used by persistence backfill and API mappers; do not duplicate classification rules in React or SQL migration code.
+  - Reuse the exact candidate list projected by candidates_response, including artifact user_visible_candidates compatibility behavior.
+  - Keep catalog endpoints lightweight: scalar summaries must remain queryable without loading dossier, journal, technical trace or all run metadata.
+  - API mode always owns backend Radar counters. Demo fallback is allowed only as a visibly labeled degraded/offline surface.
+  - Frontend reconnect should be cancellable, avoid overlapping requests, cap retry delay, ignore stale responses and stop retrying after successful API recovery.
+  - Record this as a corrective retrospective for completed slice 0.7.6.4.18.1.4.2: its previous 10-run gate covered clean ready-backend startup but did not cover frontend-before-backend recovery, and it compared catalog counters with the scalar summary rather than independently with the candidates endpoint.
+- Tests:
+  - Backend unit/contract: canonical summary uses the same candidate ids and count as /api/radar-runs/{run_id}/candidates.
+  - Backend compatibility: artifact public candidates override smaller raw candidates_json; legacy visible non-accepted candidates become review-needed.
+  - Backend invariant: accepted + review-needed equals visible count; duplicate ids and source-less hidden rows do not inflate counts.
+  - Migration/backfill test: existing outputs are reconciled correctly and survive API restart.
+  - API integration: /api/radars, /api/radars/{id}/runs and /api/radar-runs/{run_id}/candidates agree for Benchmark and Quick Live.
+  - Frontend contract: initial API failure shows an explicit degraded/demo indicator and reconnect action; successful retry replaces fallback catalog without reload.
+  - Frontend race tests: retry is cancellable, stale fallback/API responses cannot overwrite newer backend data, and returning to catalog refreshes summaries without detail fanout.
+  - Playwright Docker gate: 10 cold opens with backend already ready and 10 frontend-before-backend recovery cycles.
+  - Required gates: python -m pytest tests/test_backend_api.py tests/test_radar_persistence.py tests/test_frontend_architecture_contract.py -q; npm --prefix ./frontend run build; targeted Playwright DoD; python -m power_web_os.roadmap check; git diff --check.
+- Docs:
+  - Update frontend ICP Radar README with canonical summary ownership, degraded fallback behavior and reconnect lifecycle.
+  - Update Developer Guide and demo runbook with the frontend-before-backend recovery gate and catalog/detail counter comparison.
+  - Add the retrospective finding to the slice closeout: the prior clean-start-only stability test was insufficient.
+  - No Radar pipeline TO BE/AS IS update is required because pipeline behavior does not change.
+- Demo impact: After Docker startup, Benchmark / SIBUR holding contour and TOIR Quick Live Radar show the candidate totals from their latest completed backend runs. If the frontend opens before the API is ready, the user briefly sees an explicit degraded/demo state and then the catalog repairs itself automatically when the API becomes available.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- Catalog candidate_count equals the length and candidate-id set of /api/radar-runs/{latest_completed_run_id}/candidates for every Radar with a completed candidate-discovery output.
+- accepted_count + needs_review_count = candidate_count for every catalog card backed by a completed run.
+- On the current seeded database, Benchmark latest run radar-run-3aa622ff-e137-48aa-9f2c-15e74f594bfc shows 10 candidates, 3 accepted and 7 review-needed.
+- On the current seeded database, Quick Live latest run radar-run-ef74d8c0-8e19-43eb-9936-cfc0a44c383b shows 2 candidates, 0 accepted and 2 review-needed.
+- TOIR / SIBUR remains 33 candidates, 0 accepted and 33 review-needed.
+- The catalog explicitly states that its counters belong to the latest completed candidate-discovery run; choosing a historical run in detail does not silently rewrite catalog counters.
+- Docker is rebuilt and the API is restarted after backfill; reconciled counters persist.
+- Ten consecutive cold UI opens with an already-ready backend show correct backend counts and no fallback state.
+- Ten consecutive recovery cycles start the frontend before the backend, observe an explicit degraded/demo state, then start/restore the backend and reach correct API counts without page reload.
+- No cycle leaves the UI permanently in fallback, performs catalog detail fanout or shows temporary zero backend counts as final state.
+- Frontend build, backend/API/persistence tests, architecture contracts, Playwright, roadmap check and git diff check are green.
+- Closeout records API counts, candidates-endpoint counts, 10+10 iteration evidence, restart persistence and any remaining caveats.
+- Risks:
+  - Reusing public-surface projection during migration can accidentally load large artifacts. Mitigate by backfilling once and keeping runtime reads scalar.
+  - Legacy artifacts may lack modern acceptance fields. Mitigate with the conservative rule that a visible non-accepted row requires review, plus explicit diagnostics for genuinely unclassifiable data.
+  - Automatic retries can create request storms or stale-response races. Mitigate with bounded backoff, cancellation, one in-flight catalog request and request-generation guards.
+  - A newer run can complete during validation and change expected counts. Pin concrete run ids for fixture assertions and separately test latest-run semantics.
+- Behavior change: false
 
 ### Slice 0.7.6.4.18.3.2: Signal monitoring evidence status language and report clarity
 

@@ -44,7 +44,7 @@ class SignalMonitoringWindowPolicy:
         if watermark is not None:
             searched_through = _parse_timestamp(watermark.searched_through_at)
             if searched_through is not None:
-                overlap = max(monitoring_input.incremental_overlap_days, 0)
+                overlap = max(rule.incremental_overlap_days, 0)
                 start = searched_through - timedelta(days=overlap)
                 return SignalMonitoringWindow(
                     candidate_id=candidate_id,

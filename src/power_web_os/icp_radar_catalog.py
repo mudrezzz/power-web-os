@@ -18,6 +18,7 @@ from power_web_os.icp_radar import (
     SignalScoreRule,
     SignalCriterion,
     SignalScoringRubric,
+    SignalMonitoringCriterionPolicy,
     SourceDefinition,
     SourcePolicy,
     radar_definition_to_payload,
@@ -409,6 +410,7 @@ def _source_policy_from_payload(payload: dict[str, Any]) -> SourcePolicy:
 
 
 def _intent_signal_from_payload(payload: dict[str, Any]) -> IntentSignalDefinition:
+    monitoring = payload.get("monitoring_policy") if isinstance(payload.get("monitoring_policy"), dict) else {}
     return IntentSignalDefinition(
         signal_id=payload["signal_id"],
         code=payload["code"],
@@ -426,6 +428,13 @@ def _intent_signal_from_payload(payload: dict[str, Any]) -> IntentSignalDefiniti
                 )
                 for item in payload["scoring_rubric"]["rules"]
             ),
+        ),
+        monitoring_policy=SignalMonitoringCriterionPolicy(
+            enabled=bool(monitoring.get("enabled", True)),
+            initial_lookback_days=int(monitoring["initial_lookback_days"]) if monitoring.get("initial_lookback_days") is not None else None,
+            incremental_overlap_days=int(monitoring.get("incremental_overlap_days", 2)),
+            cadence=str(monitoring.get("cadence") or "manual"),
+            source_lanes=tuple(str(item) for item in monitoring.get("source_lanes", ("known_source", "official_company", "signal_specific", "open_web"))),
         ),
     )
 

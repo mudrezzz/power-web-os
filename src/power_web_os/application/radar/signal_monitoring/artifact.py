@@ -88,6 +88,17 @@ class SignalMonitoringArtifactProjector:
                 "lookback_basis": monitoring_input.lookback_basis,
                 "as_of": monitoring_input.as_of,
                 "incremental_overlap_days": monitoring_input.incremental_overlap_days,
+                "criteria": {
+                    rule.signal_code: {
+                        "enabled": rule.enabled,
+                        "initial_lookback_days": rule.initial_lookback_days,
+                        "incremental_overlap_days": rule.incremental_overlap_days,
+                        "cadence": rule.cadence,
+                        "source_lanes": list(rule.source_lanes),
+                        "basis": dict(rule.policy_basis),
+                    }
+                    for rule in monitoring_input.signal_rules
+                },
             },
             "watermarks_before": [item.model_dump(mode="json") for item in outcome.watermarks_before],
             "watermarks_after": [item.model_dump(mode="json") for item in outcome.watermarks_after],

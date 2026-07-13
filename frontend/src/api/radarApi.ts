@@ -93,7 +93,19 @@ export type RadarRunSummaryDto = {
   error_message: string | null;
   error_metadata: Record<string, unknown>;
   run_metadata: Record<string, unknown>;
+  display_metadata: Record<string, unknown>;
   output: RadarRunOutputSummaryDto | null;
+};
+
+export type RadarRunConfigurationDto = {
+  run_id: string;
+  radar_id: string;
+  definition_id: string | null;
+  definition_version: string | null;
+  definition_payload: Record<string, unknown>;
+  run_profile: string;
+  task_context_overrides: Record<string, unknown>;
+  snapshot_basis: string;
 };
 
 export type RadarRunOutputSummaryDto = {
@@ -101,6 +113,9 @@ export type RadarRunOutputSummaryDto = {
   source_count: number;
   candidate_count: number;
   contract_issue_count: number;
+  visible_candidate_count: number;
+  accepted_candidate_count: number;
+  review_needed_candidate_count: number;
   updated_at: string | null;
 };
 
@@ -135,6 +150,7 @@ export type SignalMonitoringPreflightDto = {
   signal_rule_count: number;
   lookback_days: number;
   budget: Record<string, unknown>;
+  effective_signal_policies: Array<Record<string, unknown>>;
 };
 
 export type SignalMonitoringOutputSummaryDto = {
@@ -562,6 +578,12 @@ export class RadarApiClient {
 
   getRun(runId: string) {
     return this.request<RadarRunSummaryDto>(`/api/radar-runs/${encodeURIComponent(runId)}`);
+  }
+
+  getRunConfiguration(runId: string) {
+    return this.request<RadarRunConfigurationDto>(
+      `/api/radar-runs/${encodeURIComponent(runId)}/configuration`,
+    );
   }
 
   getRunCandidates(runId: string) {

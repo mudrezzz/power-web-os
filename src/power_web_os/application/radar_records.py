@@ -91,6 +91,19 @@ class RadarRunOutputRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class RadarRunOutputSummaryRecord:
+    run_id: str
+    artifact_version: str
+    source_count: int
+    candidate_count: int
+    contract_issue_count: int
+    visible_candidate_count: int = 0
+    accepted_candidate_count: int = 0
+    review_needed_candidate_count: int = 0
+    updated_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class SignalMonitoringRunOutputRecord:
     """Persisted output owned by the standalone signal-monitoring pipeline."""
 

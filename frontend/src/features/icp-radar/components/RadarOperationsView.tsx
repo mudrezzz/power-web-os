@@ -24,6 +24,11 @@ export function RadarOperationsView({
         onRunSignalMonitoring={() => {
           void workspace.runSignalMonitoring(workspace.selectedRadar!.radar_id);
         }}
+        onOpenSignalReport={() => {
+          if (workspace.selectedSignalRun) {
+            void workspace.loadSignalReport(workspace.selectedSignalRun.run_id);
+          }
+        }}
         onCheckSignalMonitoringSetup={() => {
           void workspace.checkSignalMonitoringSetup(workspace.selectedRadar!.radar_id);
         }}

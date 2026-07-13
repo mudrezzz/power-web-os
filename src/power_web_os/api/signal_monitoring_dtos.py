@@ -13,7 +13,7 @@ class SignalMonitoringRunRequest(BaseModel):
     candidate_scope_mode: Literal["accepted_and_review_needed", "accepted_only"] = "accepted_and_review_needed"
     candidate_ids: list[str] = Field(default_factory=list)
     signal_codes: list[str] = Field(default_factory=list)
-    lookback_days: int | None = Field(default=None, ge=1, le=365)
+    lookback_days: int | None = Field(default=None, ge=1, le=3650)
     run_profile: Literal["signal_monitoring_smoke", "signal_monitoring_quality"] = "signal_monitoring_smoke"
     idempotency_key: str | None = None
     correlation_id: str | None = None
@@ -31,6 +31,7 @@ class SignalMonitoringPreflightResponse(BaseModel):
     signal_rule_count: int = 0
     lookback_days: int = 0
     budget: dict[str, Any] = Field(default_factory=dict)
+    effective_signal_policies: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class SignalMonitoringOutputSummaryResponse(BaseModel):

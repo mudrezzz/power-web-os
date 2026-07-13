@@ -244,8 +244,88 @@ def test_radar_run_history_endpoint_returns_recent_runs_newest_first(tmp_path: P
     runs = response.json()
     assert [item["run_id"] for item in runs] == ["history-run-2", "history-run-1"]
     assert runs[0]["output"]["candidate_count"] == 1
-    assert runs[1]["run_metadata"]["benchmark_mode"] == "blind"
+    assert runs[1]["run_metadata"] == {}
+    assert runs[1]["display_metadata"]["benchmark_mode"] == "blind"
     assert client.get("/api/radars/missing/runs").status_code == 404
+
+
+def test_radar_detail_and_history_are_lightweight(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    engine = create_database_engine(database_url=database_url)
+    session_factory = create_session_factory(engine)
+    queued_at = datetime(2026, 7, 9, 10, 0, tzinfo=timezone.utc)
+    with session_scope(session_factory) as session:
+        run_repo = SqlAlchemyRadarRunRepository(session)
+        output_repo = SqlAlchemyRadarRunOutputRepository(session)
+        for index in range(20):
+            run = run_repo.create(RadarRunRecord(
+                run_id=f"lean-run-{index}",
+                radar_id="toir-quick-live",
+                status=RadarRunStatus.COMPLETED,
+                queued_at=queued_at + timedelta(minutes=index),
+                completed_at=queued_at + timedelta(minutes=index, seconds=10),
+                run_metadata={"task_context": {"run_profile": "benchmark_live"}, "large": "x" * 1_000_000},
+            ))
+            output_repo.upsert(RadarRunOutputRecord(
+                run_id=run.run_id,
+                artifact_version="0.7.6-test",
+                radar_payload={"definition": {"definition_id": "radar-def-live", "metadata": {"name": "Quick"}}},
+                search_plan_payload={},
+                sources_payload=[{"source_ref": "source-1"}],
+                candidates_payload=[{"candidate_id": "candidate-1"}],
+                artifact_payload={"artifact_type": "icp_radar_live_run", "large": "x" * 1_000_000},
+            ))
+
+    client = TestClient(_app(tmp_path, database_url=database_url))
+    detail = client.get("/api/radars/toir-quick-live")
+    history = client.get("/api/radars/toir-quick-live/runs?limit=20")
+
+    assert detail.status_code == 200
+    assert detail.json()["runs"] == []
+    assert len(detail.content) <= 250_000
+    assert history.status_code == 200
+    assert len(history.json()) == 20
+    assert len(history.content) <= 250_000
+    assert all(item["run_metadata"] == {} for item in history.json())
+    assert all(item["display_metadata"]["run_profile"] == "benchmark_live" for item in history.json())
+
+
+def test_run_configuration_returns_immutable_artifact_snapshot(tmp_path: Path) -> None:
+    database_url = _create_seeded_database(tmp_path)
+    engine = create_database_engine(database_url=database_url)
+    session_factory = create_session_factory(engine)
+    with session_scope(session_factory) as session:
+        run = SqlAlchemyRadarRunRepository(session).create(RadarRunRecord(
+            run_id="configured-run",
+            radar_id="toir-quick-live",
+            status=RadarRunStatus.COMPLETED,
+            run_metadata={"task_context": {"run_profile": "blind_benchmark", "lookback_days": 180}},
+        ))
+        SqlAlchemyRadarRunOutputRepository(session).upsert(RadarRunOutputRecord(
+            run_id=run.run_id,
+            artifact_version="0.7.6-test",
+            radar_payload={
+                "definition_version": "historical-v1",
+                "definition": {"definition_id": "historical-definition", "metadata": {"name": "Historical"}},
+            },
+            search_plan_payload={},
+            sources_payload=[],
+            candidates_payload=[],
+            artifact_payload={"artifact_type": "icp_radar_live_run"},
+        ))
+
+    response = TestClient(_app(tmp_path, database_url=database_url)).get(
+        "/api/radar-runs/configured-run/configuration"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["definition_id"] == "historical-definition"
+    assert payload["definition_version"] == "historical-v1"
+    assert payload["definition_payload"]["metadata"]["name"] == "Historical"
+    assert payload["run_profile"] == "blind_benchmark"
+    assert payload["task_context_overrides"]["lookback_days"] == 180
+    assert payload["snapshot_basis"] == "artifact_snapshot"
 
 
 def test_radar_catalog_summary_uses_latest_visible_candidate_surface_counts(tmp_path: Path) -> None:

@@ -123,6 +123,33 @@ export function ListSection({ bounded = false, title, items }: { bounded?: boole
   );
 }
 
+export function NumberField({
+  label,
+  max,
+  min,
+  onChange,
+  value,
+}: {
+  label: string;
+  max: number;
+  min: number;
+  onChange: (value: number) => void;
+  value: number;
+}) {
+  return (
+    <label className="icp-editor-field">
+      <span>{label}</span>
+      <input
+        max={max}
+        min={min}
+        type="number"
+        value={value}
+        onChange={(event) => onChange(Math.min(max, Math.max(min, Number(event.target.value))))}
+      />
+    </label>
+  );
+}
+
 export function BooleanPill({ active }: { active: boolean }) {
   const { t } = useTranslation();
   return <Badge tone={active ? 'ally' : 'neutral'}>{active ? t('icpRadar.settings.yes') : t('icpRadar.settings.no')}</Badge>;

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
+import { LoaderCircle, RotateCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Card, Eyebrow } from '../../components/primitives';
+import { Button, Card, Eyebrow } from '../../components/primitives';
 import type { ICPRadarArtifact, ICPRadarCatalogArtifact, LiveICPRadarRunArtifact, SignalMonitoringReportArtifact } from '../../types';
 import { useRadarWorkspace } from './application/useRadarWorkspace';
 import type { RadarBackendController } from './application/useRadarBackend';
@@ -15,9 +16,7 @@ import { RadarDetailHeader } from './components/RadarDetailHeader';
 import { RadarOperationsView } from './components/RadarOperationsView';
 import { RadarRunSelector } from './components/RadarRunSelector';
 import './icpRadar.css';
-
 const RadarSettings = lazy(() => import('./settings').then((module) => ({ default: module.RadarSettings })));
-
 export function ICPRadarScreen({
   artifact,
   backend,
@@ -96,7 +95,7 @@ export function ICPRadarScreen({
         onQualificationReviewChange={workspace.saveQualificationReviewDecision}
         onSignalDecisionChange={workspace.saveLiveSignalDecision}
         onSignalDecisionReset={workspace.resetLiveSignalDecision}
-        onTabChange={navigation.setCandidateDetailTab}
+        onTabChange={workspace.selectCandidateDetailTab}
         qualificationReview={workspace.liveQualificationReview}
         radarId={workspace.selectedRadar.radar_id}
         radarName={workspace.selectedRadar.name}
@@ -140,7 +139,33 @@ export function ICPRadarScreen({
         />
       )}
 
-      {navigation.selectedTab === 'settings' && workspace.activeSettingsDraft ? (
+      {navigation.selectedTab === 'settings' && workspace.selectedDefinitionState.status === 'loading' ? (
+        <Card>
+          <div className="icp-empty-shortlist" role="status">
+            <LoaderCircle aria-hidden="true" className="spin" />
+            <div>
+              <Eyebrow>{t('icpRadar.settings.loading')}</Eyebrow>
+              <p>{t('icpRadar.settings.loading')}</p>
+            </div>
+          </div>
+        </Card>
+      ) : navigation.selectedTab === 'settings' && workspace.selectedDefinitionState.status === 'failed' ? (
+        <Card>
+          <div className="icp-empty-shortlist" role="alert">
+            <div>
+              <Eyebrow>{t('icpRadar.settings.definitionLoadFailed')}</Eyebrow>
+              <p>{workspace.selectedDefinitionState.error}</p>
+            </div>
+            <Button
+              icon={<RotateCw aria-hidden="true" />}
+              variant="default"
+              onClick={() => void backend.loadRadarDefinition(workspace.selectedRadar!.radar_id)}
+            >
+              {t('icpRadar.settings.retryDefinition')}
+            </Button>
+          </div>
+        </Card>
+      ) : navigation.selectedTab === 'settings' && workspace.activeSettingsDraft ? (
         <Suspense fallback={(
           <Card>
             <Eyebrow>{t('icpRadar.settings.loading')}</Eyebrow>
@@ -156,6 +181,7 @@ export function ICPRadarScreen({
             onEdit={workspace.setEditingBlock}
             onSave={workspace.saveSettingsDraft}
             validationErrors={workspace.validationErrors}
+            runConfiguration={workspace.selectedRunConfiguration}
           />
         </Suspense>
       ) : navigation.selectedTab === 'operations' ? (

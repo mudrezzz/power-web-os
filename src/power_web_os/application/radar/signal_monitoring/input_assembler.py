@@ -21,6 +21,7 @@ from power_web_os.application.radar.signal_monitoring.source_binding import (
     SignalSourceBindingService,
     apply_capability,
 )
+from power_web_os.application.radar.signal_monitoring.policy import bounded_policy_int, signal_source_lanes
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRunOutputRecord,
@@ -291,16 +292,33 @@ class SignalMonitoringInputAssembler:
             code = str(payload.get("code") or payload.get("signal_code") or payload.get("signal_id") or "").strip()
             if not code or (signal_codes and code not in signal_codes):
                 continue
+            monitoring_policy = self._dict(payload.get("monitoring_policy"))
+            enabled = bool(monitoring_policy.get("enabled", True))
+            if not enabled:
+                continue
+            initial_lookback = self._optional_positive_int(
+                monitoring_policy.get("initial_lookback_days") or payload.get("initial_lookback_days")
+            )
+            overlap = bounded_policy_int(monitoring_policy.get("incremental_overlap_days"), default=2, low=0, high=90)
+            source_lanes = signal_source_lanes(monitoring_policy.get("source_lanes"))
             result.append(SignalMonitoringSignalRule(
                 signal_code=code,
                 label=str(payload.get("name") or payload.get("label") or code),
                 description=str(payload.get("description") or ""),
                 expected_evidence=self._expected_evidence(payload),
                 query_template="{candidate} {signal}",
-                initial_lookback_days=self._optional_positive_int(
-                    payload.get("initial_lookback_days")
-                    or self._dict(payload.get("monitoring_policy")).get("initial_lookback_days")
-                ),
+                initial_lookback_days=initial_lookback,
+                enabled=enabled,
+                incremental_overlap_days=overlap,
+                cadence=str(monitoring_policy.get("cadence") or "manual"),
+                source_lanes=source_lanes,
+                policy_basis={
+                    "enabled": "criterion_policy" if "enabled" in monitoring_policy else "system_default",
+                    "initial_lookback_days": "criterion_policy" if initial_lookback is not None else "radar_or_system_default",
+                    "incremental_overlap_days": "criterion_policy" if "incremental_overlap_days" in monitoring_policy else "system_default_2",
+                    "cadence": "criterion_policy" if "cadence" in monitoring_policy else "system_default_manual",
+                    "source_lanes": "criterion_policy" if "source_lanes" in monitoring_policy else "system_default_all_lanes",
+                },
                 source_ids=self._string_list(self._dict(payload.get("source_policy")).get("source_ids")),
             ))
         if signal_codes:

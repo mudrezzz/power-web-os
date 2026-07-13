@@ -14,6 +14,7 @@ from power_web_os.application.radar_records import (
     RadarRecord,
     RadarRunEventRecord,
     RadarRunOutputRecord,
+    RadarRunOutputSummaryRecord,
     RadarRunRecord,
     RadarRunStatus,
     RadarReviewDecisionRecord,
@@ -267,6 +268,12 @@ class SqlAlchemyRadarRunOutputRepository:
         model.sources_json = [dict(item) for item in record.sources_payload]
         model.candidates_json = [dict(item) for item in record.candidates_payload]
         model.contract_validation_json = [dict(item) for item in record.contract_validation_payload]
+        model.source_count = len(record.sources_payload)
+        model.candidate_count = len(record.candidates_payload)
+        model.contract_issue_count = len(record.contract_validation_payload)
+        model.visible_candidate_count = len(record.candidates_payload)
+        model.accepted_candidate_count = sum(_is_accepted_candidate(item) for item in record.candidates_payload)
+        model.review_needed_candidate_count = sum(_is_review_candidate(item) for item in record.candidates_payload)
         model.artifact_payload_json = dict(record.artifact_payload)
         model.updated_at = record.updated_at or now
         self._session.flush()
@@ -275,6 +282,48 @@ class SqlAlchemyRadarRunOutputRepository:
     def get(self, run_id: str) -> RadarRunOutputRecord | None:
         model = self._session.get(RadarRunOutputModel, run_id)
         return _run_output_record(model) if model is not None else None
+
+    def get_summary(self, run_id: str) -> RadarRunOutputSummaryRecord | None:
+        row = self._session.execute(
+            select(
+                RadarRunOutputModel.run_id,
+                RadarRunOutputModel.artifact_version,
+                RadarRunOutputModel.source_count,
+                RadarRunOutputModel.candidate_count,
+                RadarRunOutputModel.contract_issue_count,
+                RadarRunOutputModel.visible_candidate_count,
+                RadarRunOutputModel.accepted_candidate_count,
+                RadarRunOutputModel.review_needed_candidate_count,
+                RadarRunOutputModel.updated_at,
+            ).where(RadarRunOutputModel.run_id == run_id)
+        ).one_or_none()
+        if row is None:
+            return None
+        return RadarRunOutputSummaryRecord(
+            run_id=row.run_id,
+            artifact_version=row.artifact_version,
+            source_count=row.source_count,
+            candidate_count=row.candidate_count,
+            contract_issue_count=row.contract_issue_count,
+            visible_candidate_count=row.visible_candidate_count,
+            accepted_candidate_count=row.accepted_candidate_count,
+            review_needed_candidate_count=row.review_needed_candidate_count,
+            updated_at=row.updated_at,
+        )
+
+
+def _is_accepted_candidate(candidate: dict[str, Any]) -> bool:
+    return (
+        str(candidate.get("candidate_surface_status") or "") == "accepted_product_candidate"
+        or str(candidate.get("product_acceptance_status") or "") == "product_candidate"
+    )
+
+
+def _is_review_candidate(candidate: dict[str, Any]) -> bool:
+    return (
+        str(candidate.get("candidate_surface_status") or "") == "review_needed_candidate"
+        or str(candidate.get("product_acceptance_status") or "") == "review_required"
+    )
 
 
 class SqlAlchemyRadarReviewDecisionRepository:
