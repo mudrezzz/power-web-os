@@ -207,6 +207,11 @@
             api: 'Backend API',
             fallback: 'Demo fallback',
           },
+          catalogRecovery: {
+            reconnect: 'Reconnect',
+            retrying: 'Reconnecting',
+            countBasis: 'Counters from the latest completed candidate search',
+          },
           runStatus: {
             ready: 'Ready',
             loading: 'Loading',

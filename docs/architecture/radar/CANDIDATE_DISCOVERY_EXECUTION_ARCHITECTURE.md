@@ -107,6 +107,14 @@ large private function violates this contract.
 
 ## Component Map
 
+### `StoredCandidatePublicSurfaceProjector`
+
+Owns the read-time contract for persisted candidate-discovery outputs: source
+precedence, duplicate-safe merge, exclusion of invalid/rejected rows, and the
+binary accepted/review-needed public classification used by persistence and
+API summaries. It does not search, promote candidates, call providers, own SQL,
+or alter the candidate-discovery pipeline.
+
 ### `CandidateDiscoveryExecutionContext`
 
 Owns immutable-ish dependencies and limits for one run: radar payload,

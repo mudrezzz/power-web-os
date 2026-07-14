@@ -165,7 +165,7 @@ def test_radar_workspace_uses_selected_resource_lazy_loading() -> None:
     workspace = read("frontend/src/features/icp-radar/application/useRadarWorkspace.ts")
     signal_backend = read("frontend/src/features/icp-radar/application/useSignalMonitoringBackend.ts")
 
-    catalog_effect = backend[backend.index("async function loadCatalog"):backend.index("const loadRadarDefinition")]
+    catalog_effect = backend[backend.index("const applyCatalogSummaries"):backend.index("const loadRadarDefinition")]
     assert "api.getRadar(" not in catalog_effect
     assert "Promise.allSettled" not in catalog_effect
     artifact_loader = backend[backend.index("const loadRunArtifact"):backend.index("useEffect(() =>")]
@@ -205,6 +205,34 @@ def test_icp_radar_catalog_does_not_silently_fallback_while_backend_is_loading()
     assert "backend.loadRadarRunArtifact(selectedRadar.radar_id)" in workspace
     assert "backendMode={backend.runState.mode}" in read("frontend/src/features/icp-radar/ICPRadarScreen.tsx")
     assert "icpRadar.live.backendMode.${backendMode}" in catalog_screen
+
+
+def test_icp_radar_catalog_recovers_from_transient_api_failures_without_detail_fanout() -> None:
+    backend = read("frontend/src/features/icp-radar/application/useRadarBackend.ts")
+    client = read("frontend/src/api/radarApi.ts")
+    screen = read("frontend/src/features/icp-radar/components/RadarCatalogScreen.tsx")
+    settings_model = read("frontend/src/features/icp-radar/settingsModel.ts")
+
+    for expected in [
+        "catalogRetryDelaysMs = [1000, 2000, 4000, 8000, 15000]",
+        "catalogRequest.current",
+        "catalogRequestGeneration",
+        "fallbackCatalogRef.current",
+        "AbortController",
+        "visibilitychange",
+        "isRetryableCatalogError",
+        "refreshRadarCatalog",
+        "reconnectRadarCatalog",
+    ]:
+        assert expected in backend
+    assert "listRadars(signal?: AbortSignal)" in client
+    assert "signal: controller.signal" in client
+    assert "catalogRequest.current = null" in backend
+    assert "RefreshCw" in screen
+    assert "LoaderCircle" in screen
+    assert "onReconnect" in screen
+    assert "candidate_count_basis: radar.summary?.candidate_count_basis" in settings_model
+    assert "candidate_count_run_id: radar.summary?.candidate_count_run_id" in settings_model
 
 
 def test_icp_radar_feature_has_local_onboarding_readme() -> None:

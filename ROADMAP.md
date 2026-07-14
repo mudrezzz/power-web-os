@@ -9033,7 +9033,7 @@ Required proof before Done:
 
 ### Slice 0.7.6.4.18.3.1.1: Radar catalog counter reconciliation and API fallback recovery
 
-- Status: Ready
+- Status: Done
 - Goal: Make Radar catalog counters use the same canonical candidate surface as run detail and recover automatically from temporary backend unavailability without leaving users on stale demo zeros.
 - User value: A user sees one trustworthy set of candidate counters in the Radar catalog and in run detail. Temporary backend startup latency cannot strand the UI on demo data, and older persisted runs remain honestly classified instead of appearing empty.
 - Problem statement: The Radar catalog is materially inconsistent with run detail. When the frontend catalog request fails once during startup, useRadarBackend switches to demo fallback and never retries; that fallback contains zero counts for Benchmark / SIBUR holding contour and TOIR Quick Live Radar while TOIR / SIBUR happens to show its static fixture count of 33. Separately, the new scalar radar_run_outputs summaries are computed from raw candidates_json, while /api/radar-runs/{run_id}/candidates can project a larger canonical public surface from the artifact. Current evidence: benchmark latest run radar-run-3aa622ff-e137-48aa-9f2c-15e74f594bfc has 10 public candidates (3 accepted, 7 review-needed), but the catalog API summary reports 3 candidates and internally inconsistent accepted=3/review=3; Quick Live latest run radar-run-ef74d8c0-8e19-43eb-9936-cfc0a44c383b has 2 public candidates, but legacy rows are reported as accepted=0/review=0. A user can therefore see candidates inside a Radar while its catalog card shows zeros or contradictory counters.
@@ -9227,6 +9227,532 @@ Required proof before Done:
   - Re-projecting historical artifacts could be mistaken for rewriting history. Mitigate by keeping stored effective policy immutable and labeling alternative-mode results as preview.
   - Balanced thresholds may need later tuning. Keep reason codes and evaluation counters explicit so tuning is evidence-based and version the policy when semantics change.
   - Signal monitoring may need its own accepted-only vs accepted-plus-review scope. Keep that as a separate future setting rather than deriving it from candidate display filtering.
+
+### Slice 0.7.6.6: Power Web discovery pipeline
+
+- Status: Backlog
+- Goal: Build the third independent Radar pipeline that discovers buying-committee people, roles, external influencers and evidence-backed relationships for already selected accounts, then hands a reviewable Power Web to Access Planner.
+- User value: ABM teams move from knowing which companies matter and what signals they show to understanding who influences the purchase, which roles are missing and which explainable access routes are available.
+- Problem statement: Candidate discovery and signal monitoring exist, but Power Web Lite only renders roles and people already supplied to it. There is no runtime for people search, anonymous-profile resolution, current-employment validation, influence mapping or evidence-complete Access Planner handoff.
+- Scope:
+  - Create a package-owned power-web-discovery pipeline with independent planning, retrieval, extraction, identity resolution, role validation, relationship inference, budgets, checkpoints, persistence, API/jobs, evaluation and UI.
+  - Use immutable handoff from completed candidate-discovery runs and optional signal-monitoring context without importing either pipeline internals.
+  - Treat HH.ru as a mandatory people-search lane through a compliant connector and explicit capability contract.
+  - Retain broad source-backed profiles and identity hypotheses while keeping confirmed identity merges strict, explainable and reversible.
+  - Produce an evidence-complete graph and stable Access Planner handoff through slices 0.7.6.6.0-0.7.6.6.10.
+- Out of scope:
+  - No automated outreach, private-data scraping or CRM replacement.
+  - No company rediscovery inside Power Web discovery.
+  - No authentication, CAPTCHA, robots or provider-terms bypass.
+  - Cross-photo biometric identification is not part of the core pipeline.
+- Implementation notes:
+  - Normal extension path is src/power_web_os/application/radar/power_web_discovery; root-level behavior files are forbidden.
+  - Preserve API/CLI/jobs -> application -> domain/ports -> persistence/integrations dependency direction.
+  - PowerWebRole remains a compatibility/read-model projection; richer profile, identity, employment, relationship and evidence contracts become source of truth.
+  - Every behavior-changing child follows AS IS -> RCA/fixtures -> TO BE/manifest -> tests/live evidence -> validation PASS -> finalized AS IS.
+  - Start after 0.7.6.4.18.3.1.1 and 0.7.6.4.19; candidate filtering 0.7.6.5.1 is not a prerequisite.
+- Tests:
+  - Each child has config/preflight, recorded fixtures, malformed-output fixtures and architecture tests before live runs.
+  - Blind benchmark measures role/person recall, identity-link quality, current employment, relationship provenance, missing-role diagnostics and Access Planner readiness.
+  - No runtime/UI child closes from unit tests alone when persisted or browser evidence is required.
+- Docs:
+  - Maintain Power Web discovery AS IS Markdown/PDF and slice-specific TO BE Markdown/PDF, manifests and validation reports.
+  - Add ADRs for pipeline boundaries, identity resolution, public-person-data governance, source capabilities and Access Planner handoff.
+  - Keep architecture, Developer Guide, User Guide, demo runbook and pipeline registry synchronized.
+- Demo impact: Demonstrate the complete chain: discover account, monitor signals, discover/review its Power Web and generate explainable access routes.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- Power Web discovery has its own run id, lineage, model profile, budgets, artifact and diagnostics.
+- HH.ru is an actually executed auditable lane, not documentation-only intent.
+- Every visible person, role and edge has provenance or an explicit review/gap reason.
+- Anonymous profiles are retained; weak evidence may retain a hypothesis but cannot silently confirm a merge.
+- Current/former employment is distinguished and title alone does not prove influence.
+- Blind controls never enter planning or production hardcodes; every miss has a path-level reason.
+- Reviewed graph reaches Access Planner without manual technical translation.
+- All mandatory child validations are PASS and final AS IS matches implementation.
+- Risks:
+  - People data and images create privacy/legal/ToS risk; use capability cards, minimization, product-safe evidence and human review.
+  - False identity fusion is worse than retained duplicate hypotheses; merge confirmation must be stricter than retention.
+  - HH/professional-network access may require licensing; validate capability before dependency.
+  - Role-scoped plans, bounded expansion and independent budgets must prevent an unbounded OSINT crawler.
+- Behavior change: false
+- Pipeline: power-web-discovery
+
+### Slice 0.7.6.6.0: Power Web discovery AS IS, benchmark contract and architecture
+
+- Status: Backlog
+- Goal: Define the current gap, target architecture, benchmark format, source governance and hard acceptance process before production implementation.
+- User value: The team agrees what a trustworthy Power Web result means before spending provider budget or encoding unsafe identity assumptions.
+- Problem statement: There is no people-discovery AS IS, identity contract, HH capability proof, benchmark schema or accepted boundary between broad discovery and strict identity confirmation.
+- Scope:
+  - Document current Account, PowerWebRole, PowerWebBoard and Access Planner behavior and all missing search/runtime capabilities.
+  - Create full TO BE Markdown/PDF and ADR for the third pipeline.
+  - Define RoleDemand, PersonProfile, PersonIdentity, IdentityHypothesis, EmploymentClaim, RelationshipClaim, InfluenceHypothesis, SourceEvidence, PowerWebGap and PowerWebArtifact.
+  - Define guided/blind benchmark schema for accounts, roles, people, aliases, same/different-person controls, current/former employment, relationships, sources and as-of dates.
+  - Create source capability/compliance matrix and perform an early HH.ru feasibility probe.
+  - Define privacy, retention, image, human-review and no-automated-outreach rules.
+- Out of scope:
+  - No production retrieval, merging, persistence, API, jobs or UI.
+  - No face recognition implementation.
+  - No quality claim before the user benchmark is accepted.
+- Implementation notes:
+  - Derive TO BE from current contracts and gap analysis, not from a desired module tree alone.
+  - Blind baseline stays in validation fixtures only.
+  - Exact/near-duplicate image fingerprints may be non-biometric evidence; cross-photo facial similarity remains separately gated.
+- Tests:
+  - Documentation contract checks AS IS, TO BE, PDF, ADR and traceability.
+  - Benchmark-schema tests reject missing provenance, ambiguous expected identity and planner-visible blind hints.
+  - Architecture tests protect package isolation; connector probe stores no secrets/private payloads.
+- Docs:
+  - Create initial Power Web AS IS and RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.0 Markdown/PDF.
+  - Add boundary/governance ADRs and pipeline registry entry.
+- Demo impact: Publish the agreed target flow and benchmark interpretation; no runtime yet.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- AS IS honestly states that Power Web Lite does not discover people.
+- TO BE defines roles, context, lanes, budgets, checkpoints, evidence/identity states, graph and handoff.
+- User benchmark is normalized into the accepted schema or the slice remains open.
+- Blind controls are unavailable to planning by contract.
+- HH integration feasibility and compliant route are proven; absence blocks implementation rather than silently omitting HH.
+- Broad retention plus strict confirmed merge and biometric/outreach boundaries are explicit and testable.
+- Documentation and architecture gates pass.
+- Risks:
+  - Benchmark truth can be uncertain; require source-backed controls and unknown states.
+  - Provider assumptions may be wrong; verify before coding.
+  - Keep the first TO BE architectural and delegate behavior deltas to children.
+- Behavior change: false
+- Pipeline: power-web-discovery
+
+### Slice 0.7.6.6.1: Power Web account handoff and buying-committee role demand
+
+- Status: Backlog
+- Goal: Create immutable account handoff and explainable role-demand plans without rerunning candidate discovery or signal monitoring.
+- User value: The system knows which internal and external roles must be found for a product/account before searching for people.
+- Problem statement: Current rendering accepts arbitrary roles but has no immutable input snapshot or deterministic buying-committee coverage plan.
+- Scope:
+  - Assemble completed evidence-complete candidate run plus optional persisted signal snapshot.
+  - Snapshot account identity/provenance, qualification/signals, Radar definition, product/playbook and as-of time.
+  - Generate RoleDemand for technical, economic, champion, user, procurement, legal/security, executive, integrator, partner, supplier, competitor and configured roles.
+  - Record priority, scope, aliases, expected evidence, constraints and missing-role state.
+  - Reject wrong Radar, incomplete output, duplicate/source-less account or missing role policy.
+- Out of scope:
+  - No people provider calls.
+  - No identity/influence decision or Access Plan generation.
+  - No mutation of source pipelines.
+- Implementation notes:
+  - Use stable shared account references, not source-pipeline internals.
+  - Role demand is configuration-owned; LLM does not decide required roles.
+  - Persist immutable source lineage.
+- Tests:
+  - Recorded role-policy matrix.
+  - Preflight failures and snapshot immutability.
+  - Fail-on-call isolation for candidate/signal executors.
+- Docs:
+  - Create slice TO BE/PDF, manifest and validation report.
+  - Document handoff and role-taxonomy ownership; finalize AS IS.
+- Demo impact: Show a pre-search brief of required, optional and missing roles before budget spend.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- Every run snapshots account, source lineage, definition, playbook and role demands.
+- Every RoleDemand has priority, scope, aliases, expected evidence and reason.
+- No hidden defaults or candidate/signal provider calls occur.
+- Invalid inputs fail explicitly and all mandatory requirements pass.
+- Validation is PASS and AS IS reconciled.
+- Risks:
+  - Universal role taxonomy may be too generic; allow versioned product/Radar additions.
+  - Signal context stays optional and product-safe.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.1.acceptance.json
+- Behavior change: true
+- Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.1/validation.json
+
+### Slice 0.7.6.6.2: Power Web people search planning, source lanes and HH retrieval
+
+- Status: Backlog
+- Goal: Plan, accept, schedule and execute auditable role-scoped people searches, including a compliant mandatory HH.ru lane.
+- User value: Users see where/how each role was searched and whether HH and official sources were actually covered.
+- Problem statement: There is no people source strategy, accepted query plan, HH connector or ledger preventing selected lanes from disappearing.
+- Scope:
+  - Add planning input, deterministic planner, plan acceptance, retrieval compiler and scheduler.
+  - Support official, HH.ru, professional-network, publication/event, procurement/patent, industry and generic-web lanes.
+  - Make HH, official and generic web mandatory when capability/policy permits; otherwise record explicit outcomes.
+  - Generate role/account/geography/language-aware bounded queries.
+  - Implement approved HH adapter, capability cards, independent budgets and decision ledger.
+- Out of scope:
+  - No final identity or influence decision.
+  - No access-control/ToS bypass.
+  - No unbounded social crawling.
+- Implementation notes:
+  - Reuse mature Radar patterns through shared contracts, not source-pipeline internals.
+  - LLM query variants need backend acceptance.
+  - Identity-only refs cannot masquerade as people-search execution.
+- Tests:
+  - Recorded lane/planner/scheduler/budget fixtures.
+  - Malformed plan, unknown source, opaque ref and provider failure fixtures.
+  - Targeted live HH, official and generic-web probes after fast gates.
+- Docs:
+  - Create TO BE/PDF, manifest and source-capability docs.
+  - Finalize AS IS with real connector behavior.
+- Demo impact: Diagnostics show role-by-role queries, receipts, coverage, limits and unexecuted reasons.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- 100% selected decisions have scheduled/executed/not-executable/policy/budget outcomes.
+- HH executes through a compliant connector in targeted live validation; otherwise slice stays blocked.
+- Mandatory lanes never silently disappear.
+- Every task has a product-safe receipt; no secret/raw payload/hidden reasoning is persisted.
+- Budgets are independent and validation/AS IS are complete.
+- Risks:
+  - HH may require paid/licensed access.
+  - Bound variants to control cost.
+  - Unsupported professional networks must surface unavailable/manual states.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.2.acceptance.json
+- Behavior change: true
+- Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.2/validation.json
+
+### Slice 0.7.6.6.3: Power Web person profile extraction and evidence completeness
+
+- Status: Backlog
+- Goal: Extract source-owned person profiles and claim-level provenance without prematurely declaring cross-source identity.
+- User value: Every named or anonymous profile is inspectable with its source facts and uncertainties.
+- Problem statement: Raw pages cannot safely become people without schema validation, source linking, anonymous-profile support and evidence-complete projection.
+- Scope:
+  - Extract names/anonymous ids, titles, employers/units, geography, timeline, education, skills, responsibilities, publications, events and public business channels.
+  - Keep one PersonProfile per source and one evidence link per claim.
+  - Preserve HH anonymous/partial profiles without invented names.
+  - Capture product-safe image descriptors and exact/near-duplicate fingerprints without face embeddings.
+  - Add validation, bounded repair/backup, deterministic salvage and explicit gaps.
+- Out of scope:
+  - No identity confirmation.
+  - No cross-photo face recognition.
+  - No private contact harvesting/outreach.
+- Implementation notes:
+  - A source proves only claims present in it.
+  - Persist sanitized metadata, not raw provider/HTML/image data.
+  - Unknown stays unknown.
+- Tests:
+  - Named, anonymous, publication, event and conflicting-source fixtures.
+  - Malformed output/ref/date recovery fixtures.
+  - Evidence completeness and non-biometric image-fingerprint contracts.
+- Docs:
+  - Create TO BE/PDF/manifest and extraction schema docs.
+  - Finalize AS IS with recovery behavior.
+- Demo impact: Inspect named and anonymous profiles with claim-level evidence before identity linking.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- Every visible profile/claim resolves to evidence.
+- Anonymous profiles remain anonymous until supported.
+- Source-less claims remain diagnostics, not public truth.
+- Recovery is bounded and fully diagnosed.
+- No biometric template/raw image/secret/raw provider payload is persisted.
+- Validation is PASS and AS IS reconciled.
+- Risks:
+  - Models may over-normalize titles/employers; keep raw and normalized claims.
+  - Visual artifacts are optional and volatile.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.3.acceptance.json
+- Behavior change: true
+- Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.3/validation.json
+
+### Slice 0.7.6.6.4: Power Web cross-source person identity resolution
+
+- Status: Backlog
+- Goal: Build an explainable identity graph linking anonymous and named profiles while preventing unsafe automatic merges.
+- User value: Users can enrich one person from several incomplete sources and understand why profiles were linked, separated or sent to review.
+- Problem statement: Name matching misses anonymous profiles and creates homonym errors; identity needs blocking, positive/negative evidence, temporal conflicts and reversible decisions.
+- Scope:
+  - Generate profile pairs from names/aliases, employer/unit, role, geography, timeline, education, skills, publications, contacts and image fingerprints.
+  - Model positive evidence, contradictions and missing evidence independently.
+  - Support separate, possible, probable, confirmed and rejected states.
+  - Require stricter evidence for confirmed merges than retained hypotheses.
+  - Preserve original profiles and reversible merge/unmerge history.
+  - Allow bounded gap-driven enrichment only after accepted hypotheses.
+- Out of scope:
+  - No cross-photo face recognition/reverse-face search.
+  - No title/employer-only or LLM-opinion confirmation.
+  - No action from unresolved identity.
+- Implementation notes:
+  - Deterministic pairing/decision service owns merge semantics.
+  - False-positive bias applies to retaining hypotheses, not confirming equality.
+  - Image match is supporting evidence only.
+- Tests:
+  - Same/different-person controls including homonyms, anonymous HH, former/current conflicts and reused images.
+  - Merge/unmerge preservation property tests.
+  - Weak-feature negative tests and explainability assertions.
+- Docs:
+  - Create TO BE/PDF/manifest and reversible-identity ADR.
+  - Finalize AS IS with confusion matrix and thresholds.
+- Demo impact: Compare profiles side by side with evidence and contradictions.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- All benchmark same-person controls are retained or explicitly contradicted.
+- Zero different-person controls auto-merge.
+- Confirmed merges have multiple compatible dimensions and no unresolved hard conflict.
+- Ambiguous hypotheses stay reversible and reviewable; original profiles remain intact.
+- No benchmark hardcodes enter production.
+- Validation is PASS and AS IS reconciled.
+- Risks:
+  - Strict confirmation leaves duplicates, which is preferable to false fusion.
+  - Sparse anonymous resumes may remain unresolved.
+  - Name/transliteration diversity needs benchmark coverage.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.4.acceptance.json
+- Behavior change: true
+- Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.4/validation.json
+
+### Slice 0.7.6.6.5: Power Web employment, role and influence validation
+
+- Status: Backlog
+- Goal: Validate current affiliation, map identities to buying roles, infer evidence-backed relationships and expose missing influence positions.
+- User value: Sales sees who is relevant now, who is former, which roles are dark and which influence claims need review.
+- Problem statement: A resolved person is not automatically a current employee, role occupant, champion or blocker.
+- Scope:
+  - Validate current/former/unknown employment from dated claims.
+  - Map identities/profiles to RoleDemand with fit, confidence, evidence and alternatives.
+  - Represent internal people and external integrators, partners, suppliers and competitors in one typed graph.
+  - Create evidence-backed relationship/influence hypotheses with fact/hypothesis/review states.
+  - Compute coverage and explicit missing-role gaps.
+- Out of scope:
+  - No title-only authority/stance confirmation.
+  - No outreach or route execution.
+  - No graph editing UI.
+- Implementation notes:
+  - Keep identity, employment, role-fit and influence confidence separate.
+  - Use as-of temporal semantics.
+  - Preserve competing hypotheses.
+- Tests:
+  - Current/former/concurrent/subsidiary/external/title-conflict controls.
+  - Role coverage and influence provenance tests.
+  - Graph integrity and duplicate checks.
+- Docs:
+  - Create TO BE/PDF/manifest and temporal/role docs.
+  - Finalize AS IS decision tables.
+- Demo impact: Show confirmed people, review hypotheses, former employees, external influencers and missing roles distinctly.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- Every mapped person has current/former/unknown employment.
+- Every occupied role has identity/profile evidence and rationale.
+- Every confirmed edge has evidence; hypotheses remain visibly separate.
+- Title alone confirms zero influence/champion/blocker/economic-buyer states.
+- Every required unfilled role has coverage and miss reason.
+- Validation is PASS and AS IS reconciled.
+- Risks:
+  - Public sources lag changes; preserve dates/uncertainty.
+  - Influence is partly unobservable and must remain a hypothesis until feedback.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.5.acceptance.json
+- Behavior change: true
+- Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.5/validation.json
+
+### Slice 0.7.6.6.6: Power Web checkpoints, recovery, budgets and incremental discovery
+
+- Status: Backlog
+- Goal: Make Power Web discovery bounded, recoverable and incremental while preserving coverage and evidence integrity.
+- User value: Source failures do not erase the map, repeat runs do not duplicate people and coverage stops are understandable.
+- Problem statement: Multi-source people search becomes unbounded/fragile without independent budgets, checkpoints, bounded revision, salvage, fingerprints and watermarks.
+- Scope:
+  - Add task/provider/retry/verification/enrichment budgets and events.
+  - Checkpoint planning, retrieval, extraction, identity and role coverage.
+  - Allow one bounded revision for critical gaps, primary/backup retry and source-backed salvage.
+  - Add fingerprints, dedupe and account/role/lane watermarks.
+  - Do not advance failed/policy/budget lanes; expose honest terminal states.
+- Out of scope:
+  - No recurring scheduler.
+  - No unlimited enrichment.
+  - No source-pipeline budget changes.
+- Implementation notes:
+  - Share provider-neutral budget primitives only.
+  - Checkpoint decisions cite gaps/receipts/budget.
+  - Incremental runs preserve immutable lineage.
+- Tests:
+  - Transport/schema/ref/identity/budget/policy failure matrix.
+  - Retry/revision/salvage bounds.
+  - Two-run dedupe/watermark and three-pipeline budget isolation.
+- Docs:
+  - Create TO BE/PDF/manifest and state-machine docs.
+  - Finalize AS IS with actual limits.
+- Demo impact: Diagnostics show coverage, budgets, retries, salvage, duplicates and gaps.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- Every task/lane has a terminal ledger outcome.
+- Retries/revisions/enrichment are bounded and counted.
+- Salvage creates no source-less people or confirmed identities.
+- Second run republishes zero old profiles/evidence as new.
+- Failed/limited lanes do not advance watermarks or create false not-found.
+- Other pipeline counters remain unchanged; validation and AS IS pass.
+- Risks:
+  - Merge corrections complicate incremental graphs; version decisions.
+  - Reserve tuning must be benchmark-driven.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.6.acceptance.json
+- Behavior change: true
+- Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.6/validation.json
+
+### Slice 0.7.6.6.7: Power Web persisted runtime, API, jobs and lineage
+
+- Status: Backlog
+- Goal: Run Power Web discovery as an independent persisted pipeline with output contract, API, worker, history and restart-safe report.
+- User value: Users can launch, monitor and reopen a historical Power Web run with proven source lineage.
+- Problem statement: Recorded behavior is not a product runtime until lineage, artifacts, budgets and failures persist independently.
+- Scope:
+  - Add pipeline_id=power_web_discovery with source candidate run and optional signal run ids.
+  - Create separate output repository/table and product-safe artifact.
+  - Add preflight, create/history/direct/report/graph/diagnostics APIs.
+  - Add queued service, executor, factory, Celery queue and CLI/demo commands.
+  - Persist immutable input, plan, profiles, identity/role graph, evidence, budgets and checkpoints.
+  - Support idempotency, filtered histories and restart round-trip.
+- Out of scope:
+  - No full graph UI.
+  - No periodic scheduler.
+  - No Access Planner semantic change beyond stable handoff.
+- Implementation notes:
+  - Routes are transport-only, jobs pass run ids, persistence stores but does not decide.
+  - Other pipeline latest/history/counters must not switch.
+  - Keep history lightweight and heavy resources lazy.
+- Tests:
+  - Migration/round-trip/lineage tests.
+  - API idempotency/preflight/history/error tests.
+  - Fail-on-call job isolation, restart persistence and bounded Docker live run.
+- Docs:
+  - Create TO BE/PDF/manifest and update backend/API/job/runbook docs.
+  - Finalize runtime AS IS.
+- Demo impact: Launch and inspect a real persisted third-pipeline run.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- Distinct run id, pipeline id, lineage, budgets and artifact exist.
+- Creating Power Web causes zero candidate/signal runs or provider calls.
+- Histories/outputs remain separate and failures explicit.
+- One bounded live run yields profiles, graph and diagnostics.
+- Report survives backend/worker restart.
+- Validation is PASS and AS IS reconciled.
+- Risks:
+  - People artifacts can be large; use scalar summaries/lazy endpoints.
+  - Shared lifecycle migration needs cross-pipeline regression.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.7.acceptance.json
+- Behavior change: true
+- Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.7/validation.json
+
+### Slice 0.7.6.6.8: Power Web guided and blind quality benchmark
+
+- Status: Backlog
+- Goal: Measure real Power Web quality against hidden user controls with explicit miss diagnostics and persisted guided/blind evidence.
+- User value: The team knows whether the system finds the right roles/people, avoids false merges and produces a useful access graph.
+- Problem statement: Completion/profile count does not prove retrieval, identity, employment, role, relationship or handoff quality.
+- Scope:
+  - Add guided smoke and blind profiles with separate metadata/budgets.
+  - Load blind baseline only after run.
+  - Measure role/person recall, identity precision/recall, false merges, employment accuracy, relationship provenance, lane coverage, review/gap rates and handoff readiness.
+  - Report per-control funnel from planning through role/relationship projection.
+  - Run Docker/API guided and blind benchmarks and one consolidated closeout.
+- Out of scope:
+  - No public market-wide claim.
+  - No blind hints or production hardcodes.
+  - No silent benchmark-fitting threshold changes.
+- Implementation notes:
+  - Thresholds are accepted in 0.7.6.6.0.
+  - False confirmed merge is a hard failure.
+  - Separate review hypotheses, confirmed identities and planner-ready roles.
+- Tests:
+  - Blind-isolation contracts.
+  - Evaluator coverage for every funnel state and evidence/duplicate invariants.
+  - Recorded before live; validator reads persisted artifacts.
+- Docs:
+  - Create TO BE/PDF/manifest with approved thresholds.
+  - Document dataset version/metrics/non-claim wording and finalize AS IS with run ids/RCA.
+- Demo impact: Benchmark report explains each found, missed, merged, rejected or review-needed control.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- Docker rebuilt; at least one guided and one blind persisted run complete or reach accepted bounded terminal state.
+- Blind metadata proves zero controls entered pipeline behavior.
+- All approved metric thresholds pass and zero different-person controls auto-merge.
+- Zero visible graph elements lack provenance; every miss has a path reason.
+- Access Planner consumes reviewed graph without manual translation.
+- Validation/process retrospective/AS IS reconciliation are complete.
+- Risks:
+  - One-industry overfit; keep generic production rules and add later datasets.
+  - Source volatility requires versioned as-of and accepted equivalent URLs.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.8.acceptance.json
+- Behavior change: true
+- Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.8/validation.json
+
+### Slice 0.7.6.6.9: Power Web UI, human review and Access Planner handoff
+
+- Status: Backlog
+- Goal: Expose the third pipeline as an evidence-first graph with reversible review and direct Access Planner handoff.
+- User value: Users inspect who was found, resolve profiles, approve roles/relationships, see gaps and understand route changes.
+- Problem statement: A graph is unusable if identities/relations cannot be checked or corrected and unresolved hypotheses silently become Access Planner facts.
+- Scope:
+  - Add third pipeline panel with history, lineage, status, budgets and diagnostics.
+  - Render typed account/person/profile/role/external nodes, evidence edges and gaps.
+  - Add profile detail, evidence, side-by-side identity review, merge/separate, role and relationship actions.
+  - Version and persist reversible review decisions.
+  - Adapt only contract-allowed graph states to Account/PowerWebRole and show route effects.
+- Out of scope:
+  - No outreach/CRM execution.
+  - No scheduler editor.
+  - No biometric UI.
+- Implementation notes:
+  - Use design system, shell, Lucide and RU/EN.
+  - Graph is a work surface; every element opens evidence.
+  - Keep selected run lineage consistent without silent latest fallback.
+- Tests:
+  - Frontend build/architecture/lazy-loading contracts.
+  - Playwright direct links, history, graph/detail/review/handoff.
+  - Review audit/restart and 1280x720/1366x768 RU/EN visual QA.
+- Docs:
+  - Create TO BE/PDF/manifest and update user/developer/demo/frontend/handoff docs.
+  - Finalize UI/handoff AS IS.
+- Demo impact: Show the complete company -> signal -> Power Web -> Access Plan product chain.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- Every node/edge has evidence or explicit hypothesis/gap reason.
+- Anonymous profiles differ visibly from resolved people.
+- Review actions are reversible, audited and restart-safe.
+- UI/API counts agree with zero duplicate identities or empty detail.
+- Access Planner consumes only allowed states and routes reference causing evidence.
+- Three pipeline histories/budgets/artifacts remain separate.
+- Responsive RU/EN Playwright, validation and AS IS pass.
+- Risks:
+  - Dense graphs need groups/filters/focus/evidence panel, not decorative layout.
+  - Review overlays must not rewrite source truth.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.9.acceptance.json
+- Behavior change: true
+- Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.9/validation.json
+
+### Slice 0.7.6.6.10: Optional biometric-assisted identity matching governance and pilot
+
+- Status: Backlog
+- Goal: Only with explicit approval, pilot cross-photo facial similarity as human-review assistance without allowing it to confirm identity alone.
+- User value: An authorized reviewer may receive an additional clue for profiles using different photos while retaining control.
+- Problem statement: Cross-photo similarity may help where image fingerprints fail, but creates biometric, legal, privacy, ToS, bias and false-match risks.
+- Scope:
+  - Complete legal/ToS/privacy impact assessment and explicit approval first.
+  - Define opt-in scope, jurisdictions/sources, retention/deletion/audit and reviewer permissions.
+  - Evaluate approved embeddings on consented/synthetic benchmark.
+  - Expose similarity only with non-biometric evidence and human review.
+  - Provide fail-closed disable/delete path.
+- Out of scope:
+  - No broad reverse-face internet search.
+  - No covert/private-image identification.
+  - No production rollout without approved assessment/thresholds.
+- Implementation notes:
+  - Optional and outside core critical path.
+  - Prefer local ephemeral processing/minimal persistence.
+  - Human review and corroboration are mandatory.
+- Tests:
+  - Governance fail-closed tests.
+  - Representative false-match/nonmatch benchmark.
+  - Similarity cannot set confirmed_same_person; deletion/audit/security tests if persisted.
+- Docs:
+  - Create TO BE/PDF/manifest only after explicit approval.
+  - Add biometric ADR/privacy assessment; update AS IS only if accepted.
+- Demo impact: None by default; approved pilot shows a clearly labeled review clue, never a verdict.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- Explicit user/product and legal/ToS/privacy approval exists before code.
+- Feature is disabled by default outside approved scope.
+- Facial similarity alone confirms zero identities.
+- Accepted false-match threshold and reviewer workflow pass.
+- Retention/deletion/audit pass end to end.
+- Otherwise slice stays Backlog/Blocked without affecting core completion.
+- Risks:
+  - Biometrics may be disproportionate; rejecting the feature is valid.
+  - Demographic/image-quality bias requires conservative review-only use.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.10.acceptance.json
+- Behavior change: true
+- Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.10/validation.json
 
 ### Slice 0.7: Human review queue loop
 

@@ -17,6 +17,7 @@ def test_docker_compose_defines_one_command_radar_dev_stack() -> None:
     assert "${POWER_WEB_OS_REDIS_HOST_PORT:-6380}:6379" in compose
     assert "python -m alembic upgrade head" in compose
     assert "python -m power_web_os.demo seed-radar-db" in compose
+    assert "python -m power_web_os.persistence reconcile-radar-output-summaries" in compose
     assert "uvicorn" in compose
     assert "celery" in compose
     assert "power_web_os.jobs.radar_jobs.radar_celery_app" in compose

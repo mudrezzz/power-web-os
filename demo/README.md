@@ -735,6 +735,29 @@ trace should all follow the selected run id. Set
 `POWER_WEB_OS_RADAR_UI_DOD_START_VITE=1` only for a manual local Vite run with
 matching backend CORS origins.
 
+Catalog cards use the canonical public candidate surface of the latest
+completed candidate-discovery run. The API includes
+`candidate_count_run_id` and `candidate_count_basis`; the visible total must
+match `GET /api/radar-runs/{run_id}/candidates`, and accepted plus review-needed
+must equal that total. Reconcile existing persisted outputs without launching a
+Radar run or spending provider tokens:
+
+```powershell
+python -m power_web_os.persistence reconcile-radar-output-summaries
+```
+
+The frontend recovers automatically if it opens before the API. To validate the
+real lifecycle, including ten ready-backend opens and ten API stop/start cycles
+without browser reload, run:
+
+```powershell
+npm --prefix ./frontend run radar:catalog-recovery-dod
+```
+
+This gate was added after the earlier clean-start-only stability check failed to
+cover frontend-before-backend startup and compared counters with another scalar
+summary instead of independently with the candidates endpoint.
+
 The backend also exposes `GET /api/radar-runs/{run_id}/dossier`. The frontend
 uses it in the live Radar detail `Journal` tab as the product run dossier:
 run context, definition version, task context, discovery strategy, selected or
@@ -824,6 +847,7 @@ Signal validation is visible in the demo: users can confirm, correct, reject, or
 - `ТОиР Quick Live Radar` is experimental. It uses OpenRouter through the backend worker when credentials are valid, and it can legitimately return no candidates.
 - API-backed ICP Radar settings persist in the active backend definition. Per-signal depth, overlap, cadence policy and source lanes survive restart; automatic schedule execution remains out of scope.
 - Validate selected-resource loading with `npm --prefix ./frontend run radar:settings-lazy-loading-dod`. The gate performs ten cold benchmark openings and enforces 250 KB detail/history limits.
+- Validate catalog counters and degraded-mode recovery with `npm --prefix ./frontend run radar:catalog-recovery-dod`; it performs the required `10 + 10` Docker/API gate and does not run providers.
 - ICP Radar candidate detail is read-only.
 - `Take into work` is visible as a planned affordance and does not change state yet.
 - DaData is backend-executed through source policy, but the UI source editor does

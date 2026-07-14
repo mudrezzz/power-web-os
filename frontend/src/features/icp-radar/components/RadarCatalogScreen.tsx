@@ -1,25 +1,29 @@
-import { ChevronRight, Plus, Radar, RotateCcw } from 'lucide-react';
+import { ChevronRight, LoaderCircle, Plus, Radar, RefreshCw, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../../../components/primitives';
 import type { ICPRadarCatalogItem } from '../../../types';
-import type { RadarBackendMode } from '../application/useRadarBackend';
+import type { RadarBackendMode, RadarCatalogConnectionState } from '../application/useRadarBackend';
 import { cadenceKey, isLocalRadarStatus, lastRunKey, runModeKey } from '../domain/catalogMeta';
 import { radarStatusKey } from '../domain/radarStatus';
 
 export function RadarCatalogScreen({
   backendError,
   backendMode,
+  catalogState,
   hasLocalChanges,
   onCreateRadar,
   onOpenRadar,
+  onReconnect,
   onResetDemoChanges,
   radars,
 }: {
   backendError: string | null;
   backendMode: RadarBackendMode;
+  catalogState: RadarCatalogConnectionState;
   hasLocalChanges: boolean;
   onCreateRadar: () => void;
   onOpenRadar: (radar: ICPRadarCatalogItem) => void;
+  onReconnect: () => void;
   onResetDemoChanges: () => void;
   radars: ICPRadarCatalogItem[];
 }) {
@@ -48,6 +52,20 @@ export function RadarCatalogScreen({
           <Badge tone={backendMode === 'api' ? 'ally' : backendMode === 'fallback' ? 'unsurfaced' : 'neutral'}>
             {t(`icpRadar.live.backendMode.${backendMode}`)}
           </Badge>
+          {backendMode !== 'api' && (
+            <Button
+              icon={catalogState.status === 'loading' || catalogState.status === 'retrying'
+                ? <LoaderCircle aria-hidden="true" className="spin" />
+                : <RefreshCw aria-hidden="true" />}
+              variant="default"
+              onClick={onReconnect}
+              disabled={catalogState.status === 'loading'}
+            >
+              {t(catalogState.status === 'retrying'
+                ? 'icpRadar.catalogRecovery.retrying'
+                : 'icpRadar.catalogRecovery.reconnect')}
+            </Button>
+          )}
           <Badge tone="cobalt">{t('icpRadar.catalogTotals.candidates', { count: totals.candidates })}</Badge>
           <Badge tone="neutral">{t('icpRadar.catalogTotals.review', { count: totals.review })}</Badge>
           <Button icon={<Plus aria-hidden="true" />} variant="default" onClick={onCreateRadar}>
@@ -102,6 +120,11 @@ export function RadarCatalogScreen({
               </dl>
               <span className="icp-radar-run-mode">
                 <Mono>{t(runModeKey(radar.summary.run_mode))}</Mono>
+                {radar.summary.candidate_count_run_id && (
+                  <small title={t('icpRadar.catalogRecovery.countBasis')}>
+                    <Mono>{radar.summary.candidate_count_run_id}</Mono>
+                  </small>
+                )}
               </span>
               <div className="icp-radar-list-action">
                 <span className="row-action">

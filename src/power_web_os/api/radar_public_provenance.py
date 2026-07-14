@@ -4,27 +4,18 @@ from __future__ import annotations
 
 from typing import Any
 
+from power_web_os.application.radar.candidate_discovery.execution.stored_public_surface import (
+    StoredCandidatePublicSurfaceProjector,
+)
+
 
 def public_candidate_rows(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return duplicate-safe public candidate rows for stored run outputs."""
-
-    rows: list[dict[str, Any]] = []
-    rows_by_key: dict[str, dict[str, Any]] = {}
-    for candidate in candidates:
-        row = dict(candidate)
-        key = _candidate_merge_key(row)
-        if not key:
-            continue
-        current = rows_by_key.get(key)
-        if current is None:
-            rows_by_key[key] = row
-            rows.append(row)
-            continue
-        _merge_candidate_row(current, row)
-    return [
-        {**row, "candidate_surface_rank": index + 1}
-        for index, row in enumerate(rows)
-    ]
+    return list(
+        StoredCandidatePublicSurfaceProjector().project(
+            artifact_payload={"candidates": candidates},
+        ).rows
+    )
 
 
 def public_candidate_sources(
@@ -71,93 +62,6 @@ def public_candidate_sources(
         for ref in sorted(sources_by_ref)
         if ref in wanted_refs or ref in _artifact_refs(artifact_sources)
     ]
-
-
-def _merge_candidate_row(target: dict[str, Any], incoming: dict[str, Any]) -> None:
-    if _prefer_incoming_name(target, incoming):
-        target["legal_name"] = _display_name(incoming)
-    for key in ("evidence_refs", "upstream_source_refs", "review_flags"):
-        target[key] = _merged_strings(target.get(key), incoming.get(key))
-    for field_name, collection_name in (
-        ("candidate_surface_reason", "candidate_surface_reasons"),
-        ("public_projection_reason", "public_projection_reasons"),
-        ("upstream_reason", "upstream_reasons"),
-        ("product_acceptance_reason", "product_acceptance_reasons"),
-    ):
-        reasons = _merged_strings(target.get(collection_name), [target.get(field_name), incoming.get(field_name)])
-        if reasons:
-            target[collection_name] = reasons
-            target[field_name] = _preferred_reason(reasons)
-    for key in ("benchmark_id", "inn", "ogrn", "okved", "provider_id", "source_id", "lookup_query", "match_quality"):
-        if not str(target.get(key) or "").strip() and str(incoming.get(key) or "").strip():
-            target[key] = incoming.get(key)
-    target["benchmark_ids"] = _merged_strings(
-        target.get("benchmark_ids"),
-        [target.get("benchmark_id"), incoming.get("benchmark_id")],
-    )
-    if str(incoming.get("candidate_surface_status") or "") == "accepted_product_candidate":
-        target["candidate_surface_status"] = "accepted_product_candidate"
-    if str(incoming.get("product_acceptance_status") or "") == "product_candidate":
-        target["product_acceptance_status"] = "product_candidate"
-    if _score_total(incoming) > _score_total(target):
-        score = incoming.get("score")
-        target["score"] = dict(score) if isinstance(score, dict) else score
-    for key in ("qualification", "signals"):
-        if not isinstance(target.get(key), list) or not target.get(key):
-            value = incoming.get(key)
-            if isinstance(value, list) and value:
-                target[key] = value
-
-
-def _candidate_merge_key(candidate: dict[str, Any]) -> str:
-    candidate_id = str(candidate.get("candidate_id") or "").strip().casefold()
-    if candidate_id:
-        return f"id:{candidate_id}"
-    name = "".join(ch for ch in _display_name(candidate).casefold() if ch.isalnum())
-    entity_type = str(candidate.get("entity_type") or "legal_entity").strip().casefold()
-    return f"name:{entity_type}:{name}" if name else ""
-
-
-def _prefer_incoming_name(target: dict[str, Any], incoming: dict[str, Any]) -> bool:
-    if not str(target.get("legal_name") or "").strip():
-        return True
-    if str(incoming.get("benchmark_id") or "").strip() and not str(target.get("benchmark_id") or "").strip():
-        return True
-    return False
-
-
-def _merged_strings(*values: object) -> list[str]:
-    result: list[str] = []
-    seen: set[str] = set()
-    for value in values:
-        items = value if isinstance(value, list) else [value]
-        for item in items:
-            text = str(item or "").strip()
-            if not text or text in seen:
-                continue
-            seen.add(text)
-            result.append(text)
-    return result
-
-
-def _preferred_reason(reasons: list[str]) -> str:
-    for reason in reasons:
-        if "benchmark_present" in reason:
-            return reason
-    return reasons[0] if reasons else ""
-
-
-def _score_total(candidate: dict[str, Any]) -> int:
-    score = candidate.get("score")
-    if not isinstance(score, dict):
-        return 0
-    total = 0
-    for key in ("fit_score", "intent_score"):
-        try:
-            total += int(score.get(key) or 0)
-        except (TypeError, ValueError):
-            continue
-    return total
 
 
 def _provenance_source(ref: str, record: dict[str, Any]) -> dict[str, Any]:

@@ -29,8 +29,11 @@ from power_web_os.api.signal_monitoring_dtos import (
     SignalMonitoringOutputSummaryResponse,
     SignalMonitoringRunSummaryResponse,
 )
-from power_web_os.api.radar_public_provenance import public_candidate_rows, public_candidate_sources
-from power_web_os.api.radar_summary_support import display_metadata, is_accepted_candidate, is_review_candidate
+from power_web_os.api.radar_public_provenance import public_candidate_sources
+from power_web_os.api.radar_summary_support import display_metadata
+from power_web_os.application.radar.candidate_discovery.execution.stored_public_surface import (
+    StoredCandidatePublicSurfaceProjector,
+)
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRecord,
@@ -60,7 +63,7 @@ def radar_summary_response(
         status=radar.status,
         owner=radar.owner,
         profile=radar.profile,
-        summary=_catalog_summary(radar.summary, latest_output),
+        summary=_catalog_summary(radar.summary, latest, latest_output),
         artifact_path=radar.artifact_path,
         run_count=run_count if run_count is not None else len(runs),
         latest_run=run_summary_response(
@@ -139,14 +142,15 @@ def output_summary_response(output: RadarRunOutputRecord | RadarRunOutputSummary
             review_needed_candidate_count=output.review_needed_candidate_count,
             updated_at=output.updated_at,
         )
+    public_surface = _stored_public_surface(output)
     return RadarRunOutputSummaryResponse(
         artifact_version=output.artifact_version,
         source_count=len(output.sources_payload),
-        candidate_count=len(output.candidates_payload),
+        candidate_count=public_surface.candidate_count,
         contract_issue_count=len(output.contract_validation_payload),
-        visible_candidate_count=len(output.candidates_payload),
-        accepted_candidate_count=sum(is_accepted_candidate(item) for item in output.candidates_payload),
-        review_needed_candidate_count=sum(is_review_candidate(item) for item in output.candidates_payload),
+        visible_candidate_count=public_surface.candidate_count,
+        accepted_candidate_count=public_surface.accepted_count,
+        review_needed_candidate_count=public_surface.review_needed_count,
         updated_at=output.updated_at,
     )
 
@@ -188,42 +192,31 @@ def signal_monitoring_run_summary_response(
 
 def _catalog_summary(
     radar_summary: dict[str, Any],
+    latest_run: RadarRunRecord | None,
     latest_output: RadarRunOutputRecord | RadarRunOutputSummaryRecord | None,
 ) -> dict[str, Any]:
     summary = dict(radar_summary)
     if latest_output is None:
         return summary
+    summary["candidate_count_basis"] = "latest_completed_candidate_discovery_run"
+    summary["candidate_count_run_id"] = latest_run.run_id if latest_run else ""
     if isinstance(latest_output, RadarRunOutputSummaryRecord):
         summary["candidate_count"] = latest_output.visible_candidate_count
         summary["accepted_count"] = latest_output.accepted_candidate_count
         summary["needs_review_count"] = latest_output.review_needed_candidate_count
         return summary
-    candidates = _visible_candidates(latest_output)
-    summary["candidate_count"] = len(candidates)
-    summary["accepted_count"] = sum(
-        1
-        for candidate in candidates
-        if str(candidate.get("candidate_surface_status") or "") == "accepted_product_candidate"
-        or str(candidate.get("product_acceptance_status") or "") == "product_candidate"
-    )
-    summary["needs_review_count"] = sum(
-        1
-        for candidate in candidates
-        if str(candidate.get("candidate_surface_status") or "") == "review_needed_candidate"
-        or str(candidate.get("product_acceptance_status") or "") == "review_required"
-    )
+    public_surface = _stored_public_surface(latest_output)
+    summary["candidate_count"] = public_surface.candidate_count
+    summary["accepted_count"] = public_surface.accepted_count
+    summary["needs_review_count"] = public_surface.review_needed_count
     return summary
 
 
-def _visible_candidates(output: RadarRunOutputRecord) -> list[dict[str, Any]]:
-    artifact = _dict(output.artifact_payload)
-    execution_results = _dict(_dict(artifact.get("run_metadata")).get("execution_results"))
-    candidates = (
-        _list(execution_results.get("user_visible_candidates"))
-        or _list(artifact.get("candidates"))
-        or [dict(item) for item in output.candidates_payload if isinstance(item, dict)]
+def _stored_public_surface(output: RadarRunOutputRecord):
+    return StoredCandidatePublicSurfaceProjector().project(
+        artifact_payload=output.artifact_payload,
+        candidates_payload=output.candidates_payload,
     )
-    return public_candidate_rows(candidates)
 
 
 def candidates_response(
@@ -234,9 +227,7 @@ def candidates_response(
 ) -> RadarRunCandidatesResponse:
     artifact = output.artifact_payload
     execution_results = _dict(_dict(_dict(artifact).get("run_metadata")).get("execution_results"))
-    visible_candidates = public_candidate_rows(
-        _list(execution_results.get("user_visible_candidates")) or _list(artifact.get("candidates"))
-    )
+    visible_candidates = list(_stored_public_surface(output).rows)
     sources = public_candidate_sources(
         artifact_sources=_list(artifact.get("sources")),
         execution_results=execution_results,

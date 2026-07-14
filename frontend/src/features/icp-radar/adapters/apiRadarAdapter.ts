@@ -77,6 +77,8 @@ export function apiDetailToCatalogItem(detail: RadarDetailDto | RadarSummaryDto)
       needs_review_count: numberField(detail.summary.needs_review_count, 0),
       accepted_count: numberField(detail.summary.accepted_count, 0),
       run_mode: stringField(detail.summary.run_mode, 'backend_api'),
+      candidate_count_basis: stringField(detail.summary.candidate_count_basis, ''),
+      candidate_count_run_id: stringField(detail.summary.candidate_count_run_id, ''),
     },
     definition: definition ?? emptyDefinition(detail),
     artifact_path: detail.artifact_path,
@@ -96,8 +98,7 @@ export function catalogWithLiveRunArtifacts(
       }
       const acceptedCount = artifact.candidates.filter((candidate) => candidate.candidate_surface_status === 'accepted_product_candidate'
         || candidate.product_acceptance_status === 'product_candidate').length;
-      const reviewCount = artifact.candidates.filter((candidate) => candidate.candidate_surface_status === 'review_needed_candidate'
-        || candidate.product_acceptance_status === 'review_required').length;
+      const reviewCount = artifact.candidates.length - acceptedCount;
       return {
         ...radar,
         summary: {

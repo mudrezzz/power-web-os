@@ -35,7 +35,6 @@ export function ICPRadarScreen({
   const { t } = useTranslation();
   const workspace = useRadarWorkspace({ artifact, backend, catalog, liveRunArtifact, t });
   const { navigation } = workspace;
-
   if (error || !catalog) {
     return (
       <section className="screen status-screen" aria-label={t('icpRadar.aria')}>
@@ -48,16 +47,17 @@ export function ICPRadarScreen({
       </section>
     );
   }
-
   if (!workspace.selectedRadar) {
     return (
       <RadarCatalogScreen
         backendError={backend.signalRunState.error ?? backend.runState.error}
         backendMode={backend.runState.mode}
+        catalogState={backend.catalogState}
         hasLocalChanges={workspace.hasLocalChanges}
         radars={workspace.mergedRadars}
         onCreateRadar={workspace.createRadar}
         onOpenRadar={navigation.openRadar}
+        onReconnect={backend.reconnectRadarCatalog}
         onResetDemoChanges={workspace.resetDemoChanges}
       />
     );
@@ -116,7 +116,7 @@ export function ICPRadarScreen({
         draft={workspace.settingsDraft}
         editingBlock={workspace.editingBlock}
         isLocalDraft={workspace.selectedRadarOverride !== undefined}
-        onBack={navigation.backToCatalog}
+        onBack={workspace.backToCatalog}
         onDelete={() => workspace.deleteRadar(workspace.selectedRadar!)}
         onDiscard={workspace.discardSettingsDraft}
         onDraftChange={workspace.setSettingsDraft}

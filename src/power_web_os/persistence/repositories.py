@@ -9,6 +9,9 @@ from __future__ import annotations
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from power_web_os.application.radar.candidate_discovery.execution.stored_public_surface import (
+    StoredCandidatePublicSurfaceProjector,
+)
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRecord,
@@ -188,7 +191,11 @@ class SqlAlchemyRadarRunRepository:
                 RadarRunModel.created_at,
                 RadarRunModel.updated_at,
             )
-            .where(RadarRunModel.radar_id == radar_id, RadarRunModel.pipeline_id == pipeline_id)
+            .where(
+                RadarRunModel.radar_id == radar_id,
+                RadarRunModel.pipeline_id == pipeline_id,
+                RadarRunModel.status == RadarRunStatus.COMPLETED.value,
+            )
             .order_by(RadarRunModel.queued_at.desc())
             .limit(1)
         )
@@ -257,6 +264,10 @@ class SqlAlchemyRadarRunOutputRepository:
         self._session = session
 
     def upsert(self, record: RadarRunOutputRecord) -> RadarRunOutputRecord:
+        public_surface = StoredCandidatePublicSurfaceProjector().project(
+            artifact_payload=record.artifact_payload,
+            candidates_payload=record.candidates_payload,
+        )
         model = self._session.get(RadarRunOutputModel, record.run_id)
         now = utc_now()
         if model is None:
@@ -269,11 +280,11 @@ class SqlAlchemyRadarRunOutputRepository:
         model.candidates_json = [dict(item) for item in record.candidates_payload]
         model.contract_validation_json = [dict(item) for item in record.contract_validation_payload]
         model.source_count = len(record.sources_payload)
-        model.candidate_count = len(record.candidates_payload)
+        model.candidate_count = public_surface.candidate_count
         model.contract_issue_count = len(record.contract_validation_payload)
-        model.visible_candidate_count = len(record.candidates_payload)
-        model.accepted_candidate_count = sum(_is_accepted_candidate(item) for item in record.candidates_payload)
-        model.review_needed_candidate_count = sum(_is_review_candidate(item) for item in record.candidates_payload)
+        model.visible_candidate_count = public_surface.candidate_count
+        model.accepted_candidate_count = public_surface.accepted_count
+        model.review_needed_candidate_count = public_surface.review_needed_count
         model.artifact_payload_json = dict(record.artifact_payload)
         model.updated_at = record.updated_at or now
         self._session.flush()
@@ -311,20 +322,9 @@ class SqlAlchemyRadarRunOutputRepository:
             updated_at=row.updated_at,
         )
 
-
-def _is_accepted_candidate(candidate: dict[str, Any]) -> bool:
-    return (
-        str(candidate.get("candidate_surface_status") or "") == "accepted_product_candidate"
-        or str(candidate.get("product_acceptance_status") or "") == "product_candidate"
-    )
-
-
-def _is_review_candidate(candidate: dict[str, Any]) -> bool:
-    return (
-        str(candidate.get("candidate_surface_status") or "") == "review_needed_candidate"
-        or str(candidate.get("product_acceptance_status") or "") == "review_required"
-    )
-
+    def list_all(self) -> tuple[RadarRunOutputRecord, ...]:
+        stmt = select(RadarRunOutputModel).order_by(RadarRunOutputModel.run_id)
+        return tuple(_run_output_record(model) for model in self._session.scalars(stmt).all())
 
 class SqlAlchemyRadarReviewDecisionRepository:
     def __init__(self, session: Session) -> None:

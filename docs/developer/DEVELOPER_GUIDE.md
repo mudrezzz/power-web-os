@@ -1188,6 +1188,9 @@ Radar catalog and configuration loop:
 - Qualification filters and intent signals are different domain concepts and must remain separate.
 - Treat `RadarDefinition` as a first-class configuration contract, not only metadata inside a generated report.
 - In API mode the catalog is summary-only. Load one active definition and lean history after navigation; load candidates for the selected run, and dossier, journal, trace and full signal report only when the user opens those resources.
+- Catalog counters come from the canonical stored candidate public surface of the latest completed candidate-discovery run. `accepted + review-needed` must equal `visible`; newer queued/running/failed runs and signal-monitoring runs do not replace that basis.
+- After migrations and seed, Docker runs `python -m power_web_os.persistence reconcile-radar-output-summaries`. The command is idempotent, reports `scanned/updated/unchanged/invalid`, reads persisted artifacts only, and never invokes Radar providers.
+- A transient catalog API failure enters an explicitly labelled demo/degraded state and retries at bounded intervals. One request may be in flight; manual reconnect, tab return and return from Radar detail reuse the lightweight catalog request. A successful response restores API counters without page reload.
 - Each intent signal owns `monitoring_policy` (`enabled`, initial lookback, incremental overlap, cadence and source lanes). Cadence is persisted policy, not an automatic scheduler. Preflight and run artifacts expose effective values and basis.
 - Bind settings drafts to definition identity/version. A dirty local draft shows an explicit conflict when backend definition changes; it never silently replaces backend configuration.
 - `generate-icp-radar` writes the active shortlist artifact and includes `radar.definition`.

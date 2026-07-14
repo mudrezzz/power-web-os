@@ -12,7 +12,6 @@ import {
   apiDetailToCatalogItem,
   apiDetailsToCatalogArtifact,
   apiRunToLiveArtifact,
-  catalogWithLiveRunArtifacts,
 } from '../adapters/apiRadarAdapter';
 import {
   useSignalMonitoringBackend,
@@ -22,6 +21,7 @@ import {
 const terminalStatuses = new Set(['completed', 'failed']);
 const pollingIntervalMs = 2000;
 const pollingDeadlineMs = 15 * 60 * 1000;
+const catalogRetryDelaysMs = [1000, 2000, 4000, 8000, 15000];
 
 export type RadarBackendMode = 'loading' | 'api' | 'fallback';
 
@@ -46,12 +46,19 @@ export type RadarResourceState = {
   error: string | null;
 };
 
+export type RadarCatalogConnectionState = {
+  status: 'loading' | 'retrying' | 'loaded' | 'failed';
+  attempt: number;
+  error: string | null;
+};
+
 export type RadarBackendController = {
   catalog: ICPRadarCatalogArtifact | null;
   liveRunArtifact: LiveICPRadarRunArtifact | null;
   liveRunArtifacts: Record<string, LiveICPRadarRunArtifact>;
   runHistoryByRadarId: Record<string, RadarRunSummaryDto[]>;
   selectedRunByRadarId: Record<string, RadarRunSummaryDto>;
+  catalogState: RadarCatalogConnectionState;
   runState: RadarRunControlState;
   preflightState: RadarPreflightControlState;
   definitionStateByRadarId: Record<string, RadarResourceState>;
@@ -64,6 +71,8 @@ export type RadarBackendController = {
   loadRadarRunHistory: (radarId: string) => Promise<RadarRunSummaryDto[]>;
   selectRadarRun: (radarId: string, runId: string) => Promise<boolean>;
   selectRadarRunById: (runId: string) => Promise<string | null>;
+  refreshRadarCatalog: () => Promise<boolean>;
+  reconnectRadarCatalog: () => void;
   saveRadarDefinition: (radarId: string, definition: RadarDefinition) => Promise<ICPRadarCatalogItem | null>;
   checkRadarSetup: (radarId: string) => Promise<void>;
   runRadar: (radarId: string) => void;
@@ -87,6 +96,8 @@ export function useRadarBackend({
   // The backend mode boundary decides when API state owns Radar data and when demo fallback remains active.
   const api = useMemo(() => new RadarApiClient(), []);
   const [apiCatalog, setApiCatalog] = useState<ICPRadarCatalogArtifact | null>(null);
+  const fallbackCatalogRef = useRef(fallbackCatalog);
+  fallbackCatalogRef.current = fallbackCatalog;
   const [apiLiveArtifacts, setApiLiveArtifacts] = useState<Record<string, LiveICPRadarRunArtifact>>({});
   const [runHistoryByRadarId, setRunHistoryByRadarId] = useState<Record<string, RadarRunSummaryDto[]>>({});
   const [selectedRunByRadarId, setSelectedRunByRadarId] = useState<Record<string, RadarRunSummaryDto>>({});
@@ -101,6 +112,11 @@ export function useRadarBackend({
     status: null,
     error: null,
     outputPending: false,
+  });
+  const [catalogState, setCatalogState] = useState<RadarCatalogConnectionState>({
+    status: 'loading',
+    attempt: 0,
+    error: null,
   });
   const [preflightState, setPreflightState] = useState<RadarPreflightControlState>({
     busy: false,
@@ -119,58 +135,146 @@ export function useRadarBackend({
   }>>({});
   const explicitRunSelectionByRadarId = useRef<Record<string, boolean>>({});
   const pollCancel = useRef(false);
+  const catalogRequest = useRef<Promise<boolean> | null>(null);
+  const catalogRequestController = useRef<AbortController | null>(null);
+  const catalogRequestGeneration = useRef(0);
+  const catalogRetryAttempt = useRef(0);
+  const catalogRetryTimer = useRef<number | null>(null);
+  const mounted = useRef(false);
+  const refreshCatalogRef = useRef<(() => Promise<boolean>) | null>(null);
 
   const loadRunArtifact = useCallback(async (run: RadarRunSummaryDto, radar: ICPRadarCatalogItem) => {
     const candidates = await api.getRunCandidates(run.run_id);
     return apiRunToLiveArtifact(run, candidates, radar);
   }, [api]);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadCatalog() {
-      let summaryCatalog: ICPRadarCatalogArtifact;
-      let summaries: Awaited<ReturnType<typeof api.listRadars>>;
-      try {
-        summaries = await api.listRadars();
-        if (cancelled) {
-          return;
-        }
-        summaryCatalog = apiDetailsToCatalogArtifact(summaries, fallbackCatalog);
-        detailsByRadarId.current = Object.fromEntries(summaryCatalog.radars.map((radar) => [radar.radar_id, radar]));
-        const summarySelectedRuns: Record<string, RadarRunSummaryDto> = {};
-        for (const summary of summaries) {
-          if (summary.latest_run?.status === 'completed' && !explicitRunSelectionByRadarId.current[summary.radar_id]) {
-            activeRunByRadarId.current[summary.radar_id] = summary.latest_run.run_id;
-            latestRunByRadarId.current[summary.radar_id] = summary.latest_run;
-            summarySelectedRuns[summary.radar_id] = summary.latest_run;
-          }
-        }
-        setSelectedRunByRadarId(summarySelectedRuns);
-        setApiCatalog(summaryCatalog);
-        setRunState((current) => ({
-          ...current,
-          mode: 'api',
-          error: null,
-        }));
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-        setRunState((current) => ({
-          ...current,
-          mode: 'fallback',
-          error: errorMessage(error),
-        }));
-        return;
-      }
-
-    }
-    loadCatalog();
-    return () => {
-      cancelled = true;
-      pollCancel.current = true;
+  const applyCatalogSummaries = useCallback((summaries: Awaited<ReturnType<typeof api.listRadars>>) => {
+    const projectedCatalog = apiDetailsToCatalogArtifact(summaries, fallbackCatalogRef.current);
+    const summaryCatalog = {
+      ...projectedCatalog,
+      radars: projectedCatalog.radars.map((radar) => {
+        const existing = detailsByRadarId.current[radar.radar_id];
+        return existing && loadedDefinitionByRadarId.current[radar.radar_id]
+          ? { ...radar, definition: existing.definition }
+          : radar;
+      }),
     };
-  }, [api, fallbackCatalog]);
+    detailsByRadarId.current = Object.fromEntries(summaryCatalog.radars.map((radar) => [radar.radar_id, radar]));
+    setSelectedRunByRadarId((current) => {
+      const next = { ...current };
+      for (const summary of summaries) {
+        const latest = summary.latest_run;
+        if (latest?.status !== 'completed') {
+          continue;
+        }
+        latestRunByRadarId.current[summary.radar_id] = latest;
+        if (!explicitRunSelectionByRadarId.current[summary.radar_id]) {
+          activeRunByRadarId.current[summary.radar_id] = latest.run_id;
+          next[summary.radar_id] = latest;
+        }
+      }
+      return next;
+    });
+    setApiCatalog(summaryCatalog);
+    setRunState((current) => ({ ...current, mode: 'api', error: null }));
+    setCatalogState({ status: 'loaded', attempt: 0, error: null });
+  }, []);
+
+  const refreshRadarCatalog = useCallback((): Promise<boolean> => {
+    if (catalogRequest.current) {
+      return catalogRequest.current;
+    }
+    if (catalogRetryTimer.current !== null) {
+      window.clearTimeout(catalogRetryTimer.current);
+      catalogRetryTimer.current = null;
+    }
+    const generation = catalogRequestGeneration.current + 1;
+    catalogRequestGeneration.current = generation;
+    const controller = new AbortController();
+    catalogRequestController.current = controller;
+    setCatalogState((current) => ({
+      status: catalogRetryAttempt.current === 0 ? 'loading' : 'retrying',
+      attempt: catalogRetryAttempt.current + 1,
+      error: current.error,
+    }));
+
+    const request = api.listRadars(controller.signal)
+      .then((summaries) => {
+        if (!mounted.current || generation !== catalogRequestGeneration.current) {
+          return false;
+        }
+        catalogRetryAttempt.current = 0;
+        applyCatalogSummaries(summaries);
+        return true;
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current || generation !== catalogRequestGeneration.current || controller.signal.aborted) {
+          return false;
+        }
+        const retryable = isRetryableCatalogError(error);
+        catalogRetryAttempt.current += 1;
+        const message = errorMessage(error);
+        setRunState((current) => ({ ...current, mode: 'fallback', error: message }));
+        setCatalogState({
+          status: retryable ? 'retrying' : 'failed',
+          attempt: catalogRetryAttempt.current,
+          error: message,
+        });
+        if (retryable) {
+          const delay = catalogRetryDelaysMs[Math.min(
+            catalogRetryAttempt.current - 1,
+            catalogRetryDelaysMs.length - 1,
+          )];
+          catalogRetryTimer.current = window.setTimeout(() => {
+            catalogRetryTimer.current = null;
+            void refreshCatalogRef.current?.();
+          }, delay);
+        }
+        return false;
+      })
+      .finally(() => {
+        if (catalogRequest.current === request) {
+          catalogRequest.current = null;
+          catalogRequestController.current = null;
+        }
+      });
+    catalogRequest.current = request;
+    return request;
+  }, [api, applyCatalogSummaries]);
+  refreshCatalogRef.current = refreshRadarCatalog;
+
+  const reconnectRadarCatalog = useCallback(() => {
+    catalogRetryAttempt.current = 0;
+    if (catalogRetryTimer.current !== null) {
+      window.clearTimeout(catalogRetryTimer.current);
+      catalogRetryTimer.current = null;
+    }
+    void refreshRadarCatalog();
+  }, [refreshRadarCatalog]);
+
+  useEffect(() => {
+    mounted.current = true;
+    pollCancel.current = false;
+    void refreshRadarCatalog();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshRadarCatalog();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      mounted.current = false;
+      pollCancel.current = true;
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      catalogRequestGeneration.current += 1;
+      catalogRequestController.current?.abort();
+      catalogRequestController.current = null;
+      catalogRequest.current = null;
+      if (catalogRetryTimer.current !== null) {
+        window.clearTimeout(catalogRetryTimer.current);
+      }
+    };
+  }, [refreshRadarCatalog]);
 
   const loadRadarDefinition = useCallback(async (radarId: string) => {
     if (loadedDefinitionByRadarId.current[radarId]) {
@@ -265,13 +369,13 @@ export function useRadarBackend({
     }
     try {
       const artifact = await loadRunArtifact(run, radar);
-      if (isSameOrNewerRun(run, latestRunByRadarId.current[radar.radar_id])) {
+      const updatesLatest = isSameOrNewerRun(run, latestRunByRadarId.current[radar.radar_id]);
+      if (updatesLatest) {
         latestRunByRadarId.current[radar.radar_id] = run;
       }
       activeRunByRadarId.current[radar.radar_id] = run.run_id;
       setSelectedRunByRadarId((current) => ({ ...current, [radar.radar_id]: run }));
       setApiLiveArtifacts((current) => ({ ...current, [radar.radar_id]: artifact }));
-      setApiCatalog((current) => (current ? catalogWithLiveRunArtifacts(current, { [radar.radar_id]: artifact }) : current));
       setRunState((current) => ({
         ...current,
         busy: false,
@@ -280,6 +384,9 @@ export function useRadarBackend({
         error: null,
         outputPending: false,
       }));
+      if (updatesLatest) {
+        await refreshRadarCatalog();
+      }
     } catch (error) {
       if (error instanceof RadarApiError && error.kind === 'conflict') {
         activeRunByRadarId.current[radar.radar_id] = run.run_id;
@@ -308,7 +415,7 @@ export function useRadarBackend({
         outputPending: false,
       }));
     }
-  }, [loadRunArtifact]);
+  }, [loadRunArtifact, refreshRadarCatalog]);
 
   const loadRadarRunArtifact = useCallback(async (radarId: string) => {
     const selectedRun = selectedRunByRadarId[radarId] ?? latestRunByRadarId.current[radarId];
@@ -609,6 +716,7 @@ export function useRadarBackend({
     liveRunArtifacts: apiLiveArtifacts,
     runHistoryByRadarId,
     selectedRunByRadarId,
+    catalogState,
     runState,
     preflightState,
     definitionStateByRadarId,
@@ -621,6 +729,8 @@ export function useRadarBackend({
     loadRadarRunHistory,
     selectRadarRun,
     selectRadarRunById,
+    refreshRadarCatalog,
+    reconnectRadarCatalog,
     saveRadarDefinition,
     checkRadarSetup,
     runRadar,
@@ -633,6 +743,18 @@ export function useRadarBackend({
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Radar API request failed';
+}
+
+function isRetryableCatalogError(error: unknown) {
+  if (!(error instanceof RadarApiError)) {
+    return true;
+  }
+  if (error.kind === 'network') {
+    return true;
+  }
+  return error.kind === 'http'
+    && error.status !== null
+    && (error.status === 408 || error.status === 429 || error.status >= 500);
 }
 
 function artifactRunId(artifact: LiveICPRadarRunArtifact | undefined) {

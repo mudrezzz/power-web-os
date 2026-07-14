@@ -497,8 +497,8 @@ export class RadarApiClient {
     this.baseUrl = baseUrl.replace(/\/$/, '');
   }
 
-  listRadars() {
-    return this.request<RadarSummaryDto[]>('/api/radars');
+  listRadars(signal?: AbortSignal) {
+    return this.request<RadarSummaryDto[]>('/api/radars', { signal });
   }
 
   getRadar(radarId: string) {
@@ -643,11 +643,13 @@ export class RadarApiClient {
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     let response: Response;
     const controller = new AbortController();
+    const abortFromCaller = () => controller.abort();
+    init.signal?.addEventListener('abort', abortFromCaller, { once: true });
     const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs);
     try {
       response = await fetch(`${this.baseUrl}${path}`, {
         ...init,
-        signal: init.signal ?? controller.signal,
+        signal: controller.signal,
         headers: {
           Accept: 'application/json',
           ...(init.body ? { 'Content-Type': 'application/json' } : {}),
@@ -658,6 +660,7 @@ export class RadarApiClient {
       throw new RadarApiError(error instanceof Error ? error.message : 'Radar API is unavailable', 'network');
     } finally {
       window.clearTimeout(timeoutId);
+      init.signal?.removeEventListener('abort', abortFromCaller);
     }
 
     if (!response.ok) {

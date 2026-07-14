@@ -81,6 +81,8 @@ class RadarRunOutputRepository(Protocol):
 
     def get_summary(self, run_id: str) -> RadarRunOutputSummaryRecord | None: ...
 
+    def list_all(self) -> tuple[RadarRunOutputRecord, ...]: ...
+
 
 class SignalMonitoringRunOutputRepository(Protocol):
     """Application port for pipeline-specific signal monitoring artifacts."""

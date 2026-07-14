@@ -52,16 +52,24 @@ they must never mutate generated JSON.
 Backend-connected Radar runs are artifact-backed by `radar_id`, not by a
 single special demo radar. Any backend radar with a completed latest run can
 open the live shortlist, diagnostics, dossier, and candidate detail surfaces.
-Catalog counts for those radars are derived from the run candidates endpoint so
-the card total, accepted/product count, and review-needed count match the rows
-the user opens.
+Catalog counts and the candidates endpoint use the same application-owned
+stored public-surface projector. The latest completed candidate-discovery run
+stores scalar visible/accepted/review-needed counts, while older outputs are
+reconciled by `python -m power_web_os.persistence
+reconcile-radar-output-summaries`. The invariant is `accepted + review-needed =
+visible`; signal runs and newer failed/running discovery runs do not replace the
+catalog basis run.
 
 Backend catalog loading is intentionally two-step. The lightweight
 `/api/radars` response owns catalog visibility first; heavy detail, dossier,
 trace, and candidate artifact hydration happen after that and must not hide a
 radar that the backend already returned. While the catalog request is pending,
 the screen stays in a loading/API state. Demo fallback is allowed only after an
-explicit API failure and must be visibly labeled as fallback.
+explicit API failure and must be visibly labeled as fallback. Availability
+failures retry at 1, 2, 4, 8 and then 15 second intervals with one request in
+flight. Manual reconnect, tab visibility and return-to-catalog refresh the same
+lightweight resource; a successful response replaces fallback state without a
+page reload or detail fanout.
 
 Benchmark radars returned by the backend are protected from silent browser-local
 delete overrides. If local demo state attempted to hide one, the catalog keeps
@@ -122,12 +130,11 @@ signal history while API mode is active.
 - Frontend TypeScript change: run `npm --prefix ./frontend run build`.
 - Any visible UI/layout change: run `npm --prefix ./frontend run visual:smoke`.
 - Backend catalog visibility/stability change: run
-  `npm --prefix ./frontend run radar:benchmark-ui-dod` against the Docker
-  frontend on `http://127.0.0.1:5173`; it performs ten clean browser-context
-  checks and fails if `Benchmark / SIBUR holding contour` is missing, hidden by
-  fallback/local overrides, or its UI counts diverge from the backend candidates
-  endpoint. Set `POWER_WEB_OS_RADAR_UI_DOD_START_VITE=1` only for a manual local
-  Vite run with matching backend CORS origins.
+  `npm --prefix ./frontend run radar:catalog-recovery-dod` against Docker. It
+  performs ten ready-backend cold opens and ten actual API stop/start recovery
+  cycles, compares catalog counters with the candidates endpoint, rejects eager
+  detail requests, and leaves the API running. The older
+  `radar:benchmark-ui-dod` remains the deeper benchmark candidate/detail gate.
 - Candidate/signal pipeline wiring change: run
   `npm --prefix ./frontend run radar:pipeline-split-ui-dod` against Docker. It
   validates separate histories and budgets, source-run synchronization, direct

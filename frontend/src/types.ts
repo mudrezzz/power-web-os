@@ -879,6 +879,8 @@ export type ICPRadarCatalogItem = {
     needs_review_count: number;
     accepted_count: number;
     run_mode: string;
+    candidate_count_basis?: string;
+    candidate_count_run_id?: string;
   };
   local_override_status?: 'protected_from_delete' | string;
   definition: RadarDefinition;

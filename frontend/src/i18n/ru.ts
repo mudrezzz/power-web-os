@@ -207,6 +207,11 @@
             api: 'Backend API',
             fallback: 'Demo fallback',
           },
+          catalogRecovery: {
+            reconnect: 'Подключиться снова',
+            retrying: 'Восстанавливаем связь',
+            countBasis: 'Счетчики последнего завершенного поиска кандидатов',
+          },
           runStatus: {
             ready: 'Готов',
             loading: 'Загрузка',

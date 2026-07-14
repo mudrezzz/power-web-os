@@ -11,6 +11,9 @@ from sqlalchemy.exc import IntegrityError
 
 import power_web_os.demo as demo
 from power_web_os.application.radar_run_journal import RadarRunEventCommand, RadarRunJournal
+from power_web_os.application.radar_output_summary_reconciliation import (
+    RadarOutputSummaryReconciliationService,
+)
 from power_web_os.application.radar_records import (
     RadarDefinitionRecord,
     RadarRecord,
@@ -36,6 +39,7 @@ from power_web_os.persistence import (
     session_scope,
 )
 from power_web_os.persistence.seed import seed_radar_catalog
+from power_web_os.persistence.models import RadarRunOutputModel
 
 
 def sqlite_url(path: Path) -> str:
@@ -217,6 +221,60 @@ def test_radar_repositories_roundtrip_catalog_and_run_state(tmp_path: Path) -> N
             subject_id="S1",
         )
         assert review_repo.list_for_run("run-1") == ()
+
+
+def test_radar_output_summary_reconciliation_repairs_old_counts_idempotently(tmp_path: Path) -> None:
+    engine = create_database_engine(database_url=sqlite_url(tmp_path / "summary-reconciliation.db"))
+    Base.metadata.create_all(engine)
+    session_factory = create_session_factory(engine)
+
+    with session_scope(session_factory) as session:
+        radar_repo = SqlAlchemyRadarRepository(session)
+        run_repo = SqlAlchemyRadarRunRepository(session)
+        output_repo = SqlAlchemyRadarRunOutputRepository(session)
+        radar_repo.upsert(RadarRecord(radar_id="radar-a", name="Radar A", status="active", owner="ABM"))
+        run_repo.create(RadarRunRecord(run_id="run-a", radar_id="radar-a"))
+        run_repo.update_status("run-a", RadarRunStatus.COMPLETED)
+        output_repo.upsert(RadarRunOutputRecord(
+            run_id="run-a",
+            artifact_version="test",
+            radar_payload={},
+            search_plan_payload={},
+            sources_payload=[],
+            candidates_payload=[{"candidate_id": "raw-only", "legal_name": "Raw only"}],
+            artifact_payload={
+                "run_metadata": {
+                    "execution_results": {
+                        "user_visible_candidates": [
+                            {
+                                "candidate_id": "accepted",
+                                "legal_name": "Accepted",
+                                "product_acceptance_status": "product_candidate",
+                            },
+                            {"candidate_id": "review", "legal_name": "Review"},
+                        ]
+                    }
+                }
+            },
+        ))
+        stored = session.get(RadarRunOutputModel, "run-a")
+        assert stored is not None
+        stored.candidate_count = 99
+        stored.visible_candidate_count = 99
+        stored.accepted_candidate_count = 0
+        stored.review_needed_candidate_count = 0
+        session.flush()
+
+        first = RadarOutputSummaryReconciliationService(output_repo).reconcile()
+        second = RadarOutputSummaryReconciliationService(output_repo).reconcile()
+        summary = output_repo.get_summary("run-a")
+
+        assert first.to_payload() == {"scanned": 1, "updated": 1, "unchanged": 0, "invalid": 0}
+        assert second.to_payload() == {"scanned": 1, "updated": 0, "unchanged": 1, "invalid": 0}
+        assert summary is not None
+        assert summary.candidate_count == summary.visible_candidate_count == 2
+        assert summary.accepted_candidate_count == 1
+        assert summary.review_needed_candidate_count == 1
 
 
 def test_radar_run_events_are_append_only_and_unique_by_run_sequence(tmp_path: Path) -> None:

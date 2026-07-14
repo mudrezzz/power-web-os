@@ -389,8 +389,14 @@ export function useRadarWorkspace({
     }
   }
 
+  function backToCatalog() {
+    navigation.backToCatalog();
+    void backend.refreshRadarCatalog();
+  }
+
   return {
     navigation,
+    backToCatalog,
     hasLocalChanges: Object.keys(radarOverrides).length > 0,
     mergedRadars,
     selectedRadar,

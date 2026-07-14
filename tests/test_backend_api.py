@@ -361,6 +361,11 @@ def test_radar_catalog_summary_uses_latest_visible_candidate_surface_counts(tmp_
             run_metadata={"heavy": {"nested": ["payload"] * 100}},
         ))
         run_repo.update_status("benchmark-run", RadarRunStatus.COMPLETED)
+        run_repo.create(RadarRunRecord(
+            run_id="benchmark-run-newer-failed",
+            radar_id="benchmark-sibur-holding-contour",
+        ))
+        run_repo.update_status("benchmark-run-newer-failed", RadarRunStatus.FAILED)
         visible_candidates = [
             {
                 "candidate_id": f"accepted-{index}",
@@ -385,7 +390,7 @@ def test_radar_catalog_summary_uses_latest_visible_candidate_surface_counts(tmp_
                 radar_payload={"radar_id": "benchmark-sibur-holding-contour"},
                 search_plan_payload={"queries": []},
                 sources_payload=[],
-                candidates_payload=visible_candidates,
+                candidates_payload=visible_candidates[:2],
                 contract_validation_payload=[],
                 artifact_payload={
                     "artifact_type": "icp_radar_live_run",
@@ -408,6 +413,23 @@ def test_radar_catalog_summary_uses_latest_visible_candidate_surface_counts(tmp_
     assert benchmark["summary"]["candidate_count"] == 13
     assert benchmark["summary"]["accepted_count"] == 3
     assert benchmark["summary"]["needs_review_count"] == 10
+    assert benchmark["summary"]["candidate_count_basis"] == "latest_completed_candidate_discovery_run"
+    assert benchmark["summary"]["candidate_count_run_id"] == "benchmark-run"
+
+    candidates = client.get("/api/radar-runs/benchmark-run/candidates").json()
+    assert len(candidates["candidates"]) == 13
+    assert {item["candidate_id"] for item in candidates["candidates"]} == {
+        *(f"accepted-{index}" for index in range(3)),
+        *(f"review-{index}" for index in range(10)),
+    }
+    history = client.get("/api/radars/benchmark-sibur-holding-contour/runs").json()
+    completed = next(item for item in history if item["run_id"] == "benchmark-run")
+    direct = client.get("/api/radar-runs/benchmark-run").json()
+    for response in (completed, direct):
+        assert response["output"]["candidate_count"] == 13
+        assert response["output"]["visible_candidate_count"] == 13
+        assert response["output"]["accepted_candidate_count"] == 3
+        assert response["output"]["review_needed_candidate_count"] == 10
 
 
 def test_update_radar_definition_persists_source_usage_obligations_without_creating_runs(tmp_path: Path) -> None:

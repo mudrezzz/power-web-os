@@ -459,6 +459,8 @@ export function normalizeRadarCatalogItem(radar: ICPRadarCatalogItem): ICPRadarC
       needs_review_count: Number.isFinite(Number(radar.summary?.needs_review_count)) ? Number(radar.summary.needs_review_count) : 0,
       accepted_count: Number.isFinite(Number(radar.summary?.accepted_count)) ? Number(radar.summary.accepted_count) : 0,
       run_mode: radar.summary?.run_mode || definition.monitoring_policy.run_mode || 'configured_not_generated',
+      candidate_count_basis: radar.summary?.candidate_count_basis || undefined,
+      candidate_count_run_id: radar.summary?.candidate_count_run_id || undefined,
     },
     local_override_status: typeof radar.local_override_status === 'string' ? radar.local_override_status : undefined,
     definition,

@@ -25,7 +25,8 @@ services:
       - ./.env:/app/.env:ro
     command: >
       sh -c "python -m alembic upgrade head
-      && python -m power_web_os.demo seed-radar-db"
+      && python -m power_web_os.demo seed-radar-db
+      && python -m power_web_os.persistence reconcile-radar-output-summaries"
 
   api:
     build:
