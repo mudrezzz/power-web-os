@@ -10,8 +10,8 @@ from power_web_os.application.persisted_live_radar import (
     PersistedLiveRadarRunCommand,
     PersistedLiveRadarRunService,
 )
-from power_web_os.application.radar_run_journal import RadarRunEventCommand, RadarRunJournal
-from power_web_os.application.radar_records import RadarDefinitionRecord, RadarRecord, RadarRunRecord, RadarRunStatus
+from power_web_os.application.radar.lifecycle.records import RadarDefinitionRecord, RadarRecord, RadarRunRecord, RadarRunStatus
+from power_web_os.application.radar.lifecycle.run_journal import RadarRunEventCommand, RadarRunJournal
 from power_web_os.demo import build_icp_radar_catalog_from_workbook
 from power_web_os.integrations.live_radar_openrouter import RecordedWebSearchProvider
 from power_web_os.persistence import (

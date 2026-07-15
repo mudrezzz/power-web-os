@@ -25,7 +25,7 @@ from power_web_os.application.radar.shared.source_cards import (
     source_use_for_step,
     validate_source_capability_uses,
 )
-from power_web_os.application.radar_source_obligations import (
+from power_web_os.application.radar.candidate_discovery.sources.obligations import (
     source_obligations_for_policy,
     source_usage_obligation,
     validate_source_obligations,

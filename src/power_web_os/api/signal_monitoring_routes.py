@@ -19,7 +19,7 @@ from power_web_os.application.radar.signal_monitoring.runtime import (
     SignalMonitoringRunCommand,
 )
 from power_web_os.application.radar.signal_monitoring.surface import SignalMonitoringCandidateSurfaceService
-from power_web_os.application.radar_records import RadarRunRecord
+from power_web_os.application.radar.lifecycle.records import RadarRunRecord
 
 router = APIRouter(prefix="/api", tags=["signal-monitoring"])
 

@@ -99,6 +99,65 @@ def extraction_recovery_stop_reason(metadata: dict[str, Any]) -> str:
     return ""
 
 
+def has_extraction_issues(metadata: dict[str, Any]) -> bool:
+    if str(metadata.get("post_extraction_salvage_outcome") or "") == "post_extraction_salvage_recovered":
+        return False
+    for result in metadata.get("extraction_validation_results", []):
+        if isinstance(result, dict) and str(result.get("state")) in {
+            "extraction_schema_invalid",
+            "evidence_linking_failed",
+        }:
+            return True
+    return any(
+        isinstance(issue, dict) and str(issue.get("severity")) == "error"
+        for issue in metadata.get("extraction_validation_issues", [])
+    )
+
+
+def without_extraction_issues(metadata: dict[str, Any]) -> dict[str, Any]:
+    result = dict(metadata)
+    result["extraction_validation_results"] = []
+    result["extraction_validation_issues"] = []
+    result["extraction_repair_results"] = []
+    return result
+
+
+def with_extraction_recovery_record(
+    metadata: dict[str, Any],
+    *,
+    checkpoint_id: str,
+    phase: str,
+    action: str,
+    attempt: int,
+    task_id: str,
+    outcome: str,
+    message: str,
+) -> dict[str, Any]:
+    records = [
+        *[dict(item) for item in metadata.get("extraction_recovery_records", []) if isinstance(item, dict)],
+        {
+            "checkpoint_id": checkpoint_id,
+            "phase": phase,
+            "action": action,
+            "attempt": attempt,
+            "task_id": task_id,
+            "outcome": outcome,
+            "message": message,
+        },
+    ]
+    return {
+        **metadata,
+        "extraction_recovery_records": records,
+        "extraction_repair_attempt_count": sum(
+            1 for item in records if str(item.get("action")) == "repair_extraction"
+        ),
+        "extraction_retry_attempt_count": sum(
+            1 for item in records if str(item.get("action")) == "retry_extraction"
+        ),
+        "extraction_recovery_outcome": records[-1]["outcome"] if records else "",
+    }
+
+
 def _with_post_extraction_salvage_metadata(
     metadata: dict[str, Any],
     *,

@@ -1,7 +1,11 @@
 from datetime import UTC, datetime
 
 from power_web_os.application.radar.signal_monitoring.surface import SignalMonitoringCandidateSurfaceProjector
-from power_web_os.application.radar_records import RadarRunRecord, RadarRunStatus, SignalMonitoringRunOutputRecord
+from power_web_os.application.radar.lifecycle.records import (
+    RadarRunRecord,
+    RadarRunStatus,
+    SignalMonitoringRunOutputRecord,
+)
 
 
 def test_candidate_surface_separates_current_delta_from_cumulative_evidence() -> None:

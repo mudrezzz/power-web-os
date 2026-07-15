@@ -40,7 +40,10 @@ from power_web_os.application.radar.signal_monitoring.projection import (
 from power_web_os.application.radar.signal_monitoring.receipts import SignalSearchReceiptFactory
 from power_web_os.application.radar.signal_monitoring.revisions import SignalMonitoringQueryRevisionService
 from power_web_os.application.radar.signal_monitoring.source_strategy import SignalMonitoringSourceStrategy
-from power_web_os.application.radar_model_profiles import RadarModelProfileRegistry, default_model_profile_registry
+from power_web_os.application.radar.configuration.model_profiles import (
+    RadarModelProfileRegistry,
+    default_model_profile_registry,
+)
 
 
 @dataclass(frozen=True, slots=True)

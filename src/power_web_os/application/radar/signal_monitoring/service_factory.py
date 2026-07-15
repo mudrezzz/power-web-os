@@ -12,7 +12,10 @@ from power_web_os.application.radar.signal_monitoring.evidence import SignalEvid
 from power_web_os.application.radar.signal_monitoring.executor import SignalMonitoringExecutor
 from power_web_os.application.radar.signal_monitoring.input_assembler import SignalMonitoringInputAssembler
 from power_web_os.application.radar.signal_monitoring.temporal import SignalTemporalEvidenceService
-from power_web_os.application.radar_model_profiles import RadarModelProfileRegistry, default_model_profile_registry
+from power_web_os.application.radar.configuration.model_profiles import (
+    RadarModelProfileRegistry,
+    default_model_profile_registry,
+)
 
 
 @dataclass(frozen=True, slots=True)

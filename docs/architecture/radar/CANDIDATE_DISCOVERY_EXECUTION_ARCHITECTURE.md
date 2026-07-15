@@ -24,6 +24,11 @@ The package is an application-layer use case. It may depend on provider ports
 and application services, but it must not import FastAPI, SQLAlchemy, Celery,
 Redis, direct HTTP clients, provider SDKs, or dotenv.
 
+Lookup terms, source obligations, registry projection, and provider-neutral
+company source ports live in
+`radar/candidate_discovery/sources`. Execution consumes those contracts and
+does not import the root compatibility shims.
+
 ## Read This First
 
 Before changing candidate-discovery execution, read these files in order:

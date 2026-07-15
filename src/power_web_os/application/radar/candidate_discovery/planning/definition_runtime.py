@@ -12,7 +12,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from power_web_os.application.radar_records import RadarDefinitionRecord
+from power_web_os.application.radar.lifecycle.records import RadarDefinitionRecord
 
 
 def active_definition_to_live_radar_payload(record: RadarDefinitionRecord) -> dict[str, Any]:

@@ -175,6 +175,43 @@ def evidence_linking_failed_result() -> WebSearchProviderResult:
     )
 
 
+def evidence_linking_failed_with_source_diagnostics_result() -> WebSearchProviderResult:
+    result = evidence_linking_failed_result()
+    return result.model_copy(
+        update={
+            "sources": [
+                RadarSourceEvidence(
+                    evidence_ref="src_known",
+                    title="LLC Candidate A",
+                    url="https://example.test/src_known",
+                    snippet="LLC Candidate A is listed as a production company.",
+                    query_id="discover-q1",
+                )
+            ]
+        }
+    )
+
+
+def evidence_linking_failed_without_sources_result() -> WebSearchProviderResult:
+    return WebSearchProviderResult(
+        candidate_observations=[
+            {
+                "legal_name": "Candidate A",
+                "entity_type": "legal_entity",
+                "qualification": [
+                    {"criterion_code": "Q1", "status": "confirmed", "evidence_refs": ["missing_src"]}
+                ],
+            }
+        ],
+        provider_metadata={
+            "provider": "adaptive-harness",
+            "extraction_validation_results": [
+                {"state": "evidence_linking_failed", "message": "Evidence ref missing_src did not resolve."}
+            ],
+        },
+    )
+
+
 def high_coverage_risk_result() -> WebSearchProviderResult:
     return WebSearchProviderResult(
         provider_metadata={

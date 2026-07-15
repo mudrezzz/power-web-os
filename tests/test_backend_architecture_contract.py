@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from power_web_os.application.radar.compatibility import LEGACY_MODULE_TARGETS as CENTRAL_RADAR_LEGACY_TARGETS
 
 BACKEND_ROOT = Path("src/power_web_os")
 ADR_PATH = Path("docs/adr/2026-06-16-backend-architecture-guardrails.md")
@@ -294,12 +295,11 @@ MOVED_RADAR_LEGACY_MODULE_TARGETS = {
         "power_web_os.application.radar.signal_monitoring.source_strategy"
     ),
 }
+MOVED_RADAR_LEGACY_MODULE_TARGETS.update(CENTRAL_RADAR_LEGACY_TARGETS)
 MOVED_RADAR_LEGACY_MODULES = set(MOVED_RADAR_LEGACY_MODULE_TARGETS)
 RADAR_ROOT_DEBT_PREFIXES = (
     "live_radar_",
-    "radar_search_",
-    "radar_upstream_disambiguation",
-    "radar_work_scheduler",
+    "radar_",
     "signal_monitoring_",
 )
 LEGACY_IMPORT_COMPATIBILITY_TESTS = {
@@ -592,6 +592,7 @@ def test_behavior_tests_do_not_import_moved_legacy_radar_paths() -> None:
 def test_production_code_does_not_import_moved_legacy_radar_paths() -> None:
     violations: list[str] = []
     compatibility_paths = {
+        Path("src/power_web_os/application/radar/compatibility.py"),
         Path("src/power_web_os/application/radar/candidate_discovery/compatibility.py"),
         *(
             Path("src/power_web_os/application") / f"{module_name.rsplit('.', 1)[-1]}.py"
@@ -607,6 +608,17 @@ def test_production_code_does_not_import_moved_legacy_radar_paths() -> None:
                 violations.append(f"{path.as_posix()} imports {legacy_module}; use {target_module}")
 
     assert violations == []
+
+
+def test_root_radar_prefixed_modules_are_documented_thin_shims() -> None:
+    root = BACKEND_ROOT / "application"
+    for path in sorted(root.glob("*.py")):
+        if not path.name.startswith(RADAR_ROOT_DEBT_PREFIXES):
+            continue
+        source = path.read_text(encoding="utf-8")
+        assert "Source of truth:" in source, path.as_posix()
+        assert "import *" in source, path.as_posix()
+        assert len(source.splitlines()) <= 8, path.as_posix()
 
 
 def test_radar_backend_architecture_doc_exists_and_defines_target_packages() -> None:

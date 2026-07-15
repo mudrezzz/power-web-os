@@ -3,11 +3,18 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from power_web_os.application.radar_runtime_config import (
+from power_web_os.application.radar.configuration.runtime_config import (
     build_effective_runtime_config_report,
     compare_runtime_config_reports,
 )
-from power_web_os.application.radar_runtime_settings import effective_runtime_env
+from power_web_os.application.radar.configuration.runtime_settings import (
+    DEFAULT_RADAR_CONFIG_DIR,
+    effective_runtime_env,
+)
+
+
+def test_default_radar_config_directory_tracks_repository_config() -> None:
+    assert DEFAULT_RADAR_CONFIG_DIR.resolve() == Path("config/radar").resolve()
 from power_web_os.demo import _assert_no_secrets, _task_context_from_runtime_config
 from power_web_os.integrations.live_radar_openrouter import OpenRouterWebSearchProvider
 from power_web_os.workflows.live_radar_executor import _task_context_with_runtime_defaults

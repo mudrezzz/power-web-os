@@ -42,11 +42,17 @@ Behavior-changing Radar slices are governed by ADR
 remain pipeline-owned, machine validation produces evidence reports, and the
 Roadmap CLI only owns completion enforcement.
 
-Root-level Radar namespace debt has its own inventory:
+Root-level Radar namespace compatibility has its own inventory:
 `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md`. That file lists every
-root `live_radar_*`, `radar_search_*`, `radar_work_scheduler*`, and
-`signal_monitoring_*` file, its current status, target package, and owning
-follow-up slice.
+root `live_radar_*`, `radar_*`, and `signal_monitoring_*` file, its
+current status, and package-owned source of truth.
+
+As of slice `0.7.6.4.19`, the root namespace is closed. Lifecycle behavior
+lives in `radar/lifecycle`, runtime and model configuration in
+`radar/configuration`, readiness checks in `radar/preflight`, and
+candidate-specific lookup, obligation, registry, and provider contracts in
+`radar/candidate_discovery/sources`. Every matching root module is a
+compatibility shim of at most eight lines.
 
 ## Purpose
 
@@ -152,12 +158,26 @@ Compatibility currently means:
   assertions, currently `tests/test_radar_backend_package_contract.py`;
 - new packages do not re-export legacy symbols through broad compatibility
   layers;
-- `src/power_web_os/application/radar/candidate_discovery/compatibility.py`
-  stores a declarative migration map from legacy modules to target packages;
-- future migration slices will move code behind package-owned contracts
-  deliberately, one phase at a time.
+- `src/power_web_os/application/radar/compatibility.py` stores the complete
+  declarative map from legacy modules to package-owned targets;
+- compatibility paths have no runtime warning and remain until an explicit
+  major-version sunset slice.
 
-This is a skeleton milestone, not a behavior migration.
+The package skeleton became the only behavior ownership surface in
+`0.7.6.4.19`.
+
+### Root Namespace Closure
+
+| Package | Owns |
+|---|---|
+| `radar/lifecycle` | Run/output records, review decisions, run journal, technical trace, output-summary reconciliation |
+| `radar/configuration` | Catalog seed mapping, definition updates, model profiles, runtime settings and config reports |
+| `radar/preflight` | Deterministic readiness and connector-profile checks |
+| `radar/candidate_discovery/sources` | Lookup terms, source obligations, provider ports, registry projection and source risk |
+| `radar/shared/source_policy.py` | Pipeline-neutral source-obligation values used by shared source cards |
+
+Production and behavior tests import these paths directly. Only the package
+compatibility test imports root shims and checks object identity.
 
 As of slice `0.7.6.4.9`, the first candidate-discovery layer has moved. These
 modules now have package-owned source of truth and root-level compatibility

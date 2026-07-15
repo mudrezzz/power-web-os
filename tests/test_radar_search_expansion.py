@@ -17,13 +17,19 @@ from power_web_os.application.radar.shared.budgets.external_context import (
     external_call_budget_context,
 )
 from power_web_os.application.radar.candidate_discovery.execution.orchestrator import run_staged_radar_execution
-from power_web_os.application.radar_registry_lookup_terms import RegistryLookupTermGenerator
+from power_web_os.application.radar.candidate_discovery.sources.registry_lookup_terms import RegistryLookupTermGenerator
 from power_web_os.application.radar.candidate_discovery.search_expansion.service import RadarSearchExpansionService
 from power_web_os.application.radar.candidate_discovery.search_expansion.models import RadarSearchExpansionVariant
 from power_web_os.application.radar.candidate_discovery.search_expansion.scheduler import schedule_guaranteed_expansion_variants
 from power_web_os.application.radar.candidate_discovery.search_expansion.selection import select_guaranteed_variants
-from power_web_os.application.radar_source_obligations import obligation_decisions_from_plan, source_obligation_summary
-from power_web_os.application.radar_source_providers import CompanyLookupRequest, RadarSourceRegistry
+from power_web_os.application.radar.candidate_discovery.sources.obligations import (
+    obligation_decisions_from_plan,
+    source_obligation_summary,
+)
+from power_web_os.application.radar.candidate_discovery.sources.providers import (
+    CompanyLookupRequest,
+    RadarSourceRegistry,
+)
 from power_web_os.integrations.dadata_provider import RecordedDaDataCompanyRegistryProvider
 
 

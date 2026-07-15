@@ -80,6 +80,7 @@ def test_blind_benchmark_context_uses_no_baseline_hints() -> None:
     assert context["max_openrouter_server_tool_web_searches_per_run"] == 90
     assert context["max_dadata_lookups_per_run"] == 10
     assert context["max_source_verification_requests_per_run"] == 80
+    assert context["max_provider_retries_per_task"] == 2
     assert context["smoke_max_candidates"] == 0
     assert context["smoke_max_signals"] == 0
     assert context["signal_execution_mode"] == "handoff"

@@ -12,7 +12,7 @@ from power_web_os.application.radar.signal_monitoring.contracts import (
     SignalSearchTask,
 )
 from power_web_os.application.radar.signal_monitoring.executor import SignalMonitoringExecutor
-from power_web_os.application.radar_records import (
+from power_web_os.application.radar.lifecycle.records import (
     RadarDefinitionRecord,
     RadarRecord,
     RadarRunOutputRecord,

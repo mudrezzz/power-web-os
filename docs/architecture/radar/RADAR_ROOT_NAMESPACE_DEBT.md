@@ -70,6 +70,25 @@ that have an owning migration slice.
 | `radar_upstream_disambiguation.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.universe.upstream_disambiguation` | `compatibility_only` |
 | `radar_work_scheduler.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler` | `compatibility_only` |
 | `radar_work_scheduler_metadata.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.search_expansion.work_scheduler_metadata` | `compatibility_only` |
+| `radar_catalog_seed.py` | `moved_shim` | `power_web_os.application.radar.configuration.catalog_seed` | `compatibility_only` |
+| `radar_definition_update.py` | `moved_shim` | `power_web_os.application.radar.configuration.definition_update` | `compatibility_only` |
+| `radar_lookup_terms.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.sources.lookup_terms` | `compatibility_only` |
+| `radar_model_profiles.py` | `moved_shim` | `power_web_os.application.radar.configuration.model_profiles` | `compatibility_only` |
+| `radar_output_summary_reconciliation.py` | `moved_shim` | `power_web_os.application.radar.lifecycle.output_summary_reconciliation` | `compatibility_only` |
+| `radar_preflight.py` | `moved_shim` | `power_web_os.application.radar.preflight.service` | `compatibility_only` |
+| `radar_preflight_connectors.py` | `moved_shim` | `power_web_os.application.radar.preflight.connectors` | `compatibility_only` |
+| `radar_records.py` | `moved_shim` | `power_web_os.application.radar.lifecycle.records` | `compatibility_only` |
+| `radar_registry_lookup_terms.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.sources.registry_lookup_terms` | `compatibility_only` |
+| `radar_registry_observation_helpers.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.sources.registry_observation_helpers` | `compatibility_only` |
+| `radar_review.py` | `moved_shim` | `power_web_os.application.radar.lifecycle.review` | `compatibility_only` |
+| `radar_run_journal.py` | `moved_shim` | `power_web_os.application.radar.lifecycle.run_journal` | `compatibility_only` |
+| `radar_runtime_config.py` | `moved_shim` | `power_web_os.application.radar.configuration.runtime_config` | `compatibility_only` |
+| `radar_runtime_model_profiles.py` | `moved_shim` | `power_web_os.application.radar.configuration.runtime_model_profiles` | `compatibility_only` |
+| `radar_runtime_settings.py` | `moved_shim` | `power_web_os.application.radar.configuration.runtime_settings` | `compatibility_only` |
+| `radar_source_obligations.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.sources.obligations` | `compatibility_only` |
+| `radar_source_providers.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.sources.providers` | `compatibility_only` |
+| `radar_source_registry_helpers.py` | `moved_shim` | `power_web_os.application.radar.candidate_discovery.sources.registry_helpers` | `compatibility_only` |
+| `radar_technical_trace.py` | `moved_shim` | `power_web_os.application.radar.lifecycle.technical_trace` | `compatibility_only` |
 | `signal_monitoring_contracts.py` | `moved_shim` | `power_web_os.application.radar.signal_monitoring.contracts` | `compatibility_only` |
 | `signal_monitoring_executor.py` | `moved_shim` | `power_web_os.application.radar.signal_monitoring.executor` | `compatibility_only` |
 | `signal_monitoring_source_strategy.py` | `moved_shim` | `power_web_os.application.radar.signal_monitoring.source_strategy` | `compatibility_only` |
@@ -105,5 +124,7 @@ retrieval-plan, product-source, service, and staged-execution behavior.
 - `0.7.6.4.18`: signal-monitoring contracts, source strategy, task planning,
   budgets, payload parsing, projection, and recorded executor moved to
   `radar/signal_monitoring`.
-- `0.7.6.4.19`: verify that every root Radar-prefixed file is deleted, a thin
-  documented shim, or an explicit remaining exception with its own follow-up.
+- `0.7.6.4.19`: all remaining records, lifecycle, configuration, preflight,
+  source-policy, lookup, registry, and provider behavior moved to package-owned
+  modules. Every root Radar-prefixed file is now a documented compatibility
+  shim protected by architecture tests.

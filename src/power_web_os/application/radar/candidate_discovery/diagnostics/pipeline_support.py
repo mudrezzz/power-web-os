@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from power_web_os.application.radar.candidate_discovery.contracts import LiveICPRadarRunState, LiveRadarCandidate
-from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
+from power_web_os.application.radar.lifecycle.technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 
 
 def planned_event_type(stage: str | None) -> str:

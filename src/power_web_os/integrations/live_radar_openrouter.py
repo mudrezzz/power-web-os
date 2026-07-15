@@ -21,9 +21,9 @@ from power_web_os.application.radar.shared.budgets.external_context import (
     reserve_external_call,
     reserve_openrouter_http_call,
 )
-from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
+from power_web_os.application.radar.lifecycle.technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 from power_web_os.application.radar.candidate_discovery.retrieval.web_retrieval import retrieval_request_from_search_plan
-from power_web_os.application.radar_runtime_settings import effective_runtime_env
+from power_web_os.application.radar.configuration.runtime_settings import effective_runtime_env
 from power_web_os.integrations.openrouter_request_builder import build_openrouter_request, openrouter_compiled_prompt_summary
 from power_web_os.integrations.openrouter_retrieval import retrieval_result_from_openrouter_response
 from power_web_os.integrations.openrouter_trace import (
@@ -237,6 +237,25 @@ class OpenRouterWebSearchProvider(WebSearchProvider):
                 },
                 json=payload,
                 timeout=self._timeout_seconds,
+            )
+        except httpx.HTTPError as error:
+            _trace_provider(
+                trace_type="provider_error",
+                title="OpenRouter request error",
+                summary=str(error),
+                duration_ms=_duration_ms(started_at),
+                payload={"error_type": error.__class__.__name__, "message": str(error), "model": selected_model, "web_mode": mode},
+            )
+            return _transport_error_result(
+                error=error,
+                model=selected_model,
+                default_model=self.model,
+                extractor_model=self.extractor_model,
+                web_mode=mode,
+                retrieval_provider=self.retrieval_provider,
+                retrieval_engine=self.web_search_engine,
+                attempt_role=attempt_role,
+                attempt_index=attempt_index,
             )
         except Exception as error:
             _trace_provider(
@@ -807,6 +826,54 @@ def _current_web_max_results() -> int | None:
 def _current_web_max_total_results() -> int | None:
     budget = current_external_call_budget()
     return None if budget is None else budget.settings.openrouter_web_max_total_results_per_call
+
+
+def _transport_error_result(
+    *,
+    error: Exception,
+    model: str,
+    default_model: str,
+    extractor_model: str,
+    web_mode: str,
+    retrieval_provider: str,
+    retrieval_engine: str,
+    attempt_role: str,
+    attempt_index: int,
+) -> WebSearchProviderResult:
+    error_payload = {
+        "error_type": error.__class__.__name__,
+        "message": str(error),
+        "transport_error": True,
+        "attempt_role": attempt_role,
+        "attempt_index": attempt_index,
+    }
+    return WebSearchProviderResult(
+        provider_metadata={
+            "provider": "openrouter",
+            "model": model,
+            "default_model": default_model,
+            "extractor_model": extractor_model,
+            "web_mode": web_mode,
+            "retrieval_provider": retrieval_provider,
+            "retrieval_engine": retrieval_engine,
+            "provider_error": error_payload,
+            "extraction_model_attempts": [
+                _model_attempt(
+                    model=model,
+                    role=attempt_role,
+                    attempt=attempt_index,
+                    outcome="transport_error",
+                    reason=error.__class__.__name__,
+                )
+            ],
+            "extraction_recovery_outcome": "transport_error",
+            "coverage_findings": [{
+                "summary": "OpenRouter task transport failed before a usable response was received.",
+                "completeness_risk": "medium",
+                "warnings": [str(error)],
+            }],
+        },
+    )
 
 
 def _budget_limited_result(

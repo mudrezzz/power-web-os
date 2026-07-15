@@ -194,6 +194,12 @@ preserve the approved TO BE, but it must not weaken acceptance thresholds,
 remove mandatory requirement IDs, or rewrite the intended algorithm. A needed
 TO BE/DoD change stops the loop for explicit design revision.
 
+For migration-only slices with mandatory live regression proof, a local import
+or wiring defect may be repaired within the five-cycle limit. The complete
+candidate plus initial/incremental signal chain must then be repeated; passing
+only the previously failed command is insufficient. Never weaken recall,
+control, provenance, trace, or dedupe thresholds to obtain PASS.
+
 Each corrective patch must run the narrowest meaningful tests first, then
 broader tests when risk is meaningful. Prefer:
 

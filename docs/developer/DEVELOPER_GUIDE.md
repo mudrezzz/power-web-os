@@ -317,19 +317,18 @@ Before adding or moving Radar backend logic:
 3. Read that package's local `README.md`.
 4. Use the component contract names from the architecture guide: `Input`,
    `Result`, `Decision`, `Issue`, `Event`, and `Service`.
-5. Do not create a new root-level `src/power_web_os/application/live_radar_*.py`
-   module.
-6. Do not import or re-export legacy `live_radar_*` modules from new packages.
-   During migration, keep compatibility in the declarative map at
-   `src/power_web_os/application/radar/candidate_discovery/compatibility.py`.
+5. Do not create a new root-level Radar-prefixed application module.
+6. Do not import or re-export legacy root modules from new packages.
+   Compatibility is centralized in
+   `src/power_web_os/application/radar/compatibility.py`.
 7. Check `docs/architecture/radar/RADAR_ROOT_NAMESPACE_DEBT.md` before touching
    any root-level `live_radar_*`, `radar_search_*`, or
    `signal_monitoring_*` file.
 8. Add or update architecture tests when a package boundary changes.
 
-Old `live_radar_*` imports remain runtime-compatible until migration slices move
-behavior into package-owned services. The new package tree is the extension
-path; the old flat namespace is migration debt.
+Old Radar imports remain runtime-compatible as thin shims until an explicit
+major-version sunset. Since `0.7.6.4.19`, the package tree is the only
+behavior and extension surface.
 
 Behavior tests must use package-owned imports when behavior has already moved.
 Legacy root imports are allowed only in explicit compatibility tests such as
@@ -342,6 +341,10 @@ Preferred Radar backend imports after `0.7.6.4.14`:
 
 ```text
 power_web_os.application.radar.shared.source_cards
+power_web_os.application.radar.lifecycle.records
+power_web_os.application.radar.configuration.runtime_config
+power_web_os.application.radar.preflight.service
+power_web_os.application.radar.candidate_discovery.sources.providers
 power_web_os.application.radar.candidate_discovery.service
 power_web_os.application.radar.candidate_discovery.service_factory
 power_web_os.application.radar.candidate_discovery.contracts
@@ -942,12 +945,12 @@ Radar persistence is split across application contracts and SQLAlchemy
 adapters:
 
 ```text
-src/power_web_os/application/radar_records.py       Radar records and run status
+src/power_web_os/application/radar/lifecycle/records.py Radar records and run status
 src/power_web_os/application/ports.py               Repository and async job ports
-src/power_web_os/application/radar_catalog_seed.py  Demo catalog -> records mapper
+src/power_web_os/application/radar/configuration/catalog_seed.py Demo catalog -> records mapper
 src/power_web_os/application/persisted_live_radar.py Durable live Radar run service
-src/power_web_os/application/radar_review.py        Human review decision service
-src/power_web_os/application/radar_run_journal.py   Structured run audit service
+src/power_web_os/application/radar/lifecycle/review.py Human review decision service
+src/power_web_os/application/radar/lifecycle/run_journal.py Structured run audit service
 src/power_web_os/persistence/models.py              SQLAlchemy table mappings
 src/power_web_os/persistence/repositories.py        SQLAlchemy repository adapters
 src/power_web_os/persistence/migrations/            Alembic migration environment

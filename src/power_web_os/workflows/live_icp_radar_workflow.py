@@ -12,9 +12,9 @@ from typing import Any
 from power_web_os.application.radar.candidate_discovery.contracts import LiveICPRadarRunState, RadarDiscoveryPlanner, WebSearchProvider
 from power_web_os.application.radar.candidate_discovery.retrieval.definition import build_live_mini_radar_definition
 from power_web_os.application.radar.candidate_discovery.service_factory import LiveRadarRunServiceFactory
-from power_web_os.application.radar_runtime_settings import effective_runtime_env
-from power_web_os.application.radar_source_providers import RadarSourceRegistry
-from power_web_os.application.radar_technical_trace import RadarRunTechnicalTracer, technical_trace_context
+from power_web_os.application.radar.candidate_discovery.sources.providers import RadarSourceRegistry
+from power_web_os.application.radar.configuration.runtime_settings import effective_runtime_env
+from power_web_os.application.radar.lifecycle.technical_trace import RadarRunTechnicalTracer, technical_trace_context
 from power_web_os.integrations.live_radar_openrouter import RecordedWebSearchProvider
 
 try:  # pragma: no cover - covered only when langgraph-dai is installed.

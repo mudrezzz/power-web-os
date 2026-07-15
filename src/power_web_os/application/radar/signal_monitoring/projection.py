@@ -31,7 +31,7 @@ from power_web_os.application.radar.signal_monitoring.payloads import (
     ParsedSignalPayload,
     SignalPayloadParseFailure,
 )
-from power_web_os.application.radar_model_profiles import RadarModelProfile
+from power_web_os.application.radar.configuration.model_profiles import RadarModelProfile
 
 
 def observation_from_payload(

@@ -7,7 +7,7 @@ import re
 from time import perf_counter
 from typing import Any
 
-from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
+from power_web_os.application.radar.lifecycle.technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 
 
 def parse_json_object(content: str) -> dict[str, Any]:

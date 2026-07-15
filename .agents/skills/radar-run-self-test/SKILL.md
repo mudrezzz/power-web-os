@@ -94,6 +94,21 @@ as acceptance evidence. Compare it requirement-by-requirement with the slice
 acceptance manifest. A terminal run is not enough: missing required evidence
 keeps the slice In Progress.
 
+For architecture migrations that claim no behavior change, run the full
+regression proof named by the slice, not a cheaper smoke substitute. When
+`0.7.6.4.19` or an equivalent closure slice is active, this means:
+
+1. a fresh blind candidate-discovery benchmark and post-run evaluation;
+2. semantic trace comparison with the accepted candidate baseline;
+3. a fresh initial signal quality run;
+4. a fresh incremental signal run;
+5. comparison with both accepted signal baselines;
+6. API/worker restart and persisted-report round trip;
+7. machine validation PASS.
+
+Do not mark the slice complete when only tests, recorded fixtures, or one
+terminal live run are available.
+
 Run the `radar-run-diagnostics` workflow on the resulting run id:
 
 - completed runs still require critical algorithm review;

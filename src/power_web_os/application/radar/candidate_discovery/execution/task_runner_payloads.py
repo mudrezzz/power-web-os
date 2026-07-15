@@ -10,7 +10,7 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarSourceEvidence,
     WebSearchProviderResult,
 )
-from power_web_os.application.radar_lookup_terms import is_placeholder_candidate_scope
+from power_web_os.application.radar.candidate_discovery.sources.lookup_terms import is_placeholder_candidate_scope
 
 
 def _budget_decision_payload(decision: Any) -> dict[str, Any]:

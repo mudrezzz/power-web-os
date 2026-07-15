@@ -11,9 +11,9 @@ from typing import Any
 
 from power_web_os.application.ports import LiveRadarArtifactExecutor, RadarRunTechnicalTraceRepository
 from power_web_os.application.radar.candidate_discovery.contracts import RadarDiscoveryPlanner, WebSearchProvider
-from power_web_os.application.radar_runtime_settings import effective_runtime_env
-from power_web_os.application.radar_source_providers import RadarSourceRegistry
-from power_web_os.application.radar_technical_trace import RadarRunTechnicalTracer
+from power_web_os.application.radar.candidate_discovery.sources.providers import RadarSourceRegistry
+from power_web_os.application.radar.configuration.runtime_settings import effective_runtime_env
+from power_web_os.application.radar.lifecycle.technical_trace import RadarRunTechnicalTracer
 from power_web_os.workflows.live_icp_radar_workflow import build_live_mini_radar_artifact
 
 

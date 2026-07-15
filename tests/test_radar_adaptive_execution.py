@@ -26,6 +26,8 @@ from support.radar_adaptive_harness import (
     cross_check_supporting_result,
     discovery_result_with_raw_negative_signal,
     evidence_linking_failed_result,
+    evidence_linking_failed_with_source_diagnostics_result,
+    evidence_linking_failed_without_sources_result,
     high_coverage_risk_result,
     radar_definition,
     required_source_unavailable_result,
@@ -287,7 +289,9 @@ def test_schema_failure_with_source_diagnostics_salvages_upstream_lead() -> None
 
 
 def test_unresolved_evidence_refs_do_not_start_signal_search() -> None:
-    provider = ScriptedProvider([evidence_linking_failed_result(), evidence_linking_failed_result()])
+    provider = ScriptedProvider(
+        [evidence_linking_failed_without_sources_result(), evidence_linking_failed_without_sources_result()]
+    )
 
     _, _, execution_results = run_staged_radar_execution(
         radar=radar_definition(),
@@ -299,6 +303,27 @@ def test_unresolved_evidence_refs_do_not_start_signal_search() -> None:
     assert provider.stages == ["qualification_discovery", "qualification_discovery"]
     assert_stopped_for_review(execution_results, reason="revision")
     assert "evidence_linking_failed" in str(execution_results["checkpoint_decisions"])
+    assert_no_normal_negative_signal_projection(execution_results)
+
+
+def test_unresolved_evidence_refs_with_source_diagnostics_salvage_after_revision_limit() -> None:
+    provider = ScriptedProvider(
+        [
+            evidence_linking_failed_with_source_diagnostics_result(),
+            evidence_linking_failed_with_source_diagnostics_result(),
+        ]
+    )
+
+    _, _, execution_results = run_staged_radar_execution(
+        radar=radar_definition(),
+        execution_plan=base_plan(),
+        provider=provider,
+        max_checkpoint_revisions_per_run=1,
+    )
+
+    assert execution_results["post_extraction_salvage_outcome"] == "post_extraction_salvage_recovered"
+    assert execution_results["candidate_universe"]
+    assert not execution_results["stopped_for_review_reason"]
     assert_no_normal_negative_signal_projection(execution_results)
 
 

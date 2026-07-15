@@ -17,7 +17,7 @@ from power_web_os.application.radar.signal_monitoring.runtime import (
     QueuedSignalMonitoringRunService,
     SignalMonitoringRunCommand,
 )
-from power_web_os.application.radar_records import (
+from power_web_os.application.radar.lifecycle.records import (
     RadarDefinitionRecord,
     RadarRecord,
     RadarRunOutputRecord,

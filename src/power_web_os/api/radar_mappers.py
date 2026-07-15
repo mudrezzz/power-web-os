@@ -34,7 +34,7 @@ from power_web_os.api.radar_summary_support import display_metadata
 from power_web_os.application.radar.candidate_discovery.execution.stored_public_surface import (
     StoredCandidatePublicSurfaceProjector,
 )
-from power_web_os.application.radar_records import (
+from power_web_os.application.radar.lifecycle.records import (
     RadarDefinitionRecord,
     RadarRecord,
     RadarReviewDecisionRecord,

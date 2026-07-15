@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from power_web_os.api import create_app
 from power_web_os.api.__main__ import _api_port_from_env
 from power_web_os.api.config import ApiSettings
-from power_web_os.application.radar_records import (
+from power_web_os.application.radar.lifecycle.records import (
     RadarDefinitionRecord,
     RadarRecord,
     RadarRunOutputRecord,

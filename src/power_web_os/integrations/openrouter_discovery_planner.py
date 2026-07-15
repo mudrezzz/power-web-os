@@ -18,8 +18,8 @@ from power_web_os.application.radar.shared.budgets.external_context import (
     reserve_external_call,
     reserve_openrouter_http_call,
 )
-from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
-from power_web_os.application.radar_runtime_settings import effective_runtime_env
+from power_web_os.application.radar.configuration.runtime_settings import effective_runtime_env
+from power_web_os.application.radar.lifecycle.technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 
 
 class OpenRouterDiscoveryPlanner(RadarDiscoveryPlanner):
@@ -345,6 +345,7 @@ def build_openrouter_discovery_planner_request(
             {"role": "user", "content": json.dumps(prompt, ensure_ascii=False)},
         ],
         "temperature": temperature,
+        "max_completion_tokens": 8192,
         "response_format": {"type": "json_object"},
         "metadata": {"planner_role": "discovery_strategy"},
     }
@@ -382,14 +383,45 @@ def _parse_json_object(value: str) -> dict[str, Any]:
         return parsed if isinstance(parsed, dict) else {}
     except json.JSONDecodeError:
         start = value.find("{")
-        end = value.rfind("}")
-        if start >= 0 and end > start:
-            try:
-                parsed = json.loads(value[start:end + 1])
-                return parsed if isinstance(parsed, dict) else {}
-            except json.JSONDecodeError:
-                return {}
+        if start >= 0:
+            candidate = value[start:].strip()
+            for payload in (candidate, _close_trailing_json_delimiters(candidate)):
+                if not payload:
+                    continue
+                try:
+                    parsed = json.loads(payload)
+                    return parsed if isinstance(parsed, dict) else {}
+                except json.JSONDecodeError:
+                    continue
     return {}
+
+
+def _close_trailing_json_delimiters(value: str) -> str:
+    """Repair only missing terminal JSON delimiters; schema validation remains authoritative."""
+    stack: list[str] = []
+    in_string = False
+    escaped = False
+    pairs = {"}": "{", "]": "["}
+    closers = {"{": "}", "[": "]"}
+    for character in value:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+            continue
+        if character == '"':
+            in_string = True
+        elif character in closers:
+            stack.append(character)
+        elif character in pairs:
+            if not stack or stack.pop() != pairs[character]:
+                return ""
+    if in_string:
+        return ""
+    return value + "".join(closers[character] for character in reversed(stack))
 
 
 def _response_trace_payload(
@@ -405,6 +437,7 @@ def _response_trace_payload(
         "model": model,
         "attempt_role": attempt_role,
         "attempt_index": attempt_index,
+        "finish_reason": payload.get("choices", [{}])[0].get("finish_reason"),
         "usage": payload.get("usage", {}),
         "message": {"role": message.get("role"), "content": message.get("content")},
     }

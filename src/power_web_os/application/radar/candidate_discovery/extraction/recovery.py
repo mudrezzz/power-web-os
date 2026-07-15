@@ -147,7 +147,12 @@ class PostExtractionSalvageService:
         provider_metadata: dict[str, Any],
     ) -> PostExtractionSalvageResult:
         classification = self.classifier.classify(sources=sources, provider_metadata=provider_metadata)
-        if classification.failure_kind not in {"schema_invalid_with_sources", "backup_schema_invalid", "retry_budget_exhausted"}:
+        if classification.failure_kind not in {
+            "schema_invalid_with_sources",
+            "unlinked_source_refs",
+            "backup_schema_invalid",
+            "retry_budget_exhausted",
+        }:
             return PostExtractionSalvageResult(
                 outcome="not_recovered",
                 unrecovered_reason=classification.failure_kind,
@@ -163,11 +168,7 @@ class PostExtractionSalvageService:
         recovered = candidates_from_retrieved_sources(
             radar=radar,
             provider_metadata={"retrieved_sources": source_docs},
-            known_candidate_names={
-                str(item.get("legal_name") or item.get("name") or "").lower()
-                for item in observations
-                if str(item.get("legal_name") or item.get("name") or "").strip()
-            },
+            known_candidate_names=_valid_observation_names(observations, sources),
             known_source_refs={source.evidence_ref for source in sources if source.evidence_ref},
         )
         hint_observations, hint_review_entities = _benchmark_hint_observations(radar=radar, source_docs=source_docs)
@@ -219,6 +220,25 @@ def _mark_salvaged(item: dict[str, Any]) -> dict[str, Any]:
     payload["upstream_confidence"] = payload.get("upstream_confidence") or "medium"
     payload["upstream_reason"] = "Recovered from product-safe source diagnostics after extraction schema failure."
     return payload
+
+
+def _valid_observation_names(
+    observations: list[dict[str, Any]],
+    sources: list[RadarSourceEvidence],
+) -> set[str]:
+    known_refs = {source.evidence_ref for source in sources if source.evidence_ref}
+    names: set[str] = set()
+    for item in observations:
+        refs = set(_string_list(item.get("evidence_refs")))
+        for section_name in ("qualification", "signals"):
+            for section in dict_list(item.get(section_name)):
+                refs.update(_string_list(section.get("evidence_refs")))
+        if not refs.intersection(known_refs):
+            continue
+        name = str(item.get("legal_name") or item.get("name") or "").strip().lower()
+        if name:
+            names.add(name)
+    return names
 
 
 def _benchmark_hint_observations(

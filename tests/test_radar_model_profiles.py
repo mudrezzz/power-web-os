@@ -5,12 +5,18 @@ from pathlib import Path
 
 import pytest
 
-from power_web_os.application.radar_model_profiles import (
+from power_web_os.application.radar.configuration.model_profiles import (
     DEFAULT_MODEL_PROFILE_DIR,
     RadarModelProfileError,
     RadarModelProfileRegistry,
     load_model_profile,
 )
+
+
+def test_default_model_profile_directory_tracks_repository_config() -> None:
+    assert DEFAULT_MODEL_PROFILE_DIR.resolve() == (
+        Path("config/radar/model_profiles").resolve()
+    )
 
 
 def test_default_model_profiles_load_and_signal_roles_are_complete() -> None:

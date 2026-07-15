@@ -24,12 +24,12 @@ from power_web_os.application.radar.signal_monitoring.input_assembler import (
     SignalMonitoringInputAssembler,
     SignalMonitoringInputError,
 )
-from power_web_os.application.radar_records import (
+from power_web_os.application.radar.lifecycle.records import (
     RadarRunRecord,
     RadarRunStatus,
     SignalMonitoringRunOutputRecord,
 )
-from power_web_os.application.radar_run_journal import RadarRunEventCommand, RadarRunJournal
+from power_web_os.application.radar.lifecycle.run_journal import RadarRunEventCommand, RadarRunJournal
 
 
 @dataclass(frozen=True, slots=True)

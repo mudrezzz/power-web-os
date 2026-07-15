@@ -1,15 +1,5 @@
-"""Candidate discovery source strategy and risk helpers."""
+"""Candidate discovery source planning, provider ports, and evidence helpers.
 
-from power_web_os.application.radar.candidate_discovery.sources.risk import (
-    refs_are_only_risky,
-    refs_have_verification_risk,
-    source_has_verification_risk,
-    source_supports_evidence,
-)
-
-__all__ = [
-    "refs_are_only_risky",
-    "refs_have_verification_risk",
-    "source_has_verification_risk",
-    "source_supports_evidence",
-]
+Import concrete modules directly; several source contracts participate in the
+candidate contract bootstrap and must not be eagerly re-exported.
+"""

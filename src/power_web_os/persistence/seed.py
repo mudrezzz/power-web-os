@@ -11,7 +11,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from power_web_os.application.radar_catalog_seed import records_from_catalog_payload
+from power_web_os.application.radar.configuration.catalog_seed import records_from_catalog_payload
 from power_web_os.persistence.repositories import SqlAlchemyRadarDefinitionRepository, SqlAlchemyRadarRepository
 
 

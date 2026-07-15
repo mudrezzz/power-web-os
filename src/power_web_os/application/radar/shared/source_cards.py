@@ -10,7 +10,7 @@ from power_web_os.application.connector_profiles import (
     ConnectorProfileRegistry,
     default_connector_profile_registry,
 )
-from power_web_os.application.radar_source_obligations import source_usage_obligation
+from power_web_os.application.radar.shared.source_policy import source_usage_obligation
 
 RadarPlannerSourceUseIntent = Literal[
     "broad_discovery",

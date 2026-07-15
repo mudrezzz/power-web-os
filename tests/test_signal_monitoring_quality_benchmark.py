@@ -47,6 +47,18 @@ def test_control_evaluator_accepts_event_interval_overlap() -> None:
     assert summary["matched"] == 1
 
 
+def test_control_evaluator_ignores_tracking_query_and_fragment() -> None:
+    live = _manifest()["live_acceptance"]
+    first = live["positive_controls"][0]
+    report = _control_report(live)
+    source = next(item for item in report["sources"] if item["source_ref"] == "positive-1")
+    source["url"] = f"{first['url']}?erid=tracking-value#article"
+
+    summary = control_match_summary(report, [first], expected="confirmed")
+
+    assert summary["matched"] == 1
+
+
 def test_control_evaluator_separates_negative_and_unknown_date_controls() -> None:
     live = _manifest()["live_acceptance"]
     report = _control_report(live)

@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from power_web_os.application.persisted_live_radar import QueuedLiveRadarRunService
-from power_web_os.application.radar_runtime_config import build_effective_runtime_config_report
-from power_web_os.application.radar_records import RadarDefinitionRecord, RadarRecord, RadarRunRecord, RadarRunStatus
+from power_web_os.application.radar.configuration.runtime_config import build_effective_runtime_config_report
+from power_web_os.application.radar.lifecycle.records import RadarDefinitionRecord, RadarRecord, RadarRunRecord, RadarRunStatus
 from power_web_os.demo import build_icp_radar_catalog_from_workbook
 from power_web_os.jobs import CeleryJobQueue, ConfiguredRadarRunScheduler
 from power_web_os.jobs import radar_jobs

@@ -44,7 +44,10 @@ from power_web_os.application.radar.candidate_discovery.execution.reconciliation
 )
 from power_web_os.application.radar.candidate_discovery.execution.state import CandidateDiscoveryExecutionState
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
-from power_web_os.application.radar_source_obligations import obligation_decisions_from_plan, source_obligation_summary
+from power_web_os.application.radar.candidate_discovery.sources.obligations import (
+    obligation_decisions_from_plan,
+    source_obligation_summary,
+)
 
 
 class FinalizationProjector:

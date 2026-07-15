@@ -11,7 +11,7 @@ from power_web_os.application.ports import (
     RadarRunRepository,
     SignalMonitoringRunOutputRepository,
 )
-from power_web_os.application.radar_records import RadarRunRecord, SignalMonitoringRunOutputRecord
+from power_web_os.application.radar.lifecycle.records import RadarRunRecord, SignalMonitoringRunOutputRecord
 
 
 class SignalMonitoringCandidateSurfaceProjector:

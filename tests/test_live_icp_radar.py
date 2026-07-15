@@ -62,8 +62,11 @@ from power_web_os.application.radar.candidate_discovery.retrieval.web_retrieval 
     RecordedRadarWebRetrievalProvider,
     retrieval_request_from_search_plan,
 )
-from power_web_os.application.radar_source_providers import RadarSourceRegistry, SourceRegistryWebSearchProvider
-from power_web_os.application.radar_records import RadarDefinitionRecord
+from power_web_os.application.radar.candidate_discovery.sources.providers import (
+    RadarSourceRegistry,
+    SourceRegistryWebSearchProvider,
+)
+from power_web_os.application.radar.lifecycle.records import RadarDefinitionRecord
 from power_web_os.application.connector_profiles import ConnectorProfileRegistry
 from power_web_os.demo import build_icp_radar_catalog_from_workbook, generate_live_mini_icp_radar_plan
 from power_web_os.integrations.dadata_provider import RecordedDaDataCompanyRegistryProvider
@@ -86,11 +89,34 @@ from power_web_os.live_icp_radar import (
     normalize_openrouter_response,
     _filter_result_to_verified_sources,
 )
-from power_web_os.integrations.openrouter_discovery_planner import _plan_from_response
+from power_web_os.integrations.openrouter_discovery_planner import (
+    _parse_json_object as _parse_planner_json_object,
+    _plan_from_response,
+    _response_trace_payload as _planner_response_trace_payload,
+)
 from power_web_os.workflows import live_icp_radar_workflow
 
 TASK_SERVICE = TaskExecutionService()
 EXECUTION_MERGER = ExecutionResultMerger()
+
+
+def test_discovery_planner_repairs_only_missing_terminal_json_delimiters() -> None:
+    assert _parse_planner_json_object('{"plan_summary":"bounded","steps":[]') == {
+        "plan_summary": "bounded",
+        "steps": [],
+    }
+    assert _parse_planner_json_object('{"plan_summary":"truncated') == {}
+
+
+def test_discovery_planner_trace_keeps_finish_reason() -> None:
+    trace = _planner_response_trace_payload(
+        {"choices": [{"finish_reason": "stop", "message": {"role": "assistant", "content": "{}"}}]},
+        model="planner/model",
+        attempt_role="primary",
+        attempt_index=1,
+    )
+
+    assert trace["finish_reason"] == "stop"
 
 
 def recorded_provider_payload() -> dict[str, object]:
@@ -1305,6 +1331,31 @@ def test_post_extraction_salvage_materializes_source_backed_review_lead() -> Non
     assert salvage.recovered_result.candidate_observations[0]["legal_name"] == "LLC Candidate A"
     assert salvage.recovered_result.candidate_observations[0]["product_acceptance_status"] == "review_required"
     assert salvage.recovered_result.provider_metadata["post_extraction_salvage_count"] == 1
+
+
+def test_post_extraction_salvage_materializes_unlinked_source_review_lead() -> None:
+    salvage = PostExtractionSalvageService().recover(
+        radar={
+            "qualification_criteria": [{"code": "Q1", "label": "Industrial company"}],
+            "global_search_policy": {"sources": []},
+        },
+        sources=[
+            RadarSourceEvidence(
+                evidence_ref="citation_1",
+                title="LLC Candidate A",
+                url="https://example.test/source",
+                snippet="LLC Candidate A is listed as a production company.",
+            )
+        ],
+        observations=[],
+        provider_metadata={
+            "extraction_validation_results": [{"state": "evidence_linking_failed"}],
+        },
+    )
+
+    assert salvage.recovered
+    assert salvage.recovered_result.candidate_observations[0]["legal_name"] == "LLC Candidate A"
+    assert salvage.recovered_result.candidate_observations[0]["product_acceptance_status"] == "review_required"
 
 
 def test_post_extraction_salvage_recovers_benchmark_alias_without_legal_form() -> None:
@@ -2831,6 +2882,7 @@ def test_openrouter_discovery_planner_request_uses_planning_scope_only() -> None
     assert "usage_obligation" in prompt["output_schema"]["source_policy_decisions"][0]
     assert "obligation_status" in prompt["output_schema"]["source_policy_decisions"][0]
     assert prompt["planning_input"]["max_iterations"] == 2
+    assert request["max_completion_tokens"] == 8192
     assert request["metadata"]["planner_role"] == "discovery_strategy"
 
 
@@ -4163,6 +4215,48 @@ def test_openrouter_provider_treats_non_json_http_200_as_empty_task_result(
     assert result.sources == []
     assert result.candidate_observations == []
     assert result.provider_metadata["provider_error"]["error_type"] == "JSONDecodeError"
+
+
+def test_openrouter_provider_treats_transport_timeout_as_retriable_task_result(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    class FakeHttpError(Exception):
+        pass
+
+    class FakeHttpx:
+        HTTPError = FakeHttpError
+
+        @staticmethod
+        def post(*args, **kwargs):
+            raise FakeHttpError("read timed out")
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join([
+            "OPENROUTER_API_KEY=test-key",
+            "OPENROUTER_MODEL=test/model",
+            "OPENROUTER_WEB_MODE=server_tools",
+        ]),
+        encoding="utf-8",
+    )
+    monkeypatch.setitem(sys.modules, "httpx", FakeHttpx)
+
+    result = OpenRouterWebSearchProvider(env_path=env_file).run_search_plan(
+        radar=build_live_mini_radar_definition(),
+        search_plan=build_live_mini_radar_search_plan(),
+    )
+
+    assert result.sources == []
+    assert result.candidate_observations == []
+    assert result.provider_metadata["provider_error"] == {
+        "error_type": "FakeHttpError",
+        "message": "read timed out",
+        "transport_error": True,
+        "attempt_role": "primary",
+        "attempt_index": 1,
+    }
+    assert result.provider_metadata["extraction_recovery_outcome"] == "transport_error"
 
 
 def test_openrouter_extraction_backup_model_recovers_after_primary_non_json(

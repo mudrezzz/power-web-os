@@ -40,7 +40,7 @@ regain behavior.
 ## Allowed imports
 
 - `power_web_os.application.radar.shared`.
-- `power_web_os.application.radar_model_profiles`.
+- `power_web_os.application.radar.configuration.model_profiles`.
 - Explicit known-candidate/source references exposed by stable shared
   contracts.
 

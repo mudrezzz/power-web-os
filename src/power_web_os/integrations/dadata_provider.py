@@ -11,7 +11,7 @@ from urllib import request as urllib_request
 from urllib.error import HTTPError, URLError
 
 from power_web_os.application.radar.shared.budgets.external_context import reserve_external_call
-from power_web_os.application.radar_source_providers import (
+from power_web_os.application.radar.candidate_discovery.sources.providers import (
     CompanyLookupRequest,
     CompanyLookupResult,
     CompanyRegistryObservation,
@@ -19,8 +19,8 @@ from power_web_os.application.radar_source_providers import (
     CompanySourceOutcome,
     RadarSourceRegistry,
 )
-from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
-from power_web_os.application.radar_runtime_settings import effective_runtime_env
+from power_web_os.application.radar.configuration.runtime_settings import effective_runtime_env
+from power_web_os.application.radar.lifecycle.technical_trace import RadarRunTechnicalTraceCommand, append_current_trace
 from power_web_os.integrations.dadata_lookup_terms import (
     attempt_payload,
     lookup_terms_for_execution,

@@ -15,7 +15,7 @@ from power_web_os.application.radar.signal_monitoring.contracts import (
     SignalSearchTask,
     SignalSourceRef,
 )
-from power_web_os.application.radar_runtime_settings import effective_runtime_env
+from power_web_os.application.radar.configuration.runtime_settings import effective_runtime_env
 from power_web_os.integrations.openrouter_trace import parse_json_object
 from power_web_os.integrations.openrouter_annotations import normalized_openrouter_annotations
 

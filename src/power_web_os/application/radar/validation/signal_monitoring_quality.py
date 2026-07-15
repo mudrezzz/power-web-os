@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 
 def evaluate_signal_report(
@@ -438,7 +439,19 @@ def _list_values(value: object) -> list[object]:
 
 
 def _canonical_url(value: object) -> str:
-    return str(value or "").strip().lower().rstrip("/")
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    parsed = urlsplit(raw)
+    return urlunsplit(
+        (
+            parsed.scheme.lower(),
+            parsed.netloc.lower(),
+            parsed.path.rstrip("/"),
+            "",
+            "",
+        )
+    ).lower()
 
 
 def _control_urls(control: dict[str, Any]) -> set[str]:

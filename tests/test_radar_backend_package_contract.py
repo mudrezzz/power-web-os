@@ -7,6 +7,23 @@ from pathlib import Path
 
 NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar",
+    "power_web_os.application.radar.compatibility",
+    "power_web_os.application.radar.lifecycle",
+    "power_web_os.application.radar.lifecycle.records",
+    "power_web_os.application.radar.lifecycle.review",
+    "power_web_os.application.radar.lifecycle.run_journal",
+    "power_web_os.application.radar.lifecycle.technical_trace",
+    "power_web_os.application.radar.lifecycle.output_summary_reconciliation",
+    "power_web_os.application.radar.configuration",
+    "power_web_os.application.radar.configuration.catalog_seed",
+    "power_web_os.application.radar.configuration.definition_update",
+    "power_web_os.application.radar.configuration.model_profiles",
+    "power_web_os.application.radar.configuration.runtime_model_profiles",
+    "power_web_os.application.radar.configuration.runtime_settings",
+    "power_web_os.application.radar.configuration.runtime_config",
+    "power_web_os.application.radar.preflight",
+    "power_web_os.application.radar.preflight.service",
+    "power_web_os.application.radar.preflight.connectors",
     "power_web_os.application.radar.shared",
     "power_web_os.application.radar.shared.budgets",
     "power_web_os.application.radar.shared.budgets.external_budget",
@@ -19,6 +36,12 @@ NEW_RADAR_PACKAGES = [
     "power_web_os.application.radar.candidate_discovery.retrieval",
     "power_web_os.application.radar.candidate_discovery.extraction",
     "power_web_os.application.radar.candidate_discovery.sources",
+    "power_web_os.application.radar.candidate_discovery.sources.lookup_terms",
+    "power_web_os.application.radar.candidate_discovery.sources.registry_lookup_terms",
+    "power_web_os.application.radar.candidate_discovery.sources.registry_observation_helpers",
+    "power_web_os.application.radar.candidate_discovery.sources.obligations",
+    "power_web_os.application.radar.candidate_discovery.sources.providers",
+    "power_web_os.application.radar.candidate_discovery.sources.registry_helpers",
     "power_web_os.application.radar.candidate_discovery.universe",
     "power_web_os.application.radar.candidate_discovery.checkpoints",
     "power_web_os.application.radar.candidate_discovery.checkpoints.models",
@@ -162,6 +185,25 @@ LEGACY_KEY_MODULES = [
     "power_web_os.application.signal_monitoring_contracts",
     "power_web_os.application.signal_monitoring_executor",
     "power_web_os.application.signal_monitoring_source_strategy",
+    "power_web_os.application.radar_catalog_seed",
+    "power_web_os.application.radar_definition_update",
+    "power_web_os.application.radar_lookup_terms",
+    "power_web_os.application.radar_model_profiles",
+    "power_web_os.application.radar_output_summary_reconciliation",
+    "power_web_os.application.radar_preflight",
+    "power_web_os.application.radar_preflight_connectors",
+    "power_web_os.application.radar_records",
+    "power_web_os.application.radar_registry_lookup_terms",
+    "power_web_os.application.radar_registry_observation_helpers",
+    "power_web_os.application.radar_review",
+    "power_web_os.application.radar_run_journal",
+    "power_web_os.application.radar_runtime_config",
+    "power_web_os.application.radar_runtime_model_profiles",
+    "power_web_os.application.radar_runtime_settings",
+    "power_web_os.application.radar_source_obligations",
+    "power_web_os.application.radar_source_providers",
+    "power_web_os.application.radar_source_registry_helpers",
+    "power_web_os.application.radar_technical_trace",
 ]
 
 MOVED_LEGACY_SHIMS = [
@@ -214,6 +256,25 @@ MOVED_LEGACY_SHIMS = [
     "signal_monitoring_contracts.py",
     "signal_monitoring_executor.py",
     "signal_monitoring_source_strategy.py",
+    "radar_catalog_seed.py",
+    "radar_definition_update.py",
+    "radar_lookup_terms.py",
+    "radar_model_profiles.py",
+    "radar_output_summary_reconciliation.py",
+    "radar_preflight.py",
+    "radar_preflight_connectors.py",
+    "radar_records.py",
+    "radar_registry_lookup_terms.py",
+    "radar_registry_observation_helpers.py",
+    "radar_review.py",
+    "radar_run_journal.py",
+    "radar_runtime_config.py",
+    "radar_runtime_model_profiles.py",
+    "radar_runtime_settings.py",
+    "radar_source_obligations.py",
+    "radar_source_providers.py",
+    "radar_source_registry_helpers.py",
+    "radar_technical_trace.py",
 ]
 
 
@@ -372,6 +433,30 @@ def test_moved_legacy_modules_are_thin_shims() -> None:
         assert "Source of truth:" in source
         assert "import *" in source
         assert len(source.splitlines()) <= 8
+
+
+def test_root_namespace_closure_old_and_new_exports_are_identical() -> None:
+    compatibility = importlib.import_module("power_web_os.application.radar.compatibility")
+    closure_modules = {
+        name: target
+        for name, target in compatibility.LEGACY_MODULE_TARGETS.items()
+        if name.rsplit(".", 1)[-1].startswith("radar_")
+        and name.rsplit(".", 1)[-1] not in {
+            "radar_search_expansion",
+            "radar_search_expansion_models",
+            "radar_search_expansion_scheduler",
+            "radar_search_expansion_selection",
+            "radar_search_expansion_support",
+            "radar_upstream_disambiguation",
+            "radar_work_scheduler",
+            "radar_work_scheduler_metadata",
+        }
+    }
+    for legacy_name, target_name in closure_modules.items():
+        legacy = importlib.import_module(legacy_name)
+        target = importlib.import_module(target_name)
+        for public_name in (name for name in vars(legacy) if not name.startswith("_")):
+            assert getattr(legacy, public_name) is getattr(target, public_name)
 
 
 def test_live_radar_service_old_and_new_import_paths_are_compatible() -> None:

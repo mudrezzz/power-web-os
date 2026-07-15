@@ -22,7 +22,7 @@ from power_web_os.application.radar.signal_monitoring.source_binding import (
     apply_capability,
 )
 from power_web_os.application.radar.signal_monitoring.policy import bounded_policy_int, signal_source_lanes
-from power_web_os.application.radar_records import (
+from power_web_os.application.radar.lifecycle.records import (
     RadarDefinitionRecord,
     RadarRunOutputRecord,
     RadarRunRecord,

@@ -5,7 +5,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from power_web_os.application.radar_source_providers import CompanyLookupRequest, CompanySourceOutcome
+from power_web_os.application.radar.candidate_discovery.sources.providers import (
+    CompanyLookupRequest,
+    CompanySourceOutcome,
+)
 
 
 def lookup_terms_for_execution(request: CompanyLookupRequest) -> list[str]:

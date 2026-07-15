@@ -17,7 +17,7 @@ from power_web_os.application.radar.candidate_discovery.planning.retrieval_plan 
     retrieval_task_to_search_plan,
     retrieval_task_to_search_query,
 )
-from power_web_os.application.radar_source_obligations import source_obligations_for_policy
+from power_web_os.application.radar.candidate_discovery.sources.obligations import source_obligations_for_policy
 
 
 def compile_radar_execution_plan(radar: dict[str, Any]) -> RadarExecutionPlan:

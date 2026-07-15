@@ -10,11 +10,10 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 import power_web_os.demo as demo
-from power_web_os.application.radar_run_journal import RadarRunEventCommand, RadarRunJournal
-from power_web_os.application.radar_output_summary_reconciliation import (
+from power_web_os.application.radar.lifecycle.output_summary_reconciliation import (
     RadarOutputSummaryReconciliationService,
 )
-from power_web_os.application.radar_records import (
+from power_web_os.application.radar.lifecycle.records import (
     RadarDefinitionRecord,
     RadarRecord,
     RadarRunEventRecord,
@@ -24,6 +23,7 @@ from power_web_os.application.radar_records import (
     RadarReviewDecisionRecord,
     RadarRunTechnicalTraceRecord,
 )
+from power_web_os.application.radar.lifecycle.run_journal import RadarRunEventCommand, RadarRunJournal
 from power_web_os.demo import build_icp_radar_catalog_from_workbook, seed_icp_radar_catalog_database
 from power_web_os.persistence import (
     Base,

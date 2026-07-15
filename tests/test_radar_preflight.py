@@ -10,12 +10,12 @@ from typing import Any
 from power_web_os.application.radar.candidate_discovery.retrieval.definition import build_live_mini_radar_definition
 from power_web_os.application.radar.candidate_discovery.planning.definition_runtime import active_definition_to_live_radar_payload
 from power_web_os.application.connector_profiles import ConnectorProfile, ConnectorProfileRegistry
-from power_web_os.application.radar_preflight import (
+from power_web_os.application.radar.preflight.service import (
     RadarExecutionPreflightService,
     RadarPreflightCheckResult,
     validate_provider_output_fixture,
 )
-from power_web_os.application.radar_records import RadarDefinitionRecord
+from power_web_os.application.radar.lifecycle.records import RadarDefinitionRecord
 from power_web_os.demo import build_icp_radar_catalog_from_workbook
 from power_web_os.persistence import (
     Base,

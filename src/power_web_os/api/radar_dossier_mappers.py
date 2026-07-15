@@ -20,7 +20,7 @@ from power_web_os.api.radar_public_provenance import public_candidate_rows
 from power_web_os.api.radar_source_lifecycle import source_lifecycle as _source_lifecycle
 from power_web_os.api.radar_source_lifecycle import source_lifecycle_summary as _source_lifecycle_summary
 from power_web_os.api.value_parsing import optional_int as _optional_int
-from power_web_os.application.radar_records import (
+from power_web_os.application.radar.lifecycle.records import (
     RadarDefinitionRecord,
     RadarReviewDecisionRecord,
     RadarRunEventRecord,

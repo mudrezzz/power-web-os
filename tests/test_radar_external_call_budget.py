@@ -23,8 +23,11 @@ from power_web_os.application.radar.shared.budgets.external_context import (
     reserve_openrouter_http_call,
 )
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
-from power_web_os.application.radar_source_obligations import obligation_decisions_from_plan, source_obligation_summary
-from power_web_os.application.radar_source_providers import CompanyLookupRequest
+from power_web_os.application.radar.candidate_discovery.sources.obligations import (
+    obligation_decisions_from_plan,
+    source_obligation_summary,
+)
+from power_web_os.application.radar.candidate_discovery.sources.providers import CompanyLookupRequest
 from power_web_os.integrations.dadata_provider import RecordedDaDataCompanyRegistryProvider
 from power_web_os.integrations.openrouter_request_builder import build_openrouter_request
 from power_web_os.integrations.live_radar_source_verification import SourceReachabilityResult, verify_sources

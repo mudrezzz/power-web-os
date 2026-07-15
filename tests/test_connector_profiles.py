@@ -13,7 +13,7 @@ from power_web_os.application.connector_profiles import (
 from power_web_os.application.radar.candidate_discovery.planning.discovery_planning import build_discovery_planning_input
 from power_web_os.application.radar.candidate_discovery.contracts import RadarExecutionTask
 from power_web_os.application.radar.shared.source_cards import RadarPlannerSourceUse
-from power_web_os.application.radar_source_providers import RadarSourceRegistry
+from power_web_os.application.radar.candidate_discovery.sources.providers import RadarSourceRegistry
 
 
 def test_default_connector_profiles_load_and_compile() -> None:

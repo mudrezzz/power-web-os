@@ -24,7 +24,10 @@ from power_web_os.application.radar.candidate_discovery.planning.discovery_plann
 from power_web_os.application.radar.candidate_discovery.service_budget import ExternalBudgetMetadataMerger
 from power_web_os.application.radar.candidate_discovery.service_context import LiveRadarTaskContextReader
 from power_web_os.application.radar.candidate_discovery.service_events import LiveRadarEventStateProjector
-from power_web_os.application.radar_source_providers import RadarSourceRegistry, SourceRegistryWebSearchProvider
+from power_web_os.application.radar.candidate_discovery.sources.providers import (
+    RadarSourceRegistry,
+    SourceRegistryWebSearchProvider,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - typing-only import avoids a runtime cycle.
     from power_web_os.application.radar.candidate_discovery.service import LiveRadarRunService

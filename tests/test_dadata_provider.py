@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 import power_web_os.integrations.dadata_provider as dadata_module
-from power_web_os.application.radar_source_providers import CompanyLookupRequest
+from power_web_os.application.radar.candidate_discovery.sources.providers import CompanyLookupRequest
 from power_web_os.integrations.dadata_provider import (
     DaDataCompanyRegistryProvider,
     RecordedDaDataCompanyRegistryProvider,

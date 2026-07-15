@@ -35,22 +35,22 @@ from power_web_os.api.radar_mappers import (
     technical_trace_response,
 )
 from power_web_os.application.persisted_live_radar import PersistedLiveRadarRunCommand, QueuedLiveRadarRunService
-from power_web_os.application.radar_definition_update import (
+from power_web_os.application.radar.configuration.definition_update import (
     RadarDefinitionUpdateCommand,
     RadarDefinitionUpdateError,
     RadarDefinitionUpdateService,
 )
 from power_web_os.application.radar.candidate_discovery.planning.definition_runtime import active_definition_to_live_radar_payload
-from power_web_os.application.radar_preflight import RadarExecutionPreflightService
-from power_web_os.application.radar_run_journal import RadarRunJournal
-from power_web_os.application.radar_review import (
+from power_web_os.application.radar.lifecycle.review import (
     QUALIFICATION_SUBJECT,
     SIGNAL_SUBJECT,
     RadarReviewDecisionCommand,
     RadarReviewDecisionService,
     RadarReviewValidationError,
 )
-from power_web_os.application.radar_records import RadarRunOutputRecord, RadarRunRecord
+from power_web_os.application.radar.lifecycle.records import RadarRunOutputRecord, RadarRunRecord
+from power_web_os.application.radar.lifecycle.run_journal import RadarRunJournal
+from power_web_os.application.radar.preflight.service import RadarExecutionPreflightService
 
 router = APIRouter(prefix="/api", tags=["radars"])
 

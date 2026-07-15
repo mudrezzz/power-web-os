@@ -26,7 +26,10 @@ from power_web_os.application.radar.candidate_discovery.service_factory import (
     LiveRadarRunComposition,
     LiveRadarRunServiceFactory,
 )
-from power_web_os.application.radar_source_providers import RadarSourceRegistry, SourceRegistryWebSearchProvider
+from power_web_os.application.radar.candidate_discovery.sources.providers import (
+    RadarSourceRegistry,
+    SourceRegistryWebSearchProvider,
+)
 from power_web_os.integrations.live_radar_openrouter import RecordedWebSearchProvider
 
 

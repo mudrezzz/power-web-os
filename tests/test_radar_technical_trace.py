@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from power_web_os.application.radar_technical_trace import (
+from power_web_os.application.radar.lifecycle.technical_trace import (
     MAX_TRACE_STRING_LENGTH,
     RadarRunTechnicalTraceCommand,
     RadarRunTechnicalTracer,

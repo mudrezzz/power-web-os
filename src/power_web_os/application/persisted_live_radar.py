@@ -19,13 +19,13 @@ from power_web_os.application.ports import (
     RadarRunOutputRepository,
     RadarRunRepository,
 )
-from power_web_os.application.radar_run_journal import RadarRunEventCommand, RadarRunJournal
-from power_web_os.application.radar_runtime_config import (
+from power_web_os.application.radar.lifecycle.run_journal import RadarRunEventCommand, RadarRunJournal
+from power_web_os.application.radar.configuration.runtime_config import (
     build_effective_runtime_config_report,
     compare_runtime_config_reports,
 )
-from power_web_os.application.radar_technical_trace import RadarRunTechnicalTraceCommand, RadarRunTechnicalTracer
-from power_web_os.application.radar_records import RadarRunOutputRecord, RadarRunRecord, RadarRunStatus
+from power_web_os.application.radar.lifecycle.technical_trace import RadarRunTechnicalTraceCommand, RadarRunTechnicalTracer
+from power_web_os.application.radar.lifecycle.records import RadarRunOutputRecord, RadarRunRecord, RadarRunStatus
 
 
 @dataclass(frozen=True, slots=True)

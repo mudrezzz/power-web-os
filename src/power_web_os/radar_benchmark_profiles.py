@@ -47,7 +47,7 @@ BENCHMARK_PROFILES: dict[str, dict[str, Any]] = {
         "max_openrouter_calls_per_run": 36, "max_openrouter_planner_calls_per_run": 3,
         "max_openrouter_web_task_calls_per_run": 28, "max_recall_expansion_openrouter_calls_per_run": 10,
         "max_openrouter_server_tool_web_searches_per_run": 90, "max_dadata_lookups_per_run": 10,
-        "max_source_verification_requests_per_run": 80, "max_provider_retries_per_task": 1,
+        "max_source_verification_requests_per_run": 80, "max_provider_retries_per_task": 2,
         "openrouter_web_max_results_per_call": 5, "openrouter_web_max_total_results_per_call": 10,
         "smoke_max_candidates": 0, "smoke_max_signals": 0, "signal_execution_mode": "handoff",
         "budget_reserve_limits": {"official_coverage_probe": 8, "open_web_coverage_probe": 5, "production_site_coverage_probe": 3},

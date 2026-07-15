@@ -12,7 +12,7 @@ from typing import Any
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from power_web_os.application.radar_records import RadarRunStatus
+from power_web_os.application.radar.lifecycle.records import RadarRunStatus
 
 
 def utc_now() -> datetime:

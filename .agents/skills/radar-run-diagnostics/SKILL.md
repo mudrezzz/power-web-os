@@ -109,6 +109,14 @@ its requirement ID. Distinguish a code defect from a failed planning/testing
 assumption, and propose changes to tests, skills, ADRs or tracker gates when the
 same process could allow the defect again.
 
+For a migration-only Radar slice, compare normalized traces with the accepted
+pre-migration runs. Ignore run IDs, timestamps, and provider wording, but
+compare phase order, task outcomes, source lifecycle, receipts, checkpoints,
+budgets, handoff mode, projection, and terminal reason. Classify every
+difference as expected runtime variance, provider drift, or behavior
+regression. A behavior regression, or provider drift that violates the
+approved quality thresholds, blocks closeout.
+
 ## Safety
 
 - Never print `.env`, API keys, tokens, bearer strings, authorization headers,

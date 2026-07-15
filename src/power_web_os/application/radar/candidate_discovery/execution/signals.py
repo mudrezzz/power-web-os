@@ -15,7 +15,7 @@ from power_web_os.application.radar.candidate_discovery.execution.context import
 from power_web_os.application.radar.candidate_discovery.execution.state import CandidateDiscoveryExecutionState
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
 from power_web_os.application.radar.candidate_discovery.planning.execution_plan import scoped_execution_task
-from power_web_os.application.radar_source_obligations import obligation_decisions_from_plan
+from power_web_os.application.radar.candidate_discovery.sources.obligations import obligation_decisions_from_plan
 
 
 class SignalCompatibilityPhaseExecutor:

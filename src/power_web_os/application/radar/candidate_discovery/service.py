@@ -38,7 +38,7 @@ from power_web_os.application.radar.candidate_discovery.planning.execution_plan 
     execution_plan_to_search_plan,
 )
 from power_web_os.application.radar.candidate_discovery.planning.planning_pipeline import build_planned_state
-from power_web_os.application.radar_source_providers import RadarSourceRegistry
+from power_web_os.application.radar.candidate_discovery.sources.providers import RadarSourceRegistry
 
 
 class LiveRadarRunService:

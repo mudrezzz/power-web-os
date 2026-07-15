@@ -13,7 +13,7 @@ from power_web_os.api.dependencies import default_job_queue, default_signal_moni
 from power_web_os.api.radar_routes import router as radar_router
 from power_web_os.api.signal_monitoring_routes import router as signal_monitoring_router
 from power_web_os.application.ports import JobQueue, SignalMonitoringJobQueue
-from power_web_os.application.radar_runtime_config import (
+from power_web_os.application.radar.configuration.runtime_config import (
     build_effective_runtime_config_report,
     runtime_config_api_overrides,
 )

@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from power_web_os.demo import build_icp_radar_catalog_from_workbook
-from power_web_os.application.radar_output_summary_reconciliation import (
+from power_web_os.application.radar.lifecycle.output_summary_reconciliation import (
     RadarOutputSummaryReconciliationService,
 )
 from power_web_os.persistence.config import DatabaseSettings

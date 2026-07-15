@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from power_web_os.application.radar_records import RadarRunRecord
+from power_web_os.application.radar.lifecycle.records import RadarRunRecord
 from power_web_os.jobs.radar_jobs import SignalMonitoringCeleryJobQueue, radar_celery_app
 
 

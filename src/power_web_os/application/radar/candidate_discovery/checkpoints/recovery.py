@@ -20,6 +20,9 @@ from power_web_os.application.radar.candidate_discovery.extraction.recovery impo
 from power_web_os.application.radar.candidate_discovery.checkpoints.recovery_salvage import (
     attempt_post_extraction_salvage,
     extraction_recovery_stop_reason,
+    has_extraction_issues,
+    without_extraction_issues,
+    with_extraction_recovery_record,
 )
 from power_web_os.application.radar.shared.budgets import RadarExternalCallBudget
 from power_web_os.application.radar.candidate_discovery.execution.task_runner import TaskExecutionService
@@ -164,6 +167,23 @@ class RadarCheckpointActionExecutor:
                 attempt = repair_attempts
             else:
                 if revision_attempts >= context.service.policy.max_revisions_per_run:
+                    state, recovered = self._attempt_post_extraction_salvage(
+                        checkpoint_id=checkpoint_id,
+                        phase=phase,
+                        state=state,
+                        context=context,
+                    )
+                    if recovered:
+                        decision = self._record(
+                            checkpoint_id=checkpoint_id,
+                            phase=phase,
+                            state=state,
+                            context=context,
+                        )
+                        if decision.action == "continue":
+                            state.stopped_for_review_reason = ""
+                            break
+                        continue
                     state.stopped_for_review_reason = "Checkpoint revision limit reached before discovery recovered."
                     _record_terminal_stop(checkpoint_id, phase, state.stopped_for_review_reason, context, reason_code="extraction_schema_failed")
                     break
@@ -241,8 +261,8 @@ class RadarCheckpointActionExecutor:
                 result,
             )
             if action in {"repair_extraction", "retry_extraction"}:
-                recovered = not _has_extraction_issues(result.provider_metadata)
-                state.provider_metadata = _with_extraction_recovery_record(
+                recovered = not has_extraction_issues(result.provider_metadata)
+                state.provider_metadata = with_extraction_recovery_record(
                     state.provider_metadata,
                     checkpoint_id=checkpoint_id,
                     phase=phase,
@@ -256,8 +276,8 @@ class RadarCheckpointActionExecutor:
                         else "Extraction retry still returned schema-invalid output."
                     ),
                 )
-            if action in {"revise_plan", "repair_extraction", "retry_extraction"} and not _has_extraction_issues(result.provider_metadata):
-                state.provider_metadata = _without_extraction_issues(state.provider_metadata)
+            if action in {"revise_plan", "repair_extraction", "retry_extraction"} and not has_extraction_issues(result.provider_metadata):
+                state.provider_metadata = without_extraction_issues(state.provider_metadata)
             context.executed_task_ids.append(f"{task.task_id}:adaptive-{action}-{attempt}")
             state.candidate_scope = self._task_service.eligible_candidate_names(
                 radar=context.radar,
@@ -310,7 +330,7 @@ class RadarCheckpointActionExecutor:
                 salvage.provider_metadata,
                 state.candidate_scope,
             ), False
-        provider_metadata = _with_extraction_recovery_record(
+        provider_metadata = with_extraction_recovery_record(
             salvage.provider_metadata,
             checkpoint_id=checkpoint_id,
             phase=phase,
@@ -406,58 +426,6 @@ def _additional_sources_allowed(radar: dict[str, Any]) -> bool:
     if not isinstance(policy, dict):
         return True
     return bool(policy.get("allow_additional_sources", policy.get("allow_open_web", policy.get("allow_system_sources", True))))
-
-
-def _has_extraction_issues(metadata: dict[str, Any]) -> bool:
-    if str(metadata.get("post_extraction_salvage_outcome") or "") == "post_extraction_salvage_recovered":
-        return False
-    for result in metadata.get("extraction_validation_results", []):
-        if isinstance(result, dict) and str(result.get("state")) in {"extraction_schema_invalid", "evidence_linking_failed"}:
-            return True
-    for issue in metadata.get("extraction_validation_issues", []):
-        if isinstance(issue, dict) and str(issue.get("severity")) == "error":
-            return True
-    return False
-
-
-def _without_extraction_issues(metadata: dict[str, Any]) -> dict[str, Any]:
-    result = dict(metadata)
-    result["extraction_validation_results"] = []
-    result["extraction_validation_issues"] = []
-    result["extraction_repair_results"] = []
-    return result
-
-
-def _with_extraction_recovery_record(
-    metadata: dict[str, Any],
-    *,
-    checkpoint_id: str,
-    phase: str,
-    action: str,
-    attempt: int,
-    task_id: str,
-    outcome: str,
-    message: str,
-) -> dict[str, Any]:
-    records = [
-        *[dict(item) for item in metadata.get("extraction_recovery_records", []) if isinstance(item, dict)],
-        {
-            "checkpoint_id": checkpoint_id,
-            "phase": phase,
-            "action": action,
-            "attempt": attempt,
-            "task_id": task_id,
-            "outcome": outcome,
-            "message": message,
-        },
-    ]
-    return {
-        **metadata,
-        "extraction_recovery_records": records,
-        "extraction_repair_attempt_count": sum(1 for item in records if str(item.get("action")) == "repair_extraction"),
-        "extraction_retry_attempt_count": sum(1 for item in records if str(item.get("action")) == "retry_extraction"),
-        "extraction_recovery_outcome": records[-1]["outcome"] if records else "",
-    }
 
 
 def _record_terminal_stop(

@@ -13,7 +13,7 @@ from power_web_os.application.radar.candidate_discovery.contracts import (
     RadarDiscoveryPlanStep,
     RadarDiscoveryPlanValidationResult,
 )
-from power_web_os.application.radar_source_obligations import source_obligations_for_policy
+from power_web_os.application.radar.candidate_discovery.sources.obligations import source_obligations_for_policy
 from power_web_os.application.radar.candidate_discovery.planning.discovery_planning import (
     RadarDiscoveryPlanValidator,
     global_source_ids,

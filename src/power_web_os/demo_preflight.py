@@ -10,10 +10,13 @@ from typing import Any
 from power_web_os.application.radar.candidate_discovery.retrieval.definition import build_live_mini_radar_definition
 from power_web_os.application.radar.candidate_discovery.planning.definition_runtime import active_definition_to_live_radar_payload
 from power_web_os.application.radar.candidate_discovery.contracts import RadarSearchPlan, RadarSearchQuery
-from power_web_os.application.radar_preflight import RadarExecutionPreflightService, validate_provider_output_fixture
-from power_web_os.application.radar_runtime_config import build_effective_runtime_config_report
-from power_web_os.application.radar_runtime_settings import effective_runtime_env
-from power_web_os.application.radar_source_providers import CompanyLookupRequest
+from power_web_os.application.radar.candidate_discovery.sources.providers import CompanyLookupRequest
+from power_web_os.application.radar.configuration.runtime_config import build_effective_runtime_config_report
+from power_web_os.application.radar.configuration.runtime_settings import effective_runtime_env
+from power_web_os.application.radar.preflight.service import (
+    RadarExecutionPreflightService,
+    validate_provider_output_fixture,
+)
 from power_web_os.integrations.dadata_provider import DaDataCompanyRegistryProvider
 from power_web_os.integrations.live_radar_openrouter import OpenRouterWebSearchProvider
 from power_web_os.persistence import (

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from power_web_os.application.radar_records import RadarReviewDecisionRecord
-from power_web_os.application.radar_review import (
+from power_web_os.application.radar.lifecycle.records import RadarReviewDecisionRecord
+from power_web_os.application.radar.lifecycle.review import (
     RadarReviewDecisionCommand,
     RadarReviewDecisionService,
     RadarReviewValidationError,

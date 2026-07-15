@@ -6,7 +6,7 @@ from typing import Any
 
 from power_web_os.application.radar.candidate_discovery.contracts import RadarExecutionTask
 from power_web_os.application.radar.shared.source_cards import RadarPlannerSourceCard
-from power_web_os.application.radar_registry_lookup_terms import RegistryLookupTermGenerator
+from power_web_os.application.radar.candidate_discovery.sources.registry_lookup_terms import RegistryLookupTermGenerator
 from power_web_os.application.radar.candidate_discovery.search_expansion.models import (
     RadarExpansionTarget,
     RadarSearchExpansionPlan,

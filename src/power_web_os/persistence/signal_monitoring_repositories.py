@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from power_web_os.application.radar_records import SignalMonitoringRunOutputRecord
+from power_web_os.application.radar.lifecycle.records import SignalMonitoringRunOutputRecord
 from power_web_os.persistence.models import (
     RadarRunModel,
     SignalMonitoringRunOutputModel,

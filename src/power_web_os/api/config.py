@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 
-from power_web_os.application.radar_runtime_settings import effective_runtime_env
+from power_web_os.application.radar.configuration.runtime_settings import effective_runtime_env
 from power_web_os.persistence.config import DEFAULT_DATABASE_URL
 
 

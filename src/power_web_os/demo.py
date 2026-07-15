@@ -21,7 +21,7 @@ from power_web_os.live_icp_radar import (
 from power_web_os.demo_preflight import build_radar_preflight_report, print_preflight_report
 from power_web_os.planner import DeterministicAccessPlanner
 from power_web_os.radar import AccountRadar
-from power_web_os.application.radar_runtime_config import build_effective_runtime_config_report
+from power_web_os.application.radar.configuration.runtime_config import build_effective_runtime_config_report
 from power_web_os.signal_monitoring_live_demo import (
     configure_signal_monitoring_demo_arguments,
     run_signal_monitoring_demo_command,
