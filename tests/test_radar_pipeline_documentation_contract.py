@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 from pypdf import PdfReader
@@ -40,6 +41,19 @@ SIGNAL_1831_ACCEPTANCE = SIGNAL_1831_TO_BE_MD.with_suffix(".acceptance.json")
 SIGNAL_1831_VALIDATION = Path(
     "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.3.1/validation.json"
 )
+SIGNAL_4191_TO_BE_MD = Path(
+    "docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.19.1.md"
+)
+SIGNAL_4191_ACCEPTANCE = SIGNAL_4191_TO_BE_MD.with_suffix(".acceptance.json")
+SIGNAL_4191_FREEZE = Path(
+    "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.19.1/acceptance-freeze.json"
+)
+SIGNAL_4191_VALIDATION = SIGNAL_4191_FREEZE.with_name("validation.json")
+SIGNAL_4191_ACCEPTANCE_V1 = SIGNAL_4191_ACCEPTANCE.with_name(
+    "RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.19.1.acceptance.v1.json"
+)
+SIGNAL_4191_VALIDATION_V1 = SIGNAL_4191_VALIDATION.with_name("validation.v1.json")
+SIGNAL_4191_AMENDMENT = SIGNAL_4191_VALIDATION.with_name("ACCEPTANCE_AMENDMENT_V2.md")
 PIPELINE_SPLIT_UI_CONTRACT = Path("docs/radar/pipelines/RADAR_PIPELINE_SPLIT_UI_CONTRACT.md")
 PIPELINE_SPLIT_VALIDATION = Path("docs/radar/pipelines/validation/0.7.6.4.18.3/validation.json")
 SIGNAL_SURFACE_RCA = Path(
@@ -259,6 +273,39 @@ def test_signal_monitoring_settings_slice_is_traceable_to_finalized_as_is() -> N
     assert all(requirement_id in to_be for requirement_id in requirement_ids)
     assert all(requirement_id in as_is for requirement_id in requirement_ids)
     assert all(validation_results.get(requirement_id) == "PASS" for requirement_id in requirement_ids)
+
+
+def test_signal_monitoring_reproducibility_slice_is_traceable() -> None:
+    manifest = json.loads(SIGNAL_4191_ACCEPTANCE.read_text(encoding="utf-8"))
+    to_be = SIGNAL_4191_TO_BE_MD.read_text(encoding="utf-8")
+    requirements = [item for item in manifest["requirements"] if item.get("mandatory", True)]
+    requirement_ids = {item["id"] for item in requirements}
+
+    assert manifest["slice_id"] == "0.7.6.4.19.1"
+    assert manifest["schema_version"] == "radar_pipeline_acceptance.v3.1"
+    assert SIGNAL_4191_TO_BE_MD.with_suffix(".pdf").exists()
+    assert SIGNAL_4191_FREEZE.exists()
+    assert hashlib.sha256(SIGNAL_4191_ACCEPTANCE_V1.read_bytes()).hexdigest() == (
+        "9dfab1ee6a2a449109d35b8cf53b097cae3a4b48797bfedfb4c7214df2d6d82e"
+    )
+    assert json.loads(SIGNAL_4191_VALIDATION_V1.read_text(encoding="utf-8"))[
+        "validation_status"
+    ] == "FAIL"
+    assert "Preserved Evidence" in SIGNAL_4191_AMENDMENT.read_text(encoding="utf-8")
+    assert requirement_ids
+    assert all(requirement_id in to_be for requirement_id in requirement_ids)
+    assert all(item.get("test_node_ids") for item in requirements)
+    if "Status: Implemented" in to_be:
+        validation = json.loads(SIGNAL_4191_VALIDATION.read_text(encoding="utf-8"))
+        validation_results = {item["requirement_id"]: item["status"] for item in validation["requirements"]}
+        as_is = SIGNAL_AS_IS_MD.read_text(encoding="utf-8")
+        assert validation["validation_status"] == "PASS"
+        assert len(validation["initial_live_run_ids"]) == 2
+        assert validation["incremental_live_run_id"].startswith("signal-run-")
+        assert validation["restart_verified"] is True
+        assert "0.7.6.4.19.1" in as_is
+        assert all(requirement_id in as_is for requirement_id in requirement_ids)
+        assert all(validation_results.get(requirement_id) == "PASS" for requirement_id in requirement_ids)
 
 
 def test_radar_pipeline_split_ui_contract_is_validated() -> None:

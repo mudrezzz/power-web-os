@@ -119,6 +119,8 @@ class SignalMonitoringCriterionPolicy:
     incremental_overlap_days: int = 2
     cadence: str = "manual"
     source_lanes: tuple[str, ...] = ("known_source", "official_company", "signal_specific", "open_web")
+    search_terms: tuple[str, ...] = ()
+    evidence_match_terms: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -851,6 +853,8 @@ def intent_signal_to_payload(signal: IntentSignalDefinition) -> dict[str, Any]:
             "incremental_overlap_days": signal.monitoring_policy.incremental_overlap_days,
             "cadence": signal.monitoring_policy.cadence,
             "source_lanes": list(signal.monitoring_policy.source_lanes),
+            "search_terms": list(signal.monitoring_policy.search_terms),
+            "evidence_match_terms": list(signal.monitoring_policy.evidence_match_terms),
         },
     }
 

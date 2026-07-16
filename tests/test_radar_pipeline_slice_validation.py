@@ -56,6 +56,174 @@ def test_pipeline_validator_checks_signal_quality_controls(tmp_path: Path) -> No
     assert results["SM-DED-02"] == "PASS"
 
 
+def test_reproducibility_validator_requires_two_passing_initial_runs(tmp_path: Path) -> None:
+    manifest = _write_reproducibility_manifest(tmp_path)
+    first = _quality_report("signal-run-a", incremental=False)
+    first["monitoring_series_id"] = "acceptance-a"
+    second = _quality_report("signal-run-b", incremental=False)
+    second["monitoring_series_id"] = "acceptance-b"
+
+    incomplete = RadarPipelineSliceValidator(root=tmp_path).validate(
+        manifest_path=manifest,
+        initial_live_reports=[first],
+        run_tests=False,
+        write_report=False,
+    )
+    complete = RadarPipelineSliceValidator(root=tmp_path).validate(
+        manifest_path=manifest,
+        initial_live_reports=[first, second],
+        run_tests=False,
+        write_report=False,
+    )
+
+    assert {item.requirement_id: item.status for item in incomplete.requirements}["SM-REP-03"] == "FAIL"
+    assert {item.requirement_id: item.status for item in complete.requirements}["SM-REP-03"] == "PASS"
+
+
+def test_reproducibility_validator_accepts_one_explicit_provider_drift_miss(tmp_path: Path) -> None:
+    manifest = _write_reproducibility_manifest(tmp_path)
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    payload["live_acceptance"]["positive_controls"].append({
+        "id": "positive-b",
+        "candidate_id": "candidate-a",
+        "signal_code": "S1",
+        "url": "https://source.test/b",
+        "date_start": "2026-06-01",
+        "date_end": "2026-06-30",
+    })
+    payload["live_acceptance"]["reproducibility_policy"] = {
+        "minimum_positive_controls_per_initial_run": 1,
+        "require_one_complete_initial_run": True,
+        "accepted_provider_search_drift_control_ids": ["positive-b"],
+    }
+    payload["requirements"].append({
+        "id": "SM-DRIFT-01",
+        "description": "approved provider drift remains bounded",
+    })
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+    (tmp_path / "to-be.md").write_text(
+        "Status: Reviewed\nSM-REP-03\nSM-DRIFT-01\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "as-is.md").write_text("AS IS\nSM-REP-03\nSM-DRIFT-01\n", encoding="utf-8")
+    first = _quality_report("signal-run-a", incremental=False)
+    first["monitoring_series_id"] = "acceptance-a"
+    _append_positive_control(first, control_id="positive-b", url="https://source.test/b")
+    second = _quality_report("signal-run-b", incremental=False)
+    second["monitoring_series_id"] = "acceptance-b"
+
+    report = RadarPipelineSliceValidator(root=tmp_path).validate(
+        manifest_path=manifest,
+        initial_live_reports=[first, second],
+        run_tests=False,
+        write_report=False,
+    )
+
+    results = {item.requirement_id: item.status for item in report.requirements}
+    assert results["SM-REP-03"] == "PASS"
+    assert results["SM-DRIFT-01"] == "PASS"
+
+
+def test_reproducibility_validator_rejects_shared_missing_control(tmp_path: Path) -> None:
+    manifest = _write_reproducibility_manifest(tmp_path)
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    payload["live_acceptance"]["positive_controls"].append({
+        "id": "positive-b",
+        "candidate_id": "candidate-a",
+        "signal_code": "S1",
+        "url": "https://source.test/b",
+        "date_start": "2026-06-01",
+        "date_end": "2026-06-30",
+    })
+    payload["live_acceptance"]["reproducibility_policy"] = {
+        "minimum_positive_controls_per_initial_run": 1,
+        "require_one_complete_initial_run": True,
+        "accepted_provider_search_drift_control_ids": ["positive-b"],
+    }
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+    first = _quality_report("signal-run-a", incremental=False)
+    first["monitoring_series_id"] = "acceptance-a"
+    second = _quality_report("signal-run-b", incremental=False)
+    second["monitoring_series_id"] = "acceptance-b"
+
+    report = RadarPipelineSliceValidator(root=tmp_path).validate(
+        manifest_path=manifest,
+        initial_live_reports=[first, second],
+        run_tests=False,
+        write_report=False,
+    )
+
+    assert {item.requirement_id: item.status for item in report.requirements}["SM-REP-03"] == "FAIL"
+
+
+def test_incremental_watermark_metric_uses_successful_lane_receipts(tmp_path: Path) -> None:
+    manifest = _write_reproducibility_manifest(tmp_path)
+    first = _quality_report("signal-run-a", incremental=False)
+    first["monitoring_series_id"] = "acceptance-a"
+    second = _quality_report("signal-run-b", incremental=False)
+    second["monitoring_series_id"] = "acceptance-b"
+    incremental = _quality_report("signal-run-c", incremental=True)
+    incremental["monitoring_series_id"] = "acceptance-b"
+    observations = incremental["task_observations"]
+    assert isinstance(observations, list)
+    observations.append({
+        "task_id": "task-candidate-a-S1-failed-variant",
+        "candidate_id": "candidate-a",
+        "signal_code": "S1",
+        "observation_status": "unclear",
+        "search_status": "review_needed",
+    })
+
+    report = RadarPipelineSliceValidator(root=tmp_path).validate(
+        manifest_path=manifest,
+        initial_live_reports=[first, second],
+        incremental_live_report=incremental,
+        restart_verified=True,
+        run_tests=False,
+        write_report=False,
+    )
+
+    assert report.runtime_summary["incremental_live"]["failed_watermark_advances"] == 0
+
+
+def _write_reproducibility_manifest(root: Path) -> Path:
+    (root / "to-be.md").write_text("Status: Reviewed\nSM-REP-03\n", encoding="utf-8")
+    (root / "to-be.pdf").write_bytes(b"pdf")
+    (root / "as-is.md").write_text("AS IS\nSM-REP-03\n", encoding="utf-8")
+    (root / "as-is.pdf").write_bytes(b"pdf")
+    (root / "baseline.md").write_text("baseline", encoding="utf-8")
+    manifest = root / "to-be.acceptance.json"
+    manifest.write_text(json.dumps({
+        "schema_version": "radar_pipeline_acceptance.v3",
+        "slice_id": "0.7.6.4.19.1",
+        "pipeline_id": "signal-monitoring",
+        "to_be_markdown": "to-be.md",
+        "to_be_pdf": "to-be.pdf",
+        "as_is_markdown": "as-is.md",
+        "as_is_pdf": "as-is.pdf",
+        "baseline_diagnostic": "baseline.md",
+        "validation_json": "validation/repro.json",
+        "validation_markdown": "validation/repro.md",
+        "requirements": [{"id": "SM-REP-03", "description": "two initial runs pass"}],
+        "live_acceptance": {
+            "initial_run_count": 2,
+            "positive_controls": [{
+                "id": "positive-a", "candidate_id": "candidate-a", "signal_code": "S1",
+                "url": "https://source.test/a", "date_start": "2026-06-01", "date_end": "2026-06-30",
+            }],
+            "negative_controls": [{
+                "id": "negative-old", "candidate_id": "candidate-b", "signal_code": "S1",
+                "url": "https://source.test/old", "expected_reason": "rejected_out_of_window",
+            }],
+            "unknown_date_controls": [{
+                "id": "unknown-a", "candidate_id": "candidate-c", "signal_code": "S2",
+                "url": "https://source.test/unknown",
+            }],
+        },
+    }), encoding="utf-8")
+    return manifest
+
+
 def _write_manifest(root: Path) -> Path:
     (root / "to-be.md").write_text("Status: Implemented\nSM-PLAN-01\n", encoding="utf-8")
     (root / "to-be.pdf").write_bytes(b"pdf")
@@ -273,3 +441,31 @@ def _quality_report(run_id: str, *, incremental: bool) -> dict[str, object]:
         "input_snapshot": {"previous_signal_source_keys": (["candidate-a|S1|https://source.test/a"] if incremental else [])},
         "evidence_validation_summary": {"records": [{"task_id": "task-candidate-a-S1", "accepted": not incremental}]},
     }
+
+
+def _append_positive_control(report: dict[str, object], *, control_id: str, url: str) -> None:
+    observations = report["observations"]
+    assert isinstance(observations, list)
+    observations.append({
+        "task_id": "task-candidate-a-S1",
+        "candidate_id": "candidate-a",
+        "signal_code": "S1",
+        "observation_status": "observed",
+        "search_status": "searched",
+        "score": 2,
+        "source_refs": [control_id],
+        "evidence": [{
+            "source_ref": control_id,
+            "event_at": "2026-06-10",
+            "temporal_status": "confirmed_in_window",
+        }],
+    })
+    sources = report["sources"]
+    assert isinstance(sources, list)
+    sources.append({
+        "source_ref": control_id,
+        "url": url,
+        "published_at": "2026-06-10",
+        "capability": "official_press",
+        "capability_basis": "test",
+    })

@@ -110,6 +110,38 @@ def test_trace_comparison_does_not_require_reproducing_baseline_provider_errors(
     assert comparison["behavior_regressions"] == []
 
 
+def test_candidate_false_negative_reason_can_come_from_target_funnel(monkeypatch) -> None:
+    monkeypatch.setattr(
+        namespace_closure,
+        "evaluate_signal_report",
+        lambda report, *, negative_controls: _signal_metrics(
+            incremental=report["kind"] == "incremental"
+        ),
+    )
+    monkeypatch.setattr(
+        namespace_closure,
+        "control_match_summary",
+        lambda report, controls, *, expected: {
+            "matched": 4 if expected == "confirmed" else (2 if expected == "negative" else 1),
+            "matched_ids": [],
+            "missing": [],
+        },
+    )
+    kwargs = _validation_kwargs()
+    evaluation = kwargs["candidate_live_evaluation"]
+    evaluation["false_negatives"] = [{"baseline_id": "missing-site"}]
+    evaluation["benchmark_target_funnel"] = [{
+        "baseline_id": "missing-site",
+        "path_reason": "not_generated",
+    }]
+
+    report = RadarNamespaceClosureValidator().validate(**kwargs)
+
+    assert report["candidate_quality"]["fresh_live"]["checks"][
+        "explicit_false_negative_reasons"
+    ] is True
+
+
 def _validation_kwargs():
     candidate_run_id = "radar-run-live"
     return {

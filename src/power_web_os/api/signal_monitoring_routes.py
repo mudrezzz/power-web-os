@@ -39,6 +39,7 @@ def signal_monitoring_preflight(
     signal_codes: list[str] = Query(default=[]),
     lookback_days: int | None = Query(default=None, ge=1, le=3650),
     run_profile: Literal["signal_monitoring_smoke", "signal_monitoring_quality"] = "signal_monitoring_smoke",
+    monitoring_series_id: str = Query(default="default", min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$"),
 ) -> SignalMonitoringPreflightResponse:
     _require_radar(radar_id, context)
     command = SignalMonitoringRunCommand(
@@ -49,6 +50,7 @@ def signal_monitoring_preflight(
         signal_codes=tuple(signal_codes),
         lookback_days=lookback_days,
         run_profile=run_profile,
+        monitoring_series_id=monitoring_series_id,
     )
     payload = _service(context).preflight(command)
     issues = [str(item) for item in payload.get("issues", [])]
@@ -64,6 +66,9 @@ def signal_monitoring_preflight(
         lookback_days=int(payload.get("lookback_days") or 0),
         budget=dict(payload.get("budget") or {}),
         effective_signal_policies=list(payload.get("effective_signal_policies") or []),
+        monitoring_series_id=str(payload.get("monitoring_series_id") or "default"),
+        previous_source_key_count=int(payload.get("previous_source_key_count") or 0),
+        previous_watermark_count=int(payload.get("previous_watermark_count") or 0),
     )
 
 
@@ -93,6 +98,7 @@ def queue_signal_monitoring_run(
                 correlation_id=request.correlation_id,
                 requester=request.requester,
                 run_profile=request.run_profile,
+                monitoring_series_id=request.monitoring_series_id,
             )
         )
     except SignalMonitoringInputError as exc:

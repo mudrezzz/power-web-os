@@ -273,6 +273,8 @@ export function newIntentSignal(sourceIds: string[]): IntentSignalDefinition {
       incremental_overlap_days: 2,
       cadence: 'manual',
       source_lanes: ['known_source', 'official_company', 'signal_specific', 'open_web'],
+      search_terms: [],
+      evidence_match_terms: [],
     },
   };
 }
@@ -595,6 +597,8 @@ export function normalizeIntentSignal(signal: IntentSignalDefinition): IntentSig
     incremental_overlap_days: 2,
     cadence: 'manual',
     source_lanes: ['known_source', 'official_company', 'signal_specific', 'open_web'],
+    search_terms: [],
+    evidence_match_terms: [],
   };
   return {
     signal_id: fallbackSignal.signal_id || `signal-${code}`,
@@ -622,6 +626,8 @@ export function normalizeIntentSignal(signal: IntentSignalDefinition): IntentSig
       source_lanes: arrayOf(monitoring.source_lanes).length
         ? arrayOf(monitoring.source_lanes).map(String)
         : ['known_source', 'official_company', 'signal_specific', 'open_web'],
+      search_terms: arrayOf(monitoring.search_terms).map(String),
+      evidence_match_terms: arrayOf(monitoring.evidence_match_terms).map(String),
     },
   };
 }

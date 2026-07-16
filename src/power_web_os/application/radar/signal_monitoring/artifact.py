@@ -23,7 +23,7 @@ class SignalMonitoringArtifactProjector:
     docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md
     """
 
-    ARTIFACT_VERSION = "signal_monitoring.v2"
+    ARTIFACT_VERSION = "signal_monitoring.v3"
 
     def project(
         self,
@@ -44,6 +44,7 @@ class SignalMonitoringArtifactProjector:
             "signal_run_id": outcome.run_id,
             "radar_id": outcome.radar_id,
             "source_candidate_run_id": outcome.source_candidate_run_id,
+            "monitoring_series_id": outcome.monitoring_series_id,
             "completion_state": outcome.completion_state,
             "candidate_scope_mode": outcome.candidate_scope_mode,
             "model_profile_id": outcome.model_profile_id,
@@ -107,6 +108,9 @@ class SignalMonitoringArtifactProjector:
                 "rejected": sum(not item.accepted for item in outcome.evidence_validation_records),
                 "records": [item.model_dump(mode="json") for item in outcome.evidence_validation_records],
             },
+            "cross_criterion_validation_records": [
+                item.model_dump(mode="json") for item in outcome.cross_criterion_validation_records
+            ],
             "checkpoint_decisions": [item.model_dump(mode="json") for item in outcome.checkpoint_decisions],
             "budget_settings": dict(outcome.budget_settings),
             "budget_counters": dict(outcome.budget_counters),

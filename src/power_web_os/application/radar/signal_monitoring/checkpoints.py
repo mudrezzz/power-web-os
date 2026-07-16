@@ -48,7 +48,11 @@ class SignalMonitoringCheckpointService:
                 and receipt_by_task.get(item.task_id)
                 and receipt_by_task[item.task_id].outcome in {"retrieved", "no_results"}
             ]
-            pair_observations = [observation_by_task[item.task_id] for item in pair_tasks if item.task_id in observation_by_task]
+            pair_observations = [
+                observation
+                for observation in task_observations
+                if observation.candidate_id == candidate_id and observation.signal_code == signal_code
+            ]
             observed = [item for item in pair_observations if item.observation_status == "observed"]
             duplicate = [item for item in pair_observations if item.search_status == "duplicate_existing_signal"]
             diagnostic_rows = [

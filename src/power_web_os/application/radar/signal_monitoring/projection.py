@@ -16,6 +16,7 @@ from power_web_os.application.radar.signal_monitoring.contracts import (
     SignalMonitoringPlanAcceptance,
     SignalMonitoringSourceStrategyResult,
     SignalMonitoringWatermark,
+    SignalCrossCriterionValidationRecord,
     SignalEvidenceValidationRecord,
     SignalObservation,
     SignalProviderAttemptRecord,
@@ -32,6 +33,7 @@ from power_web_os.application.radar.signal_monitoring.payloads import (
     SignalPayloadParseFailure,
 )
 from power_web_os.application.radar.configuration.model_profiles import RadarModelProfile
+from power_web_os.application.radar.signal_monitoring.url_identity import canonical_signal_url
 
 
 def observation_from_payload(
@@ -162,7 +164,7 @@ def _evidence_ref_and_source(
         ref = raw_ref or url
         if url and raw_ref:
             existing = existing_sources.get(raw_ref)
-            if existing is not None and _canonical_url(existing.url) != _canonical_url(url):
+            if existing is not None and canonical_signal_url(existing.url) != canonical_signal_url(url):
                 ref = f"{raw_ref}::{_url_slug(url)}"
             elif raw_ref.startswith("configured:"):
                 ref = f"{raw_ref}::{_url_slug(url)}"
@@ -194,13 +196,6 @@ def _url_slug(value: str) -> str:
     basis = parsed.path.strip("/") or parsed.netloc or value
     slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", basis).strip("-").lower()
     return slug[:120] or "url"
-
-
-def _canonical_url(value: str) -> str:
-    parsed = urlparse(value.strip())
-    host = (parsed.hostname or "").removeprefix("www.").lower()
-    path = parsed.path.rstrip("/").lower()
-    return f"{host}{path}" if host else value.strip().lower().rstrip("/")
 
 
 def schema_failed(task: SignalSearchTask, reason: str, failure: SignalPayloadParseFailure) -> SignalObservation:
@@ -277,6 +272,7 @@ def outcome(
     watermarks_before: list[SignalMonitoringWatermark] | None = None,
     watermarks_after: list[SignalMonitoringWatermark] | None = None,
     evidence_validation_records: list[SignalEvidenceValidationRecord] | None = None,
+    cross_criterion_validation_records: list[SignalCrossCriterionValidationRecord] | None = None,
     checkpoint_decisions: list[SignalMonitoringCheckpointDecision] | None = None,
     source_binding_decisions: list[SignalSourceBindingDecision] | None = None,
 ) -> SignalMonitoringOutcome:
@@ -284,6 +280,7 @@ def outcome(
         run_id=monitoring_input.run_id,
         radar_id=monitoring_input.radar_id,
         source_candidate_run_id=monitoring_input.source_candidate_run_id,
+        monitoring_series_id=monitoring_input.monitoring_series_id,
         candidate_scope_mode=monitoring_input.candidate_scope_mode,
         completion_state=_completion_state(observations),
         model_profile_id=model_profile.profile_id,
@@ -304,6 +301,7 @@ def outcome(
         watermarks_before=watermarks_before or [],
         watermarks_after=watermarks_after or [],
         evidence_validation_records=evidence_validation_records or [],
+        cross_criterion_validation_records=cross_criterion_validation_records or [],
         checkpoint_decisions=checkpoint_decisions or [],
         source_binding_decisions=source_binding_decisions or list(monitoring_input.source_binding_decisions),
         budget_counters=counters,

@@ -14,12 +14,18 @@ from power_web_os.application.radar.signal_monitoring.contracts import (
     SignalMonitoringInput,
     SignalMonitoringSignalRule,
     SignalMonitoringSourcePolicy,
-    SignalMonitoringWatermark,
     SignalSourceRef,
 )
 from power_web_os.application.radar.signal_monitoring.source_binding import (
     SignalSourceBindingService,
     apply_capability,
+)
+from power_web_os.application.radar.signal_monitoring.history import (
+    normalize_monitoring_series_id,
+    outputs_for_series,
+    previous_fingerprints,
+    previous_source_keys,
+    previous_watermarks,
 )
 from power_web_os.application.radar.signal_monitoring.policy import bounded_policy_int, signal_source_lanes
 from power_web_os.application.radar.lifecycle.records import (
@@ -62,10 +68,15 @@ class SignalMonitoringInputAssembler:
         candidate_ids: Iterable[str] = (),
         signal_codes: Iterable[str] = (),
         lookback_days: int | None = None,
+        monitoring_series_id: str = "default",
         previous_outputs: Iterable[SignalMonitoringRunOutputRecord] = (),
         budget: SignalMonitoringBudget | None = None,
     ) -> SignalMonitoringInput:
-        previous_outputs = list(previous_outputs)
+        try:
+            series_id = normalize_monitoring_series_id(monitoring_series_id)
+        except ValueError as exc:
+            raise SignalMonitoringInputError(str(exc)) from exc
+        previous_outputs = outputs_for_series(previous_outputs, series_id)
         self._validate_source_run(radar_id=radar_id, source_run=source_run, source_output=source_output)
         artifact = dict(source_output.artifact_payload)
         public_candidates = self._public_candidates(artifact)
@@ -96,6 +107,7 @@ class SignalMonitoringInputAssembler:
             run_id=run_id,
             radar_id=radar_id,
             source_candidate_run_id=source_run.run_id,
+            monitoring_series_id=series_id,
             candidate_scope_mode=candidate_scope_mode,
             candidates=candidates,
             signal_rules=signals,
@@ -107,9 +119,9 @@ class SignalMonitoringInputAssembler:
             lookback_days=resolved_lookback,
             lookback_basis=lookback_basis,
             as_of=datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-            previous_signal_fingerprints=self._previous_fingerprints(previous_outputs),
-            previous_signal_source_keys=self._previous_source_keys(previous_outputs),
-            previous_watermarks=self._previous_watermarks(previous_outputs),
+            previous_signal_fingerprints=previous_fingerprints(previous_outputs),
+            previous_signal_source_keys=previous_source_keys(previous_outputs),
+            previous_watermarks=previous_watermarks(previous_outputs),
             source_binding_decisions=source_binding_decisions,
         )
 
@@ -301,11 +313,16 @@ class SignalMonitoringInputAssembler:
             )
             overlap = bounded_policy_int(monitoring_policy.get("incremental_overlap_days"), default=2, low=0, high=90)
             source_lanes = signal_source_lanes(monitoring_policy.get("source_lanes"))
+            expected_evidence = self._expected_evidence(payload)
+            search_terms = self._string_list(monitoring_policy.get("search_terms"))
+            evidence_match_terms = self._string_list(monitoring_policy.get("evidence_match_terms"))
             result.append(SignalMonitoringSignalRule(
                 signal_code=code,
                 label=str(payload.get("name") or payload.get("label") or code),
                 description=str(payload.get("description") or ""),
-                expected_evidence=self._expected_evidence(payload),
+                expected_evidence=expected_evidence,
+                search_terms=search_terms or expected_evidence,
+                evidence_match_terms=evidence_match_terms or expected_evidence,
                 query_template="{candidate} {signal}",
                 initial_lookback_days=initial_lookback,
                 enabled=enabled,
@@ -381,60 +398,6 @@ class SignalMonitoringInputAssembler:
                 snippet="Configured Radar source.",
             ))
         return result
-
-    @staticmethod
-    def _previous_fingerprints(outputs: Iterable[SignalMonitoringRunOutputRecord]) -> list[str]:
-        values: set[str] = set()
-        for output in outputs:
-            for observation in SignalMonitoringInputAssembler._dict_list(output.artifact_payload.get("observations")):
-                fingerprint = str(observation.get("fingerprint") or "").strip()
-                if fingerprint:
-                    values.add(fingerprint)
-        return sorted(values)
-
-    @staticmethod
-    def _previous_watermarks(outputs: Iterable[SignalMonitoringRunOutputRecord]) -> list[SignalMonitoringWatermark]:
-        by_key: dict[tuple[str, str, str], SignalMonitoringWatermark] = {}
-        for output in outputs:
-            for raw in SignalMonitoringInputAssembler._dict_list(output.artifact_payload.get("watermarks_after")):
-                try:
-                    item = SignalMonitoringWatermark.model_validate(raw)
-                except ValueError:
-                    continue
-                key = (item.candidate_id, item.signal_code, item.source_lane)
-                previous = by_key.get(key)
-                if previous is None or item.searched_through_at > previous.searched_through_at:
-                    by_key[key] = item
-        return sorted(by_key.values(), key=lambda item: (item.candidate_id, item.signal_code, item.source_lane))
-
-    @staticmethod
-    def _previous_source_keys(outputs: Iterable[SignalMonitoringRunOutputRecord]) -> list[str]:
-        keys: set[str] = set()
-        for output in outputs:
-            observations = [
-                *SignalMonitoringInputAssembler._dict_list(output.artifact_payload.get("observations")),
-                *SignalMonitoringInputAssembler._dict_list(output.artifact_payload.get("task_observations")),
-            ]
-            for observation in observations:
-                search_status = str(observation.get("search_status") or "")
-                observation_status = str(observation.get("observation_status") or "")
-                if observation_status != "observed" and search_status not in {
-                    "review_needed_date_unknown",
-                    "review_needed_date_conflict",
-                    "duplicate_existing_review",
-                }:
-                    continue
-                candidate_id = str(observation.get("candidate_id") or "")
-                signal_code = str(observation.get("signal_code") or "")
-                for source in SignalMonitoringInputAssembler._dict_list(observation.get("sources")):
-                    url = SignalMonitoringInputAssembler._canonical_url(str(source.get("url") or ""))
-                    if candidate_id and signal_code and url:
-                        keys.add(f"{candidate_id}|{signal_code}|{url}")
-        return sorted(keys)
-
-    @staticmethod
-    def _canonical_url(value: str) -> str:
-        return value.strip().lower().rstrip("/")
 
     @staticmethod
     def _optional_positive_int(value: Any) -> int | None:

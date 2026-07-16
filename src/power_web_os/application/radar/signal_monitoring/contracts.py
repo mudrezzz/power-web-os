@@ -93,6 +93,8 @@ class SignalMonitoringSignalRule(BaseModel):
     label: str
     description: str = ""
     expected_evidence: list[str] = Field(default_factory=list)
+    search_terms: list[str] = Field(default_factory=list)
+    evidence_match_terms: list[str] = Field(default_factory=list)
     query_template: str = "{candidate} {signal}"
     initial_lookback_days: int | None = Field(default=None, ge=1, le=3650)
     enabled: bool = True
@@ -213,6 +215,9 @@ class SignalSearchTask(BaseModel):
     candidate_aliases: list[str] = Field(default_factory=list)
     signal_code: str
     signal_label: str
+    criterion_obligation_id: str = ""
+    criterion_search_terms: list[str] = Field(default_factory=list)
+    criterion_evidence_match_terms: list[str] = Field(default_factory=list)
     query: str
     alternate_query: str = ""
     lookback_days: int
@@ -292,6 +297,19 @@ class SignalEvidenceValidationRecord(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
 
 
+class SignalCrossCriterionValidationRecord(BaseModel):
+    candidate_id: str
+    source_ref: str
+    origin_task_id: str
+    origin_signal_code: str
+    target_task_id: str
+    target_signal_code: str
+    accepted: bool
+    reason: str
+    temporal_status: SignalTemporalStatus = "not_applicable"
+    matched_terms: list[str] = Field(default_factory=list)
+
+
 class SignalSourceBindingDecision(BaseModel):
     candidate_id: str
     source_ref: str
@@ -365,6 +383,7 @@ class SignalMonitoringInput(BaseModel):
     run_id: str
     radar_id: str
     source_candidate_run_id: str = ""
+    monitoring_series_id: str = "default"
     candidate_scope_mode: SignalMonitoringCandidateScopeMode = "accepted_and_review_needed"
     model_profile_id: str = "signal_monitoring_default"
     model_profile: RadarModelProfile | None = None
@@ -399,6 +418,7 @@ class SignalMonitoringOutcome(BaseModel):
     run_id: str
     radar_id: str
     source_candidate_run_id: str = ""
+    monitoring_series_id: str = "default"
     candidate_scope_mode: SignalMonitoringCandidateScopeMode = "accepted_and_review_needed"
     completion_state: SignalMonitoringCompletionState = "completed"
     model_profile_id: str = ""
@@ -420,6 +440,7 @@ class SignalMonitoringOutcome(BaseModel):
     watermarks_before: list[SignalMonitoringWatermark] = Field(default_factory=list)
     watermarks_after: list[SignalMonitoringWatermark] = Field(default_factory=list)
     evidence_validation_records: list[SignalEvidenceValidationRecord] = Field(default_factory=list)
+    cross_criterion_validation_records: list[SignalCrossCriterionValidationRecord] = Field(default_factory=list)
     checkpoint_decisions: list[SignalMonitoringCheckpointDecision] = Field(default_factory=list)
     source_binding_decisions: list[SignalSourceBindingDecision] = Field(default_factory=list)
     budget_counters: dict[str, int] = Field(default_factory=dict)

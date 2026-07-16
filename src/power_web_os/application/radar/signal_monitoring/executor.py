@@ -7,6 +7,9 @@ from datetime import UTC, datetime
 
 from power_web_os.application.radar.signal_monitoring.budgets import SignalMonitoringBudgetTracker
 from power_web_os.application.radar.signal_monitoring.checkpoints import SignalMonitoringCheckpointService
+from power_web_os.application.radar.signal_monitoring.cross_criterion import (
+    SignalCrossCriterionEvidenceReconciliationService,
+)
 from power_web_os.application.radar.signal_monitoring.contracts import (
     SignalAttemptRole,
     SignalEvidenceValidationRecord,
@@ -74,6 +77,7 @@ class SignalMonitoringExecutor:
         checkpoint_service: SignalMonitoringCheckpointService | None = None,
         receipt_factory: SignalSearchReceiptFactory | None = None,
         query_revision_service: SignalMonitoringQueryRevisionService | None = None,
+        cross_criterion_service: SignalCrossCriterionEvidenceReconciliationService | None = None,
         model_profile_registry: RadarModelProfileRegistry | None = None,
     ) -> None:
         self.provider = provider
@@ -84,6 +88,9 @@ class SignalMonitoringExecutor:
         self.checkpoint_service = checkpoint_service or SignalMonitoringCheckpointService()
         self.receipt_factory = receipt_factory or SignalSearchReceiptFactory()
         self.query_revision_service = query_revision_service or SignalMonitoringQueryRevisionService()
+        self.cross_criterion_service = (
+            cross_criterion_service or SignalCrossCriterionEvidenceReconciliationService()
+        )
         self.model_profile_registry = model_profile_registry or default_model_profile_registry()
 
     def run(self, monitoring_input: SignalMonitoringInput) -> SignalMonitoringOutcome:
@@ -191,13 +198,19 @@ class SignalMonitoringExecutor:
             ledger.append(_revision_ledger(task, "executed", result.receipt.outcome))
             if result.observation.search_status in {"searched", "duplicate_existing_signal"}:
                 budget.record_searched_task()
-        if revision_tasks:
-            observations, checkpoints = self.checkpoint_service.review(
-                tasks=execution_plan.search_plan.tasks,
-                task_observations=task_observations,
-                ledger=ledger,
-                receipts=receipts,
-            )
+        reconciled, cross_criterion_records = self.cross_criterion_service.reconcile(
+            tasks=execution_plan.search_plan.tasks,
+            rules=monitoring_input.signal_rules,
+            task_observations=task_observations,
+            previous_source_keys=previous_source_keys,
+        )
+        task_observations.extend(reconciled)
+        observations, checkpoints = self.checkpoint_service.review(
+            tasks=execution_plan.search_plan.tasks,
+            task_observations=task_observations,
+            ledger=ledger,
+            receipts=receipts,
+        )
         watermarks_after = _advanced_watermarks(monitoring_input, receipts)
         return outcome(
             monitoring_input,
@@ -219,6 +232,7 @@ class SignalMonitoringExecutor:
             watermarks_before=monitoring_input.previous_watermarks,
             watermarks_after=watermarks_after,
             evidence_validation_records=validations,
+            cross_criterion_validation_records=cross_criterion_records,
             checkpoint_decisions=checkpoints,
         )
 

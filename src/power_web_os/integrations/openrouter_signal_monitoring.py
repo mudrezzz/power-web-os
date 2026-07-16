@@ -104,6 +104,8 @@ class OpenRouterSignalMonitoringProvider:
         sources.extend(item for item in annotation_sources if str(item.get("url") or "") not in known_urls)
         if normalized:
             normalized["sources"] = sources
+            normalized = _task_scoped_signal_payload(normalized, task=task)
+            sources = [dict(item) for item in normalized.get("sources", []) if isinstance(item, dict)]
         receipt_sources = _normalized_signal_sources(sources)
         if normalized:
             normalized["sources"] = [item.model_dump(mode="json") for item in receipt_sources]
@@ -259,4 +261,37 @@ def _normalized_signal_sources(sources: list[dict[str, Any]]) -> list[SignalSour
         payload["date_basis"] = str(payload.get("date_basis") or "none")
         payload["date_confidence"] = str(payload.get("date_confidence") or "weak")
         result.append(SignalSourceRef.model_validate(payload))
+    return result
+
+
+def _task_scoped_signal_payload(payload: dict[str, Any], *, task: SignalSearchTask) -> dict[str, Any]:
+    """Make provider-local source refs unique before run-level aggregation."""
+
+    result = dict(payload)
+    known_refs = {item.source_ref for item in task.source_contracts if item.source_ref}
+    ref_map: dict[str, str] = {}
+    scoped_sources: list[dict[str, Any]] = []
+    for index, raw in enumerate(result.get("sources", []), start=1):
+        if not isinstance(raw, dict):
+            continue
+        source = dict(raw)
+        original = str(source.get("source_ref") or f"signal_retrieved_{index}")
+        scoped = original if original in known_refs else f"{task.task_id}:{original}"
+        ref_map[original] = scoped
+        source["source_ref"] = scoped
+        scoped_sources.append(source)
+    result["sources"] = scoped_sources
+
+    scoped_observations: list[dict[str, Any]] = []
+    for raw in result.get("observations", []):
+        if not isinstance(raw, dict):
+            continue
+        observation = dict(raw)
+        observation["evidence_refs"] = [
+            ref_map.get(str(ref), str(ref) if str(ref) in known_refs else f"{task.task_id}:{ref}")
+            for ref in observation.get("evidence_refs", [])
+            if str(ref)
+        ]
+        scoped_observations.append(observation)
+    result["observations"] = scoped_observations
     return result

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import urlsplit, urlunsplit
+from power_web_os.application.radar.signal_monitoring.url_identity import canonical_signal_url
 
 
 def evaluate_signal_report(
@@ -18,9 +18,10 @@ def evaluate_signal_report(
     observations = _list(report.get("observations"))
     task_observations = _list(report.get("task_observations"))
     validations = _list(_dict(report.get("evidence_validation_summary")).get("records"))
+    cross_validations = _list(report.get("cross_criterion_validation_records"))
     source_index = _source_index(report)
     source_urls = {
-        ref: _canonical_url(source.get("url"))
+        ref: canonical_signal_url(source.get("url"))
         for ref, source in source_index.items()
         if source.get("url")
     }
@@ -30,10 +31,29 @@ def evaluate_signal_report(
     }
     watermarks_before = _watermark_map(report.get("watermarks_before"))
     watermarks_after = _watermark_map(report.get("watermarks_after"))
+    task_by_id = {str(item.get("task_id")): item for item in tasks}
+    successful_lane_keys = {
+        (
+            str(receipt.get("candidate_id") or task.get("candidate_id")),
+            str(receipt.get("signal_code") or task.get("signal_code")),
+            str(receipt.get("source_lane") or task.get("source_lane")),
+        )
+        for receipt in receipts
+        if receipt.get("outcome") in {"retrieved", "no_results"}
+        and (task := task_by_id.get(str(receipt.get("task_id")), {})) is not None
+    }
     ledger_decisions = {value for item in ledger for value in item.get("source_decision_ids", [])}
     executed_task_ids = {item.get("task_id") for item in ledger if item.get("status") == "executed"}
     receipt_task_ids = {item.get("task_id") for item in receipts}
-    validation_by_task = {item.get("task_id"): item for item in validations}
+    accepted_observation_task_ids = {
+        str(item.get("task_id"))
+        for item in validations
+        if item.get("accepted")
+    } | {
+        _cross_criterion_observation_task_id(item)
+        for item in cross_validations
+        if item.get("accepted")
+    }
     negative_tested, negative_false = _negative_control_metrics(
         task_observations,
         source_index,
@@ -72,8 +92,8 @@ def evaluate_signal_report(
         ),
         "failed_watermark_advances": sum(
             watermarks_after.get(key) != watermarks_before.get(key)
-            for key, item in _task_observation_map(tasks, task_observations).items()
-            if item.get("search_status") not in {"searched", "duplicate_existing_signal"}
+            for key in set(watermarks_before) | set(watermarks_after)
+            if key not in successful_lane_keys
         ),
         "observed_count": sum(item.get("observation_status") == "observed" for item in observations),
         "zero_score_observed_count": sum(
@@ -82,7 +102,7 @@ def evaluate_signal_report(
         ),
         "rejected_observed_count": sum(
             item.get("observation_status") == "observed"
-            and not _dict(validation_by_task.get(item.get("task_id"))).get("accepted", False)
+            and str(item.get("task_id")) not in accepted_observation_task_ids
             for item in task_observations
         ),
         "entity_mismatch_rejection_count": sum(item.get("reason") == "observed_evidence_candidate_mismatch" for item in validations),
@@ -315,6 +335,7 @@ def _negative_control_matches(
             and item.get("status") == "cross_entity"
             for item in bindings
         )
+    matched_evidence = False
     for observation in observations:
         if observation.get("candidate_id") != control.get("candidate_id"):
             continue
@@ -327,6 +348,7 @@ def _negative_control_matches(
         ]
         if not matching_evidence:
             continue
+        matched_evidence = True
         if any(evidence.get("temporal_status") == "confirmed_in_window" for evidence in matching_evidence):
             return False
         if expected and not (
@@ -336,15 +358,20 @@ def _negative_control_matches(
         ):
             continue
         return True
-    return False
+    # A temporal negative control succeeds when it was either explicitly
+    # rejected or never surfaced as a confirmed in-window observation.
+    return not matched_evidence
 
 
 def _date_inside_control(evidence: dict[str, Any], source: dict[str, Any], control: dict[str, Any]) -> bool:
-    observed = str(evidence.get("event_at") or evidence.get("published_at") or source.get("published_at") or "")[:10]
-    observed_end = str(evidence.get("event_end_at") or observed)[:10]
     start = str(control.get("date_start") or "")[:10]
     end = str(control.get("date_end") or start)[:10]
-    return bool(observed and start and end and observed <= end and observed_end >= start)
+    event_start = str(evidence.get("event_at") or "")[:10]
+    event_end = str(evidence.get("event_end_at") or event_start)[:10]
+    published = str(evidence.get("published_at") or source.get("published_at") or "")[:10]
+    event_matches = bool(event_start and start and end and event_start <= end and event_end >= start)
+    publication_matches = bool(published and start and end and start <= published <= end)
+    return event_matches or publication_matches
 
 
 def _republished_previous_source_count(
@@ -426,6 +453,14 @@ def _watermark_map(value: object) -> dict[tuple[str, str, str], dict[str, Any]]:
     }
 
 
+def _cross_criterion_observation_task_id(record: dict[str, Any]) -> str:
+    """Return the synthetic task id emitted by cross-criterion reconciliation."""
+
+    origin_task_id = str(record.get("origin_task_id") or "")
+    target_signal_code = str(record.get("target_signal_code") or "")
+    return f"{origin_task_id}::reconcile::{target_signal_code}"
+
+
 def _list(value: object) -> list[dict[str, Any]]:
     return [dict(item) for item in value if isinstance(item, dict)] if isinstance(value, list) else []
 
@@ -438,30 +473,14 @@ def _list_values(value: object) -> list[object]:
     return list(value) if isinstance(value, list) else []
 
 
-def _canonical_url(value: object) -> str:
-    raw = str(value or "").strip()
-    if not raw:
-        return ""
-    parsed = urlsplit(raw)
-    return urlunsplit(
-        (
-            parsed.scheme.lower(),
-            parsed.netloc.lower(),
-            parsed.path.rstrip("/"),
-            "",
-            "",
-        )
-    ).lower()
-
-
 def _control_urls(control: dict[str, Any]) -> set[str]:
     values = [
         control.get("url"),
         *_list_values(control.get("accepted_urls")),
         *_list_values(control.get("urls")),
     ]
-    return {_canonical_url(value) for value in values if _canonical_url(value)}
+    return {canonical_signal_url(value) for value in values if canonical_signal_url(value)}
 
 
 def _url_matches_control(value: object, control: dict[str, Any]) -> bool:
-    return _canonical_url(value) in _control_urls(control)
+    return canonical_signal_url(value) in _control_urls(control)

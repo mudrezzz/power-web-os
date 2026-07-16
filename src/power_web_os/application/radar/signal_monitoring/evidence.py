@@ -18,6 +18,7 @@ from power_web_os.application.radar.signal_monitoring.projection import (
 from power_web_os.application.radar.signal_monitoring.source_binding import apply_capability
 from power_web_os.application.radar.signal_monitoring.temporal import SignalTemporalEvidenceService
 from power_web_os.application.radar.signal_monitoring.text_matching import text_matches_entity
+from power_web_os.application.radar.signal_monitoring.url_identity import canonical_signal_url, signal_source_key
 
 
 class SignalEvidenceValidationService:
@@ -79,15 +80,16 @@ class SignalEvidenceValidationService:
             if not returned or not all(any(host == domain or host.endswith(f".{domain}") for domain in allowed) for host in returned):
                 return self._rejected(task, observation, "official_evidence_domain_mismatch")
 
-        non_signal_sources = [
-            source for source in sources if source.capability in {"identity_only", "registry"}
-        ]
-        if non_signal_sources and len(non_signal_sources) == len(sources):
-            return self._rejected(task, observation, "source_capability_not_fresh_signal_capable")
-
         source_keys = {_source_key(task, source) for source in sources if _source_key(task, source)}
         duplicate = bool(source_keys.intersection(previous_source_keys or set()))
-        confirmed = [item for item in evidence if item.temporal_status == "confirmed_in_window"]
+        confirmed_temporal = [item for item in evidence if item.temporal_status == "confirmed_in_window"]
+        confirmed = [
+            item
+            for item in confirmed_temporal
+            if source_by_ref.get(item.source_ref, SignalSourceRef(source_ref=item.source_ref)).capability
+            not in {"identity_only", "registry"}
+        ]
+        capability_rejected = [item for item in confirmed_temporal if item not in confirmed]
         conflicts = [item for item in evidence if item.temporal_status == "review_needed_date_conflict"]
         unknown = [item for item in evidence if item.temporal_status == "review_needed_date_unknown"]
         out_of_window = [item for item in evidence if item.temporal_status == "rejected_out_of_window"]
@@ -95,7 +97,7 @@ class SignalEvidenceValidationService:
             confirmed_refs = [item.source_ref for item in confirmed]
             retained_review_refs = {
                 item.source_ref
-                for item in [*conflicts, *unknown, *out_of_window]
+                for item in [*conflicts, *unknown, *out_of_window, *capability_rejected]
             }
             confirmed_sources = [source for source in sources if source.source_ref in set(confirmed_refs)]
             retained_review_sources = [
@@ -109,7 +111,7 @@ class SignalEvidenceValidationService:
                 "score": max(1, observation.score),
                 "source_refs": confirmed_refs,
                 "sources": [*confirmed_sources, *retained_review_sources],
-                "evidence": [*confirmed, *conflicts, *unknown, *out_of_window],
+                "evidence": [*confirmed, *conflicts, *unknown, *out_of_window, *capability_rejected],
             }), self._record(
                 task,
                 True,
@@ -117,6 +119,8 @@ class SignalEvidenceValidationService:
                 confirmed_refs,
                 temporal_status="confirmed_in_window",
             )
+        if capability_rejected:
+            return self._rejected(task, observation, "source_capability_not_fresh_signal_capable")
         if conflicts:
             return self._temporal_review(task, observation, "review_needed_date_conflict", conflicts, duplicate)
         if unknown:
@@ -215,21 +219,17 @@ def _source_matches_candidate(task: SignalSearchTask, source: object) -> bool:
 
 
 def _matches_requested_known_url(task: SignalSearchTask, source: object) -> bool:
-    source_url = _canonical_url(str(getattr(source, "url", "") or ""))
-    requested = [_canonical_url(item.url) for item in task.source_contracts if item.url]
+    source_url = canonical_signal_url(str(getattr(source, "url", "") or ""))
+    requested = [canonical_signal_url(item.url) for item in task.source_contracts if item.url]
     return bool(source_url and any(source_url == value or source_url.startswith(f"{value}/") for value in requested))
 
 
-def _canonical_url(value: str) -> str:
-    parsed = urlparse(value.strip())
-    host = (parsed.hostname or "").removeprefix("www.").lower()
-    path = parsed.path.rstrip("/").lower()
-    return f"{host}{path}" if host else ""
-
-
 def _source_key(task: SignalSearchTask, source: SignalSourceRef) -> str:
-    value = (source.url or source.source_ref).strip().lower().rstrip("/")
-    return f"{task.candidate_id}|{task.signal_code}|{value}" if value else ""
+    return signal_source_key(
+        candidate_id=task.candidate_id,
+        signal_code=task.signal_code,
+        url_or_ref=source.url or source.source_ref,
+    )
 
 
 def _temporal_summary(status: str) -> str:

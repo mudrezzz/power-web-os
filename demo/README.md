@@ -146,6 +146,20 @@ initial window and a second time without a lookback override. The second report
 must show per-lane incremental windows and duplicate suppression. The smoke
 profile remains a wiring check and is not quality evidence.
 
+Reproducibility acceptance uses two independent initial monitoring series
+before the incremental run. Each initial run must pass the frozen control
+matrix on its own. Do not queue the incremental run after a failed second
+initial run. Preserve the failed attempt in the acceptance freeze and generate
+a machine `FAIL` report even when the incremental run is intentionally absent.
+
+The approved `0.7.6.4.19.1` amendment preserves the original two-times-`4/4`
+failure and uses a versioned v2 reproducibility contour: both independent runs
+must find at least `3/4`, one must find `4/4`, and their union must find `4/4`.
+The only allowed miss is recorded as `provider_search_drift`; negative,
+unknown-date, temporal, source-binding, provenance and budget checks are not
+relaxed. This is functional acceptance, not a claim that one provider's exact
+URL search is fully stable.
+
 The committed `.env.example` uses a smoke-safe live Radar budget:
 `POWER_WEB_OS_RADAR_MAX_WEB_TASKS_PER_SUBJECT=1` and
 `OPENROUTER_WEB_MODE=server_tools`. This is intentionally conservative so a

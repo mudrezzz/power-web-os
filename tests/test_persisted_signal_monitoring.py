@@ -176,6 +176,60 @@ def test_signal_monitoring_scope_and_whitelist_are_explicit(tmp_path: Path) -> N
             ))
 
 
+def test_monitoring_series_isolates_initial_history(tmp_path: Path) -> None:
+    session_factory = _session_factory(tmp_path)
+    with session_scope(session_factory) as session:
+        repositories = _seed_source_run(session)
+        service = _queue_service(repositories)
+        first = service.create(SignalMonitoringRunCommand(
+            radar_id="signal-radar",
+            source_candidate_run_id="candidate-run-1",
+            run_id="signal-series-a",
+            monitoring_series_id="acceptance-a",
+        ))
+        _executor(repositories, session, _SignalProvider()).execute(first.run.run_id)
+
+        second = service.create(SignalMonitoringRunCommand(
+            radar_id="signal-radar",
+            source_candidate_run_id="candidate-run-1",
+            run_id="signal-series-b",
+            monitoring_series_id="acceptance-b",
+        ))
+        snapshot = second.run.run_metadata["signal_monitoring_input"]
+
+        assert snapshot["monitoring_series_id"] == "acceptance-b"
+        assert snapshot["previous_signal_source_keys"] == []
+        assert snapshot["previous_watermarks"] == []
+
+
+def test_incremental_series_uses_only_selected_series_history(tmp_path: Path) -> None:
+    session_factory = _session_factory(tmp_path)
+    with session_scope(session_factory) as session:
+        repositories = _seed_source_run(session)
+        service = _queue_service(repositories)
+        for run_id, series_id in (("signal-series-a", "acceptance-a"), ("signal-series-b", "acceptance-b")):
+            queued = service.create(SignalMonitoringRunCommand(
+                radar_id="signal-radar",
+                source_candidate_run_id="candidate-run-1",
+                run_id=run_id,
+                monitoring_series_id=series_id,
+            ))
+            _executor(repositories, session, _SignalProvider()).execute(queued.run.run_id)
+
+        incremental = service.create(SignalMonitoringRunCommand(
+            radar_id="signal-radar",
+            source_candidate_run_id="candidate-run-1",
+            run_id="signal-series-b-incremental",
+            monitoring_series_id="acceptance-b",
+        ))
+        snapshot = incremental.run.run_metadata["signal_monitoring_input"]
+
+        assert snapshot["monitoring_series_id"] == "acceptance-b"
+        assert snapshot["previous_signal_source_keys"]
+        assert all("acceptance-a" not in value for value in snapshot["previous_signal_source_keys"])
+        assert len(snapshot["previous_watermarks"]) == 2
+
+
 def test_signal_monitoring_rejects_wrong_pipeline_and_source_less_candidates(tmp_path: Path) -> None:
     session_factory = _session_factory(tmp_path)
     with session_scope(session_factory) as session:

@@ -6,15 +6,17 @@ Pipeline id: `signal-monitoring`
 
 Generated PDF: `docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.pdf`
 
-Current configuration slice: `0.7.6.4.18.3.1: Radar effective configuration, lazy loading and per-signal monitoring settings`
+Current behavior slice: `0.7.6.4.19.1: Signal monitoring live benchmark reachability and cross-criterion evidence reconciliation`
 
-Implemented TO BE: `docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.18.3.1.md`
+Implemented TO BE: `docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.19.1.md`
 
 Validation report: `docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.2.2/VALIDATION_REPORT.md`
 
 Configuration validation: `docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.18.3.1/VALIDATION_REPORT.md`
 
 Product-surface validation: `docs/radar/pipelines/validation/0.7.6.4.18.3.2/VALIDATION_REPORT.md`
+
+Reproducibility validation: `docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.19.1/VALIDATION_REPORT.md`
 
 ## 1. Purpose And Boundary
 
@@ -169,6 +171,28 @@ but they cannot confirm a fresh signal. Candidate/source binding is checked
 before known-source scheduling so another entity's page cannot become a
 candidate-specific signal source.
 
+## 5.2 Criterion-Owned Search And Cross-Criterion Reconciliation
+
+Signal criteria own their search and evidence vocabulary. Planning combines
+candidate legal name and aliases with configured criterion terms and bounded
+query variants; production logic does not branch on benchmark criterion codes,
+company names, control URLs or a hardcoded calendar year (`SM-QUERY-02`).
+
+Provider-local source references are task-scoped before they enter the shared
+artifact, preventing collisions such as unrelated tasks both returning
+`source_1`. Product-safe evidence retrieved for one criterion may be tested
+against another enabled criterion for the same candidate. Reuse requires a new
+entity, criterion, temporal, capability and source-binding decision, while
+retaining the originating task, criterion, receipt and source reference
+(`SM-XCRIT-01`). Evidence is never copied across candidates or accepted only by
+a broad keyword (`SM-XCRIT-02`). Capability is enforced per evidence ref, so a
+mixed response cannot use an `identity_only` or registry ref to confirm a fresh
+signal (`SM-CAP-03`).
+
+Canonical URL identity removes fragments and tracking parameters but preserves
+host and path identity. This identity is shared by evidence validation,
+incremental source keys and post-run control evaluation (`SM-URL-01`).
+
 ## 6. Time Windows And Incremental Runs
 
 Initial lookback precedence is:
@@ -205,6 +229,24 @@ criterion lanes with global source policy and never schedules a disabled lane.
 Preflight and persisted artifacts expose the effective values and their basis.
 Cadence is configuration only; this slice does not create automatic jobs. These
 contracts implement `SM-CFG-01`, `SM-CFG-02`, `SM-CFG-03` and `SM-WIN-04`.
+
+## 6.2 Monitoring Series And Reproducibility
+
+An optional `monitoring_series_id` isolates fingerprints, source keys and
+watermarks for reproducibility testing without deleting persisted history.
+Independent initial series A and B start empty; incremental C loads only the B
+series (`SM-REP-02`, `SM-DED-03`). Normal product runs retain the default
+series behavior.
+
+The accepted reproducibility contour is explicit rather than hidden in an
+aggregate observed count. Each independent initial run must find at least
+three of four frozen positive controls, one must find all four, and their union
+must find all four. Every run still passes negative, unknown-date, temporal,
+source, provenance, receipt and budget integrity checks (`SM-REP-03`). A single
+approved exact-URL miss is retained as `provider_search_drift`
+(`SM-DRIFT-01`); it is not represented as a successful match. The original
+two-times-4/4 v1 manifest and machine `FAIL` remain archived alongside the
+approved v2 amendment (`SM-REP-01`).
 
 ## 7. Budgets And Models
 
@@ -286,6 +328,23 @@ Persisted live acceptance used source candidate run
 Both reports remained readable through the persisted API contour. The machine
 validation report is the closure authority, not these prose numbers.
 
+Slice `0.7.6.4.19.1` added a separate reproducibility chain over source
+candidate run `radar-run-b03fac86-7307-448f-8deb-c1ea1794956c`:
+
+- independent A `signal-run-8eb6d673-a6f6-417a-8519-8cc50e7e94f8` found 4/4
+  positive, 4/4 negative and 1/1 unknown-date controls;
+- independent B `signal-run-6754eba6-a43a-4594-8236-d7ed60f6d2c5` found 3/4
+  positive, 4/4 negative and 1/1 unknown-date controls; its missing frozen
+  Khimprom URL is recorded as provider search drift;
+- incremental C `signal-run-47e29772-8cbf-421e-8072-7c2d951ba611` loaded 67
+  B-series source keys, suppressed two confirmed and three review duplicates,
+  republished zero previous evidence, had zero receipt gaps and zero illegal
+  watermark advances.
+
+All three reports remained byte-stable and readable after API and worker
+restart. Exact-URL search stability remains planned in `0.7.6.4.19.2`; a
+provider-independent fallback is conditional in `0.7.6.4.19.3`.
+
 ## 10. Requirement Change Record
 
 Slice `0.7.6.4.18.2.1` finalized the following mandatory requirements in this
@@ -299,9 +358,14 @@ AS IS: `SM-TIME-01`, `SM-TIME-02`, `SM-TIME-03`, `SM-CAP-01`,
 `SM-BENCH-01`, `SM-BENCH-02`, `SM-BENCH-03`, `SM-DED-02`, `SM-AUD-02`,
 `SM-ARCH-02` and `SM-PROC-02`.
 
+Slice `0.7.6.4.19.1` finalized `SM-REP-01`, `SM-REP-02`, `SM-REP-03`,
+`SM-DRIFT-01`, `SM-QUERY-02`, `SM-XCRIT-01`, `SM-XCRIT-02`, `SM-CAP-03`,
+`SM-URL-01`, `SM-DED-03` and `SM-PROC-03`. The approved deviation and original
+v1 `FAIL` are preserved under the slice validation directory.
+
 The traceability chain is TO BE -> acceptance manifest -> exact tests -> two
 persisted live reports -> validation JSON/Markdown -> this AS IS
-(`SM-PROC-01`, `SM-PROC-02`). Signal Monitoring remains isolated from
+(`SM-PROC-01`, `SM-PROC-02`, `SM-PROC-03`). Signal Monitoring remains isolated from
 candidate-discovery internals (`SM-ARCH-01`, `SM-ARCH-02`).
 
 ## 11. Process Rule

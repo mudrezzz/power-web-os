@@ -14,10 +14,18 @@ from power_web_os.application.radar.validation.contracts import (
     RadarPipelineRequirementResult,
     RadarPipelineValidationReport,
 )
+from power_web_os.application.radar.validation.acceptance_freeze import (
+    manifest_sha256,
+    verify_acceptance_freeze,
+)
 from power_web_os.application.radar.validation.signal_monitoring_quality import (
     _list,
+    _list_values,
     control_match_summary as _control_match_summary,
     evaluate_signal_report as _evaluate_signal_report,
+)
+from power_web_os.application.radar.validation.reproducibility import (
+    evaluate_reproducibility_policy,
 )
 
 
@@ -33,17 +41,36 @@ class RadarPipelineSliceValidator:
         manifest_path: Path,
         first_live_report: dict[str, Any] | None = None,
         second_live_report: dict[str, Any] | None = None,
+        initial_live_reports: list[dict[str, Any]] | None = None,
+        incremental_live_report: dict[str, Any] | None = None,
         baseline_run_id: str = "",
+        restart_verified: bool = False,
         run_tests: bool = True,
         write_report: bool = True,
     ) -> RadarPipelineValidationReport:
         manifest = RadarPipelineAcceptanceManifest.load(self._path(manifest_path))
+        manifest_file = self._path(manifest_path)
+        manifest_hash = manifest_sha256(manifest_file)
+        initial_reports = list(initial_live_reports or [])
+        if not initial_reports and first_live_report:
+            initial_reports = [first_live_report]
+        incremental_report = incremental_live_report or second_live_report or {}
         test_exit_code, test_output = self._run_tests(manifest) if run_tests else (None, "tests_skipped")
-        runtime_results, runtime_summary = self._runtime_results(
-            manifest,
-            first_live_report or {},
-            second_live_report or {},
-        )
+        if manifest.slice_id == "0.7.6.4.19.1":
+            runtime_results, runtime_summary, control_matrix = self._reproducibility_runtime_results(
+                manifest,
+                initial_reports,
+                incremental_report,
+                manifest_file=manifest_file,
+                restart_verified=restart_verified,
+            )
+        else:
+            runtime_results, runtime_summary = self._runtime_results(
+                manifest,
+                first_live_report or {},
+                second_live_report or {},
+            )
+            control_matrix = {}
         results: list[RadarPipelineRequirementResult] = []
         for requirement in manifest.requirements:
             static = self._static_result(manifest, requirement.id)
@@ -70,8 +97,13 @@ class RadarPipelineSliceValidator:
             validation_status=validation_status,
             generated_at=_now(),
             baseline_run_id=baseline_run_id,
-            first_live_run_id=str((first_live_report or {}).get("run_id") or (first_live_report or {}).get("signal_run_id") or ""),
-            second_live_run_id=str((second_live_report or {}).get("run_id") or (second_live_report or {}).get("signal_run_id") or ""),
+            first_live_run_id=_run_id(first_live_report or (initial_reports[0] if initial_reports else {})),
+            second_live_run_id=_run_id(second_live_report or (initial_reports[1] if len(initial_reports) > 1 else {})),
+            initial_live_run_ids=[_run_id(item) for item in initial_reports],
+            incremental_live_run_id=_run_id(incremental_report),
+            acceptance_manifest_sha256=manifest_hash,
+            control_matrix=control_matrix,
+            restart_verified=restart_verified,
             test_exit_code=test_exit_code,
             requirements=results,
             runtime_summary=runtime_summary,
@@ -80,6 +112,153 @@ class RadarPipelineSliceValidator:
         if write_report:
             self._write_reports(manifest, report)
         return report
+
+    def _reproducibility_runtime_results(
+        self,
+        manifest: RadarPipelineAcceptanceManifest,
+        initial_reports: list[dict[str, Any]],
+        incremental_report: dict[str, Any],
+        *,
+        manifest_file: Path,
+        restart_verified: bool,
+    ) -> tuple[dict[str, RadarPipelineRequirementResult], dict[str, Any], dict[str, Any]]:
+        live = manifest.live_acceptance
+        positives = _list(live.get("positive_controls"))
+        negatives = _list(live.get("negative_controls"))
+        unknowns = _list(live.get("unknown_date_controls"))
+        initial_metrics = [
+            _evaluate_signal_report(item, negative_controls=negatives)
+            for item in initial_reports
+        ]
+        incremental_metrics = _evaluate_signal_report(
+            incremental_report,
+            negative_controls=negatives,
+        )
+        matrix = {
+            _run_id(report): {
+                "positive": _control_match_summary(report, positives, expected="confirmed"),
+                "negative": _control_match_summary(report, negatives, expected="negative"),
+                "unknown": _control_match_summary(report, unknowns, expected="unknown"),
+            }
+            for report in initial_reports
+        }
+        policy_result = evaluate_reproducibility_policy(
+            matrix=matrix,
+            positive_control_count=len(positives),
+            negative_control_count=len(negatives),
+            unknown_control_count=len(unknowns),
+            initial_run_count=int(live.get("initial_run_count") or 2),
+            policy=_dict(live.get("reproducibility_policy")),
+        )
+        results: dict[str, RadarPipelineRequirementResult] = {}
+
+        def result(requirement_id: str, ok: bool, *evidence: str) -> None:
+            results[requirement_id] = RadarPipelineRequirementResult(
+                requirement_id=requirement_id,
+                status="PASS" if ok else "FAIL",
+                evidence=list(evidence),
+            )
+
+        freeze_ok = False
+        freeze_message = "freeze record missing"
+        if manifest.freeze_record:
+            try:
+                freeze = verify_acceptance_freeze(
+                    manifest_path=manifest_file,
+                    freeze_path=self._path(Path(manifest.freeze_record)),
+                )
+                freeze_ok = str(freeze.get("manifest_sha256")) == manifest_sha256(manifest_file)
+                freeze_message = f"manifest_sha256={freeze.get('manifest_sha256')}"
+            except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as exc:
+                freeze_message = str(exc)
+        result("SM-REP-01", freeze_ok, freeze_message)
+
+        series = [str(item.get("monitoring_series_id") or "") for item in initial_reports]
+        independent = (
+            len(initial_reports) == int(live.get("initial_run_count") or 2)
+            and len(set(series)) == len(series)
+            and all(metric["previous_source_key_count"] == 0 for metric in initial_metrics)
+            and all(not _list(_dict(report.get("input_snapshot")).get("previous_watermarks")) for report in initial_reports)
+        )
+        result(
+            "SM-REP-02",
+            independent,
+            f"initial_runs={len(initial_reports)}",
+            f"series={','.join(series)}",
+            f"previous_source_keys={','.join(str(item['previous_source_key_count']) for item in initial_metrics)}",
+        )
+        complete_controls = bool(policy_result["complete"])
+        result("SM-REP-03", complete_controls, json.dumps(matrix, ensure_ascii=False, sort_keys=True))
+        result(
+            "SM-DRIFT-01",
+            complete_controls and bool(policy_result["accepted_drift_ids"]),
+            f"minimum_positive_per_run={policy_result['minimum']}",
+            f"aggregate_positive_controls={policy_result['matched_count']}/{len(positives)}",
+            f"one_complete_initial_run={policy_result['one_complete']}",
+            "accepted_provider_search_drift="
+            + ",".join(sorted(policy_result["accepted_drift_ids"])),
+        )
+
+        obligations_ok = all(
+            task.get("criterion_obligation_id")
+            and _list_values(task.get("criterion_search_terms"))
+            and _list_values(task.get("criterion_evidence_match_terms"))
+            for report in initial_reports
+            for task in _list(report.get("tasks"))
+        )
+        result("SM-QUERY-02", bool(initial_reports) and obligations_ok, f"obligations_ok={obligations_ok}")
+        cross_records = [
+            item
+            for report in initial_reports
+            for item in _list(report.get("cross_criterion_validation_records"))
+        ]
+        auditable_cross = all(
+            item.get("origin_task_id") and item.get("target_task_id") and item.get("reason")
+            for item in cross_records
+        )
+        result("SM-XCRIT-01", bool(cross_records) and auditable_cross, f"cross_records={len(cross_records)}")
+        invalid_cross = sum(
+            bool(item.get("accepted")) and item.get("reason") != "cross_criterion_evidence_validated"
+            for item in cross_records
+        )
+        result("SM-XCRIT-02", invalid_cross == 0, f"invalid_cross_criterion={invalid_cross}")
+        identity_confirmed = sum(item["identity_confirmed_signal_count"] for item in initial_metrics)
+        result("SM-CAP-03", bool(initial_metrics) and identity_confirmed == 0, f"identity_confirmed={identity_confirmed}")
+        result(
+            "SM-URL-01",
+            complete_controls,
+            "control URLs matched by canonical identity across the approved reproducibility contour",
+        )
+
+        incremental_series = str(incremental_report.get("monitoring_series_id") or "")
+        dedupe_ok = (
+            bool(incremental_report)
+            and len(series) == 2
+            and incremental_series == series[1]
+            and incremental_metrics["previous_source_key_count"] > 0
+            and incremental_metrics["republished_previous_source_count"] == 0
+            and incremental_metrics["failed_watermark_advances"] == 0
+        )
+        result(
+            "SM-DED-03",
+            dedupe_ok,
+            f"incremental_series={incremental_series}",
+            f"previous_source_keys={incremental_metrics['previous_source_key_count']}",
+            f"republished={incremental_metrics['republished_previous_source_count']}",
+            f"failed_watermark_advances={incremental_metrics['failed_watermark_advances']}",
+        )
+        result(
+            "SM-PROC-03",
+            len(initial_reports) == 2 and bool(incremental_report) and restart_verified,
+            f"initial_run_ids={','.join(_run_id(item) for item in initial_reports)}",
+            f"incremental_run_id={_run_id(incremental_report)}",
+            f"restart_verified={restart_verified}",
+        )
+        return results, {
+            "initial_live": initial_metrics,
+            "incremental_live": incremental_metrics,
+            "restart_verified": restart_verified,
+        }, matrix
 
     def _run_tests(self, manifest: RadarPipelineAcceptanceManifest) -> tuple[int, str]:
         node_ids = list(dict.fromkeys(
@@ -114,7 +293,7 @@ class RadarPipelineSliceValidator:
         as_is = self._read(manifest.as_is_markdown)
         acceptance = self._path(Path(manifest.to_be_markdown).with_suffix(".acceptance.json"))
         traceable = requirement_id in to_be and requirement_id in acceptance.read_text(encoding="utf-8")
-        if requirement_id in {"SM-PROC-01", "SM-PROC-02"}:
+        if requirement_id in {"SM-PROC-01", "SM-PROC-02", "SM-PROC-03"}:
             traceable = traceable and manifest.slice_id in as_is and "Status: Implemented" in to_be
         if missing or not traceable:
             return RadarPipelineRequirementResult(
@@ -267,6 +446,9 @@ class RadarPipelineSliceValidator:
             f"Pipeline: `{report.pipeline_id}`",
             f"First live run: `{report.first_live_run_id or 'missing'}`",
             f"Second live run: `{report.second_live_run_id or 'missing'}`",
+            f"Initial live runs: `{', '.join(report.initial_live_run_ids) or 'missing'}`",
+            f"Incremental live run: `{report.incremental_live_run_id or 'missing'}`",
+            f"Restart verified: `{report.restart_verified}`",
             "",
             "## Requirement Results",
             "",
@@ -297,3 +479,11 @@ class RadarPipelineSliceValidator:
 
 def _now() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _run_id(report: dict[str, Any]) -> str:
+    return str(report.get("run_id") or report.get("signal_run_id") or "")
+
+
+def _dict(value: object) -> dict[str, Any]:
+    return dict(value) if isinstance(value, dict) else {}

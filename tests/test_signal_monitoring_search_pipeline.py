@@ -17,9 +17,257 @@ from power_web_os.application.radar.signal_monitoring.contracts import (
     SignalSourceRef,
 )
 from power_web_os.application.radar.signal_monitoring.evidence import SignalEvidenceValidationService
+from power_web_os.application.radar.signal_monitoring.cross_criterion import (
+    SignalCrossCriterionEvidenceReconciliationService,
+)
+from power_web_os.application.radar.signal_monitoring.criterion_vocabulary import (
+    signal_criterion_vocabulary,
+)
 from power_web_os.application.radar.signal_monitoring.executor import SignalMonitoringExecutor
 from power_web_os.application.radar.signal_monitoring.payloads import parse_payload, ParsedSignalPayload
 from power_web_os.application.radar.signal_monitoring.windows import SignalMonitoringWindowPolicy
+
+
+def test_query_obligations_are_distinct_and_definition_owned() -> None:
+    monitoring = _monitoring_input(signal_rules=[
+        SignalMonitoringSignalRule(
+            signal_code="maintenance-code",
+            label="Maintenance",
+            search_terms=["planned turnaround"],
+            evidence_match_terms=["turnaround"],
+        ),
+        SignalMonitoringSignalRule(
+            signal_code="investment-code",
+            label="Investment",
+            search_terms=["new production line"],
+            evidence_match_terms=["production line"],
+        ),
+    ])
+
+    outcome = SignalMonitoringExecutor(_LaneProvider()).run(monitoring)
+
+    tasks = outcome.search_plan.tasks
+    assert {item.criterion_obligation_id for item in tasks} == {
+        "candidate-a:maintenance-code",
+        "candidate-a:investment-code",
+    }
+    assert all(item.criterion_search_terms for item in tasks)
+    assert any("planned turnaround" in item.query for item in tasks if item.signal_code == "maintenance-code")
+    assert any("new production line" in item.query for item in tasks if item.signal_code == "investment-code")
+
+
+def test_modernization_vocabulary_keeps_completion_and_automation_in_separate_queries() -> None:
+    search_terms, _ = signal_criterion_vocabulary(name="Modernization and capacity investment")
+
+    assert search_terms[3:7] == (
+        "запуск производства",
+        "инвестиции",
+        "завершил строительство",
+        "пусконаладочные работы",
+    )
+    assert search_terms[7:11] == (
+        "реконструкция",
+        "увеличение мощности",
+        "АСУТП",
+        "техническое перевооружение",
+    )
+
+
+def test_definition_owned_search_terms_create_bounded_open_web_coverage_variant() -> None:
+    monitoring = _monitoring_input(
+        known_sources=[],
+        configured_sources=[],
+        source_cards=[_card("openrouter_web", source_type="open_web", broad=True)],
+        source_policy=SignalMonitoringSourcePolicy(allowed_source_ids=["openrouter_web"]),
+        signal_rules=[SignalMonitoringSignalRule(
+            signal_code="investment",
+            label="Investment",
+            search_terms=["modernization", "new production", "construction", "launch", "automation"],
+            evidence_match_terms=["modernization", "new production", "construction", "automation"],
+        )],
+    )
+
+    outcome = SignalMonitoringExecutor(_LaneProvider()).run(monitoring)
+    initial = [task for task in outcome.search_plan.tasks if task.revision_index == 0]
+
+    assert len(initial) == 2
+    assert all(task.source_lane == "open_web" for task in initial)
+    assert initial[0].query != initial[1].query
+    assert initial[0].required is True
+    assert initial[1].required is False
+
+
+def test_long_definition_vocabulary_creates_at_most_two_optional_coverage_variants() -> None:
+    monitoring = _monitoring_input(
+        known_sources=[],
+        configured_sources=[],
+        source_cards=[_card("openrouter_web", source_type="open_web", broad=True)],
+        source_policy=SignalMonitoringSourcePolicy(allowed_source_ids=["openrouter_web"]),
+        signal_rules=[SignalMonitoringSignalRule(
+            signal_code="investment",
+            label="Investment",
+            search_terms=[f"term-{index}" for index in range(11)],
+            evidence_match_terms=["investment"],
+        )],
+    )
+
+    outcome = SignalMonitoringExecutor(_LaneProvider()).run(monitoring)
+    initial = [task for task in outcome.search_plan.tasks if task.revision_index == 0]
+
+    assert len(initial) == 3
+    assert sum(task.required for task in initial) == 1
+    assert len({task.query for task in initial}) == 3
+    assert "term-10" in initial[-1].query
+
+
+def test_cross_criterion_evidence_is_independently_validated_once() -> None:
+    service = SignalCrossCriterionEvidenceReconciliationService()
+    source = SignalSourceRef(
+        source_ref="candidate-a-project",
+        title="Candidate A launched a new production line",
+        url="https://official.test/news/project",
+        snippet="Candidate A completed commissioning of a new production line.",
+        capability="official_press",
+        capability_basis="fixture",
+        published_at="2026-06-01",
+    )
+    origin = _observed_for_reconciliation(source=source, signal_code="maintenance-code")
+    tasks = [
+        _reconciliation_task("maintenance-code", ["turnaround"]),
+        _reconciliation_task("investment-code", ["production line", "commissioning"]),
+    ]
+    rules = [
+        SignalMonitoringSignalRule(signal_code="maintenance-code", label="Maintenance", evidence_match_terms=["turnaround"]),
+        SignalMonitoringSignalRule(signal_code="investment-code", label="Investment", evidence_match_terms=["production line", "commissioning"]),
+    ]
+
+    observations, records = service.reconcile(
+        tasks=tasks,
+        rules=rules,
+        task_observations=[origin],
+        previous_source_keys=set(),
+    )
+
+    assert len(observations) == 1
+    assert observations[0].signal_code == "investment-code"
+    assert observations[0].observation_status == "observed"
+    assert observations[0].score > 0
+    assert records[0].origin_signal_code == "maintenance-code"
+    assert records[0].target_signal_code == "investment-code"
+    assert records[0].accepted is True
+
+
+def test_cross_criterion_reconciliation_rejects_irrelevant_evidence() -> None:
+    service = SignalCrossCriterionEvidenceReconciliationService()
+    source = SignalSourceRef(
+        source_ref="other-company-project",
+        title="Other Company opened a new production line",
+        url="https://other.test/news/project",
+        snippet="Other Company completed commissioning.",
+        capability="official_press",
+        capability_basis="fixture",
+        published_at="2026-06-01",
+    )
+    origin = _observed_for_reconciliation(source=source, signal_code="maintenance-code")
+
+    observations, records = service.reconcile(
+        tasks=[
+            _reconciliation_task("maintenance-code", ["turnaround"]),
+            _reconciliation_task("investment-code", ["production line"]),
+        ],
+        rules=[
+            SignalMonitoringSignalRule(signal_code="maintenance-code", label="Maintenance"),
+            SignalMonitoringSignalRule(signal_code="investment-code", label="Investment", evidence_match_terms=["production line"]),
+        ],
+        task_observations=[origin],
+        previous_source_keys=set(),
+    )
+
+    assert observations == []
+    assert records[0].accepted is False
+    assert records[0].reason == "target_candidate_mismatch"
+
+
+def test_identity_only_evidence_cannot_confirm_inside_mixed_response() -> None:
+    task = _task()
+    parsed = parse_payload({
+        "sources": [
+            {
+                "source_ref": "identity-xlsx",
+                "title": "Candidate A registry export",
+                "url": "https://official.test/registry/candidate-a.xlsx",
+                "snippet": "Candidate A modernization registry row.",
+                "published_at": "2026-07-01",
+            },
+            {
+                "source_ref": "press-release",
+                "title": "Candidate A press release",
+                "url": "https://official.test/news/candidate-a",
+                "snippet": "Candidate A opened a new production line.",
+                "published_at": "2026-07-01",
+            },
+        ],
+        "observations": [{
+            "candidate_id": task.candidate_id,
+            "signal_code": task.signal_code,
+            "status": "observed",
+            "summary": "Candidate A opened a new production line.",
+            "score": 2,
+            "evidence_refs": ["identity-xlsx", "press-release"],
+            "event_at": "2026-07-01",
+        }],
+    })
+    assert isinstance(parsed, ParsedSignalPayload)
+
+    observation, record = SignalEvidenceValidationService().validate(
+        task=task,
+        parsed=parsed,
+        previous_fingerprints=set(),
+        previous_source_keys=set(),
+    )
+
+    assert record.accepted is True
+    assert observation.observation_status == "observed"
+    assert observation.source_refs == ["press-release"]
+    identity = next(item for item in observation.sources if item.source_ref == "identity-xlsx")
+    assert identity.capability == "identity_only"
+
+
+def _reconciliation_task(signal_code: str, evidence_terms: list[str]) -> SignalSearchTask:
+    return SignalSearchTask(
+        task_id=f"task-{signal_code}",
+        candidate_id="candidate-a",
+        candidate_name="Candidate A",
+        signal_code=signal_code,
+        signal_label=signal_code,
+        criterion_evidence_match_terms=evidence_terms,
+        query=f"Candidate A {signal_code}",
+        lookback_days=365,
+        window_start="2025-07-16T00:00:00Z",
+        window_end="2026-07-16T00:00:00Z",
+    )
+
+
+def _observed_for_reconciliation(*, source: SignalSourceRef, signal_code: str):
+    from power_web_os.application.radar.signal_monitoring.contracts import SignalEvidence, SignalObservation
+
+    return SignalObservation(
+        task_id=f"task-{signal_code}",
+        candidate_id="candidate-a",
+        signal_code=signal_code,
+        observation_status="observed",
+        search_status="searched",
+        summary=source.snippet,
+        score=2,
+        evidence=[SignalEvidence(
+            source_ref=source.source_ref,
+            fact=source.snippet,
+            excerpt=source.snippet,
+            published_at=source.published_at,
+        )],
+        source_refs=[source.source_ref],
+        sources=[source],
+    )
 
 
 class _LaneProvider:
@@ -599,6 +847,39 @@ def test_old_publication_can_confirm_future_plan_when_source_text_supports_event
     assert observation.observation_status == "observed"
 
 
+def test_product_safe_quarter_text_supplies_a_bounded_event_interval() -> None:
+    task = _task()
+    parsed = parse_payload({
+        "sources": [{
+            "source_ref": "future-quarter-plan",
+            "title": "Candidate A new plant",
+            "url": "https://official.test/news/future-quarter-plan",
+            "published_at": "2025-02-27",
+            "snippet": "Пусконаладочные работы запланированы на первый квартал 2026 года.",
+        }],
+        "observations": [{
+            "candidate_id": task.candidate_id,
+            "signal_code": task.signal_code,
+            "status": "observed",
+            "summary": "Candidate A plans commissioning works on the new plant.",
+            "score": 2,
+            "evidence_refs": ["future-quarter-plan"],
+        }],
+    })
+    assert isinstance(parsed, ParsedSignalPayload)
+
+    observation, record = SignalEvidenceValidationService().validate(
+        task=task,
+        parsed=parsed,
+        previous_fingerprints=set(),
+    )
+
+    assert record.accepted is True
+    assert observation.evidence[0].event_at == "2026-01-01"
+    assert observation.evidence[0].event_end_at == "2026-03-31"
+    assert observation.evidence[0].date_basis == "snippet"
+
+
 def test_cross_entity_known_source_is_not_scheduled_as_known_source() -> None:
     monitoring = _monitoring_input(
         known_sources=[SignalSourceRef(
@@ -727,7 +1008,7 @@ def test_candidate_path_query_terms_ignore_structured_file_paths() -> None:
             candidate_id="russian-candidate",
             display_name="АО «Русский завод»",
             legal_name="АО «Русский завод»",
-            source_refs=["registry-xlsx", "official-section"],
+            source_refs=["registry-xlsx", "wrong-owner", "official-section"],
             product_acceptance_status="product_candidate",
         )],
         known_sources=[
@@ -736,7 +1017,16 @@ def test_candidate_path_query_terms_ignore_structured_file_paths() -> None:
                 url="https://official.test/upload/iblock/e70/export.xlsx",
             ),
             SignalSourceRef(
+                source_ref="wrong-owner",
+                title="ООО «Томскнефтехим»",
+                snippet="Карточка другого предприятия.",
+                url="https://companies.test/id/1037000135920-ooo-tomskneftehim/",
+                capability="generic_web",
+            ),
+            SignalSourceRef(
                 source_ref="official-section",
+                title="АО «Русский завод»",
+                snippet="Официальный раздел АО «Русский завод».",
                 url="https://official.test/voronejkauchuk/press-center/news/",
             ),
         ],
@@ -750,6 +1040,7 @@ def test_candidate_path_query_terms_ignore_structured_file_paths() -> None:
     query = next(task.query for task in outcome.search_plan.tasks if task.source_lane == "open_web")
     assert "voronejkauchuk" in query
     assert "iblock" not in query
+    assert "1037000135920" not in query
 
 
 def test_incremental_signal_monitoring_dedupes_unknown_review_evidence() -> None:

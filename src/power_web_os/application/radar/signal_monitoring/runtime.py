@@ -45,6 +45,7 @@ class SignalMonitoringRunCommand:
     correlation_id: str | None = None
     requester: str = "api"
     run_profile: str = "signal_monitoring_smoke"
+    monitoring_series_id: str = "default"
     budget: SignalMonitoringBudget | None = None
 
 
@@ -97,6 +98,7 @@ class QueuedSignalMonitoringRunService:
                 "source_candidate_run_id": command.source_candidate_run_id,
                 "requester": command.requester,
                 "run_profile": command.run_profile,
+                "monitoring_series_id": monitoring_input.monitoring_series_id,
                 "signal_monitoring_input": monitoring_input.model_dump(mode="json"),
             },
         ))
@@ -128,6 +130,9 @@ class QueuedSignalMonitoringRunService:
             ],
             "budget": monitoring_input.budget.model_dump(mode="json"),
             "source_candidate_run_id": monitoring_input.source_candidate_run_id,
+            "monitoring_series_id": monitoring_input.monitoring_series_id,
+            "previous_source_key_count": len(monitoring_input.previous_signal_source_keys),
+            "previous_watermark_count": len(monitoring_input.previous_watermarks),
         }
 
     def _assemble(self, *, run_id: str, command: SignalMonitoringRunCommand) -> SignalMonitoringInput:
@@ -154,6 +159,7 @@ class QueuedSignalMonitoringRunService:
             candidate_ids=command.candidate_ids,
             signal_codes=command.signal_codes,
             lookback_days=command.lookback_days,
+            monitoring_series_id=command.monitoring_series_id,
             previous_outputs=self._signal_output_repository.list_for_radar(command.radar_id),
             budget=command.budget or (
                 self._input_assembler.quality_budget()

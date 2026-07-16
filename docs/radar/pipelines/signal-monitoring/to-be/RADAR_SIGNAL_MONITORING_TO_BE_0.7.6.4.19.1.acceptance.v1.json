@@ -1,0 +1,68 @@
+{
+  "schema_version": "radar_pipeline_acceptance.v3",
+  "slice_id": "0.7.6.4.19.1",
+  "pipeline_id": "signal-monitoring",
+  "behavior_change": true,
+  "to_be_markdown": "docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.19.1.md",
+  "to_be_pdf": "docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.19.1.pdf",
+  "as_is_markdown": "docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md",
+  "as_is_pdf": "docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.pdf",
+  "baseline_diagnostic": "docs/radar/pipelines/validation/0.7.6.4.19/BLOCKING_RCA.md",
+  "validation_json": "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.19.1/validation.json",
+  "validation_markdown": "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.19.1/VALIDATION_REPORT.md",
+  "freeze_record": "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.19.1/acceptance-freeze.json",
+  "requirements": [
+    {"id": "SM-REP-01", "description": "A, B and C use one frozen byte-identical acceptance manifest.", "test_node_ids": ["tests/test_signal_monitoring_reproducibility.py::test_acceptance_manifest_freeze_rejects_post_freeze_changes"]},
+    {"id": "SM-REP-02", "description": "Initial A and B start from independent empty monitoring series.", "test_node_ids": ["tests/test_persisted_signal_monitoring.py::test_monitoring_series_isolates_initial_history"]},
+    {"id": "SM-REP-03", "description": "Both initial reports independently pass the complete control matrix.", "test_node_ids": ["tests/test_radar_pipeline_slice_validation.py::test_reproducibility_validator_requires_two_passing_initial_runs"]},
+    {"id": "SM-QUERY-02", "description": "Queries use criterion-owned terms without S1 S2 or year branches.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_query_obligations_are_distinct_and_definition_owned"]},
+    {"id": "SM-XCRIT-01", "description": "Evidence found under another criterion is independently validated with origin provenance.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_cross_criterion_evidence_is_independently_validated_once"]},
+    {"id": "SM-XCRIT-02", "description": "Irrelevant and cross-candidate evidence is never copied between criteria.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_cross_criterion_reconciliation_rejects_irrelevant_evidence"]},
+    {"id": "SM-CAP-03", "description": "Identity-only and registry refs confirm no fresh signal in mixed or single-source responses.", "test_node_ids": ["tests/test_signal_monitoring_search_pipeline.py::test_identity_only_evidence_cannot_confirm_inside_mixed_response", "tests/test_openrouter_signal_monitoring.py::test_open_web_xlsx_is_review_only"]},
+    {"id": "SM-URL-01", "description": "Canonical URL identity ignores tracking while preserving host and path identity.", "test_node_ids": ["tests/test_signal_monitoring_quality_benchmark.py::test_control_evaluator_ignores_tracking_query_and_fragment", "tests/test_signal_monitoring_quality_benchmark.py::test_control_evaluator_keeps_host_and_path_strict"]},
+    {"id": "SM-DED-03", "description": "Incremental C loads only B history and republishes no previous evidence.", "test_node_ids": ["tests/test_persisted_signal_monitoring.py::test_incremental_series_uses_only_selected_series_history"]},
+    {"id": "SM-PROC-03", "description": "RCA TO BE manifest tests three live reports validation and AS IS are traceable.", "test_node_ids": ["tests/test_radar_pipeline_documentation_contract.py::test_signal_monitoring_reproducibility_slice_is_traceable"]}
+  ],
+  "recorded_acceptance": {
+    "required_positive_recall": 1.0,
+    "maximum_false_positive_controls": 0,
+    "minimum_unknown_date_reviews": 1
+  },
+  "live_acceptance": {
+    "source_candidate_run_id": "radar-run-b03fac86-7307-448f-8deb-c1ea1794956c",
+    "candidate_ids": [
+      "ао-сибур-химпром",
+      "ао-воронежсинтезкаучук",
+      "ао-красноярский-завод-синтетического-каучука",
+      "ппо-ооо-томскнефтехим-нефтегазстройпрофсоюза-россии",
+      "ооо-нтц-им-русвинилпром",
+      "ппо-в-ооо-сибур-кстово"
+    ],
+    "accepted_candidate_count": 3,
+    "review_candidate_count": 3,
+    "signal_codes": ["S1", "S2"],
+    "initial_lookback_days": 365,
+    "initial_run_count": 2,
+    "requires_incremental_run": true,
+    "positive_controls": [
+      {"id": "khimprom-modernization-automation-2025", "candidate_id": "ао-сибур-химпром", "signal_code": "S2", "url": "https://www.kommersant.ru/doc/8232236", "accepted_urls": ["https://www.kommersant.ru/doc/8232236", "https://www.business-class.su/news/2025/12/02/top-300-sibur-himprom-strategiya-otvetstvennosti-k-prirode-lyudyam-i-gorodu"], "date_start": "2025-11-27", "date_end": "2025-12-02"},
+      {"id": "voronezh-commissioning-2026", "candidate_id": "ао-воронежсинтезкаучук", "signal_code": "S1", "url": "https://www.sibur.ru/voronejkauchuk/press-center/progress-realizatsii-stroitelstva-proizvodstva-n-butillitiya-dostig-80/", "accepted_urls": ["https://www.sibur.ru/voronejkauchuk/press-center/progress-realizatsii-stroitelstva-proizvodstva-n-butillitiya-dostig-80/", "https://www.sibur.ru/voronejkauchuk/press-center/voronezhsintezkauchuk-napravil-bolee-3-mlrd-rubley-na-povyshenie-nadezhnosti-i-ekologichnosti-predpr/", "https://poligraf.media/biznes/20260310/voronezhsintezkauchuk-himicheskaya-zhemchuzhina-sektora-gaza", "https://www.kommersant.ru/doc/8195024"], "date_start": "2026-01-01", "date_end": "2026-06-30"},
+      {"id": "voronezh-special-component-2026", "candidate_id": "ао-воронежсинтезкаучук", "signal_code": "S2", "url": "https://www.sibur.ru/voronejkauchuk/press-center/sibur-zavershil-stroitelstvo-proizvodstva-klyuchevogo-spetskomponenta-dlya-proizvodstva-shin-i-dorozh/", "accepted_urls": ["https://www.sibur.ru/voronejkauchuk/press-center/sibur-zavershil-stroitelstvo-proizvodstva-klyuchevogo-spetskomponenta-dlya-proizvodstva-shin-i-dorozh/", "https://www.sibur.ru/voronejkauchuk/press-center/sibur-stroit-sobstvennoe-proizvodstvo-n-butillitiya-dlya-proizvodstva-shin-i-dorozhnog/", "https://rupec.ru/news/56408/", "https://abireg.ru/newsitem/112663/"], "date_start": "2025-12-26", "date_end": "2026-03-31"},
+      {"id": "voronezh-kommersant-plant-2026", "candidate_id": "ао-воронежсинтезкаучук", "signal_code": "S2", "url": "https://www.kommersant.ru/doc/8195024", "accepted_urls": ["https://www.kommersant.ru/doc/8195024", "https://voronezh-news.net/economy/2026/04/01/451836.html"], "date_start": "2026-01-01", "date_end": "2026-06-30"}
+    ],
+    "negative_controls": [
+      {"id": "voronezh-old-abireg-repair", "candidate_id": "ао-воронежсинтезкаучук", "signal_code": "S1", "url": "https://abireg.ru/newsitem/10718/", "expected_reason": "rejected_out_of_window"},
+      {"id": "kzsk-old-kommersant-modernization", "candidate_id": "ао-красноярский-завод-синтетического-каучука", "signal_code": "S2", "url": "https://www.kommersant.ru/doc/5379680", "expected_reason": "rejected_out_of_window"},
+      {"id": "khimprom-old-interfax-investment", "candidate_id": "ао-сибур-химпром", "signal_code": "S2", "url": "https://www.interfax.ru/business/1010244", "expected_reason": "rejected_out_of_window"},
+      {"id": "voronezh-conflicting-smotrim-date", "candidate_id": "ао-воронежсинтезкаучук", "signal_code": "S1", "url": "https://smotrim.ru/article/1969598", "expected_reason": "review_needed_date_conflict"}
+    ],
+    "unknown_date_controls": [
+      {"id": "khimprom-official-turnaround-date-unknown", "candidate_id": "ао-сибур-химпром", "signal_code": "S1", "url": "https://www.sibur.ru/SiburKhimprom/press-center/ostanovochnyy-remont-na-sibur-khimprome-prokhodit-bezopasno-dlya-atmosfery/", "accepted_urls": ["https://www.sibur.ru/SiburKhimprom/press-center/ostanovochnyy-remont-na-sibur-khimprome-prokhodit-bezopasno-dlya-atmosfery/", "https://www.sibur.ru/SiburKhimprom/press-center/v-svyazi-s-planovym-izmeneniem-rezhima-raboty-oborudovaniya-na-ao-sibur-khimprom-mogut-nablyudatsya-1/", "https://tass.ru/ekonomika/19788075", "https://tu-sibur.ru/news/7463/"], "expected_reason": "review_needed_date_unknown"}
+    ]
+  },
+  "retrospective": [
+    {"code": "SM-REP-RCA-01", "finding": "One accepted initial run did not prove live-search reproducibility and its accepted URL set was adjusted after output inspection.", "resolution": "Freeze controls before execution and require two independent initial runs plus a separate incremental proof."},
+    {"code": "SM-XCRIT-RCA-01", "finding": "Two missing S2 controls were present in the failed artifact under S1 receipts.", "resolution": "Revalidate product-safe evidence across configured criteria with explicit origin provenance."},
+    {"code": "SM-CAP-RCA-01", "finding": "A mixed provider response allowed an identity-only XLSX to participate in a confirmed signal.", "resolution": "Apply capability eligibility to each confirmed evidence ref."}
+  ]
+}

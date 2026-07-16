@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import re
 from urllib.parse import urlparse
 
 from power_web_os.application.radar.signal_monitoring.contracts import (
@@ -16,6 +15,10 @@ from power_web_os.application.radar.signal_monitoring.contracts import (
     SignalSourceLaneLedgerEntry,
     SignalSourceRef,
 )
+from power_web_os.application.radar.signal_monitoring.criterion_vocabulary import (
+    signal_criterion_vocabulary,
+)
+from power_web_os.application.radar.signal_monitoring.text_matching import text_matches_entity
 from power_web_os.application.radar.signal_monitoring.scheduling import (
     SignalMonitoringSchedule,
     SignalMonitoringWorkScheduler,
@@ -94,18 +97,22 @@ class SignalMonitoringSearchPlanner:
                         signal_code=rule.signal_code,
                         signal=rule.label,
                         expected=rule.expected_evidence,
+                        search_terms=rule.search_terms,
                         lane=lane,
                         domains=domains,
                         contracts=contracts,
                         candidate_sources=candidate_sources,
                     )
-                    tasks.append(SignalSearchTask(
+                    task = SignalSearchTask(
                         task_id=f"signal-{candidate.candidate_id}-{rule.signal_code}-{lane}-{lane_index}",
                         candidate_id=candidate.candidate_id,
                         candidate_name=candidate.display_name,
                         candidate_aliases=[candidate.legal_name, *candidate.aliases],
                         signal_code=rule.signal_code,
                         signal_label=rule.label,
+                        criterion_obligation_id=f"{candidate.candidate_id}:{rule.signal_code}",
+                        criterion_search_terms=list(rule.search_terms),
+                        criterion_evidence_match_terms=list(rule.evidence_match_terms),
                         query=query,
                         alternate_query=alternate_query,
                         lookback_days=window.lookback_days,
@@ -120,7 +127,32 @@ class SignalMonitoringSearchPlanner:
                         window_start=window.window_start,
                         window_end=window.window_end,
                         window_basis=window.basis,
-                    ))
+                    )
+                    tasks.append(task)
+                    if (
+                        lane == "open_web"
+                        and len(rule.search_terms) > 3
+                        and alternate_query
+                        and alternate_query != query
+                    ):
+                        tasks.append(task.model_copy(update={
+                            "task_id": f"{task.task_id}-coverage",
+                            "query": alternate_query,
+                            "alternate_query": query,
+                            "required": False,
+                        }))
+                    additional_coverage = _additional_coverage_query(
+                        template=rule.query_template,
+                        candidate=candidate.display_name,
+                        search_terms=rule.search_terms,
+                    )
+                    if lane == "open_web" and additional_coverage:
+                        tasks.append(task.model_copy(update={
+                            "task_id": f"{task.task_id}-coverage-2",
+                            "query": additional_coverage,
+                            "alternate_query": query,
+                            "required": False,
+                        }))
         return SignalMonitoringPlan(radar_id=monitoring.radar_id, tasks=tasks)
 
 
@@ -137,7 +169,7 @@ class SignalMonitoringPlanAcceptanceService:
         errors: list[str] = []
         accepted: list[SignalSearchTask] = []
         rejected: list[SignalSearchTask] = []
-        seen: set[tuple[str, str, str, tuple[str, ...], tuple[str, ...]]] = set()
+        seen: set[tuple[str, str, str, tuple[str, ...], tuple[str, ...], str]] = set()
         for task in plan.tasks:
             key = (
                 task.candidate_id,
@@ -145,6 +177,7 @@ class SignalMonitoringPlanAcceptanceService:
                 task.source_lane,
                 tuple(task.source_refs),
                 tuple(task.source_ids),
+                task.query,
             )
             if key in seen:
                 corrections.append({"type": "duplicate_task_removed", "task_id": task.task_id})
@@ -297,18 +330,18 @@ def _queries(
     signal_code: str,
     signal: str,
     expected: list[str],
+    search_terms: list[str],
     lane: str,
     domains: list[str],
     contracts: list[SignalSourceRef],
     candidate_sources: list[SignalSourceRef],
 ) -> tuple[str, str]:
-    query_signal = _query_signal_terms(
-        signal_code=signal_code,
+    query_signal, alternate_signal = _query_signal_terms(
         signal=signal,
         expected=expected,
-        values=[candidate, *aliases],
+        search_terms=search_terms,
     )
-    path_terms = _candidate_path_terms(candidate_sources)
+    path_terms = _candidate_path_terms(candidate_sources, candidate=candidate, aliases=aliases)
     base_signal = " ".join(value for value in [query_signal, path_terms] if value).strip()
     base = " ".join(template.format(candidate=candidate, signal=base_signal or query_signal).split())
     alias = next(
@@ -319,14 +352,7 @@ def _queries(
         ),
         "",
     )
-    evidence_terms = _expected_terms(expected, query_signal)
-    alternate_base = " ".join(
-        value for value in [
-            template.format(candidate=alias or candidate, signal=base_signal or query_signal),
-            evidence_terms,
-        ]
-        if value
-    ).strip()
+    alternate_base = template.format(candidate=alias or candidate, signal=alternate_signal or query_signal).strip()
     if lane == "official_company" and domains:
         return f"site:{domains[0]} {base}", f"site:{domains[0]} {alternate_base or base}"
     if lane == "known_source" and contracts:
@@ -336,24 +362,21 @@ def _queries(
 
 def _query_signal_terms(
     *,
-    signal_code: str,
     signal: str,
     expected: list[str],
-    values: list[str],
-) -> str:
-    text = " ".join([signal_code, signal, *expected]).lower()
-    cyrillic = any(re.search(r"[А-Яа-яЁё]", value or "") for value in values)
-    if cyrillic and (
-        signal_code.upper() == "S1"
-        or any(marker in text for marker in ("toir", "reliability", "maintenance", "repair", "turnaround"))
-    ):
-        return "остановочный ремонт ТОиР пусконаладочные работы запуск первая продукция ремонтная кампания 2026"
-    if cyrillic and (
-        signal_code.upper() == "S2"
-        or any(marker in text for marker in ("modernization", "capacity", "investment", "equipment"))
-    ):
-        return "модернизация строительство новое производство спецкомпонент автоматизация планы 2026"
-    return " ".join(signal.split())
+    search_terms: list[str],
+) -> tuple[str, str]:
+    configured = [value.strip() for value in search_terms if value.strip()]
+    if configured:
+        primary = " ".join(configured[:3])
+        alternate = " ".join(configured[3:7])
+        return primary, alternate or primary
+    legacy_search, _ = signal_criterion_vocabulary(name=signal, description=" ".join(expected))
+    if legacy_search:
+        return " ".join(legacy_search[:3]), " ".join(legacy_search[3:7])
+    fallback = [signal.strip(), *(value.strip() for value in expected[:2])]
+    joined = " ".join(value for value in fallback if value)
+    return joined, joined
 
 
 def _expected_terms(expected: list[str], query_signal: str) -> str:
@@ -364,11 +387,33 @@ def _expected_terms(expected: list[str], query_signal: str) -> str:
     return "" if joined == query_signal else joined
 
 
-def _candidate_path_terms(sources: list[SignalSourceRef]) -> str:
+def _additional_coverage_query(*, template: str, candidate: str, search_terms: list[str]) -> str:
+    remaining = [value.strip() for value in search_terms[7:11] if value.strip()]
+    if len(remaining) < 2:
+        return ""
+    return " ".join(template.format(candidate=candidate, signal=" ".join(remaining)).split())
+
+
+def _candidate_path_terms(
+    sources: list[SignalSourceRef],
+    *,
+    candidate: str,
+    aliases: list[str],
+) -> str:
     terms: list[str] = []
-    ignored = {"upload", "iblock", "press-center", "disclosure", "products", "product", "news", "company"}
+    ignored = {
+        "upload", "iblock", "press-center", "disclosure", "products", "product",
+        "news", "company", "ru", "en", "about",
+    }
     file_suffixes = {"xls", "xlsx", "csv", "xml", "json", "pdf"}
     for source in sources:
+        if source.capability in {"identity_only", "registry"}:
+            continue
+        if not text_matches_entity(
+            values=[candidate, *aliases],
+            text=" ".join([source.title, source.snippet]),
+        ):
+            continue
         parsed = urlparse(source.url)
         suffix = parsed.path.rsplit(".", 1)[-1].casefold() if "." in parsed.path else ""
         if suffix in file_suffixes:

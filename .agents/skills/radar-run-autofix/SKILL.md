@@ -200,6 +200,22 @@ candidate plus initial/incremental signal chain must then be repeated; passing
 only the previously failed command is insufficient. Never weaken recall,
 control, provenance, trace, or dedupe thresholds to obtain PASS.
 
+For reproducibility gates with independent initial runs A and B plus incremental
+run C, validate each initial run before queueing the next stage. A failed B must
+not queue C. Record every superseded run and monitoring series in the frozen
+acceptance session. Even when C is missing, the validator must write a machine
+`FAIL` report with the available run IDs and control matrix instead of exiting
+before evidence is persisted.
+
+If the five-cycle limit proves that the approved DoD is measuring external
+provider variance rather than a local pipeline defect, stop and request an
+explicit design decision. A subsequently approved acceptance revision must
+archive the original manifest, freeze and machine `FAIL`; create a new
+versioned amendment and hash; keep controls, URLs, dates and semantic integrity
+rules unchanged unless the design decision explicitly says otherwise; and add
+the unresolved provider-stability work to the tracker. Never overwrite the
+original failed evidence or describe it as a pass under the revised policy.
+
 Each corrective patch must run the narrowest meaningful tests first, then
 broader tests when risk is meaningful. Prefer:
 

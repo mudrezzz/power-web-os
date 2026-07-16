@@ -18,6 +18,7 @@ class SignalMonitoringRunRequest(BaseModel):
     idempotency_key: str | None = None
     correlation_id: str | None = None
     requester: str = "api"
+    monitoring_series_id: str = Field(default="default", min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
 
 
 class SignalMonitoringPreflightResponse(BaseModel):
@@ -32,6 +33,9 @@ class SignalMonitoringPreflightResponse(BaseModel):
     lookback_days: int = 0
     budget: dict[str, Any] = Field(default_factory=dict)
     effective_signal_policies: list[dict[str, Any]] = Field(default_factory=list)
+    monitoring_series_id: str = "default"
+    previous_source_key_count: int = 0
+    previous_watermark_count: int = 0
 
 
 class SignalMonitoringOutputSummaryResponse(BaseModel):

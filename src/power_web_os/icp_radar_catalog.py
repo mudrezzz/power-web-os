@@ -23,6 +23,9 @@ from power_web_os.icp_radar import (
     SourcePolicy,
     radar_definition_to_payload,
 )
+from power_web_os.application.radar.signal_monitoring.criterion_vocabulary import (
+    signal_criterion_vocabulary,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -435,6 +438,8 @@ def _intent_signal_from_payload(payload: dict[str, Any]) -> IntentSignalDefiniti
             incremental_overlap_days=int(monitoring.get("incremental_overlap_days", 2)),
             cadence=str(monitoring.get("cadence") or "manual"),
             source_lanes=tuple(str(item) for item in monitoring.get("source_lanes", ("known_source", "official_company", "signal_specific", "open_web"))),
+            search_terms=tuple(str(item) for item in monitoring.get("search_terms", ()) if str(item).strip()),
+            evidence_match_terms=tuple(str(item) for item in monitoring.get("evidence_match_terms", ()) if str(item).strip()),
         ),
     )
 
@@ -659,6 +664,7 @@ def _planned_signal(
     source_ids: tuple[str, ...],
 ) -> IntentSignalDefinition:
     policy = SourcePolicy(source_ids[:3], "OR", True, "low")
+    search_terms, evidence_match_terms = signal_criterion_vocabulary(name=name, description=description)
     return IntentSignalDefinition(
         signal_id=f"{definition_id}-{code.lower()}",
         code=code,
@@ -708,6 +714,10 @@ def _planned_signal(
                     (2, "Сигнал подтвержден релевантным источником."),
                 )
             ),
+        ),
+        monitoring_policy=SignalMonitoringCriterionPolicy(
+            search_terms=search_terms,
+            evidence_match_terms=evidence_match_terms,
         ),
     )
 

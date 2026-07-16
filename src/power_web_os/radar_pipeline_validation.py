@@ -19,6 +19,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--baseline-run-id", default="")
     parser.add_argument("--first-live-run-id", default="")
     parser.add_argument("--second-live-run-id", default="")
+    parser.add_argument("--initial-live-run-id", action="append", default=[])
+    parser.add_argument("--incremental-live-run-id", default="")
+    parser.add_argument("--restart-verified", action="store_true")
     parser.add_argument("--api-url", default="http://127.0.0.1:8001")
     parser.add_argument("--skip-tests", action="store_true")
     return parser
@@ -29,16 +32,23 @@ def main(argv: list[str] | None = None) -> int:
     manifest = _manifest_path(args.pipeline, args.slice_id)
     first = _load_report(args.api_url, args.pipeline, args.first_live_run_id)
     second = _load_report(args.api_url, args.pipeline, args.second_live_run_id)
+    initial = [_load_report(args.api_url, args.pipeline, item) for item in args.initial_live_run_id]
+    incremental = _load_report(args.api_url, args.pipeline, args.incremental_live_run_id)
     report = RadarPipelineSliceValidator().validate(
         manifest_path=manifest,
         first_live_report=first,
         second_live_report=second,
+        initial_live_reports=initial,
+        incremental_live_report=incremental,
+        restart_verified=args.restart_verified,
         baseline_run_id=args.baseline_run_id,
         run_tests=not args.skip_tests,
     )
     print(f"validation_status={report.validation_status}")
     print(f"first_live_run_id={report.first_live_run_id or 'missing'}")
     print(f"second_live_run_id={report.second_live_run_id or 'missing'}")
+    print(f"initial_live_run_ids={','.join(report.initial_live_run_ids) or 'missing'}")
+    print(f"incremental_live_run_id={report.incremental_live_run_id or 'missing'}")
     for item in report.requirements:
         print(f"{item.requirement_id}={item.status}")
     return 0 if report.validation_status == "PASS" else 1

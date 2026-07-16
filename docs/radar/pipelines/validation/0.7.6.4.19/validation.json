@@ -1,0 +1,367 @@
+{
+  "schema_version": "radar_namespace_closure_validation.v1",
+  "slice_id": "0.7.6.4.19",
+  "validation_status": "PASS",
+  "generated_at": "2026-07-16T21:33:50.435045Z",
+  "run_ids": {
+    "candidate_baseline": "radar-run-3bbf9c0f-330e-4468-8901-966a751234a8",
+    "candidate_live": "radar-run-b03fac86-7307-448f-8deb-c1ea1794956c",
+    "signal_baseline_initial": "signal-run-010ef75d-c626-44e3-a025-56c95522c1a8",
+    "signal_baseline_incremental": "signal-run-df00b3b8-267c-4091-a4dd-8167434e2cf3",
+    "signal_live_initial": "signal-run-8eb6d673-a6f6-417a-8519-8cc50e7e94f8",
+    "signal_live_incremental": "signal-run-47e29772-8cbf-421e-8072-7c2d951ba611"
+  },
+  "requirements": [
+    {
+      "requirement_id": "NS-ROOT-01",
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "NS-CAND-01",
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "NS-TRACE-01",
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "NS-SIGNAL-01",
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "NS-SIGNAL-02",
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "NS-LINEAGE-01",
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "NS-NO-RERUN-01",
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "NS-RESTART-01",
+      "status": "PASS"
+    }
+  ],
+  "candidate_quality": {
+    "accepted_baseline": {
+      "strict_recall": 0.8889,
+      "visible_recall": 0.8889,
+      "legal_baseline_visible_count": 8,
+      "visible_candidate_count": 77,
+      "retained_upstream_lead_count": 102,
+      "duplicate_candidate_id_count": 0,
+      "empty_provenance_candidate_count": 0,
+      "unexplained_drop_count": 0,
+      "false_negative_count": 2
+    },
+    "fresh_live": {
+      "strict_recall": 1.0,
+      "visible_recall": 0.8889,
+      "legal_baseline_visible_count": 8,
+      "visible_candidate_count": 91,
+      "retained_upstream_lead_count": 110,
+      "duplicate_candidate_id_count": 0,
+      "empty_provenance_candidate_count": 0,
+      "unexplained_drop_count": 0,
+      "false_negative_count": 1,
+      "required_quality_candidate_count": 6,
+      "required_quality_accepted_count": 3,
+      "required_quality_review_count": 3,
+      "signal_quality_scope_candidate_ids": [
+        "ао-воронежсинтезкаучук",
+        "ао-красноярский-завод-синтетического-каучука",
+        "ао-сибур-химпром",
+        "ооо-нтц-им-русвинилпром",
+        "ппо-в-ооо-сибур-кстово",
+        "ппо-ооо-томскнефтехим-нефтегазстройпрофсоюза-россии"
+      ],
+      "duplicate_signal_quality_candidate_count": 0,
+      "missing_quality_candidate_ids": [],
+      "missing_quality_candidate_provenance_ids": [],
+      "checks": {
+        "blind_mode": true,
+        "hints_disabled": true,
+        "strict_recall": true,
+        "visible_recall": true,
+        "legal_baseline_visible": true,
+        "visible_breadth": true,
+        "retained_breadth": true,
+        "duplicates": true,
+        "empty_provenance": true,
+        "unexplained_drops": true,
+        "explicit_false_negative_reasons": true,
+        "quality_scope": true,
+        "handoff_mode": true
+      },
+      "quality_pass": true
+    }
+  },
+  "semantic_trace_comparison": {
+    "classification": "provider_drift",
+    "baseline_trace_count": 277,
+    "live_trace_count": 304,
+    "baseline_phases": [
+      "lifecycle",
+      "planning",
+      "collection",
+      "provider",
+      "normalization",
+      "extraction",
+      "evaluation",
+      "validation",
+      "artifact"
+    ],
+    "live_phases": [
+      "lifecycle",
+      "planning",
+      "collection",
+      "provider",
+      "normalization",
+      "extraction",
+      "evaluation",
+      "validation",
+      "artifact"
+    ],
+    "phase_order_ok": true,
+    "behavior_regressions": [],
+    "provider_drift": [
+      "provider_trace_count:172->190"
+    ]
+  },
+  "signal_quality": {
+    "accepted_baseline_initial": {
+      "candidate_count": 6,
+      "accepted_candidate_count": 3,
+      "review_candidate_count": 3,
+      "signal_rule_count": 2,
+      "candidate_signal_pair_count": 12,
+      "task_count": 27,
+      "orphan_decisions": 0,
+      "opaque_known_tasks": 0,
+      "unrestricted_official_tasks": 0,
+      "open_web_task_count": 15,
+      "receipt_gap_count": 0,
+      "false_not_observed_count": 0,
+      "initial_lookback_days": 365,
+      "incremental_window_count": 0,
+      "failed_watermark_advances": 0,
+      "observed_count": 4,
+      "zero_score_observed_count": 0,
+      "rejected_observed_count": 0,
+      "entity_mismatch_rejection_count": 9,
+      "negative_control_tested_count": 4,
+      "negative_control_false_positive_count": 0,
+      "retrieved_at_as_fresh_count": 0,
+      "unknown_date_review_count": 2,
+      "out_of_window_confirmed_count": 0,
+      "sources_without_capability_count": 0,
+      "cross_entity_known_task_count": 0,
+      "identity_confirmed_signal_count": 0,
+      "alternate_query_count": 27,
+      "transport_retry_proven": 0,
+      "unretried_transport_error_count": 0,
+      "duplicate_review_count": 0,
+      "unreasoned_retained_item_count": 0,
+      "duplicate_count": 0,
+      "previous_source_key_count": 0,
+      "republished_previous_source_count": 0
+    },
+    "accepted_baseline_incremental": {
+      "candidate_count": 6,
+      "accepted_candidate_count": 3,
+      "review_candidate_count": 3,
+      "signal_rule_count": 2,
+      "candidate_signal_pair_count": 12,
+      "task_count": 25,
+      "orphan_decisions": 0,
+      "opaque_known_tasks": 0,
+      "unrestricted_official_tasks": 0,
+      "open_web_task_count": 13,
+      "receipt_gap_count": 0,
+      "false_not_observed_count": 0,
+      "initial_lookback_days": 90,
+      "incremental_window_count": 25,
+      "failed_watermark_advances": 0,
+      "observed_count": 0,
+      "zero_score_observed_count": 0,
+      "rejected_observed_count": 0,
+      "entity_mismatch_rejection_count": 1,
+      "negative_control_tested_count": 4,
+      "negative_control_false_positive_count": 0,
+      "retrieved_at_as_fresh_count": 0,
+      "unknown_date_review_count": 4,
+      "out_of_window_confirmed_count": 0,
+      "sources_without_capability_count": 0,
+      "cross_entity_known_task_count": 0,
+      "identity_confirmed_signal_count": 0,
+      "alternate_query_count": 25,
+      "transport_retry_proven": 0,
+      "unretried_transport_error_count": 0,
+      "duplicate_review_count": 3,
+      "unreasoned_retained_item_count": 0,
+      "duplicate_count": 0,
+      "previous_source_key_count": 24,
+      "republished_previous_source_count": 0
+    },
+    "fresh_initial": {
+      "candidate_count": 6,
+      "accepted_candidate_count": 3,
+      "review_candidate_count": 3,
+      "signal_rule_count": 2,
+      "candidate_signal_pair_count": 12,
+      "task_count": 36,
+      "orphan_decisions": 0,
+      "opaque_known_tasks": 0,
+      "unrestricted_official_tasks": 0,
+      "open_web_task_count": 24,
+      "receipt_gap_count": 0,
+      "false_not_observed_count": 0,
+      "initial_lookback_days": 365,
+      "incremental_window_count": 0,
+      "failed_watermark_advances": 0,
+      "observed_count": 7,
+      "zero_score_observed_count": 0,
+      "rejected_observed_count": 0,
+      "entity_mismatch_rejection_count": 0,
+      "negative_control_tested_count": 4,
+      "negative_control_false_positive_count": 0,
+      "retrieved_at_as_fresh_count": 0,
+      "unknown_date_review_count": 15,
+      "out_of_window_confirmed_count": 0,
+      "sources_without_capability_count": 0,
+      "cross_entity_known_task_count": 0,
+      "identity_confirmed_signal_count": 0,
+      "alternate_query_count": 36,
+      "transport_retry_proven": 0,
+      "unretried_transport_error_count": 0,
+      "duplicate_review_count": 0,
+      "unreasoned_retained_item_count": 0,
+      "duplicate_count": 0,
+      "previous_source_key_count": 0,
+      "republished_previous_source_count": 0
+    },
+    "fresh_incremental": {
+      "candidate_count": 6,
+      "accepted_candidate_count": 3,
+      "review_candidate_count": 3,
+      "signal_rule_count": 2,
+      "candidate_signal_pair_count": 12,
+      "task_count": 45,
+      "orphan_decisions": 0,
+      "opaque_known_tasks": 0,
+      "unrestricted_official_tasks": 0,
+      "open_web_task_count": 33,
+      "receipt_gap_count": 0,
+      "false_not_observed_count": 0,
+      "initial_lookback_days": 90,
+      "incremental_window_count": 45,
+      "failed_watermark_advances": 0,
+      "observed_count": 2,
+      "zero_score_observed_count": 0,
+      "rejected_observed_count": 0,
+      "entity_mismatch_rejection_count": 0,
+      "negative_control_tested_count": 4,
+      "negative_control_false_positive_count": 0,
+      "retrieved_at_as_fresh_count": 0,
+      "unknown_date_review_count": 3,
+      "out_of_window_confirmed_count": 0,
+      "sources_without_capability_count": 0,
+      "cross_entity_known_task_count": 0,
+      "identity_confirmed_signal_count": 0,
+      "alternate_query_count": 45,
+      "transport_retry_proven": 2,
+      "unretried_transport_error_count": 4,
+      "duplicate_review_count": 3,
+      "unreasoned_retained_item_count": 0,
+      "duplicate_count": 2,
+      "previous_source_key_count": 67,
+      "republished_previous_source_count": 0
+    },
+    "positive_controls": {
+      "matched": 4,
+      "matched_ids": [
+        "khimprom-modernization-automation-2025",
+        "voronezh-commissioning-2026",
+        "voronezh-special-component-2026",
+        "voronezh-kommersant-plant-2026"
+      ],
+      "missing": []
+    },
+    "negative_controls": {
+      "matched": 4,
+      "matched_ids": [
+        "voronezh-old-abireg-repair",
+        "kzsk-old-kommersant-modernization",
+        "khimprom-old-interfax-investment",
+        "voronezh-conflicting-smotrim-date"
+      ],
+      "missing": []
+    },
+    "unknown_date_controls": {
+      "matched": 1,
+      "matched_ids": [
+        "khimprom-official-turnaround-date-unknown"
+      ],
+      "missing": []
+    },
+    "initial_checks": {
+      "candidate_count": true,
+      "accepted_scope": true,
+      "review_scope": true,
+      "criterion_count": true,
+      "pair_count": true,
+      "positive_controls": true,
+      "negative_controls": true,
+      "false_positive_controls": true,
+      "unknown_date_review": true,
+      "receipt_gaps": true,
+      "orphan_decisions": true,
+      "cross_entity_known_tasks": true,
+      "identity_sources_not_confirmed": true,
+      "rejected_evidence_not_observed": true,
+      "false_not_observed": true,
+      "zero_score_observed": true,
+      "source_capabilities": true,
+      "retrieval_time_not_freshness": true,
+      "out_of_window_not_confirmed": true,
+      "transport_errors_retried": true,
+      "retained_items_reasoned": true,
+      "required_lanes_not_budget_limited": true
+    },
+    "incremental_checks": {
+      "incremental_windows": true,
+      "previous_source_keys": true,
+      "no_republished_sources": true,
+      "failed_watermarks_static": true,
+      "receipt_gaps": true,
+      "orphan_decisions": true,
+      "false_not_observed": true
+    },
+    "lineage_checks": {
+      "initial_source": true,
+      "incremental_source": true,
+      "initial_pipeline": true,
+      "incremental_pipeline": true
+    },
+    "initial_pass": true,
+    "incremental_pass": true,
+    "lineage_pass": true
+  },
+  "restart_round_trip": {
+    "candidate_run": true,
+    "candidate_trace": true,
+    "signal_initial": true,
+    "signal_incremental": true
+  },
+  "process_retrospective": {
+    "behavior_regressions": [],
+    "provider_drift": [
+      "provider_trace_count:172->190"
+    ],
+    "roadmap_correction_required": false,
+    "decision": "Root namespace closure is proven by fresh live evidence."
+  }
+}

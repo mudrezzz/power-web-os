@@ -50,6 +50,7 @@ class SignalTemporalEvidenceService:
         window_start: str,
         window_end: str,
     ) -> SignalEvidence:
+        evidence = _with_text_event_interval(evidence, source)
         if source.date_conflict:
             return evidence.model_copy(update={
                 "published_at": source.published_at,
@@ -103,6 +104,38 @@ def _with_url_date(source: SignalSourceRef) -> SignalSourceRef:
         "date_confidence": "medium",
         "date_evidence": value,
     })
+
+
+def _with_text_event_interval(evidence: SignalEvidence, source: SignalSourceRef) -> SignalEvidence:
+    if evidence.event_at:
+        return evidence
+    text = " ".join([source.title, source.snippet, evidence.fact, evidence.excerpt])
+    patterns = (
+        (r"(?:перв\w*|\bI\b|\bQ1\b)\s+квартал\w*\s+(20\d{2})", 1),
+        (r"(?:втор\w*|\bII\b|\bQ2\b)\s+квартал\w*\s+(20\d{2})", 2),
+        (r"(?:трет\w*|\bIII\b|\bQ3\b)\s+квартал\w*\s+(20\d{2})", 3),
+        (r"(?:четверт\w*|\bIV\b|\bQ4\b)\s+квартал\w*\s+(20\d{2})", 4),
+        (r"(?:first|\bQ1\b)\s+quarter(?:\s+of)?\s+(20\d{2})", 1),
+        (r"(?:second|\bQ2\b)\s+quarter(?:\s+of)?\s+(20\d{2})", 2),
+        (r"(?:third|\bQ3\b)\s+quarter(?:\s+of)?\s+(20\d{2})", 3),
+        (r"(?:fourth|\bQ4\b)\s+quarter(?:\s+of)?\s+(20\d{2})", 4),
+    )
+    for pattern, quarter in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if not match:
+            continue
+        year = int(match.group(1))
+        start_month = (quarter - 1) * 3 + 1
+        end_month = start_month + 2
+        end_day = 31 if end_month in {3, 12} else 30
+        return evidence.model_copy(update={
+            "event_at": f"{year:04d}-{start_month:02d}-01",
+            "event_end_at": f"{year:04d}-{end_month:02d}-{end_day:02d}",
+            "date_basis": "snippet",
+            "date_confidence": "medium",
+            "date_evidence": match.group(0),
+        })
+    return evidence
 
 
 def _event_date_is_source_supported(evidence: SignalEvidence, source: SignalSourceRef) -> bool:

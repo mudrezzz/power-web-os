@@ -1,0 +1,63 @@
+{
+  "schema_version": "radar_acceptance_freeze.v2",
+  "manifest_path": "C:/Users/solovev.v/Documents/ALT_PRJs/ABM/docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.19.1.acceptance.json",
+  "manifest_sha256": "ab149a4f8d56a0565582a2bf2c1a786eb852bec0c4d60bb7d9b771c1d04963d2",
+  "git_commit": "b1b316ee75d84b6a8ab1e30ebbf9466642674696",
+  "frozen_at": "2026-07-16T20:48:39Z",
+  "supersedes_manifest_sha256": "9dfab1ee6a2a449109d35b8cf53b097cae3a4b48797bfedfb4c7214df2d6d82e",
+  "original_validation_status": "FAIL",
+  "acceptance_amendment": "docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.19.1/ACCEPTANCE_AMENDMENT_V2.md",
+  "approved_deviation": "provider_search_drift",
+  "initial_live_run_ids": [
+    "signal-run-8eb6d673-a6f6-417a-8519-8cc50e7e94f8",
+    "signal-run-6754eba6-a43a-4594-8236-d7ed60f6d2c5"
+  ],
+  "incremental_live_run_id": "signal-run-47e29772-8cbf-421e-8072-7c2d951ba611",
+  "pre_restart_report_sha256": {
+    "signal-run-8eb6d673-a6f6-417a-8519-8cc50e7e94f8": "7e94be22aac9860523883798aace64df46e75aa068c0157bcbe6433fd878cfb1",
+    "signal-run-6754eba6-a43a-4594-8236-d7ed60f6d2c5": "223e61d70c2aec3544ff5e7d36d824b063f391d077271045208fb0f97204606c",
+    "signal-run-47e29772-8cbf-421e-8072-7c2d951ba611": "4640e7b51644ae0612b6ca19bbb9a7f9898516c00844825f7fdbcff75d3f2abd"
+  },
+  "slice_id": "0.7.6.4.19.1",
+  "acceptance_session_id": "46065b891e37",
+  "radar_id": "benchmark-sibur-holding-contour",
+  "monitoring_series_ids": [
+    "sm-46065b891e37-a",
+    "sm-46065b891e37-b5"
+  ],
+  "partial_report_sha256": {
+    "signal-run-8eb6d673-a6f6-417a-8519-8cc50e7e94f8": "7e94be22aac9860523883798aace64df46e75aa068c0157bcbe6433fd878cfb1",
+    "signal-run-6754eba6-a43a-4594-8236-d7ed60f6d2c5": "223e61d70c2aec3544ff5e7d36d824b063f391d077271045208fb0f97204606c"
+  },
+  "live_completed_at": "2026-07-16T21:21:51Z",
+  "superseded_live_attempts": [
+    {
+      "initial_run_id": "signal-run-d93ae8fa-324d-4ea5-ab5a-6fbaf003a976",
+      "incremental_run_id": "signal-run-558fa87a-12d6-45ff-b4e1-3fdc6d217e3b",
+      "monitoring_series_id": "sm-46065b891e37-b",
+      "reason": "second_initial_run_failed_frozen_reproducibility_gate",
+      "recorded_at": "2026-07-16T14:29:45Z"
+    },
+    {
+      "initial_run_id": "signal-run-06e2c55e-cf63-475b-85dc-c65b8b7e2fdd",
+      "incremental_run_id": "",
+      "monitoring_series_id": "sm-46065b891e37-b2",
+      "reason": "second_initial_run_failed_frozen_reproducibility_gate",
+      "recorded_at": "2026-07-16T14:54:23Z"
+    },
+    {
+      "initial_run_id": "signal-run-ad820219-80df-4857-841a-703e0e08be0d",
+      "incremental_run_id": "",
+      "monitoring_series_id": "sm-46065b891e37-b3",
+      "reason": "second_initial_run_failed_frozen_reproducibility_gate",
+      "recorded_at": "2026-07-16T15:42:07Z"
+    },
+    {
+      "initial_run_id": "signal-run-b64396ea-37c9-4c9c-a66b-735615fc2a18",
+      "incremental_run_id": "",
+      "monitoring_series_id": "sm-46065b891e37-b4",
+      "reason": "second_initial_run_failed_frozen_reproducibility_gate",
+      "recorded_at": "2026-07-16T16:12:43Z"
+    }
+  ]
+}

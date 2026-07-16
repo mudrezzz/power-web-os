@@ -301,6 +301,23 @@ pytest node IDs; collect required persisted run reports; then run
 `Implemented`, and AS IS contains the slice change record. See ADR
 `2026-07-10-radar-pipeline-acceptance-evidence-loop.md`.
 
+When a quality gate requires two independent initial runs and one incremental
+run, validate A and B separately before queueing C. Keep failed attempts in the
+acceptance freeze. An incomplete chain is still a valid diagnostic result and
+must produce `validation_status=FAIL`; a missing C must not collapse validation
+into an untracked traceback. Do not finalize AS IS from a partially passing
+control matrix.
+
+If an explicit product decision revises the DoD after a bounded live failure,
+preserve the original manifest, freeze and validation report as immutable v1
+`FAIL` evidence. Create a versioned acceptance amendment and a new frozen hash,
+state exactly which criterion changed, and keep the unresolved quality issue in
+the tracker. The revised validator must include a negative test proving that a
+weaker failure pattern still cannot pass. For `0.7.6.4.19.1`, the approved v2
+contour is `>=3/4` per independent initial run, `4/4` in at least one run and
+`4/4` across their union; all temporal, source, provenance, negative-control
+and incremental-dedupe rules remain mandatory.
+
 ## How To Add Radar Backend Code After 0.7.6.4.8
 
 Radar backend code now has a package skeleton under:

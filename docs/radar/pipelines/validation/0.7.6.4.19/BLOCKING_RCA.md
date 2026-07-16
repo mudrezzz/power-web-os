@@ -1,10 +1,10 @@
 # Radar Root Namespace Closure: Blocking Live RCA
 
-Status: **BLOCKED BY LIVE QUALITY REGRESSION**
+Status: **RESOLVED BY 0.7.6.4.19.1**
 
-This is an interim RCA, not the final validation report. Slice `0.7.6.4.19`
-remains In Progress until the complete live chain produces a machine-generated
-`PASS` report.
+This document preserves the interim RCA that blocked the first live closure
+attempt. The final proof is the machine-generated `PASS` report in
+`docs/radar/pipelines/validation/0.7.6.4.19/validation.json`.
 
 ## Candidate Discovery Proof
 
@@ -115,3 +115,28 @@ rules are checked directly by the namespace validator.
 - Run a third, normal incremental search to prove watermarks and deduplication.
 - After `0.7.6.4.19.1` passes, repeat the complete fresh candidate and Signal
   Monitoring validation chain required by `0.7.6.4.19`.
+
+## Resolution
+
+Corrective slice `0.7.6.4.19.1` added criterion-owned search vocabulary,
+auditable cross-criterion evidence reconciliation, strict capability
+enforcement and a reproducibility contour that preserves the original failed
+acceptance proof instead of overwriting it.
+
+The accepted live evidence is:
+
+- initial A `signal-run-8eb6d673-a6f6-417a-8519-8cc50e7e94f8`: positive
+  controls `4/4`, negative controls `4/4`, unknown-date controls `1/1`;
+- independent initial B
+  `signal-run-6754eba6-a43a-4594-8236-d7ed60f6d2c5`: positive controls `3/4`,
+  negative controls `4/4`, unknown-date controls `1/1`; the one exact-source
+  miss is classified as `provider_search_drift`;
+- incremental C `signal-run-47e29772-8cbf-421e-8072-7c2d951ba611`: `67`
+  previous source keys, zero republished evidence, zero receipt gaps and zero
+  illegal watermark advances.
+
+The parent namespace validator then compared the fresh chain with the accepted
+baselines and returned `PASS` for all `NS-*` requirements. Search-result
+stability is deliberately separated from architecture closure: OpenRouter
+mechanism experiments belong to `0.7.6.4.19.2`, and an independent provider is
+considered only conditionally in `0.7.6.4.19.3`.

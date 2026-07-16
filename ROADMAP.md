@@ -9114,7 +9114,7 @@ Required proof before Done:
 
 ### Slice 0.7.6.4.19: Radar root namespace closure and compatibility sunset
 
-- Status: In Progress
+- Status: Done
 - Goal: Finish Radar root namespace migration and prove with a fresh live candidate-discovery plus initial/incremental Signal Monitoring chain that package relocation introduced no behavioral regression.
 - User value: A new developer can open `src/power_web_os/application` without seeing the old flat Radar namespace as the apparent architecture.
 - Problem statement: Even after individual migrations, old root-level Radar files can linger as real behavior owners or undocumented compatibility leftovers. The project needs a final closure slice that makes package-owned Radar architecture visibly true in the filesystem.
@@ -9164,12 +9164,14 @@ Required proof before Done:
   - Provider drift may hide regressions; use semantic trace comparison plus fixed quality thresholds.
   - A migration-only slice can expose algorithmic defects; do not hide them or change algorithms after five autofix cycles, create a blocking corrective slice instead.
 - Behavior change: false
-- Blocking live RCA: Candidate run radar-run-b03fac86-7307-448f-8deb-c1ea1794956c passed discovery thresholds: strict recall 1.0, visible recall 0.8889, 91 visible, 110 retained, 84 accepted, 7 review-needed, zero duplicates/provenance gaps/unexplained drops. Initial signal run signal-run-55a9cfb4-b0f1-48ee-8aef-df20a236266f completed with 6 candidates and 12 pairs and clean receipts, but after URL canonicalization matched only 2/4 positive controls, 1 negative control and 1 unknown-date control; one identity_only XLSX source incorrectly confirmed a fresh signal. Incremental run was not started because it cannot repair initial quality. Corrective slice 0.7.6.4.19.1 is Ready; 0.7.6.4.19 remains In Progress.
+- Blocking live RCA: Resolved. Corrective slice 0.7.6.4.19.1 preserved the original strict acceptance failure, implemented criterion-owned search obligations and cross-criterion evidence reconciliation, and passed the approved reproducibility contour. The final parent validation reused the fresh blind candidate run and accepted initial/incremental signal runs and returned PASS for every NS-* requirement. Historical RCA remains at docs/radar/pipelines/validation/0.7.6.4.19/BLOCKING_RCA.md.
+- Closeout: Machine validation PASS. Candidate live radar-run-b03fac86-7307-448f-8deb-c1ea1794956c: blind mode, hints disabled, strict recall 1.0, visible recall 0.8889, 8/9 legal baseline targets, 91 visible candidates, 110 retained upstream leads, zero duplicate IDs, provenance gaps and unexplained drops; the remaining Tobolsk miss is explicitly not_generated. Initial signal run signal-run-8eb6d673-a6f6-417a-8519-8cc50e7e94f8: 6 candidates (3 accepted, 3 review-needed), 12 pairs, positives 4/4, negatives 4/4, unknown-date 1/1, zero receipt gaps, false not_observed, rejected observed, score-zero confirmed or source-policy violations. Incremental signal-run-47e29772-8cbf-421e-8072-7c2d951ba611: 67 previous source keys, zero republished evidence, zero receipt gaps and zero illegal watermark advances. Candidate trace preserved phase order with no behavior regressions; provider trace count drift 172 to 190 is classified as expected provider drift within all quality thresholds. API/worker restart preserved reports. Full pytest passed with one expected skip; frontend production build passed. Search-result reproducibility beyond the approved contour is deferred to 0.7.6.4.19.2; independent-provider fallback remains conditional in 0.7.6.4.19.3.
 - Pipeline: radar-cross-pipeline
+- Validation report: docs/radar/pipelines/validation/0.7.6.4.19/validation.json
 
 ### Slice 0.7.6.4.19.1: Signal monitoring live benchmark reachability and cross-criterion evidence reconciliation
 
-- Status: Ready
+- Status: Done
 - Goal: Restore reproducible live Signal Monitoring quality proof without benchmark-control leakage or source-policy weakening.
 - User value: A user receives signal results that are both recall-first and defensible: relevant events found under one query are not lost for another criterion, while identity-only sources never masquerade as fresh evidence.
 - Problem statement: Fresh live run signal-run-55a9cfb4-b0f1-48ee-8aef-df20a236266f reached 6 candidates and 12 pairs with complete receipts, but found only 2 of 4 positive controls and 1 negative control; it also confirmed one signal from an identity_only XLSX source. The previous accepted quality benchmark therefore is not reproducible enough to prove 0.7.6.4.19.
@@ -9181,63 +9183,19 @@ Required proof before Done:
   - Make positive-control matching URL-canonical and event-aware through a control set frozen before live execution, without passing controls into planning.
   - Make at least two negative controls reproducibly exercise live retrieval and temporal/binding rejection without production hardcodes.
   - Run two independently initialized live quality searches, then one normal incremental run, and compare all three with accepted baselines and the failed-run RCA.
-- Out of scope:
-  - No candidate rediscovery or candidate-universe expansion.
-  - No benchmark company, URL or event hardcodes in production packages.
-  - No weakening of 4/4 positive, negative, provenance, temporal, source-binding or incremental-dedupe thresholds.
-  - No UI redesign or scheduling changes.
-- Implementation notes:
-  - Start from Signal Monitoring AS IS and the persisted RCA for signal-run-55a9cfb4-b0f1-48ee-8aef-df20a236266f.
-  - Create reviewed TO BE Markdown/PDF and an acceptance manifest before production behavior changes.
-  - Freeze candidate ids, criteria, positive/negative/unknown controls, accepted URL sets and date intervals before the first live run; record the manifest SHA-256 in both validation reports.
-  - The manifest and accepted URL sets cannot be changed after inspecting either live result. A missing control remains a failure and requires an explicit design revision.
-  - Controls are loaded only by the post-run evaluator and controls_in_planning_count must remain zero.
-  - Reused evidence must keep source ref, originating receipt and a separate criterion-validation record.
-  - The two initial runs must both start with empty prior source keys and watermarks without deleting persisted evidence or weakening normal incremental semantics.
-  - The third run is a normal incremental run based on the second initial run and proves watermarks and dedupe.
-  - If a negative control needs a validation-only live metadata probe, isolate it from production outcomes and still require at least two production report items rejected by temporal or binding rules.
-  - Slice 0.7.6.4.19 remains In Progress until this corrective slice and the complete candidate plus signal chain pass.
-- Tests:
-  - Recorded test: evidence retrieved under S1 and independently valid for S2 is reconciled once with complete provenance; irrelevant evidence is not copied.
-  - Adversarial integration fixture: an open-web XLSX classified as identity_only attempts to confirm a signal and must be retained only as identity/review evidence.
-  - Criterion-routing fixture: valid S2 evidence arrives through an S1 retrieval receipt and is accepted for S2 only after a separate deterministic criterion validation.
-  - Capability tests: identity_only and registry sources produce zero confirmed fresh signals across known-source, official and open-web paths.
-  - Planner tests: each criterion retains a bounded distinct query obligation and controls never enter planning.
-  - Evaluator tests: query/fragment URL tracking is ignored while host/path identity remains strict.
-  - Manifest test: controls, accepted URLs and dates are frozen before execution; initial A, initial B and incremental evaluation use the same recorded SHA-256.
-  - Live gate A and B: each independently initialized run has 6 candidates, 2 criteria, 12 pairs, 4/4 positive controls, at least 2 negative controls, at least 1 unknown-date review, zero false positives and zero receipt/orphan/capability violations.
-  - Incremental gate C: per-lane windows, zero republished confirmed/review evidence, correct watermarks and reports readable after API/worker restart.
-  - Validation matrix explicitly reports each control as found in both initial runs, found only in A, found only in B, found in neither, found under another criterion, or found and rejected.
-  - Full Signal Monitoring, architecture, persistence, API/jobs, documentation, roadmap and static regression.
-- Docs:
-  - Create Signal Monitoring TO BE Markdown/PDF and adjacent acceptance manifest for this corrective slice.
-  - Add the failed-run RCA, previous single-run overfitting retrospective and control-freeze decision to the validation report.
-  - Record the acceptance-manifest SHA-256, all three run ids and the per-control cross-run matrix.
-  - Finalize Signal Monitoring AS IS Markdown/PDF only after both independent initial runs and the incremental run pass.
-  - Update Developer Guide, benchmark runbook and validation skills with the reproducibility rule.
+- Out of scope: No candidate rediscovery or candidate-universe expansion; no benchmark company, URL or event hardcodes in production; no weakening of negative, provenance, temporal, source-binding or incremental-dedupe thresholds; no UI redesign or scheduling changes. Exact-URL provider stability beyond the approved v2 4/4 plus 3/4 aggregate contour is deferred to 0.7.6.4.19.2 and conditional 0.7.6.4.19.3.
+- Implementation notes: The original v1 manifest SHA 9dfab1ee... and machine FAIL are preserved. After the five-cycle limit, the user approved acceptance amendment v2: each independent initial run must find at least 3/4 positives, one must find 4/4, their union must find 4/4, and the only accepted miss is explicit provider_search_drift. Controls, accepted URLs, dates and every semantic integrity requirement remain unchanged. Incremental C still must prove B-series watermarks and dedupe. Slice 0.7.6.4.19 remains In Progress until the complete chain is repeated.
+- Tests: Recorded tests cover cross-criterion validation, identity-only rejection, task-scoped refs, query obligations and canonical URLs. Validator tests prove 4/4 plus 3/4 aggregate acceptance and reject two runs missing the same control. Live A signal-run-8eb6d673-a6f6-417a-8519-8cc50e7e94f8 and B signal-run-6754eba6-a43a-4594-8236-d7ed60f6d2c5 are independent; C must run incrementally from B5, then reports must survive API/worker restart. Full Signal Monitoring, architecture, persistence, API/jobs, documentation, roadmap and static regression remain mandatory.
+- Docs: Keep the original v1 acceptance/freeze/validation artifacts as immutable FAIL evidence. Track the reviewed v2 amendment, new frozen SHA, all A/B/C run ids, provider_search_drift classification and cross-run matrix. Finalize Signal Monitoring AS IS Markdown/PDF only after incremental C, restart verification and machine PASS. Corrective stability work is tracked in 0.7.6.4.19.2 and conditional 0.7.6.4.19.3.
 - Demo impact: No new demo surface. The existing Signal Monitoring quality run becomes reproducible and its evidence classifications remain visible through current reports.
-- Acceptance criteria:
-  - The acceptance manifest is finalized before live execution, has a recorded SHA-256 and is byte-identical for all three evaluations.
-  - Exact candidate ids, criteria, positive/negative/unknown controls, accepted URL sets and date intervals are not changed after viewing live output.
-  - Two independently initialized live runs each contain exactly 6 evidence-complete candidates with at least 3 accepted and 3 review-needed, 2 criteria and 12 candidate/criterion pairs.
-  - Both initial runs independently match 4 of 4 positive controls by candidate, criterion, pre-approved canonical URL and event/publication interval.
-  - Both initial runs independently contain at least 2 negative controls that remain unconfirmed; false-positive controls equal zero.
-  - Both initial runs retain at least 1 relevant unknown-date item for human review.
-  - Identity-only and registry sources confirm zero fresh signals in every source lane.
-  - The discovered XLSX regression is covered by an integration test and cannot produce a confirmed observation.
-  - Cross-criterion reuse has an originating receipt plus an independent criterion-validation record; irrelevant reuse and silent copying equal zero.
-  - Controls in planning, production benchmark hardcodes, receipt gaps, orphan decisions, false not_observed, score-zero confirmed observations and budget-limited required lanes all equal zero.
-  - The validation matrix distinguishes controls found in both runs, one run, neither run, another criterion, and rejected evidence; closing from aggregate observed_count is forbidden.
-  - A third normal incremental run republishes zero prior confirmed/review evidence and advances only successful lane watermarks.
-  - All three persisted reports survive API/worker restart.
-  - Machine validation is PASS, TO BE is Implemented and AS IS is reconciled before Done.
-- Risks:
-  - Cross-criterion reconciliation can inflate false positives; mitigate with the same deterministic evidence validator and explicit secondary decision records.
-  - Provider search drift can make exact URLs brittle; compare canonical accepted URLs for the same event without broad domain-only matching.
-  - Validation-only probes can leak controls into product behavior; keep them isolated, post-run and machine-audited.
+- Acceptance criteria: The v1 two-times-4/4 criterion remains archived as FAIL. Under the explicitly approved v2 DoD, A and B each contain 6 evidence-complete candidates, 3 accepted and 3 review-needed, 2 criteria and 12 pairs; each finds at least 3/4 positive controls; at least one finds 4/4; their union finds 4/4; only the frozen Khimprom control may be a provider_search_drift miss; each independently passes at least 2 negative and 1 unknown-date controls with zero false positives, identity confirmations, receipt gaps, orphan decisions, false not_observed, score-zero confirmed or required-budget limits. C uses B5 history, republishes zero prior confirmed/review evidence and advances only successful watermarks. All reports survive restart, validation is PASS, TO BE is Implemented and AS IS is reconciled before Done.
+- Risks: The accepted v2 DoD proves functional correctness but not exact-URL search stability. This limitation must remain explicit in AS IS and validation. 0.7.6.4.19.2 evaluates OpenRouter search mechanisms after the basic Power Web foundation; 0.7.6.4.19.3 is activated only if an independent provider is justified.
+- Acceptance manifest: docs/radar/pipelines/signal-monitoring/to-be/RADAR_SIGNAL_MONITORING_TO_BE_0.7.6.4.19.1.acceptance.json
 - Behavior change: true
+- Closeout: Approved v2 PASS. Original v1 SHA 9dfab1ee6a2a449109d35b8cf53b097cae3a4b48797bfedfb4c7214df2d6d82e remains archived as FAIL. V2 SHA ab149a4f8d56a0565582a2bf2c1a786eb852bec0c4d60bb7d9b771c1d04963d2. Initial A signal-run-8eb6d673-a6f6-417a-8519-8cc50e7e94f8: positives 4/4, negatives 4/4, unknown 1/1. Initial B signal-run-6754eba6-a43a-4594-8236-d7ed60f6d2c5: positives 3/4, negatives 4/4, unknown 1/1; one accepted provider_search_drift. Incremental C signal-run-47e29772-8cbf-421e-8072-7c2d951ba611: 67 previous source keys, 2 confirmed and 3 review duplicates suppressed, 0 republished, 0 receipt gaps, 0 illegal watermark advances. API/worker restart preserved all report hashes. Full pytest and frontend build passed. Search stability follow-ups: 0.7.6.4.19.2 Backlog and 0.7.6.4.19.3 conditional Blocked.
 - Pipeline: signal-monitoring
 - Validation policy: A single successful initial live run is insufficient. Controls must be frozen before execution and pass in two independently initialized initial runs. The incremental run is a separate dedupe/watermark proof and cannot substitute for initial-search reproducibility.
+- Validation report: docs/radar/pipelines/signal-monitoring/validation/0.7.6.4.19.1/validation.json
 
 ### Slice 0.7.6.5.1: Configurable candidate filtering policy and reversible public projection
 
@@ -9366,7 +9324,7 @@ Required proof before Done:
 
 ### Slice 0.7.6.6.0: Power Web discovery AS IS, benchmark contract and architecture
 
-- Status: Backlog
+- Status: Ready
 - Goal: Define the current gap, target architecture, benchmark format, source governance and hard acceptance process before production implementation.
 - User value: The team agrees what a trustworthy Power Web result means before spending provider budget or encoding unsafe identity assumptions.
 - Problem statement: There is no people-discovery AS IS, identity contract, HH capability proof, benchmark schema or accepted boundary between broad discovery and strict identity confirmation.

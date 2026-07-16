@@ -132,6 +132,10 @@ def _candidate_quality(
     )
     task_context = _dict(_dict(run.get("run_metadata")).get("task_context"))
     false_negatives = _list(evaluation.get("false_negatives"))
+    funnel_reason_by_id = {
+        str(item.get("baseline_id") or ""): str(item.get("path_reason") or "").strip()
+        for item in _list(evaluation.get("benchmark_target_funnel"))
+    }
     checks = {
         "blind_mode": context.get("benchmark_mode") == "blind",
         "hints_disabled": context.get("benchmark_hints_used") is False,
@@ -144,7 +148,11 @@ def _candidate_quality(
         "empty_provenance": int(metrics["empty_provenance_candidate_count"] or 0) == 0,
         "unexplained_drops": int(metrics["unexplained_drop_count"] or 0) == 0,
         "explicit_false_negative_reasons": all(
-            str(item.get("closeout_path_reason") or item.get("path_reason") or "").strip()
+            str(
+                item.get("closeout_path_reason")
+                or item.get("path_reason")
+                or funnel_reason_by_id.get(str(item.get("baseline_id") or ""), "")
+            ).strip()
             for item in false_negatives
         ),
         "quality_scope": (

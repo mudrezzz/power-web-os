@@ -277,6 +277,8 @@ export type SignalMonitoringCriterionPolicy = {
   incremental_overlap_days: number;
   cadence: 'manual' | 'daily' | 'weekly' | 'monthly' | string;
   source_lanes: Array<'known_source' | 'official_company' | 'signal_specific' | 'open_web' | string>;
+  search_terms: string[];
+  evidence_match_terms: string[];
 };
 
 export type MonitoringPolicy = {

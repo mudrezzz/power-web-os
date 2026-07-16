@@ -28,6 +28,7 @@ def configure_signal_monitoring_demo_arguments(parser: Any, *, root: Path) -> No
     parser.add_argument("--candidate-id", action="append", default=[])
     parser.add_argument("--signal-code", action="append", default=[])
     parser.add_argument("--lookback-days", type=int, default=None)
+    parser.add_argument("--monitoring-series-id", default="default")
     parser.add_argument(
         "--signal-monitoring-profile",
         choices=["signal_monitoring_smoke", "signal_monitoring_quality"],
@@ -50,6 +51,7 @@ def run_signal_monitoring_demo_command(args: Any) -> dict[str, Any] | None:
         candidate_ids=tuple(args.candidate_id),
         signal_codes=tuple(args.signal_code),
         lookback_days=args.lookback_days,
+        monitoring_series_id=args.monitoring_series_id,
         run_profile=args.signal_monitoring_profile,
         output_path=args.signal_monitoring_output,
         poll_interval_seconds=args.benchmark_poll_interval_seconds,
@@ -65,6 +67,7 @@ def run_live_signal_monitoring(
     candidate_ids: tuple[str, ...] = (),
     signal_codes: tuple[str, ...] = (),
     lookback_days: int | None = None,
+    monitoring_series_id: str = "default",
     run_profile: str = "signal_monitoring_smoke",
     output_path: Path | None = None,
     poll_interval_seconds: float = 3.0,
@@ -81,6 +84,7 @@ def run_live_signal_monitoring(
             signal_codes=signal_codes,
             lookback_days=lookback_days,
             run_profile=run_profile,
+            monitoring_series_id=monitoring_series_id,
         )
         if not preflight.get("ready_for_live_run"):
             raise RuntimeError(f"Signal monitoring preflight failed: {preflight.get('issues')}")
@@ -93,6 +97,7 @@ def run_live_signal_monitoring(
                 "signal_codes": list(signal_codes),
                 **({"lookback_days": lookback_days} if lookback_days is not None else {}),
                 "run_profile": run_profile,
+                "monitoring_series_id": monitoring_series_id,
                 "idempotency_key": f"demo-signal:{uuid4()}",
                 "requester": "demo-cli",
             },
@@ -196,10 +201,12 @@ def _preflight(
     signal_codes: tuple[str, ...],
     lookback_days: int | None,
     run_profile: str,
+    monitoring_series_id: str,
 ) -> dict[str, Any]:
     params: list[tuple[str, str | int]] = [
         ("source_candidate_run_id", source_run_id),
         ("run_profile", run_profile),
+        ("monitoring_series_id", monitoring_series_id),
     ]
     if lookback_days is not None:
         params.append(("lookback_days", lookback_days))
