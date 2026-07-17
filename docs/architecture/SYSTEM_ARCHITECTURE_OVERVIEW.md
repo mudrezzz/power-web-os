@@ -745,6 +745,25 @@ The referenced platform should be used as follows:
 
 ## Demo Implications
 
+## Power Web Discovery Boundary
+
+Slice `0.7.6.6.0` defines Power Web Discovery as the third independent Radar
+pipeline after Candidate Discovery and Signal Monitoring. The current
+`PowerWebRole`/`PowerWebBoard`/Access Planner path remains a deterministic
+read-model and planning boundary; it does not search for people.
+
+The future pipeline receives an accepted account snapshot, compiles role demand,
+retrieves public source-native profiles, retains reversible identity hypotheses,
+validates employment and relationships, and emits an evidence-backed reviewable
+graph. Only reviewed states are adapted to the existing Access Planner input.
+
+The application package is provider-neutral. HH.ru initially participates only
+through bounded public web search restricted to `hh.ru`; authorized HH API
+access is deferred and is not a prerequisite for the first runtime slices.
+People artifacts retain product-safe metadata and excerpts, not raw pages,
+private contacts or binary images. Cross-photo facial matching is outside the
+approved core architecture.
+
 The demo should evolve through these stages:
 
 1. Local deterministic Access Plan from fixture data.

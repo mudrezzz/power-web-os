@@ -9324,7 +9324,7 @@ Required proof before Done:
 
 ### Slice 0.7.6.6.0: Power Web discovery AS IS, benchmark contract and architecture
 
-- Status: Ready
+- Status: Done
 - Goal: Define the current gap, target architecture, benchmark format, source governance and hard acceptance process before production implementation.
 - User value: The team agrees what a trustworthy Power Web result means before spending provider budget or encoding unsafe identity assumptions.
 - Problem statement: There is no people-discovery AS IS, identity contract, HH capability proof, benchmark schema or accepted boundary between broad discovery and strict identity confirmation.
@@ -9363,12 +9363,15 @@ Required proof before Done:
   - Benchmark truth can be uncertain; require source-backed controls and unknown states.
   - Provider assumptions may be wrong; verify before coding.
   - Keep the first TO BE architectural and delegate behavior deltas to children.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.0.acceptance.json
 - Behavior change: false
+- Implementation evidence: Implemented provider-neutral Power Web contracts, AS IS/TO BE Markdown and visually verified PDFs, source capability matrix, bounded HH public-web probe, privacy/governance ADRs, benchmark schema and validation tooling. User workbook sibur_priority_contacts.xlsx normalized without private contacts into accepted sibur-priority-power-web@1.0.0: 10 profiles including 1 anonymous HH profile, 8 identity pairs (4 same-person and 4 different-person), current/former/unknown employment controls and 4 relationship controls. Canonical benchmark SHA-256 b3c851e1bf56a3ee6808267e2619f678295843cc3fa3bacd16a19f3f28d4114b; source workbook SHA-256 a1281d4372d2fcc9a0df8107d28c504a4209ed590a382036cc6a76b97a8fc476. Blind leakage 0, private contact retention false, HH API calls 0, machine validation 11/11 PASS, full pytest PASS with one existing skip.
 - Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.0/validation.json
 
 ### Slice 0.7.6.6.1: Power Web account handoff and buying-committee role demand
 
-- Status: Backlog
+- Status: Ready
 - Goal: Create immutable account handoff and explainable role-demand plans without rerunning candidate discovery or signal monitoring.
 - User value: The system knows which internal and external roles must be found for a product/account before searching for people.
 - Problem statement: Current rendering accepts arbitrary roles but has no immutable input snapshot or deterministic buying-committee coverage plan.
@@ -9450,6 +9453,21 @@ Required proof before Done:
 - Behavior change: true
 - Pipeline: power-web-discovery
 - Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.2/validation.json
+
+### Slice 0.7.6.6.2.1: HH.ru authorized API integration and licensed resume access
+
+- Status: Backlog
+- Goal: Add licensed HH resume access only after credentials, budget and an approved usage model exist.
+- Problem statement: Public-web HH results are useful source leads but cannot provide licensed resume coverage; authorized API access is currently unavailable and expensive.
+- Scope: Confirm contractual/privacy terms; add an integration-layer HH OAuth/API adapter behind the Power Web source port; add explicit budgets, rate limits, retained-field policy and audit; compare licensed coverage with hh_public_web without changing identity rules.
+- Out of scope: No work before credentials, budget and approved usage exist; no scraping or authorization bypass; no automatic identity confirmation from one resume; no private-contact export or automated outreach.
+- Implementation notes: Keep disabled by default; integration adapter owns OAuth/transport only; application owns capability/evidence semantics; public-web lane remains independently available.
+- Tests: Contract/licensing preflight and fail-closed credential tests; recorded adapter fixtures before bounded live API tests; budget, redaction, retention and architecture checks.
+- Docs: Create TO BE/PDF/acceptance manifest only after access approval; add provider/compliance ADR and update Power Web AS IS only if implemented.
+- Acceptance criteria: Hard DoD: approved access and use model; bounded licensed calls; no secrets or private contacts in artifacts; source receipts and budget audit complete; identity rules unchanged; validation PASS. Otherwise the slice remains Backlog/Blocked and does not block 0.7.6.6.1-0.7.6.6.9.
+- Risks: API terms may not permit ABM usage; licensed access may be cost-prohibitive; resume data requires stricter retention and access controls.
+- Behavior change: true
+- Pipeline: power-web-discovery
 
 ### Slice 0.7.6.6.3: Power Web person profile extraction and evidence completeness
 

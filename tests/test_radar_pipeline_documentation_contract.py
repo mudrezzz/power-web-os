@@ -335,3 +335,30 @@ def test_signal_monitoring_product_surface_is_semantically_validated() -> None:
     assert validation["incremental"]["cumulative_confirmed"] == 4
     assert validation["unresolved_retained_evidence_count"] == 0
     assert all(status == "PASS" for status in validation["checks"].values())
+
+
+def test_power_web_architecture_evidence_loop() -> None:
+    base = Path("docs/radar/pipelines/power-web-discovery")
+    as_is = base / "RADAR_POWER_WEB_DISCOVERY_AS_IS.md"
+    to_be = base / "to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.0.md"
+    manifest_path = to_be.with_suffix(".acceptance.json")
+    validation_path = base / "validation/0.7.6.6.0/validation.json"
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    validation = json.loads(validation_path.read_text(encoding="utf-8"))
+    requirements = {item["id"] for item in manifest["requirements"] if item["mandatory"]}
+    expected = {
+        "PW-ASIS-01", "PW-ARCH-01", "PW-ID-01", "PW-GOV-01", "PW-HH-01",
+        "PW-HH-02", "PW-BENCH-01", "PW-BENCH-02", "PW-CAP-01",
+        "PW-COMPAT-01", "PW-PROC-01",
+    }
+
+    assert requirements == expected
+    assert all(requirement in as_is.read_text(encoding="utf-8") for requirement in requirements)
+    assert all(requirement in to_be.read_text(encoding="utf-8") for requirement in requirements)
+    assert as_is.with_suffix(".pdf").exists()
+    assert to_be.with_suffix(".pdf").exists()
+    assert validation["requirements"]["PW-BENCH-02"]["status"] in {"PASS", "FAIL"}
+    if not (base / "benchmark/benchmark.user.json").exists():
+        assert validation["validation_status"] == "FAIL"
+        assert validation["benchmark_status"] == "blocked_missing_user_benchmark"

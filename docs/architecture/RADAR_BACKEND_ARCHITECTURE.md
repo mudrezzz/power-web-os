@@ -622,6 +622,23 @@ bounded slices:
 
 ## Remaining Migration Debt
 
+## Power Web Discovery Package
+
+`application/radar/power_web_discovery` is the owner of the third pipeline's
+provider-neutral contracts. Slice `0.7.6.6.0` adds role-demand, profile,
+identity, employment, relationship, influence, evidence, graph, benchmark and
+source-capability contracts without adding production retrieval.
+
+Allowed dependencies are Python standard-library types, Pydantic and stable
+shared account references. The package must not import Candidate Discovery or
+Signal Monitoring internals, FastAPI, persistence, Celery, HTTP clients or
+provider SDKs. Later outer-layer adapters implement search and source metadata
+ports.
+
+The existing `PowerWebRole`, `PowerWebBoard` and deterministic Access Planner
+remain downstream compatibility/read-model contracts. They do not own person
+identity or employment decisions.
+
 The architecture rescue for staged execution and the service facade is complete,
 but not every root-level `live_radar_*` module has moved. Deferred legacy
 modules must be migrated through their own slices when their behavior changes or

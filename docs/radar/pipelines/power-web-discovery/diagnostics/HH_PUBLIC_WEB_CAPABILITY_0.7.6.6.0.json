@@ -1,0 +1,46 @@
+{
+  "schema_version": "power_web_public_source_probe.v1",
+  "source_id": "hh_public_web",
+  "probed_at": "2026-07-17",
+  "probe_status": "PASS",
+  "access_mode": "public_search_only",
+  "receipts": [
+    {
+      "query_pattern": "organization_role",
+      "query": "site:hh.ru/resume СИБУР главный инженер резюме",
+      "domain_restriction": "hh.ru",
+      "outcome": "citation_found",
+      "url": "https://surgut.hh.ru/resumes/direktor_proizvodstva",
+      "title": "Резюме соискателей на позицию директор производства в Сургуте",
+      "excerpt": "Публично индексируемая страница результатов содержит роль и упоминание группы компаний; это source lead, а не подтвержденная личность.",
+      "page_access_limited": true,
+      "api_calls": 0
+    },
+    {
+      "query_pattern": "organization_unit",
+      "query": "site:hh.ru/resume СИБУР директор по производству резюме",
+      "domain_restriction": "hh.ru",
+      "outcome": "citation_found",
+      "url": "https://perm.hh.ru/resumes/direktor_proizvodstva/proektnaya_rabota",
+      "title": "Резюме директоров производства на проектную работу в Перми",
+      "excerpt": "Публичный поисковый индекс раскрывает страницу подбора с работодателем и производственной ролью без необходимости HH API.",
+      "page_access_limited": true,
+      "api_calls": 0
+    },
+    {
+      "query_pattern": "role_geography",
+      "query": "site:hh.ru/resume главный инженер Нижний Новгород резюме",
+      "domain_restriction": "hh.ru",
+      "outcome": "citation_found",
+      "url": "https://nn.hh.ru/resumes/glavnyy_inzhener_po_ekspluatacii_zdaniy_i_sooruzheniy",
+      "title": "Резюме главных инженеров по эксплуатации в Нижнем Новгороде",
+      "excerpt": "Индексируемая страница подтверждает доступность role-and-geography поиска; отдельные анонимные записи не превращаются в named identity.",
+      "page_access_limited": true,
+      "api_calls": 0
+    }
+  ],
+  "retained_private_contacts": 0,
+  "raw_pages_retained": 0,
+  "hh_api_calls": 0,
+  "conclusion": "Public web search can produce bounded HH source leads. Full profile access and identity confirmation remain unproven and require other evidence."
+}

@@ -831,3 +831,33 @@ def test_candidate_discovery_universe_admission_classes_are_importable() -> None
 
     assert hasattr(module, "CandidateDiscoveryUpstreamAdmissionPolicy")
     assert hasattr(module, "CandidateDiscoveryUpstreamAdmissionDecision")
+
+
+def test_power_web_discovery_application_package_is_provider_neutral() -> None:
+    package = Path(__file__).resolve().parents[1] / "src/power_web_os/application/radar/power_web_discovery"
+    forbidden_prefixes = (
+        "fastapi",
+        "sqlalchemy",
+        "celery",
+        "redis",
+        "httpx",
+        "requests",
+        "openai",
+        "power_web_os.application.radar.candidate_discovery",
+        "power_web_os.application.radar.signal_monitoring",
+        "power_web_os.persistence",
+        "power_web_os.integrations",
+    )
+    violations: list[str] = []
+    for path in package.glob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            imported: list[str] = []
+            if isinstance(node, ast.Import):
+                imported = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imported = [node.module]
+            for name in imported:
+                if name.startswith(forbidden_prefixes):
+                    violations.append(f"{path.name}: {name}")
+    assert violations == []

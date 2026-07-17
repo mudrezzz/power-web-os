@@ -1,0 +1,548 @@
+{
+  "$defs": {
+    "EmploymentControl": {
+      "additionalProperties": false,
+      "properties": {
+        "control_id": {
+          "title": "Control Id",
+          "type": "string"
+        },
+        "subject_ref": {
+          "title": "Subject Ref",
+          "type": "string"
+        },
+        "employer": {
+          "title": "Employer",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "expected_state": {
+          "enum": [
+            "current",
+            "former",
+            "unknown"
+          ],
+          "title": "Expected State",
+          "type": "string"
+        },
+        "provenance_urls": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Provenance Urls",
+          "type": "array"
+        },
+        "as_of": {
+          "format": "date",
+          "title": "As Of",
+          "type": "string"
+        }
+      },
+      "required": [
+        "control_id",
+        "subject_ref",
+        "employer",
+        "title",
+        "expected_state",
+        "provenance_urls",
+        "as_of"
+      ],
+      "title": "EmploymentControl",
+      "type": "object"
+    },
+    "IdentityPairControl": {
+      "additionalProperties": false,
+      "properties": {
+        "control_id": {
+          "title": "Control Id",
+          "type": "string"
+        },
+        "left_profile_ref": {
+          "title": "Left Profile Ref",
+          "type": "string"
+        },
+        "right_profile_ref": {
+          "title": "Right Profile Ref",
+          "type": "string"
+        },
+        "expected_state": {
+          "enum": [
+            "possible",
+            "probable",
+            "confirmed_same",
+            "confirmed_different",
+            "rejected"
+          ],
+          "title": "Expected State",
+          "type": "string"
+        },
+        "provenance_urls": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Provenance Urls",
+          "type": "array"
+        },
+        "as_of": {
+          "format": "date",
+          "title": "As Of",
+          "type": "string"
+        }
+      },
+      "required": [
+        "control_id",
+        "left_profile_ref",
+        "right_profile_ref",
+        "expected_state",
+        "provenance_urls",
+        "as_of"
+      ],
+      "title": "IdentityPairControl",
+      "type": "object"
+    },
+    "PowerWebBenchmarkPlanningContext": {
+      "additionalProperties": false,
+      "properties": {
+        "account_id": {
+          "title": "Account Id",
+          "type": "string"
+        },
+        "account_name": {
+          "title": "Account Name",
+          "type": "string"
+        },
+        "product_context": {
+          "title": "Product Context",
+          "type": "string"
+        },
+        "role_policy": {
+          "items": {
+            "$ref": "#/$defs/RoleDemand"
+          },
+          "minItems": 8,
+          "title": "Role Policy",
+          "type": "array"
+        },
+        "allowed_source_lanes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Allowed Source Lanes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "account_id",
+        "account_name",
+        "product_context",
+        "role_policy",
+        "allowed_source_lanes"
+      ],
+      "title": "PowerWebBenchmarkPlanningContext",
+      "type": "object"
+    },
+    "PowerWebBlindControls": {
+      "additionalProperties": false,
+      "properties": {
+        "profiles": {
+          "items": {
+            "$ref": "#/$defs/ProfileControl"
+          },
+          "minItems": 10,
+          "title": "Profiles",
+          "type": "array"
+        },
+        "identity_pairs": {
+          "items": {
+            "$ref": "#/$defs/IdentityPairControl"
+          },
+          "minItems": 8,
+          "title": "Identity Pairs",
+          "type": "array"
+        },
+        "employment": {
+          "items": {
+            "$ref": "#/$defs/EmploymentControl"
+          },
+          "minItems": 3,
+          "title": "Employment",
+          "type": "array"
+        },
+        "relationships": {
+          "items": {
+            "$ref": "#/$defs/RelationshipControl"
+          },
+          "minItems": 3,
+          "title": "Relationships",
+          "type": "array"
+        }
+      },
+      "required": [
+        "profiles",
+        "identity_pairs",
+        "employment",
+        "relationships"
+      ],
+      "title": "PowerWebBlindControls",
+      "type": "object"
+    },
+    "PowerWebGuidedHint": {
+      "additionalProperties": false,
+      "properties": {
+        "hint_id": {
+          "title": "Hint Id",
+          "type": "string"
+        },
+        "hint_type": {
+          "enum": [
+            "role",
+            "source_lane",
+            "query_theme"
+          ],
+          "title": "Hint Type",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "hint_id",
+        "hint_type",
+        "value",
+        "reason"
+      ],
+      "title": "PowerWebGuidedHint",
+      "type": "object"
+    },
+    "PowerWebQualityThresholds": {
+      "additionalProperties": false,
+      "properties": {
+        "blind_control_leakage": {
+          "default": 0,
+          "title": "Blind Control Leakage",
+          "type": "integer"
+        },
+        "false_confirmed_person_merges": {
+          "default": 0,
+          "title": "False Confirmed Person Merges",
+          "type": "integer"
+        },
+        "confirmed_identity_precision": {
+          "default": 1.0,
+          "title": "Confirmed Identity Precision",
+          "type": "number"
+        },
+        "same_person_hypothesis_retention": {
+          "default": 1.0,
+          "title": "Same Person Hypothesis Retention",
+          "type": "number"
+        },
+        "same_person_probable_or_confirmed_recall": {
+          "default": 0.8,
+          "title": "Same Person Probable Or Confirmed Recall",
+          "type": "number"
+        },
+        "required_role_coverage": {
+          "default": 0.8,
+          "title": "Required Role Coverage",
+          "type": "number"
+        },
+        "employment_accuracy": {
+          "default": 0.9,
+          "title": "Employment Accuracy",
+          "type": "number"
+        },
+        "confirmed_relationships_without_provenance": {
+          "default": 0,
+          "title": "Confirmed Relationships Without Provenance",
+          "type": "integer"
+        },
+        "visible_graph_items_without_explanation": {
+          "default": 0,
+          "title": "Visible Graph Items Without Explanation",
+          "type": "integer"
+        },
+        "unexplained_benchmark_misses": {
+          "default": 0,
+          "title": "Unexplained Benchmark Misses",
+          "type": "integer"
+        }
+      },
+      "title": "PowerWebQualityThresholds",
+      "type": "object"
+    },
+    "ProfileControl": {
+      "additionalProperties": false,
+      "properties": {
+        "control_id": {
+          "title": "Control Id",
+          "type": "string"
+        },
+        "profile_ref": {
+          "title": "Profile Ref",
+          "type": "string"
+        },
+        "anonymous": {
+          "title": "Anonymous",
+          "type": "boolean"
+        },
+        "expected_display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Display Name"
+        },
+        "expected_employer": {
+          "title": "Expected Employer",
+          "type": "string"
+        },
+        "expected_title": {
+          "title": "Expected Title",
+          "type": "string"
+        },
+        "source_lane": {
+          "title": "Source Lane",
+          "type": "string"
+        },
+        "expected_public_facts": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Expected Public Facts",
+          "type": "array"
+        },
+        "provenance_urls": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Provenance Urls",
+          "type": "array"
+        },
+        "expected_role_demand_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Expected Role Demand Ids",
+          "type": "array"
+        },
+        "as_of": {
+          "format": "date",
+          "title": "As Of",
+          "type": "string"
+        },
+        "expected_state": {
+          "enum": [
+            "retained_profile",
+            "rejected_profile"
+          ],
+          "title": "Expected State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "control_id",
+        "profile_ref",
+        "anonymous",
+        "expected_employer",
+        "expected_title",
+        "source_lane",
+        "expected_public_facts",
+        "provenance_urls",
+        "as_of",
+        "expected_state"
+      ],
+      "title": "ProfileControl",
+      "type": "object"
+    },
+    "RelationshipControl": {
+      "additionalProperties": false,
+      "properties": {
+        "control_id": {
+          "title": "Control Id",
+          "type": "string"
+        },
+        "source_ref": {
+          "title": "Source Ref",
+          "type": "string"
+        },
+        "target_ref": {
+          "title": "Target Ref",
+          "type": "string"
+        },
+        "relationship_type": {
+          "title": "Relationship Type",
+          "type": "string"
+        },
+        "expected_state": {
+          "enum": [
+            "confirmed",
+            "review_needed",
+            "rejected"
+          ],
+          "title": "Expected State",
+          "type": "string"
+        },
+        "provenance_urls": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Provenance Urls",
+          "type": "array"
+        },
+        "as_of": {
+          "format": "date",
+          "title": "As Of",
+          "type": "string"
+        }
+      },
+      "required": [
+        "control_id",
+        "source_ref",
+        "target_ref",
+        "relationship_type",
+        "expected_state",
+        "provenance_urls",
+        "as_of"
+      ],
+      "title": "RelationshipControl",
+      "type": "object"
+    },
+    "RoleDemand": {
+      "additionalProperties": false,
+      "properties": {
+        "demand_id": {
+          "minLength": 1,
+          "title": "Demand Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "scope": {
+          "minLength": 1,
+          "title": "Scope",
+          "type": "string"
+        },
+        "aliases": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Aliases",
+          "type": "array"
+        },
+        "expected_evidence": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Expected Evidence",
+          "type": "array"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "demand_id",
+        "role",
+        "scope",
+        "reason"
+      ],
+      "title": "RoleDemand",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "power_web_benchmark.v1",
+      "default": "power_web_benchmark.v1",
+      "enum": [
+        "power_web_benchmark.v1"
+      ],
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "benchmark_id": {
+      "title": "Benchmark Id",
+      "type": "string"
+    },
+    "benchmark_version": {
+      "title": "Benchmark Version",
+      "type": "string"
+    },
+    "as_of": {
+      "format": "date",
+      "title": "As Of",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "user_accepted",
+        "superseded"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "planning_context": {
+      "$ref": "#/$defs/PowerWebBenchmarkPlanningContext"
+    },
+    "guided_hints": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/PowerWebGuidedHint"
+      },
+      "title": "Guided Hints",
+      "type": "array"
+    },
+    "blind_controls": {
+      "$ref": "#/$defs/PowerWebBlindControls"
+    },
+    "thresholds": {
+      "$ref": "#/$defs/PowerWebQualityThresholds"
+    }
+  },
+  "required": [
+    "benchmark_id",
+    "benchmark_version",
+    "as_of",
+    "status",
+    "planning_context",
+    "blind_controls"
+  ],
+  "title": "PowerWebBenchmark",
+  "type": "object"
+}

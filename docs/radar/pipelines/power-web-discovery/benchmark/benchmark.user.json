@@ -1,0 +1,549 @@
+{
+  "schema_version": "power_web_benchmark.v1",
+  "benchmark_id": "sibur-priority-power-web",
+  "benchmark_version": "1.0.0",
+  "as_of": "2026-07-17",
+  "status": "user_accepted",
+  "planning_context": {
+    "account_id": "sibur-priority-industrial-contour",
+    "account_name": "СИБУР: приоритетный промышленный контур",
+    "product_context": "SmartDiagnostics: предиктивная диагностика, надежность оборудования и ТОиР.",
+    "role_policy": [
+      {
+        "demand_id": "role-chief-engineer",
+        "role": "Главный инженер / технический руководитель",
+        "required": true,
+        "scope": "account_and_production_site",
+        "aliases": [
+          "chief engineer",
+          "технический директор"
+        ],
+        "expected_evidence": [
+          "public employer",
+          "public role title",
+          "source date or current-page basis"
+        ],
+        "reason": "Роль влияет на надежность, ТОиР, эксплуатацию или внедрение SmartDiagnostics."
+      },
+      {
+        "demand_id": "role-production-director",
+        "role": "Директор по производству",
+        "required": true,
+        "scope": "account_and_production_site",
+        "aliases": [
+          "руководитель производства",
+          "production director"
+        ],
+        "expected_evidence": [
+          "public employer",
+          "public role title",
+          "source date or current-page basis"
+        ],
+        "reason": "Роль влияет на надежность, ТОиР, эксплуатацию или внедрение SmartDiagnostics."
+      },
+      {
+        "demand_id": "role-maintenance-leader",
+        "role": "Руководитель ТОиР и ремонтов",
+        "required": true,
+        "scope": "account_and_production_site",
+        "aliases": [
+          "начальник ТОиР",
+          "руководитель ремонтов"
+        ],
+        "expected_evidence": [
+          "public employer",
+          "public role title",
+          "source date or current-page basis"
+        ],
+        "reason": "Роль влияет на надежность, ТОиР, эксплуатацию или внедрение SmartDiagnostics."
+      },
+      {
+        "demand_id": "role-reliability-leader",
+        "role": "Руководитель надежности",
+        "required": true,
+        "scope": "account_and_production_site",
+        "aliases": [
+          "главный эксперт по надежности",
+          "reliability leader"
+        ],
+        "expected_evidence": [
+          "public employer",
+          "public role title",
+          "source date or current-page basis"
+        ],
+        "reason": "Роль влияет на надежность, ТОиР, эксплуатацию или внедрение SmartDiagnostics."
+      },
+      {
+        "demand_id": "role-chief-technologist",
+        "role": "Главный технолог",
+        "required": true,
+        "scope": "account_and_production_site",
+        "aliases": [
+          "руководитель технологии",
+          "chief technologist"
+        ],
+        "expected_evidence": [
+          "public employer",
+          "public role title",
+          "source date or current-page basis"
+        ],
+        "reason": "Роль влияет на надежность, ТОиР, эксплуатацию или внедрение SmartDiagnostics."
+      },
+      {
+        "demand_id": "role-energy-director",
+        "role": "Руководитель энергообеспечения",
+        "required": true,
+        "scope": "account_and_production_site",
+        "aliases": [
+          "главный энергетик",
+          "energy director"
+        ],
+        "expected_evidence": [
+          "public employer",
+          "public role title",
+          "source date or current-page basis"
+        ],
+        "reason": "Роль влияет на надежность, ТОиР, эксплуатацию или внедрение SmartDiagnostics."
+      },
+      {
+        "demand_id": "role-automation-leader",
+        "role": "Руководитель АСУТП / КИПиА",
+        "required": true,
+        "scope": "account_and_production_site",
+        "aliases": [
+          "руководитель автоматизации",
+          "automation leader"
+        ],
+        "expected_evidence": [
+          "public employer",
+          "public role title",
+          "source date or current-page basis"
+        ],
+        "reason": "Роль влияет на надежность, ТОиР, эксплуатацию или внедрение SmartDiagnostics."
+      },
+      {
+        "demand_id": "role-digital-transformation-leader",
+        "role": "Руководитель цифровизации производства",
+        "required": true,
+        "scope": "account_and_production_site",
+        "aliases": [
+          "Industry 4.0",
+          "предиктивная диагностика"
+        ],
+        "expected_evidence": [
+          "public employer",
+          "public role title",
+          "source date or current-page basis"
+        ],
+        "reason": "Роль влияет на надежность, ТОиР, эксплуатацию или внедрение SmartDiagnostics."
+      }
+    ],
+    "allowed_source_lanes": [
+      "hh_public_web",
+      "official_company",
+      "professional_networks",
+      "publications_events",
+      "industry_web",
+      "generic_web"
+    ]
+  },
+  "guided_hints": [],
+  "blind_controls": {
+    "profiles": [
+      {
+        "control_id": "profile-control-zhalyuk-official-2026",
+        "profile_ref": "zhalyuk-official-2026",
+        "anonymous": false,
+        "expected_display_name": "Роман Жалюк",
+        "expected_employer": "ООО «ЗапСибНефтехим»",
+        "expected_title": "Главный инженер",
+        "source_lane": "official_company",
+        "expected_public_facts": [
+          "Роман Жалюк назван главным инженером предприятия.",
+          "Упомянуты цифровые технологии, ИИ и прогнозирование."
+        ],
+        "provenance_urls": [
+          "https://www.sibur.ru/zapsibneftekhim/press-center/sotrudniki-zapsibneftekhima-proveli-proforientatsionnyy-urok-dlya-shkolnikov-tobolska-/"
+        ],
+        "expected_role_demand_ids": [
+          "role-chief-engineer",
+          "role-digital-transformation-leader"
+        ],
+        "as_of": "2026-07-17",
+        "expected_state": "retained_profile"
+      },
+      {
+        "control_id": "profile-control-zhalyuk-industry-2025",
+        "profile_ref": "zhalyuk-industry-2025",
+        "anonymous": false,
+        "expected_display_name": "Роман Жалюк",
+        "expected_employer": "ООО «ЗапСибНефтехим»",
+        "expected_title": "Главный инженер",
+        "source_lane": "industry_web",
+        "expected_public_facts": [
+          "Роман Жалюк назван главным инженером ЗапСибНефтехима.",
+          "Материал посвящен цифровизации и надежности РЗА."
+        ],
+        "provenance_urls": [
+          "https://eepir.ru/new/cifrovaya-transformaciya-rza-tekushhee-sostoyanie-problematika-perspektivy/"
+        ],
+        "expected_role_demand_ids": [
+          "role-chief-engineer",
+          "role-digital-transformation-leader"
+        ],
+        "as_of": "2026-07-17",
+        "expected_state": "retained_profile"
+      },
+      {
+        "control_id": "profile-control-malyavin-official-2024",
+        "profile_ref": "malyavin-official-2024",
+        "anonymous": false,
+        "expected_display_name": "Алексей Малявин",
+        "expected_employer": "ООО «РусВинил»",
+        "expected_title": "Главный инженер",
+        "source_lane": "official_company",
+        "expected_public_facts": [
+          "Алексей Малявин назван главным инженером РусВинила."
+        ],
+        "provenance_urls": [
+          "https://www.sibur.ru/rusvinyl/press-center/rusvinil-podderzhal-provedenie-mezhdunarodnogo-ekologicheskogo-telefestivalya/"
+        ],
+        "expected_role_demand_ids": [
+          "role-chief-engineer",
+          "role-reliability-leader"
+        ],
+        "as_of": "2026-07-17",
+        "expected_state": "retained_profile"
+      },
+      {
+        "control_id": "profile-control-malyavin-industry-2025",
+        "profile_ref": "malyavin-industry-2025",
+        "anonymous": false,
+        "expected_display_name": "Алексей Малявин",
+        "expected_employer": "ООО «СИБУР-Кстово» / ООО «РусВинил»",
+        "expected_title": "Главный инженер",
+        "source_lane": "industry_web",
+        "expected_public_facts": [
+          "Алексей Малявин назван главным инженером двух предприятий.",
+          "Он описывает RBI и прогнозирование сроков ремонта."
+        ],
+        "provenance_urls": [
+          "https://vz-nn.ru/news/promyshlennost/72921/"
+        ],
+        "expected_role_demand_ids": [
+          "role-chief-engineer",
+          "role-reliability-leader",
+          "role-maintenance-leader"
+        ],
+        "as_of": "2026-07-17",
+        "expected_state": "retained_profile"
+      },
+      {
+        "control_id": "profile-control-shein-official-2024",
+        "profile_ref": "shein-official-2024",
+        "anonymous": false,
+        "expected_display_name": "Андрей Шеин",
+        "expected_employer": "ООО «СИБУР-Кстово» / ООО «РусВинил»",
+        "expected_title": "Главный технолог",
+        "source_lane": "official_company",
+        "expected_public_facts": [
+          "Андрей Шеин назван главным технологом двух предприятий."
+        ],
+        "provenance_urls": [
+          "https://www.sibur.ru/SiburKstovo/press-center/benzol-i-etilen-proizvodstva-sibur-kstovo-poluchili-nagrady-za-kachestvo/"
+        ],
+        "expected_role_demand_ids": [
+          "role-chief-technologist"
+        ],
+        "as_of": "2026-07-17",
+        "expected_state": "retained_profile"
+      },
+      {
+        "control_id": "profile-control-shein-industry-2025",
+        "profile_ref": "shein-industry-2025",
+        "anonymous": false,
+        "expected_display_name": "Андрей Шеин",
+        "expected_employer": "ООО «РусВинил»",
+        "expected_title": "Главный технолог",
+        "source_lane": "industry_web",
+        "expected_public_facts": [
+          "Андрей Шеин назван главным технологом РусВинила."
+        ],
+        "provenance_urls": [
+          "https://vz-nn.ru/news/promyshlennost/73096/"
+        ],
+        "expected_role_demand_ids": [
+          "role-chief-technologist"
+        ],
+        "as_of": "2026-07-17",
+        "expected_state": "retained_profile"
+      },
+      {
+        "control_id": "profile-control-stroev-official-2025",
+        "profile_ref": "stroev-official-2025",
+        "anonymous": false,
+        "expected_display_name": "Анатолий Строев",
+        "expected_employer": "ПАО «Казаньоргсинтез»",
+        "expected_title": "Главный инженер",
+        "source_lane": "official_company",
+        "expected_public_facts": [
+          "Анатолий Строев назван главным инженером Казаньоргсинтеза."
+        ],
+        "provenance_urls": [
+          "https://www.sibur.ru/kazanorgsintez/ru/press-center/sibur-rasshiryaet-proekt-po-provedeniyu-interaktivnykh-urokov-khimii-mendeleevskaya-smena/"
+        ],
+        "expected_role_demand_ids": [
+          "role-chief-engineer"
+        ],
+        "as_of": "2026-07-17",
+        "expected_state": "retained_profile"
+      },
+      {
+        "control_id": "profile-control-stroev-publication-2025",
+        "profile_ref": "stroev-publication-2025",
+        "anonymous": false,
+        "expected_display_name": "Анатолий Строев",
+        "expected_employer": "ПАО «Казаньоргсинтез»",
+        "expected_title": "Главный инженер",
+        "source_lane": "publications_events",
+        "expected_public_facts": [
+          "Анатолий Строев назван главным инженером Казаньоргсинтеза."
+        ],
+        "provenance_urls": [
+          "https://kazanfirst.ru/news/bolee-47-tysyachi-shkolnikov-i-studentov-tatarstana-stali-uchastnikami-mendeleevskoj-smeny"
+        ],
+        "expected_role_demand_ids": [
+          "role-chief-engineer"
+        ],
+        "as_of": "2026-07-17",
+        "expected_state": "retained_profile"
+      },
+      {
+        "control_id": "profile-control-muzafarov-publication-2025",
+        "profile_ref": "muzafarov-publication-2025",
+        "anonymous": false,
+        "expected_display_name": "Рустем Музафаров",
+        "expected_employer": "ПАО «Казаньоргсинтез»",
+        "expected_title": "Директор по производству; ранее главный инженер",
+        "source_lane": "industry_web",
+        "expected_public_facts": [
+          "Назначен директором по производству.",
+          "Ранее занимал должность главного инженера предприятия."
+        ],
+        "provenance_urls": [
+          "https://www.mrc.ru/news/417832-evgeniy-gorobec-naznachen-generalnim-direktorom-npp-neftehimiya"
+        ],
+        "expected_role_demand_ids": [
+          "role-production-director",
+          "role-chief-engineer"
+        ],
+        "as_of": "2026-07-17",
+        "expected_state": "retained_profile"
+      },
+      {
+        "control_id": "profile-control-anonymous-zapsib-toir-hh",
+        "profile_ref": "anonymous-zapsib-toir-hh",
+        "anonymous": true,
+        "expected_display_name": null,
+        "expected_employer": "ООО «ЗапСибНефтехим»",
+        "expected_title": "Начальник отдела ТОиР",
+        "source_lane": "hh_public_web",
+        "expected_public_facts": [
+          "Публично индексируемое HH-резюме содержит работодателя и роль.",
+          "ФИО и актуальность занятости не подтверждены."
+        ],
+        "provenance_urls": [
+          "https://hh.ru/resume/83f66d36000c499aec0027df83436b4b726665"
+        ],
+        "expected_role_demand_ids": [
+          "role-maintenance-leader"
+        ],
+        "as_of": "2026-07-17",
+        "expected_state": "retained_profile"
+      }
+    ],
+    "identity_pairs": [
+      {
+        "control_id": "identity-same-zhalyuk",
+        "left_profile_ref": "zhalyuk-official-2026",
+        "right_profile_ref": "zhalyuk-industry-2025",
+        "expected_state": "probable",
+        "provenance_urls": [
+          "https://www.sibur.ru/zapsibneftekhim/press-center/sotrudniki-zapsibneftekhima-proveli-proforientatsionnyy-urok-dlya-shkolnikov-tobolska-/",
+          "https://eepir.ru/new/cifrovaya-transformaciya-rza-tekushhee-sostoyanie-problematika-perspektivy/"
+        ],
+        "as_of": "2026-07-17"
+      },
+      {
+        "control_id": "identity-same-malyavin",
+        "left_profile_ref": "malyavin-official-2024",
+        "right_profile_ref": "malyavin-industry-2025",
+        "expected_state": "probable",
+        "provenance_urls": [
+          "https://www.sibur.ru/rusvinyl/press-center/rusvinil-podderzhal-provedenie-mezhdunarodnogo-ekologicheskogo-telefestivalya/",
+          "https://vz-nn.ru/news/promyshlennost/72921/"
+        ],
+        "as_of": "2026-07-17"
+      },
+      {
+        "control_id": "identity-same-shein",
+        "left_profile_ref": "shein-official-2024",
+        "right_profile_ref": "shein-industry-2025",
+        "expected_state": "probable",
+        "provenance_urls": [
+          "https://www.sibur.ru/SiburKstovo/press-center/benzol-i-etilen-proizvodstva-sibur-kstovo-poluchili-nagrady-za-kachestvo/",
+          "https://vz-nn.ru/news/promyshlennost/73096/"
+        ],
+        "as_of": "2026-07-17"
+      },
+      {
+        "control_id": "identity-same-stroev",
+        "left_profile_ref": "stroev-official-2025",
+        "right_profile_ref": "stroev-publication-2025",
+        "expected_state": "probable",
+        "provenance_urls": [
+          "https://www.sibur.ru/kazanorgsintez/ru/press-center/sibur-rasshiryaet-proekt-po-provedeniyu-interaktivnykh-urokov-khimii-mendeleevskaya-smena/",
+          "https://kazanfirst.ru/news/bolee-47-tysyachi-shkolnikov-i-studentov-tatarstana-stali-uchastnikami-mendeleevskoj-smeny"
+        ],
+        "as_of": "2026-07-17"
+      },
+      {
+        "control_id": "identity-different-zhalyuk-vs-malyavin",
+        "left_profile_ref": "zhalyuk-official-2026",
+        "right_profile_ref": "malyavin-official-2024",
+        "expected_state": "confirmed_different",
+        "provenance_urls": [
+          "https://www.sibur.ru/zapsibneftekhim/press-center/sotrudniki-zapsibneftekhima-proveli-proforientatsionnyy-urok-dlya-shkolnikov-tobolska-/",
+          "https://www.sibur.ru/rusvinyl/press-center/rusvinil-podderzhal-provedenie-mezhdunarodnogo-ekologicheskogo-telefestivalya/"
+        ],
+        "as_of": "2026-07-17"
+      },
+      {
+        "control_id": "identity-different-zhalyuk-vs-shein",
+        "left_profile_ref": "zhalyuk-official-2026",
+        "right_profile_ref": "shein-official-2024",
+        "expected_state": "confirmed_different",
+        "provenance_urls": [
+          "https://www.sibur.ru/zapsibneftekhim/press-center/sotrudniki-zapsibneftekhima-proveli-proforientatsionnyy-urok-dlya-shkolnikov-tobolska-/",
+          "https://www.sibur.ru/SiburKstovo/press-center/benzol-i-etilen-proizvodstva-sibur-kstovo-poluchili-nagrady-za-kachestvo/"
+        ],
+        "as_of": "2026-07-17"
+      },
+      {
+        "control_id": "identity-different-malyavin-vs-stroev",
+        "left_profile_ref": "malyavin-industry-2025",
+        "right_profile_ref": "stroev-official-2025",
+        "expected_state": "confirmed_different",
+        "provenance_urls": [
+          "https://vz-nn.ru/news/promyshlennost/72921/",
+          "https://www.sibur.ru/kazanorgsintez/ru/press-center/sibur-rasshiryaet-proekt-po-provedeniyu-interaktivnykh-urokov-khimii-mendeleevskaya-smena/"
+        ],
+        "as_of": "2026-07-17"
+      },
+      {
+        "control_id": "identity-different-shein-vs-stroev",
+        "left_profile_ref": "shein-industry-2025",
+        "right_profile_ref": "stroev-publication-2025",
+        "expected_state": "confirmed_different",
+        "provenance_urls": [
+          "https://vz-nn.ru/news/promyshlennost/73096/",
+          "https://kazanfirst.ru/news/bolee-47-tysyachi-shkolnikov-i-studentov-tatarstana-stali-uchastnikami-mendeleevskoj-smeny"
+        ],
+        "as_of": "2026-07-17"
+      }
+    ],
+    "employment": [
+      {
+        "control_id": "employment-zhalyuk-current",
+        "subject_ref": "zhalyuk-official-2026",
+        "employer": "ООО «ЗапСибНефтехим»",
+        "title": "Главный инженер",
+        "expected_state": "current",
+        "provenance_urls": [
+          "https://www.sibur.ru/zapsibneftekhim/press-center/sotrudniki-zapsibneftekhima-proveli-proforientatsionnyy-urok-dlya-shkolnikov-tobolska-/"
+        ],
+        "as_of": "2026-07-17"
+      },
+      {
+        "control_id": "employment-muzafarov-former-chief-engineer",
+        "subject_ref": "muzafarov-publication-2025",
+        "employer": "ПАО «Казаньоргсинтез»",
+        "title": "Главный инженер",
+        "expected_state": "former",
+        "provenance_urls": [
+          "https://www.mrc.ru/news/417832-evgeniy-gorobec-naznachen-generalnim-direktorom-npp-neftehimiya"
+        ],
+        "as_of": "2026-07-17"
+      },
+      {
+        "control_id": "employment-anonymous-hh-unknown",
+        "subject_ref": "anonymous-zapsib-toir-hh",
+        "employer": "ООО «ЗапСибНефтехим»",
+        "title": "Начальник отдела ТОиР",
+        "expected_state": "unknown",
+        "provenance_urls": [
+          "https://hh.ru/resume/83f66d36000c499aec0027df83436b4b726665"
+        ],
+        "as_of": "2026-07-17"
+      }
+    ],
+    "relationships": [
+      {
+        "control_id": "relationship-zhalyuk-chief-engineer",
+        "source_ref": "zhalyuk-official-2026",
+        "target_ref": "role-chief-engineer",
+        "relationship_type": "occupies_role",
+        "expected_state": "confirmed",
+        "provenance_urls": [
+          "https://www.sibur.ru/zapsibneftekhim/press-center/sotrudniki-zapsibneftekhima-proveli-proforientatsionnyy-urok-dlya-shkolnikov-tobolska-/"
+        ],
+        "as_of": "2026-07-17"
+      },
+      {
+        "control_id": "relationship-stroev-chief-engineer",
+        "source_ref": "stroev-official-2025",
+        "target_ref": "role-chief-engineer",
+        "relationship_type": "occupies_role",
+        "expected_state": "confirmed",
+        "provenance_urls": [
+          "https://www.sibur.ru/kazanorgsintez/ru/press-center/sibur-rasshiryaet-proekt-po-provedeniyu-interaktivnykh-urokov-khimii-mendeleevskaya-smena/"
+        ],
+        "as_of": "2026-07-17"
+      },
+      {
+        "control_id": "relationship-malyavin-reliability-influence",
+        "source_ref": "malyavin-industry-2025",
+        "target_ref": "role-reliability-leader",
+        "relationship_type": "influences_maintenance_and_reliability",
+        "expected_state": "review_needed",
+        "provenance_urls": [
+          "https://vz-nn.ru/news/promyshlennost/72921/"
+        ],
+        "as_of": "2026-07-17"
+      },
+      {
+        "control_id": "relationship-anonymous-maintenance-role",
+        "source_ref": "anonymous-zapsib-toir-hh",
+        "target_ref": "role-maintenance-leader",
+        "relationship_type": "possible_role_occupancy",
+        "expected_state": "review_needed",
+        "provenance_urls": [
+          "https://hh.ru/resume/83f66d36000c499aec0027df83436b4b726665"
+        ],
+        "as_of": "2026-07-17"
+      }
+    ]
+  },
+  "thresholds": {
+    "blind_control_leakage": 0,
+    "false_confirmed_person_merges": 0,
+    "confirmed_identity_precision": 1.0,
+    "same_person_hypothesis_retention": 1.0,
+    "same_person_probable_or_confirmed_recall": 0.8,
+    "required_role_coverage": 0.8,
+    "employment_accuracy": 0.9,
+    "confirmed_relationships_without_provenance": 0,
+    "visible_graph_items_without_explanation": 0,
+    "unexplained_benchmark_misses": 0
+  }
+}

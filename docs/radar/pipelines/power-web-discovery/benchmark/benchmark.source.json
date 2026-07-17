@@ -1,0 +1,42 @@
+{
+  "schema_version": "power_web_benchmark_source.v1",
+  "source_file_name": "sibur_priority_contacts.xlsx",
+  "source_sha256": "a1281d4372d2fcc9a0df8107d28c504a4209ed590a382036cc6a76b97a8fc476",
+  "source_size_bytes": 61374,
+  "source_sheets": [
+    "Итог (все контакты)",
+    "Contacts"
+  ],
+  "selected_public_rows": {
+    "Итог (все контакты)": [
+      3,
+      13,
+      27,
+      28,
+      46
+    ],
+    "Contacts": [
+      56
+    ]
+  },
+  "included_fields": [
+    "company",
+    "public_name_or_anonymous_marker",
+    "role_title",
+    "public_source_url",
+    "public_relevance_context"
+  ],
+  "excluded_private_fields": [
+    "phone",
+    "email",
+    "alternate_email",
+    "telegram",
+    "messenger_report",
+    "outreach_activity",
+    "private_social_profile",
+    "photo_binary"
+  ],
+  "raw_workbook_copied_to_repository": false,
+  "private_contact_values_retained": false,
+  "acceptance_basis": "User supplied the workbook and explicitly requested that it be used as the benchmark on 2026-07-17."
+}

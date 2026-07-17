@@ -1,0 +1,27 @@
+{
+  "schema_version": "radar_pipeline_acceptance.v1",
+  "slice_id": "0.7.6.6.0",
+  "pipeline_id": "power-web-discovery",
+  "behavior_change": false,
+  "to_be_markdown": "docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.0.md",
+  "to_be_pdf": "docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.0.pdf",
+  "as_is_markdown": "docs/radar/pipelines/power-web-discovery/RADAR_POWER_WEB_DISCOVERY_AS_IS.md",
+  "as_is_pdf": "docs/radar/pipelines/power-web-discovery/RADAR_POWER_WEB_DISCOVERY_AS_IS.pdf",
+  "validation_json": "docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.0/validation.json",
+  "validation_markdown": "docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.0/VALIDATION_REPORT.md",
+  "requirements": [
+    {"id": "PW-ASIS-01", "mandatory": true, "description": "Current Power Web absence is documented honestly.", "test_node_ids": ["tests/test_radar_pipeline_documentation_contract.py::test_power_web_architecture_evidence_loop"]},
+    {"id": "PW-ARCH-01", "mandatory": true, "description": "Third-pipeline ownership and handoff are explicit.", "test_node_ids": ["tests/test_power_web_discovery_contracts.py::test_existing_power_web_contracts_remain_compatible"]},
+    {"id": "PW-ID-01", "mandatory": true, "description": "Confirmed identities require corroboration and remain reversible.", "test_node_ids": ["tests/test_power_web_discovery_contracts.py::test_confirmed_identity_requires_two_dimensions_and_no_hard_conflict"]},
+    {"id": "PW-GOV-01", "mandatory": true, "description": "People-data governance forbids unsafe retention and action.", "test_node_ids": ["tests/test_power_web_discovery_contracts.py::test_artifact_rejects_unsafe_or_unresolved_payloads"]},
+    {"id": "PW-HH-01", "mandatory": true, "description": "HH public-web lane has three bounded query-pattern receipts.", "test_node_ids": ["tests/test_power_web_source_capabilities.py::test_hh_public_web_probe_uses_three_domain_restricted_queries"]},
+    {"id": "PW-HH-02", "mandatory": true, "description": "Initial architecture performs zero HH API calls.", "test_node_ids": ["tests/test_power_web_source_capabilities.py::test_hh_api_is_deferred_and_not_required"]},
+    {"id": "PW-BENCH-01", "mandatory": true, "description": "Benchmark schema enforces minima and blind isolation.", "test_node_ids": ["tests/test_power_web_benchmark_contract.py::test_blind_controls_never_enter_planning_payload"]},
+    {"id": "PW-BENCH-02", "mandatory": true, "description": "User benchmark is accepted, privacy-filtered and canonical-hash frozen.", "test_node_ids": ["tests/test_power_web_benchmark_contract.py::test_benchmark_freeze_detects_drift", "tests/test_power_web_benchmark_contract.py::test_user_benchmark_is_accepted_private_contact_free_and_frozen"]},
+    {"id": "PW-CAP-01", "mandatory": true, "description": "Every source lane has an explicit capability outcome.", "test_node_ids": ["tests/test_power_web_source_capabilities.py::test_source_capability_matrix_is_complete"]},
+    {"id": "PW-COMPAT-01", "mandatory": true, "description": "PowerWebBoard and Access Planner remain compatible.", "test_node_ids": ["tests/test_power_web_board.py", "tests/test_access_planning_workflow.py"]},
+    {"id": "PW-PROC-01", "mandatory": true, "description": "AS IS, TO BE, manifest, validation and ADR traceability is complete.", "test_node_ids": ["tests/test_radar_pipeline_documentation_contract.py::test_power_web_architecture_evidence_loop"]}
+  ],
+  "recorded_acceptance": {},
+  "live_acceptance": {}
+}

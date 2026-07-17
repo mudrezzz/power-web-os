@@ -1957,6 +1957,45 @@ Rules:
 
 The frontend default locale is `en`. The supported locales are `en` and `ru`, and the selected locale is stored in browser `localStorage`. UI chrome is localized through `i18n.ts`; visible deterministic artifact values such as stages, owners, route titles, rationale, risks, state changes, signal summaries, and missing-role labels are localized in `demoLocalization.ts`. Keep raw source refs, IDs, company names, and person names as artifact data unless a slice explicitly changes that policy.
 
+## Power Web Discovery Architecture
+
+The initial Power Web discovery boundary lives in
+`src/power_web_os/application/radar/power_web_discovery`. It contains only
+provider-neutral contracts, benchmark isolation/freeze rules, source capability
+cards and an architecture validator. It does not contain a people-search
+runtime.
+
+The current `PowerWebRole`, `PowerWebBoard` and Access Planner consume supplied
+roles. Do not treat them as evidence that a person was discovered or that
+employment was validated.
+
+HH.ru is initially a public-web lane. Build queries through the `hh_public_web`
+capability card and restrict ordinary search to `hh.ru`. Do not add HH API
+credentials, direct API calls, mass crawling, contact extraction or an
+authorization bypass. Authorized API work is tracked separately as
+`0.7.6.6.2.1`.
+
+The user benchmark belongs at:
+
+```text
+docs/radar/pipelines/power-web-discovery/benchmark/benchmark.user.json
+```
+
+The accepted benchmark is frozen in `benchmark.freeze.json`; source workbook
+provenance and the privacy filter are in `benchmark.source.json`. The original
+workbook is intentionally not committed because it contains contact and
+outreach fields. Re-normalize only from an explicitly accepted workbook using
+`scripts/normalize_power_web_benchmark.py`. The architecture validator returns
+`FAIL` if the benchmark, freeze or source record is missing, changed or unsafe:
+
+```powershell
+python -m power_web_os.power_web_architecture_validation --slice 0.7.6.6.0
+```
+
+Blind controls must never appear in `planning_payload(guided=False)`. Use
+source-native profiles and reversible hypotheses; a name, employer, title,
+image fingerprint or model opinion alone cannot confirm a person identity.
+
 ## Test Commands
 
 ```bash
