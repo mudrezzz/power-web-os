@@ -192,3 +192,16 @@ def test_user_benchmark_is_accepted_private_contact_free_and_frozen() -> None:
     assert source["private_contact_values_retained"] is False
     assert source["raw_workbook_copied_to_repository"] is False
     assert not any(field in serialized for field in ('"phone"', '"email"', '"telegram"', '"outreach_activity"'))
+
+
+def test_sales_playbook_amendment_has_no_blind_leakage() -> None:
+    path = Path("docs/radar/pipelines/power-web-discovery/benchmark/sales_playbook.amendment.v1.json")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    encoded = json.dumps(payload, ensure_ascii=False).casefold()
+
+    assert payload["product_reference"]["product_id"] == "product-smartdiagnostics"
+    assert len(payload["semantic_role_codes"]) == 8
+    assert payload["blind_controls_changed"] is False
+    assert payload["blind_control_values"] == []
+    assert "blind-person-profile" not in encoded
+    assert "provenance_url" not in encoded

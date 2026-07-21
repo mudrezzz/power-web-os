@@ -362,3 +362,64 @@ def test_power_web_architecture_evidence_loop() -> None:
     if not (base / "benchmark/benchmark.user.json").exists():
         assert validation["validation_status"] == "FAIL"
         assert validation["benchmark_status"] == "blocked_missing_user_benchmark"
+
+
+def test_power_web_playbook_foundation_evidence_loop() -> None:
+    base = Path("docs/radar/pipelines/power-web-discovery")
+    as_is = base / "RADAR_POWER_WEB_DISCOVERY_AS_IS.md"
+    to_be = base / "to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.0.1.md"
+    manifest = json.loads(to_be.with_suffix(".acceptance.json").read_text(encoding="utf-8"))
+    validation = json.loads(
+        (base / "validation/0.7.6.6.0.1/validation.json").read_text(encoding="utf-8")
+    )
+    requirements = {item["id"] for item in manifest["requirements"] if item.get("mandatory", True)}
+    validation_results = {
+        item["requirement_id"]: item["status"] for item in validation["requirements"]
+    }
+    runtime = validation["runtime"]
+
+    assert "Status: Implemented" in to_be.read_text(encoding="utf-8")
+    assert to_be.with_suffix(".pdf").exists()
+    assert as_is.with_suffix(".pdf").exists()
+    assert validation["validation_status"] == "PASS"
+    assert runtime["semantic_role_count"] >= 8
+    assert runtime["access_route_count"] >= 1
+    assert runtime["restart_verified"] is True
+    assert runtime["provider_calls"] == 0
+    assert runtime["pipeline_runs_created"] == 0
+    assert runtime["blind_leakage"] == 0
+    assert all(requirement in to_be.read_text(encoding="utf-8") for requirement in requirements)
+    assert all(requirement in as_is.read_text(encoding="utf-8") for requirement in requirements)
+    assert all(validation_results.get(requirement) == "PASS" for requirement in requirements)
+
+
+def test_power_web_playbook_simplification_evidence_loop() -> None:
+    base = Path("docs/radar/pipelines/power-web-discovery")
+    as_is = base / "RADAR_POWER_WEB_DISCOVERY_AS_IS.md"
+    to_be = base / "to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.0.2.md"
+    manifest = json.loads(to_be.with_suffix(".acceptance.json").read_text(encoding="utf-8"))
+    validation = json.loads(
+        (base / "validation/0.7.6.6.0.2/validation.json").read_text(encoding="utf-8")
+    )
+    requirements = {item["id"] for item in manifest["requirements"] if item.get("mandatory", True)}
+    validation_results = {
+        item["requirement_id"]: item["status"] for item in validation["requirements"]
+    }
+    runtime = validation["runtime"]
+
+    assert "Status: Implemented" in to_be.read_text(encoding="utf-8")
+    assert to_be.with_suffix(".pdf").exists()
+    assert as_is.with_suffix(".pdf").exists()
+    assert validation["validation_status"] == "PASS"
+    assert runtime["semantic_role_count"] >= 8
+    assert runtime["active_access_playbook_version_id"] is None
+    assert runtime["restart_verified"] is True
+    assert runtime["provider_calls"] == 0
+    assert runtime["pipeline_runs_created"] == 0
+    assert runtime["blind_leakage"] == 0
+    assert len(runtime["ui_evidence"]["results"]) == 4
+    assert all(item["detailRatio"] >= 0.95 for item in runtime["ui_evidence"]["results"])
+    assert all(item["inlineWidthDelta"] <= 2 for item in runtime["ui_evidence"]["results"])
+    assert all(requirement in to_be.read_text(encoding="utf-8") for requirement in requirements)
+    assert all(requirement in as_is.read_text(encoding="utf-8") for requirement in requirements)
+    assert all(validation_results.get(requirement) == "PASS" for requirement in requirements)

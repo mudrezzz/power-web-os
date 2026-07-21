@@ -23,6 +23,86 @@ class Base(DeclarativeBase):
     pass
 
 
+class ProductModel(Base):
+    __tablename__ = "products"
+    __table_args__ = (
+        CheckConstraint("lifecycle in ('draft', 'active', 'archived')", name="ck_products_lifecycle"),
+        UniqueConstraint("product_code", name="uq_products_product_code"),
+    )
+
+    product_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    product_code: Mapped[str] = mapped_column(String(80), nullable=False)
+    lifecycle: Mapped[str] = mapped_column(String(40), nullable=False, default="draft", index=True)
+    active_version_id: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class SalesPlaybookDraftModel(Base):
+    __tablename__ = "sales_playbook_drafts"
+
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.product_id"), primary_key=True)
+    draft_revision: Mapped[int] = mapped_column(nullable=False, default=1)
+    base_version_id: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    updated_by: Mapped[str] = mapped_column(String(160), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class ProductDefinitionVersionModel(Base):
+    __tablename__ = "product_definition_versions"
+
+    version_id: Mapped[str] = mapped_column(String(180), primary_key=True)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.product_id"), nullable=False, index=True)
+    version_number: Mapped[int] = mapped_column(nullable=False)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    published_by: Mapped[str] = mapped_column(String(160), nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class BuyingRolePolicyVersionModel(Base):
+    __tablename__ = "buying_role_policy_versions"
+
+    version_id: Mapped[str] = mapped_column(String(180), primary_key=True)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.product_id"), nullable=False, index=True)
+    version_number: Mapped[int] = mapped_column(nullable=False)
+    payload_json: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
+    published_by: Mapped[str] = mapped_column(String(160), nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class AccessPlaybookVersionModel(Base):
+    __tablename__ = "access_playbook_versions"
+
+    version_id: Mapped[str] = mapped_column(String(180), primary_key=True)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.product_id"), nullable=False, index=True)
+    version_number: Mapped[int] = mapped_column(nullable=False)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    published_by: Mapped[str] = mapped_column(String(160), nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class SalesPlaybookDefinitionVersionModel(Base):
+    __tablename__ = "sales_playbook_definition_versions"
+    __table_args__ = (UniqueConstraint("product_id", "version_number", name="uq_sales_playbook_product_version"),)
+
+    version_id: Mapped[str] = mapped_column(String(180), primary_key=True)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.product_id"), nullable=False, index=True)
+    version_number: Mapped[int] = mapped_column(nullable=False)
+    product_definition_version_id: Mapped[str] = mapped_column(
+        ForeignKey("product_definition_versions.version_id"), nullable=False
+    )
+    buying_role_policy_version_id: Mapped[str] = mapped_column(
+        ForeignKey("buying_role_policy_versions.version_id"), nullable=False
+    )
+    access_playbook_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("access_playbook_versions.version_id"), nullable=True
+    )
+    published_by: Mapped[str] = mapped_column(String(160), nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
 class RadarModel(Base):
     __tablename__ = "radars"
 

@@ -1,0 +1,24 @@
+{
+  "schema_version": "power_web_benchmark_amendment.v1",
+  "benchmark_id": "sibur-priority-power-web",
+  "benchmark_version": "1.0.0",
+  "amendment_id": "smartdiagnostics-semantic-role-policy-v1",
+  "product_reference": {
+    "product_id": "product-smartdiagnostics",
+    "product_code": "smartdiagnostics",
+    "accepted_product_version_number": 1,
+    "accepted_buying_role_policy_version_number": 1
+  },
+  "semantic_role_codes": [
+    "technical_reliability_owner",
+    "maintenance_process_owner",
+    "production_continuity_owner",
+    "economic_sponsor",
+    "implementation_integration_owner",
+    "operational_champion",
+    "procurement_compliance_gatekeeper",
+    "external_service_partner"
+  ],
+  "blind_controls_changed": false,
+  "blind_control_values": []
+}

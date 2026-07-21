@@ -6,12 +6,14 @@ import { Badge, Card, Eyebrow, Mono } from '../components/primitives';
 import { useDemoLocalization } from '../demoLocalization';
 import type { AccessPlanArtifact, PlaybookVariantAnalysis, RoutePolicyDecision } from '../types';
 
-export function PlaybookScreen({
+export function AccountPlaybookAnalysis({
   artifact,
   error,
+  embedded = false,
 }: {
   artifact: AccessPlanArtifact | null;
   error: string | null;
+  embedded?: boolean;
 }) {
   const { t } = useTranslation();
   const [selectedVariantId, setSelectedVariantId] = useState('current');
@@ -33,7 +35,7 @@ export function PlaybookScreen({
   const selectedVariant = variants.find((variant) => variant.variant_id === selectedVariantId) ?? variants[0];
 
   return (
-    <section className="screen playbook-screen" aria-label={t('playbook.aria')}>
+    <section className={`${embedded ? 'playbook-screen playbook-analysis-embedded' : 'screen playbook-screen'}`} aria-label={t('playbook.aria')}>
       <div className="playbook-header">
         <div className="objective-icon">
           <SlidersHorizontal aria-hidden="true" />

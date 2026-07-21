@@ -9281,8 +9281,9 @@ Required proof before Done:
 - Problem statement: Candidate discovery and signal monitoring exist, but Power Web Lite only renders roles and people already supplied to it. There is no runtime for people search, anonymous-profile resolution, current-employment validation, influence mapping or evidence-complete Access Planner handoff.
 - Scope:
   - Create a package-owned power-web-discovery pipeline with independent planning, retrieval, extraction, identity resolution, role validation, relationship inference, budgets, checkpoints, persistence, API/jobs, evaluation and UI.
+  - Establish first-class versioned product, semantic buying-role and access-playbook configuration before account handoff.
   - Use immutable handoff from completed candidate-discovery runs and optional signal-monitoring context without importing either pipeline internals.
-  - Treat HH.ru as a mandatory people-search lane through a compliant connector and explicit capability contract.
+  - Treat HH.ru public web as a mandatory people-search lane through a compliant connector and explicit capability contract; licensed HH API remains deferred.
   - Retain broad source-backed profiles and identity hypotheses while keeping confirmed identity merges strict, explainable and reversible.
   - Produce an evidence-complete graph and stable Access Planner handoff through slices 0.7.6.6.0-0.7.6.6.10.
 - Out of scope:
@@ -9369,26 +9370,84 @@ Required proof before Done:
 - Pipeline: power-web-discovery
 - Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.0/validation.json
 
+### Slice 0.7.6.6.0.1: Product catalog, semantic buying roles and Playbook foundation
+
+- Status: Done
+- Goal: Create a versioned product and semantic buying-role configuration that owns what Power Web must discover before account-specific people-search planning begins.
+- User value: ABM teams can define what they sell, which decision-making functions matter for that product and why, without hardcoding account-specific job titles or asking an LLM to invent the buying committee.
+- Problem statement: The production Playbook currently owns only routes, channels, assets and review rules. The product, its value context and the semantic buying-role policy that must precede people discovery have no persisted owner, while RoleDemand exists without an authoritative configuration source.
+- Scope:
+  - Add versioned ProductDefinition with product name, short description, customer problem, value context, use context, lifecycle state and immutable version identity.
+  - Add versioned BuyingRolePolicy composed of semantic role definitions: stable role code, business responsibility, decision rights, required/optional state, priority, account scope, reason, expected evidence and exclusions.
+  - Separate ProductDefinition, BuyingRolePolicy and AccessPlaybook ownership while keeping a versioned SalesPlaybookDefinition that references their compatible versions.
+  - Preserve current Playbook route/channel/asset/review semantics as AccessPlaybook and keep Playbook Analysis compatible.
+  - Add Product/Playbook persistence, API and a backend-backed Playbook UI with distinct Product, Buying roles and Access rules views.
+  - Define the future AccountRoleTitleHypothesis contract so account-specific title variants can be proposed later without mutating semantic role requirements.
+  - Create a versioned benchmark amendment: planning context references the accepted SmartDiagnostics product/role-policy version, while people, URLs and expected answers remain evaluator-only blind controls.
+- Out of scope:
+  - No people search, provider calls, profile extraction, identity resolution or employment/influence decisions.
+  - No LLM generation of account-specific job-title hypotheses in this slice; execution belongs to 0.7.6.6.2 after deterministic role demand exists.
+  - No Access Planner scoring or route recommendation algorithm change.
+  - No multi-product opportunity composition; one active product/playbook context per Power Web run is sufficient for the first perimeter.
+- Implementation notes:
+  - Product and sales configuration are first-class shared business configuration, not provider or Power Web artifact fields.
+  - Semantic roles describe functions and decision responsibility, not titles such as CIO, chief engineer or procurement director.
+  - Stable semantic role IDs survive account-specific naming; generated title hypotheses may expand search terms but cannot add, remove, reprioritize or confirm required roles.
+  - 0.7.6.6.1 must consume an immutable ProductDefinition and BuyingRolePolicy snapshot instead of a universal hardcoded role list.
+  - Existing Playbook and Access Planner contracts remain compatibility projections until their later migration.
+  - Use normal API -> application -> domain/ports -> persistence dependency direction; browser-local overrides cannot be the source of truth.
+- Tests:
+  - Product, buying-role policy and SalesPlaybook contract validation, version immutability and invalid/dangling role-reference tests.
+  - API/persistence round-trip through restart, optimistic version conflict and archive behavior tests.
+  - Tests proving required semantic roles cannot be changed by an AccountRoleTitleHypothesis payload.
+  - Existing Playbook Analysis, Power Web Board and Access Planner regression tests.
+  - Benchmark amendment/freeze tests with blind leakage 0 and no people or source URLs in product configuration.
+  - Frontend build and Playwright tests for product editing, semantic role editing, access-rule separation, loading/error states, RU/EN and 1280x720/1366x768 layouts.
+  - Fail-on-call proof that no candidate, signal, people-search or LLM provider is invoked.
+- Docs:
+  - Create slice TO BE Markdown/PDF, acceptance manifest and machine validation report.
+  - Update Power Web Discovery AS IS after validation and add an ADR separating product, semantic buying roles and access rules.
+  - Update system architecture, package ownership guidance, Developer Guide, User Guide, demo runbook and benchmark amendment record.
+- Demo impact: The Playbook workspace becomes a real backend-backed configurator: users select SmartDiagnostics, inspect its description, edit semantic buying roles and separately inspect access rules. Account-specific titles and people are explicitly shown as future run output, not configuration.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- A product can be created, edited through a new immutable version, activated and archived.
+- Every active product has a valid versioned BuyingRolePolicy with at least one required semantic role.
+- Every role has a stable code, business responsibility, decision rights, required/optional state, priority, scope, reason, expected evidence and exclusions.
+- Product configuration does not require account-specific job titles, person names, benchmark URLs or blind controls.
+- Access rules reference semantic role IDs and cannot contain dangling role references.
+- The UI clearly separates Product, Buying roles and Access rules and uses persisted backend state rather than silent local overrides.
+- Product and role settings survive UI -> API -> DB -> API restart -> UI without loss; historical versions remain immutable.
+- SmartDiagnostics has an accepted working product and semantic-role configuration suitable for the supplied SIBUR benchmark.
+- AccountRoleTitleHypothesis cannot add, remove, reprioritize or confirm a required semantic role.
+- The benchmark amendment preserves blind leakage 0 and does not change frozen identity/employment/relationship answers silently.
+- Existing Playbook Analysis, Power Web Board and Access Planner behavior remains green.
+- Provider calls and new Radar/Power Web runs equal 0.
+- Backend, persistence, API, architecture, frontend build and Playwright gates pass.
+- Validation report has validation_status=PASS; TO BE is marked Implemented and Power Web Discovery AS IS is reconciled.
+- Only after full PASS may 0.7.6.6.1 become Ready.
+- Risks:
+  - Semantic roles may collapse back into title lists; contracts and UI must require responsibility and decision-rights language instead.
+  - A global taxonomy may not fit every product; roles are product-policy owned and versioned, with no universal mandatory list.
+  - Product settings can overlap Radar qualification/signals; this slice links product identity but does not migrate existing Radar semantics.
+  - Replacing the artifact-only Playbook screen can regress route analysis; preserve it as a separate Access rules/account preview surface.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.0.1.acceptance.json
+- Behavior change: true
+- Dependencies: 0.7.6.6.0 is Done; this slice blocks 0.7.6.6.1.
+- Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.0.1/validation.json
+
 ### Slice 0.7.6.6.1: Power Web account handoff and buying-committee role demand
 
 - Status: Ready
 - Goal: Create immutable account handoff and explainable role-demand plans without rerunning candidate discovery or signal monitoring.
 - User value: The system knows which internal and external roles must be found for a product/account before searching for people.
-- Problem statement: Current rendering accepts arbitrary roles but has no immutable input snapshot or deterministic buying-committee coverage plan.
-- Scope:
-  - Assemble completed evidence-complete candidate run plus optional persisted signal snapshot.
-  - Snapshot account identity/provenance, qualification/signals, Radar definition, product/playbook and as-of time.
-  - Generate RoleDemand for technical, economic, champion, user, procurement, legal/security, executive, integrator, partner, supplier, competitor and configured roles.
-  - Record priority, scope, aliases, expected evidence, constraints and missing-role state.
-  - Reject wrong Radar, incomplete output, duplicate/source-less account or missing role policy.
+- Problem statement: Current rendering accepts arbitrary roles, but RoleDemand has no authoritative product-owned semantic policy or immutable account input snapshot. Slice 0.7.6.6.0.2 establishes the product-plus-role configuration source and removes access-strategy coupling.
+- Scope: Assemble an evidence-complete candidate run plus optional signal snapshot; snapshot account/provenance, qualification/signals, Radar definition, ProductDefinition and BuyingRolePolicy versions and as-of time; compile RoleDemand only from role code, responsibility, requiredness, scope and effective priority; reject invalid or incompatible inputs.
 - Out of scope:
   - No people provider calls.
   - No identity/influence decision or Access Plan generation.
   - No mutation of source pipelines.
-- Implementation notes:
-  - Use stable shared account references, not source-pipeline internals.
-  - Role demand is configuration-owned; LLM does not decide required roles.
-  - Persist immutable source lineage.
+- Implementation notes: Depends on completed 0.7.6.6.0.2; RoleDemand has no AccessPlaybook or authored expected-evidence dependency; LLM cannot decide required roles; account-specific title/query/evidence hypotheses belong to 0.7.6.6.2; source and configuration lineage is immutable.
 - Tests:
   - Recorded role-policy matrix.
   - Preflight failures and snapshot immutability.
@@ -9397,17 +9456,14 @@ Required proof before Done:
   - Create slice TO BE/PDF, manifest and validation report.
   - Document handoff and role-taxonomy ownership; finalize AS IS.
 - Demo impact: Show a pre-search brief of required, optional and missing roles before budget spend.
-- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
-- Every run snapshots account, source lineage, definition, playbook and role demands.
-- Every RoleDemand has priority, scope, aliases, expected evidence and reason.
-- No hidden defaults or candidate/signal provider calls occur.
-- Invalid inputs fail explicitly and all mandatory requirements pass.
-- Validation is PASS and AS IS reconciled.
+- Acceptance criteria: Hard DoD: every run snapshots account, source lineage, ProductDefinition and BuyingRolePolicy versions; every RoleDemand traces to one semantic role with responsibility, requiredness, scope and effective priority; no AccessPlaybook or authored expected-evidence dependency; no hidden role defaults, candidate/signal/people/LLM calls; explicit preflight failures; validation PASS and finalized AS IS.
 - Risks:
-  - Universal role taxonomy may be too generic; allow versioned product/Radar additions.
+  - Product policy may be incomplete; fail preflight instead of inventing mandatory roles.
   - Signal context stays optional and product-safe.
+  - Snapshot/version mismatch must be explicit and must not fall back to the latest configuration silently.
 - Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.1.acceptance.json
 - Behavior change: true
+- Dependencies: Ready after 0.7.6.6.0.2 PASS.
 - Pipeline: power-web-discovery
 - Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.1/validation.json
 
@@ -9419,29 +9475,37 @@ Required proof before Done:
 - Problem statement: There is no people source strategy, accepted query plan, HH connector or ledger preventing selected lanes from disappearing.
 - Scope:
   - Add planning input, deterministic planner, plan acceptance, retrieval compiler and scheduler.
-  - Support official, HH.ru, professional-network, publication/event, procurement/patent, industry and generic-web lanes.
-  - Make HH, official and generic web mandatory when capability/policy permits; otherwise record explicit outcomes.
-  - Generate role/account/geography/language-aware bounded queries.
-  - Implement approved HH adapter, capability cards, independent budgets and decision ledger.
+  - Translate each immutable semantic RoleDemand into bounded account-specific title/function hypotheses using account, industry, geography, language and organization context.
+  - Allow LLM query/title variants only as auditable proposals; backend acceptance preserves semantic role IDs and cannot change requiredness, priority or scope.
+  - Support official, HH.ru public web, professional-network, publication/event, procurement/patent, industry and generic-web lanes.
+  - Make HH public web, official and generic web mandatory when capability/policy permits; otherwise record explicit outcomes.
+  - Generate role/account/geography/language-aware bounded queries from accepted title hypotheses.
+  - Implement approved public-web HH adapter, capability cards, independent budgets and decision ledger.
 - Out of scope:
   - No final identity or influence decision.
   - No access-control/ToS bypass.
   - No unbounded social crawling.
 - Implementation notes:
   - Reuse mature Radar patterns through shared contracts, not source-pipeline internals.
-  - LLM query variants need backend acceptance.
+  - Semantic role requirements come only from the immutable 0.7.6.6.1 handoff.
+  - LLM may creatively propose how a semantic role is named in the concrete account, but every proposal requires deterministic acceptance and keeps its originating role ID.
   - Identity-only refs cannot masquerade as people-search execution.
+  - Bound variants to control cost and preserve a complete proposal/acceptance ledger.
 - Tests:
-  - Recorded lane/planner/scheduler/budget fixtures.
+  - Recorded semantic-role-to-title-hypothesis, planner, lane, scheduler and budget fixtures.
+  - Tests proving LLM proposals cannot add/remove required roles or alter priority/scope.
+  - Multilingual/account-specific title mapping fixtures and rejection of unrelated or duplicate variants.
   - Malformed plan, unknown source, opaque ref and provider failure fixtures.
-  - Targeted live HH, official and generic-web probes after fast gates.
+  - Targeted live HH public-web, official and generic-web probes after fast gates.
 - Docs:
   - Create TO BE/PDF, manifest and source-capability docs.
   - Finalize AS IS with real connector behavior.
 - Demo impact: Diagnostics show role-by-role queries, receipts, coverage, limits and unexecuted reasons.
 - Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
 - 100% selected decisions have scheduled/executed/not-executable/policy/budget outcomes.
-- HH executes through a compliant connector in targeted live validation; otherwise slice stays blocked.
+- Every search task traces to one immutable semantic RoleDemand and an accepted account-specific title/function hypothesis.
+- LLM proposals change 0 required-role, priority or scope decisions.
+- HH public web executes through compliant domain-restricted web search in targeted live validation; HH API remains deferred.
 - Mandatory lanes never silently disappear.
 - Every task has a product-safe receipt; no secret/raw payload/hidden reasoning is persisted.
 - Budgets are independent and validation/AS IS are complete.

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Card, Eyebrow, Mono } from '../../components/primitives';
+import { WorkspaceTabs } from '../../components/WorkspaceTabs';
 import type { LiveICPRadarRunArtifact, LiveRadarRunDossier } from '../../types';
 import type { RadarRunControlState } from './application/useRadarBackend';
 import { LiveRunDossierPanel, LiveRunJournalFallback } from './liveDossier';
@@ -39,19 +40,14 @@ export function LiveRadarRunDiagnosticsView({
           <RunDiagnosticsStatus artifact={artifact} runState={runState} />
         </header>
 
-        <div className="icp-candidate-detail-tabs" aria-label={t('icpRadar.live.diagnostics.tabsAria')}>
-          {tabs.map((tab) => (
-            <button
-              aria-pressed={activeTab === tab}
-              className={`criteria-chip${activeTab === tab ? ' criteria-chip-active' : ''}`}
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-            >
-              {t(`icpRadar.live.diagnostics.tabs.${tab}`)}
-            </button>
-          ))}
-        </div>
+        <WorkspaceTabs
+          id="run-diagnostics"
+          activeId={activeTab}
+          ariaLabel={t('icpRadar.live.diagnostics.tabsAria')}
+          className="icp-candidate-detail-tabs"
+          items={tabs.map((tab) => ({ id: tab, label: t(`icpRadar.live.diagnostics.tabs.${tab}`) }))}
+          onChange={setActiveTab}
+        />
 
         {activeTab === 'overview' && <RunDiagnosticsOverview diagnostics={diagnostics} runState={runState} />}
         {activeTab === 'universe' && <CandidateUniverseDiagnostics diagnostics={diagnostics} />}

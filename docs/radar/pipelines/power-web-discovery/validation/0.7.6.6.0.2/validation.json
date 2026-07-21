@@ -1,0 +1,208 @@
+{
+  "schema_version": "power_web_playbook_validation.v2",
+  "slice_id": "0.7.6.6.0.2",
+  "pipeline_id": "power-web-discovery",
+  "validation_status": "PASS",
+  "generated_at": "2026-07-21T16:07:35.517620+00:00",
+  "requirements": [
+    {
+      "requirement_id": "PWS-CFG-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_contracts.py::test_new_publication_has_no_access_playbook_dependency"
+      ]
+    },
+    {
+      "requirement_id": "PWS-ROLE-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_contracts.py::test_minimal_semantic_role_is_publishable"
+      ]
+    },
+    {
+      "requirement_id": "PWS-ROLE-02",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_contracts.py::test_semantic_role_defaults_follow_requiredness"
+      ]
+    },
+    {
+      "requirement_id": "PWS-PLAN-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_discovery_contracts.py::test_role_demand_does_not_require_authored_expected_evidence"
+      ]
+    },
+    {
+      "requirement_id": "PWS-ACCESS-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_api.py::test_access_playbook_is_frozen_for_new_publications"
+      ]
+    },
+    {
+      "requirement_id": "PWS-ACCESS-02",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_contracts.py::test_historical_access_playbook_version_remains_readable"
+      ]
+    },
+    {
+      "requirement_id": "PWS-API-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_api.py::test_simplified_playbook_round_trip"
+      ]
+    },
+    {
+      "requirement_id": "PWS-UI-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_frontend_architecture_contract.py::test_playbook_uses_full_width_catalog_detail_navigation"
+      ]
+    },
+    {
+      "requirement_id": "PWS-UI-02",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_frontend_architecture_contract.py::test_playbook_role_editor_is_inline_and_progressive"
+      ]
+    },
+    {
+      "requirement_id": "PWS-TABS-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_frontend_architecture_contract.py::test_workspace_navigation_uses_shared_tabs"
+      ]
+    },
+    {
+      "requirement_id": "PWS-COMPAT-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_board.py",
+        "tests/test_access_planning_workflow.py"
+      ]
+    },
+    {
+      "requirement_id": "PWS-BENCH-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_benchmark_contract.py::test_sales_playbook_amendment_has_no_blind_leakage"
+      ]
+    },
+    {
+      "requirement_id": "PWS-NET-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_contracts.py::test_sales_playbook_has_no_provider_dependency"
+      ]
+    },
+    {
+      "requirement_id": "PWS-PROC-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_radar_pipeline_documentation_contract.py::test_power_web_playbook_simplification_evidence_loop"
+      ]
+    }
+  ],
+  "runtime": {
+    "product_id": "product-smartdiagnostics",
+    "active_version_id": "sales-playbook-d7b4bedc-598e-45a8-add6-185019cfcd71",
+    "draft_revision": 30,
+    "semantic_role_count": 8,
+    "required_role_count": 6,
+    "historical_access_version_count": 1,
+    "active_access_playbook_version_id": null,
+    "published_version_count": 2,
+    "restart_verified": true,
+    "ui_evidence": {
+      "validation_status": "PASS",
+      "product_id": "product-smartdiagnostics",
+      "active_version_id": "sales-playbook-d7b4bedc-598e-45a8-add6-185019cfcd71",
+      "semantic_role_count": 8,
+      "access_playbook_version_id": null,
+      "ui_api_db_reload_round_trip": true,
+      "results": [
+        {
+          "locale": "ru",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "screenRatio": 1,
+          "detailRatio": 0.9541984732824428,
+          "topGutter": 24,
+          "leftGutter": 24,
+          "rightGutter": 24,
+          "backButtonHeight": 36,
+          "inlineWidthDelta": 2,
+          "bodyOverflow": false,
+          "horizontalOverflow": false,
+          "advancedOpen": false,
+          "basic_field_count": 4,
+          "tab_count": 3
+        },
+        {
+          "locale": "ru",
+          "viewport": {
+            "width": 1366,
+            "height": 768
+          },
+          "screenRatio": 1,
+          "detailRatio": 0.9576719576719577,
+          "topGutter": 24,
+          "leftGutter": 24,
+          "rightGutter": 24,
+          "backButtonHeight": 36,
+          "inlineWidthDelta": 2,
+          "bodyOverflow": false,
+          "horizontalOverflow": false,
+          "advancedOpen": false,
+          "basic_field_count": 4,
+          "tab_count": 3
+        },
+        {
+          "locale": "en",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "screenRatio": 1,
+          "detailRatio": 0.9541984732824428,
+          "topGutter": 24,
+          "leftGutter": 24,
+          "rightGutter": 24,
+          "backButtonHeight": 36,
+          "inlineWidthDelta": 2,
+          "bodyOverflow": false,
+          "horizontalOverflow": false,
+          "advancedOpen": false,
+          "basic_field_count": 4,
+          "tab_count": 3
+        },
+        {
+          "locale": "en",
+          "viewport": {
+            "width": 1366,
+            "height": 768
+          },
+          "screenRatio": 1,
+          "detailRatio": 0.9576719576719577,
+          "topGutter": 24,
+          "leftGutter": 24,
+          "rightGutter": 24,
+          "backButtonHeight": 36,
+          "inlineWidthDelta": 2,
+          "bodyOverflow": false,
+          "horizontalOverflow": false,
+          "advancedOpen": false,
+          "basic_field_count": 4,
+          "tab_count": 3
+        }
+      ]
+    },
+    "provider_calls": 0,
+    "pipeline_runs_created": 0,
+    "blind_leakage": 0
+  }
+}

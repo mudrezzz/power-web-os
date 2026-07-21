@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -55,6 +56,7 @@ class _SignalProvider:
             if task.source_lane == "known_source" and task.source_contracts
             else f"https://example.test/{source_ref}"
         )
+        fresh_date = datetime.now(UTC).date().isoformat()
         return SignalMonitoringProviderResult(
             runtime_name=self.runtime_name,
             model_id=self.model_id,
@@ -64,7 +66,7 @@ class _SignalProvider:
                     "title": "Recorded signal source",
                     "url": source_url,
                     "snippet": f"{task.candidate_name} fresh source-backed signal.",
-                    "published_at": "2026-07-10",
+                    "published_at": fresh_date,
                 }],
                 "observations": [{
                     "candidate_id": task.candidate_id,
@@ -73,7 +75,7 @@ class _SignalProvider:
                     "summary": "Fresh source-backed signal.",
                     "score": 2,
                     "evidence_refs": [source_ref],
-                    "event_at": "2026-07-10",
+                    "event_at": fresh_date,
                     "confidence": "strong",
                 }],
             },

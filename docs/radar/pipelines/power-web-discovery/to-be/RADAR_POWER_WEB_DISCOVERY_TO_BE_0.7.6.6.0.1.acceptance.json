@@ -1,0 +1,29 @@
+{
+  "schema_version": "radar_pipeline_acceptance.v1",
+  "slice_id": "0.7.6.6.0.1",
+  "pipeline_id": "power-web-discovery",
+  "behavior_change": true,
+  "to_be_markdown": "docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.0.1.md",
+  "to_be_pdf": "docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.0.1.pdf",
+  "as_is_markdown": "docs/radar/pipelines/power-web-discovery/RADAR_POWER_WEB_DISCOVERY_AS_IS.md",
+  "as_is_pdf": "docs/radar/pipelines/power-web-discovery/RADAR_POWER_WEB_DISCOVERY_AS_IS.pdf",
+  "validation_json": "docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.0.1/validation.json",
+  "validation_markdown": "docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.0.1/VALIDATION_REPORT.md",
+  "requirements": [
+    {"id": "PWF-PROD-01", "mandatory": true, "description": "Product lifecycle and drafts are persisted.", "test_node_ids": ["tests/test_sales_playbook_contracts.py::test_product_publish_activate_restore_and_archive"]},
+    {"id": "PWF-ROLE-01", "mandatory": true, "description": "Published roles are complete semantic functions.", "test_node_ids": ["tests/test_sales_playbook_contracts.py::test_published_roles_require_semantic_fields"]},
+    {"id": "PWF-ROLE-02", "mandatory": true, "description": "Title hypotheses cannot mutate role requirements.", "test_node_ids": ["tests/test_sales_playbook_contracts.py::test_title_hypothesis_cannot_mutate_role_policy"]},
+    {"id": "PWF-ACCESS-01", "mandatory": true, "description": "Access rules cannot reference missing roles.", "test_node_ids": ["tests/test_sales_playbook_contracts.py::test_access_rules_reject_dangling_role_references"]},
+    {"id": "PWF-VERS-01", "mandatory": true, "description": "Published versions are immutable and stale drafts conflict.", "test_node_ids": ["tests/test_sales_playbook_api.py::test_published_version_is_immutable_and_stale_draft_conflicts"]},
+    {"id": "PWF-API-01", "mandatory": true, "description": "API persistence survives restart.", "test_node_ids": ["tests/test_sales_playbook_api.py::test_sales_playbook_round_trip"]},
+    {"id": "PWF-UI-01", "mandatory": true, "description": "Playbook configuration views are separated and backend-backed.", "test_node_ids": ["tests/test_frontend_architecture_contract.py::test_playbook_workspace_uses_backend_product_contract"]},
+    {"id": "PWF-UI-02", "mandatory": true, "description": "Account rule analysis remains under Access Plans.", "test_node_ids": ["tests/test_frontend_architecture_contract.py::test_account_playbook_analysis_lives_in_access_plans"]},
+    {"id": "PWF-DEMO-01", "mandatory": true, "description": "SmartDiagnostics seed has eight semantic roles.", "test_node_ids": ["tests/test_sales_playbook_api.py::test_smartdiagnostics_seed_is_idempotent"]},
+    {"id": "PWF-BENCH-01", "mandatory": true, "description": "Benchmark amendment preserves blind isolation.", "test_node_ids": ["tests/test_power_web_benchmark_contract.py::test_sales_playbook_amendment_has_no_blind_leakage"]},
+    {"id": "PWF-COMPAT-01", "mandatory": true, "description": "Existing Board and Access Planner remain compatible.", "test_node_ids": ["tests/test_power_web_board.py", "tests/test_access_planning_workflow.py"]},
+    {"id": "PWF-NET-01", "mandatory": true, "description": "The slice performs no provider calls or pipeline runs.", "test_node_ids": ["tests/test_sales_playbook_contracts.py::test_sales_playbook_has_no_provider_dependency"]},
+    {"id": "PWF-PROC-01", "mandatory": true, "description": "Evidence-loop artifacts remain traceable.", "test_node_ids": ["tests/test_radar_pipeline_documentation_contract.py::test_power_web_playbook_foundation_evidence_loop"]}
+  ],
+  "recorded_acceptance": {},
+  "live_acceptance": {}
+}

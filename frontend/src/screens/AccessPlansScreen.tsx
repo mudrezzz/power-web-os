@@ -3,8 +3,10 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Card, Eyebrow, Mono } from '../components/primitives';
+import { WorkspaceTabs } from '../components/WorkspaceTabs';
 import { useDemoLocalization } from '../demoLocalization';
 import type { AccessPlanArtifact, Evidence, Route as AccessRoute, Signal } from '../types';
+import { AccountPlaybookAnalysis } from './PlaybookScreen';
 
 export function AccessPlansScreen({
   artifact,
@@ -15,6 +17,7 @@ export function AccessPlansScreen({
 }) {
   const { t } = useTranslation();
   const [openRouteType, setOpenRouteType] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<'routes' | 'analysis'>('routes');
 
   if (error) {
     return (
@@ -55,7 +58,18 @@ export function AccessPlansScreen({
         <Badge tone="cobalt">{artifact.workflow_metadata.runtime}</Badge>
       </div>
 
-      <div className="plans-layout">
+      <WorkspaceTabs
+        id="access-plans"
+        activeId={activeView}
+        ariaLabel={t('plans.viewsAria')}
+        items={[
+          { id: 'routes', label: t('plans.routesView') },
+          { id: 'analysis', label: t('plans.ruleAnalysisView'), testId: 'access-plan-rule-analysis-tab' },
+        ]}
+        onChange={setActiveView}
+      />
+
+      {activeView === 'routes' ? <div className="plans-layout">
         <div className="plans-main">
           <div className="route-list">
             {routes.map((route, index) => (
@@ -75,7 +89,7 @@ export function AccessPlansScreen({
           <BoardSummary artifact={artifact} />
           <EvidenceSummary signals={artifact.account.signals} />
         </aside>
-      </div>
+      </div> : <AccountPlaybookAnalysis artifact={artifact} error={error} embedded />}
     </section>
   );
 }

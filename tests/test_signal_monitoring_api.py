@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -49,6 +50,7 @@ class _Provider:
         source_contract = task.source_contracts[0] if task.source_contracts else None
         ref = source_contract.source_ref if source_contract else f"api-source-{task.candidate_id}"
         url = source_contract.url if source_contract else f"https://example.test/{ref}"
+        fresh_date = datetime.now(UTC).date().isoformat()
         return SignalMonitoringProviderResult(
             runtime_name=self.runtime_name,
             model_id=self.model_id,
@@ -57,7 +59,7 @@ class _Provider:
                     "source_ref": ref,
                     "title": "API source",
                     "url": url,
-                    "published_at": "2026-07-10",
+                    "published_at": fresh_date,
                     "date_basis": "provider_extracted",
                     "date_confidence": "medium",
                 }],
@@ -67,7 +69,7 @@ class _Provider:
                     "status": "observed",
                     "summary": "API recorded signal",
                     "evidence_refs": [ref],
-                    "event_at": "2026-07-10",
+                    "event_at": fresh_date,
                 }],
             },
         )

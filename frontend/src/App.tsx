@@ -7,7 +7,7 @@ import { ICPRadarScreen } from './screens/ICPRadarScreen';
 import { PlannedScreen } from './screens/PlannedScreen';
 import { useRadarBackend } from './features/icp-radar/application/useRadarBackend';
 import { signalMonitoringReportFromJson } from './features/icp-radar/signalMonitoringReport';
-import { PlaybookScreen } from './screens/PlaybookScreen';
+import { SalesPlaybookScreen } from './screens/SalesPlaybookScreen';
 import type {
   AccountRadarArtifact,
   AccountRadarItem,
@@ -107,7 +107,7 @@ export function App() {
 
   useEffect(() => {
     const selected = radarArtifact?.accounts.find((item) => item.account_id === selectedAccountId);
-    if (!selected) {
+    if (!selected || !['plans', 'map'].includes(activeScreen)) {
       return;
     }
 
@@ -121,7 +121,7 @@ export function App() {
       })
       .then(setArtifact)
       .catch((requestError: Error) => setError(requestError.message));
-  }, [radarArtifact, selectedAccountId]);
+  }, [activeScreen, radarArtifact, selectedAccountId]);
 
   function openAccount(item: AccountRadarItem) {
     setSelectedAccountId(item.account_id);
@@ -155,7 +155,7 @@ export function App() {
       ) : activeScreen === 'map' ? (
         <AccountMapScreen artifact={artifact} error={error} />
       ) : activeScreen === 'playbook' ? (
-        <PlaybookScreen artifact={artifact} error={error} />
+        <SalesPlaybookScreen />
       ) : (
         <PlannedScreen screenId={activeScreen} />
       )}

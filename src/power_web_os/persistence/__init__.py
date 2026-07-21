@@ -13,6 +13,7 @@ from power_web_os.persistence.repositories import (
     SqlAlchemyRadarRunTechnicalTraceRepository,
 )
 from power_web_os.persistence.signal_monitoring_repositories import SqlAlchemySignalMonitoringRunOutputRepository
+from power_web_os.persistence.sales_playbook_repositories import SqlAlchemySalesPlaybookRepository
 
 __all__ = [
     "Base",
@@ -25,6 +26,7 @@ __all__ = [
     "SqlAlchemyRadarRunOutputRepository",
     "SqlAlchemyRadarRunTechnicalTraceRepository",
     "SqlAlchemySignalMonitoringRunOutputRepository",
+    "SqlAlchemySalesPlaybookRepository",
     "create_database_engine",
     "create_session_factory",
     "session_scope",

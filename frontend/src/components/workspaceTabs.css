@@ -1,0 +1,34 @@
+.workspace-tabs {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  gap: var(--s-1);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.workspace-tab {
+  min-height: var(--s-10);
+  padding: 0 var(--s-3);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--fg3);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.workspace-tab[aria-selected='true'] {
+  border-bottom-color: var(--cobalt);
+  color: var(--cobalt-700);
+}
+
+.workspace-tab:hover {
+  color: var(--fg);
+}
+
+.workspace-tab:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: -2px;
+}

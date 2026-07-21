@@ -11,6 +11,7 @@ from power_web_os.application.radar.power_web_discovery.contracts import (
     PersonProfile,
     PowerWebArtifact,
     PowerWebGraphNode,
+    RoleDemand,
     SourceEvidence,
 )
 from power_web_os.board import PowerWebBoardBuilder
@@ -144,3 +145,15 @@ def test_existing_power_web_contracts_remain_compatible() -> None:
 
     assert board.account_id == account.account_id
     assert plan.account_id == account.account_id
+
+
+def test_role_demand_does_not_require_authored_expected_evidence() -> None:
+    demand = RoleDemand(
+        demand_id="role-demand-1",
+        role="Outcome owner",
+        required=True,
+        scope="account",
+        reason="Compiled from immutable semantic-role responsibility.",
+    )
+
+    assert demand.expected_evidence == ()

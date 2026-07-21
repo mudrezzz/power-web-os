@@ -1,0 +1,30 @@
+{
+  "schema_version": "radar_pipeline_acceptance.v1",
+  "slice_id": "0.7.6.6.0.2",
+  "pipeline_id": "power-web-discovery",
+  "behavior_change": true,
+  "to_be_markdown": "docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.0.2.md",
+  "to_be_pdf": "docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.0.2.pdf",
+  "as_is_markdown": "docs/radar/pipelines/power-web-discovery/RADAR_POWER_WEB_DISCOVERY_AS_IS.md",
+  "as_is_pdf": "docs/radar/pipelines/power-web-discovery/RADAR_POWER_WEB_DISCOVERY_AS_IS.pdf",
+  "validation_json": "docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.0.2/validation.json",
+  "validation_markdown": "docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.0.2/VALIDATION_REPORT.md",
+  "requirements": [
+    {"id": "PWS-CFG-01", "mandatory": true, "description": "Discovery configuration contains product and role policy without access-strategy dependency.", "test_node_ids": ["tests/test_sales_playbook_contracts.py::test_new_publication_has_no_access_playbook_dependency"]},
+    {"id": "PWS-ROLE-01", "mandatory": true, "description": "A semantic role publishes with only basic business fields.", "test_node_ids": ["tests/test_sales_playbook_contracts.py::test_minimal_semantic_role_is_publishable"]},
+    {"id": "PWS-ROLE-02", "mandatory": true, "description": "Priority defaults are deterministic and advanced fields are optional.", "test_node_ids": ["tests/test_sales_playbook_contracts.py::test_semantic_role_defaults_follow_requiredness"]},
+    {"id": "PWS-PLAN-01", "mandatory": true, "description": "Expected evidence and title/query variants are not mandatory role-policy inputs.", "test_node_ids": ["tests/test_power_web_discovery_contracts.py::test_role_demand_does_not_require_authored_expected_evidence"]},
+    {"id": "PWS-ACCESS-01", "mandatory": true, "description": "New publications create no access snapshots and access mutation is rejected.", "test_node_ids": ["tests/test_sales_playbook_api.py::test_access_playbook_is_frozen_for_new_publications"]},
+    {"id": "PWS-ACCESS-02", "mandatory": true, "description": "Historical access versions remain readable across migration and restart.", "test_node_ids": ["tests/test_sales_playbook_contracts.py::test_historical_access_playbook_version_remains_readable"]},
+    {"id": "PWS-API-01", "mandatory": true, "description": "Simplified configuration round-trips through API and persistence.", "test_node_ids": ["tests/test_sales_playbook_api.py::test_simplified_playbook_round_trip"]},
+    {"id": "PWS-UI-01", "mandatory": true, "description": "Catalog and product detail are distinct full-width states.", "test_node_ids": ["tests/test_frontend_architecture_contract.py::test_playbook_uses_full_width_catalog_detail_navigation"]},
+    {"id": "PWS-UI-02", "mandatory": true, "description": "Role editor expands inline and contains four basic business controls.", "test_node_ids": ["tests/test_frontend_architecture_contract.py::test_playbook_role_editor_is_inline_and_progressive"]},
+    {"id": "PWS-TABS-01", "mandatory": true, "description": "Workspace navigation uses shared underline tabs while filters remain pills.", "test_node_ids": ["tests/test_frontend_architecture_contract.py::test_workspace_navigation_uses_shared_tabs"]},
+    {"id": "PWS-COMPAT-01", "mandatory": true, "description": "Existing Board, Access Planner and historical versions remain compatible.", "test_node_ids": ["tests/test_power_web_board.py", "tests/test_access_planning_workflow.py"]},
+    {"id": "PWS-BENCH-01", "mandatory": true, "description": "Benchmark amendment preserves blind isolation.", "test_node_ids": ["tests/test_power_web_benchmark_contract.py::test_sales_playbook_amendment_has_no_blind_leakage"]},
+    {"id": "PWS-NET-01", "mandatory": true, "description": "The slice performs no provider calls or pipeline runs.", "test_node_ids": ["tests/test_sales_playbook_contracts.py::test_sales_playbook_has_no_provider_dependency"]},
+    {"id": "PWS-PROC-01", "mandatory": true, "description": "Evidence-loop artifacts remain traceable.", "test_node_ids": ["tests/test_radar_pipeline_documentation_contract.py::test_power_web_playbook_simplification_evidence_loop"]}
+  ],
+  "recorded_acceptance": {},
+  "live_acceptance": {}
+}

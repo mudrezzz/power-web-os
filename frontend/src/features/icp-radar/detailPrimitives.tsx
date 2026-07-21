@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Mono } from '../../components/primitives';
+import { WorkspaceTabs } from '../../components/WorkspaceTabs';
 import type { CandidateDetailTab } from './model';
 import { formatDelta } from './model';
 
@@ -28,21 +29,14 @@ export function CandidateDetailTabs({
   const tabs: CandidateDetailTab[] = showTrace
     ? ['overview', 'qualification', 'signals', 'sources', 'journal', 'trace']
     : ['overview', 'qualification', 'signals', 'sources', 'journal', 'trace'];
-  return (
-    <div className="icp-candidate-detail-tabs" aria-label={t('icpRadar.canonicalDetail.tabsAria')}>
-      {tabs.map((tab) => (
-        <button
-          aria-pressed={activeTab === tab}
-          className={`criteria-chip${activeTab === tab ? ' criteria-chip-active' : ''}`}
-          key={tab}
-          type="button"
-          onClick={() => onTabChange(tab)}
-        >
-          {t(`icpRadar.canonicalDetail.tabs.${tab}`)}
-        </button>
-      ))}
-    </div>
-  );
+  return <WorkspaceTabs
+    id="candidate-detail"
+    activeId={activeTab}
+    ariaLabel={t('icpRadar.canonicalDetail.tabsAria')}
+    className="icp-candidate-detail-tabs"
+    items={tabs.map((tab) => ({ id: tab, label: t(`icpRadar.canonicalDetail.tabs.${tab}`) }))}
+    onChange={onTabChange}
+  />;
 }
 
 export function ScoreBox({ delta = 0, label, value }: { delta?: number; label: string; value: number | string }) {

@@ -361,6 +361,76 @@ def test_i18n_runtime_is_separate_from_large_resource_dictionary() -> None:
     assert "icpRadar" in ru
 
 
+def test_playbook_workspace_uses_backend_product_contract() -> None:
+    screen = read("frontend/src/screens/SalesPlaybookScreen.tsx")
+    transport = read("frontend/src/api/salesPlaybookApi.ts")
+    styles = Path("frontend/src/features/sales-playbook/salesPlaybook.css")
+    app = read("frontend/src/App.tsx")
+
+    assert "salesPlaybookApi.listProducts" in screen
+    assert "salesPlaybookApi.saveDraft" in screen
+    assert "salesPlaybookApi.publish" in screen
+    assert "fetch(" not in screen
+    assert "/api/products" in transport
+    assert "<SalesPlaybookScreen />" in app
+    assert "<PlaybookScreen artifact=" not in app
+    assert "window.localStorage" not in screen
+    assert styles.exists()
+    assert line_count(styles) <= 650
+    assert "salesPlaybook.css" in screen
+
+
+def test_playbook_uses_full_width_catalog_detail_navigation() -> None:
+    screen = read("frontend/src/screens/SalesPlaybookScreen.tsx")
+    styles = read("frontend/src/features/sales-playbook/salesPlaybook.css")
+
+    assert 'data-testid="product-catalog"' in screen
+    assert 'data-testid="sales-playbook-detail"' in screen
+    assert "backToProducts" in screen
+    assert "product-switcher" in screen
+    assert "product-rail" not in screen
+    assert "editor-inspector" not in screen
+    assert ".product-rail" not in styles
+    assert ".editor-inspector" not in styles
+
+
+def test_playbook_role_editor_is_inline_and_progressive() -> None:
+    screen = read("frontend/src/screens/SalesPlaybookScreen.tsx")
+
+    assert 'data-testid="role-inline-editor"' in screen
+    assert screen.count('data-basic-role-field="true"') == 4
+    assert 'data-testid="role-advanced"' in screen
+    assert "expectedEvidence" not in screen
+    assert "AccessEditor" not in screen
+    assert "RouteFields" not in screen
+
+
+def test_workspace_navigation_uses_shared_tabs() -> None:
+    component = read("frontend/src/components/WorkspaceTabs.tsx")
+    radar_header = read("frontend/src/features/icp-radar/components/RadarDetailHeader.tsx")
+    candidate_detail = read("frontend/src/features/icp-radar/detailPrimitives.tsx")
+    diagnostics = read("frontend/src/features/icp-radar/liveRunDiagnostics.tsx")
+    plans = read("frontend/src/screens/AccessPlansScreen.tsx")
+    playbook = read("frontend/src/screens/SalesPlaybookScreen.tsx")
+
+    assert 'role="tablist"' in component
+    assert 'role="tab"' in component
+    assert 'role="tabpanel"' in component
+    for source in (radar_header, candidate_detail, diagnostics, plans, playbook):
+        assert "<WorkspaceTabs" in source
+    for source in (radar_header, candidate_detail, diagnostics):
+        assert "criteria-chip" not in source
+
+
+def test_account_playbook_analysis_lives_in_access_plans() -> None:
+    plans = read("frontend/src/screens/AccessPlansScreen.tsx")
+    analysis = read("frontend/src/screens/PlaybookScreen.tsx")
+
+    assert "AccountPlaybookAnalysis" in plans
+    assert "access-plan-rule-analysis-tab" in plans
+    assert "export function AccountPlaybookAnalysis" in analysis
+
+
 def test_icp_radar_css_is_owned_by_feature_module() -> None:
     global_css_path = Path("frontend/src/styles.css")
     feature_css_path = Path("frontend/src/features/icp-radar/icpRadar.css")
@@ -412,7 +482,9 @@ def test_icp_radar_operations_tab_owns_run_level_controls() -> None:
     header = read(str(feature_dir / "components" / "RadarDetailHeader.tsx"))
     css = "\n".join(path.read_text(encoding="utf-8") for path in sorted((feature_dir / "styles").glob("*.css")))
 
-    assert "onClick={() => onTabChange('operations')}" in header
+    assert "<WorkspaceTabs" in header
+    assert "onChange={onTabChange}" in header
+    assert "{ id: 'operations'" in header
     assert "LiveRadarPreflightPanel" in operations
     assert "LiveRadarRunDiagnosticsView" in operations
     assert "RadarPipelineControlPanel" in operations

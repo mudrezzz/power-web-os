@@ -19,8 +19,10 @@ from power_web_os.persistence import (
     SqlAlchemyRadarRunRepository,
     SqlAlchemyRadarRunTechnicalTraceRepository,
     SqlAlchemySignalMonitoringRunOutputRepository,
+    SqlAlchemySalesPlaybookRepository,
     session_scope,
 )
+from power_web_os.application.sales_playbook.service import SalesPlaybookService
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +62,11 @@ class RadarApiContext:
     radar_smoke_max_candidates: int | None
     radar_smoke_max_signals: int | None
     runtime_config_report: dict[str, object]
+
+
+def get_sales_playbook_service(request: Request) -> Iterator[SalesPlaybookService]:
+    with session_scope(request.app.state.session_factory) as session:
+        yield SalesPlaybookService(SqlAlchemySalesPlaybookRepository(session))
 
 
 def default_job_queue() -> JobQueue:

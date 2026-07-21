@@ -143,8 +143,9 @@ function TopBar({
   artifact: AccessPlanArtifact | null;
 }) {
   const { i18n, t } = useTranslation();
-  const routeCount = artifact?.access_plan.routes.length ?? 0;
-  const health = artifact ? Math.round(artifact.account.icp_fit * 100) : 0;
+  const contextArtifact = activeScreen === 'playbook' ? null : artifact;
+  const routeCount = contextArtifact?.access_plan.routes.length ?? 0;
+  const health = contextArtifact ? Math.round(contextArtifact.account.icp_fit * 100) : 0;
   const activeLocale = supportedLocales.includes(i18n.language as SupportedLocale)
     ? (i18n.language as SupportedLocale)
     : 'en';
@@ -157,13 +158,13 @@ function TopBar({
   return (
     <header className="topbar">
       <div className="account-context">
-        <div className="account-mark">{artifact ? initials(artifact.account.name) : 'PW'}</div>
+        <div className="account-mark">{contextArtifact ? initials(contextArtifact.account.name) : 'PW'}</div>
         <div className="account-copy">
           <span className="account-title">{topBarTitle(activeScreen, artifact, t)}</span>
           <span className="account-meta">
-            {artifact ? (
+            {activeScreen === 'playbook' ? t('topbar.salesPlaybookMeta') : contextArtifact ? (
               <>
-                <span>{artifact.playbook.name}</span>
+                <span>{contextArtifact.playbook.name}</span>
                 <span> / </span>
                 <span>{t('topbar.routeCount', { count: routeCount })}</span>
               </>
@@ -174,7 +175,7 @@ function TopBar({
         </div>
         <Badge tone="cobalt">{t('app.workflowBadge')}</Badge>
         <HealthBar value={health} label={t('topbar.icpFitHealth')} />
-        {artifact && <Mono>{artifact.workflow_metadata.runtime_mode}</Mono>}
+        {contextArtifact && <Mono>{contextArtifact.workflow_metadata.runtime_mode}</Mono>}
       </div>
 
       <div className="topbar-actions">
@@ -189,7 +190,7 @@ function TopBar({
           <Bell aria-hidden="true" />
         </IconButton>
         <LanguageSwitch activeLocale={activeLocale} onChange={changeLocale} label={t('topbar.language')} />
-        <Button variant="primary" icon={<Plus aria-hidden="true" />}>
+        <Button variant={activeScreen === 'playbook' ? 'default' : 'primary'} icon={<Plus aria-hidden="true" />}>
           {t('topbar.addAccount')}
         </Button>
       </div>
@@ -226,6 +227,10 @@ function LanguageSwitch({
 function topBarTitle(activeScreen: ScreenId, artifact: AccessPlanArtifact | null, t: TFunction) {
   if (activeScreen === 'icp_radar') {
     return t('topbar.icpRadar');
+  }
+
+  if (activeScreen === 'playbook') {
+    return t('topbar.salesPlaybook');
   }
 
   if (artifact && activeScreen === 'plans') {

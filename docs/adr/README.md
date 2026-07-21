@@ -1,5 +1,7 @@
 # Architecture Decision Records
 
+- [Power Web Discovery configuration excludes access strategy](2026-07-21-power-web-discovery-configuration-excludes-access-strategy.md)
+
 ADRs capture decisions that shape product architecture.
 
 ## Index
@@ -30,6 +32,7 @@ ADRs capture decisions that shape product architecture.
 - `2026-06-25-connector-profiles-compile-to-source-capabilities.md` - Let external source connectors describe themselves in plugin-friendly profiles, then compile them into internal Radar source capabilities for planner and validator use.
 - `2026-06-27-radar-search-pipeline-as-is-to-be-docs.md` - Maintain Radar search pipeline AS IS/TO BE documents and rendered PDF diagrams as part of the implementation control loop.
 - `2026-07-03-radar-backend-package-architecture.md` - Treat root-level `live_radar_*` modules as migration debt and move Radar backend work toward package-owned candidate-discovery, signal-monitoring, and Power Web discovery boundaries.
+- `2026-07-19-product-semantic-roles-and-access-playbook.md` - Persist product, semantic buying roles and access rules as independently versioned sales configuration before Power Web Discovery.
 
 ## Template
 

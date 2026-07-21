@@ -25,6 +25,7 @@ The current baseline has:
 - deterministic Account Radar accepted-portfolio read model for the current demo;
 - deterministic Power Web Board selected-account read model;
 - deterministic Playbook Analysis selected-account read model;
+- persisted product, semantic buying-role and access-playbook configuration;
 - `AccessPlanningWorkflow` with optional `langgraph-dai` integration and local fallback;
 - FastAPI backend boundary with health, Radar catalog, Radar run, and Radar candidate contracts;
 - SQLAlchemy/Alembic persistence foundation for Radar catalog, Radar definitions, durable Radar run state, and persisted live Radar output snapshots;
@@ -42,6 +43,7 @@ The current baseline has:
 | Account Radar | Deterministic portfolio read model | Portfolio score, top reason, best route, owner, review status | Domain services, Access Plan artifacts |
 | Power Web Board | Deterministic selected-account read model | Board summary, people/partner/missing nodes, account edges, highlighted route path | Account, Access Plan artifact |
 | Playbook Analysis | Deterministic selected-account read model | Current and what-if playbook snapshots, route policy decisions, review policy, route previews | Account, Playbook, Access Plan artifact |
+| Sales Playbook | Versioned global sales configuration | Product drafts, semantic buying roles, access rules, immutable published versions | SQL repository |
 | Product API | External HTTP boundary | Auth, request validation, task start/status | Application services |
 | Power Web Domain | Sales domain model and policies | Account, Signal, Evidence, PowerWebRole, Playbook, AccessPlan | None |
 | Agent Workflows | AI orchestration and audit | LangGraph state, node events, HITL checkpoints | `langgraph-dai`, domain services |
@@ -791,3 +793,23 @@ The demo should evolve through these stages:
 - First live source target.
 - Whether a graph database becomes necessary after MVP.
 - UI technology choice.
+
+## Product And Semantic-Role Foundation
+
+Slices `0.7.6.6.0.1-0.7.6.6.0.2` add and simplify the persisted configuration
+that precedes Power Web Discovery. `application.sales_playbook` owns mutable
+drafts, semantic-role validation, publication, activation, restore and archive
+use cases. SQLAlchemy implements its repository port; FastAPI only exposes
+transport DTOs.
+
+A newly published `SalesPlaybookDefinitionVersion` references immutable product
+and buying-role snapshots. Its access-playbook reference is null. Future Power
+Web runs consume that product-and-role version as lineage. Account-specific
+job-title, query and evidence hypotheses may expand retrieval but cannot change
+the semantic roles configured for the product.
+
+The global Playbook screen separates the product catalog from a full-width
+detail workspace. Account-specific rule application remains a read model under
+Access Plans. Historical AccessPlaybook snapshots are immutable and readable
+but are not a discovery dependency. Existing `Playbook`, `PowerWebBoard` and
+Access Planner behavior is preserved through a compatibility projection.

@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { WorkspaceTabs } from '../../../components/WorkspaceTabs';
 import { Badge, Button, Eyebrow } from '../../../components/primitives';
 import type {
   EditableRadarDefinitionDraft,
@@ -140,33 +141,17 @@ export function RadarDetailHeader({
           )}
         </div>
       </header>
-      <div className="icp-radar-tabs" aria-label={t('icpRadar.radarTabs')}>
-        <button
-          aria-pressed={activeTab === 'shortlist'}
-          className={`criteria-chip${activeTab === 'shortlist' ? ' criteria-chip-active' : ''}`}
-          data-testid="radar-tab-shortlist"
-          type="button"
-          onClick={() => onTabChange('shortlist')}
-        >
-          {t('icpRadar.shortlistTab')}
-        </button>
-        <button
-          aria-pressed={activeTab === 'operations'}
-          className={`criteria-chip${activeTab === 'operations' ? ' criteria-chip-active' : ''}`}
-          type="button"
-          onClick={() => onTabChange('operations')}
-        >
-          {t('icpRadar.operationsTab')}
-        </button>
-        <button
-          aria-pressed={activeTab === 'settings'}
-          className={`criteria-chip${activeTab === 'settings' ? ' criteria-chip-active' : ''}`}
-          type="button"
-          onClick={() => onTabChange('settings')}
-        >
-          {t('icpRadar.settingsTab')}
-        </button>
-      </div>
+      <WorkspaceTabs
+        id="radar-detail"
+        activeId={activeTab}
+        ariaLabel={t('icpRadar.radarTabs')}
+        items={[
+          { id: 'shortlist', label: t('icpRadar.shortlistTab'), testId: 'radar-tab-shortlist' },
+          { id: 'operations', label: t('icpRadar.operationsTab') },
+          { id: 'settings', label: t('icpRadar.settingsTab') },
+        ]}
+        onChange={onTabChange}
+      />
     </div>
   );
 }

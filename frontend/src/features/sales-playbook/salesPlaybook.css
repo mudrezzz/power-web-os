@@ -1,0 +1,544 @@
+/* Product and semantic-role configuration workspace. */
+.sales-playbook-screen {
+  display: flex;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  padding: var(--s-6);
+  overflow: hidden;
+}
+
+.product-catalog,
+.sales-playbook-detail {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.product-catalog {
+  gap: var(--s-4);
+  padding: var(--s-5);
+  overflow-y: auto;
+}
+
+.product-catalog-header,
+.sales-playbook-header,
+.sales-playbook-actions,
+.sales-playbook-identity,
+.sales-meta,
+.editor-heading,
+.inspector-heading,
+.dialog-actions,
+.version-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.product-catalog-header,
+.sales-playbook-header,
+.editor-heading,
+.inspector-heading {
+  justify-content: space-between;
+}
+
+.product-catalog-header h1,
+.sales-playbook-header h1,
+.editor-heading h2,
+.inspector-heading h2 {
+  margin: 0;
+}
+
+.product-search {
+  width: min(100%, calc(var(--s-20) * 5));
+}
+
+.product-catalog-table,
+.sales-table {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.product-catalog-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(calc(var(--s-20) * 3), 1.5fr) minmax(var(--s-20), .4fr) minmax(calc(var(--s-20) + var(--s-5)), .5fr) minmax(calc(var(--s-20) * 2), .7fr);
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+  padding: var(--s-3);
+  border: none;
+  border-top: 1px solid var(--border-faint);
+  background: var(--surface);
+  color: var(--fg);
+  text-align: left;
+}
+
+button.product-catalog-row {
+  cursor: pointer;
+}
+
+button.product-catalog-row:hover {
+  background: var(--surface-2);
+}
+
+.product-catalog-row > span,
+.sales-table-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.product-catalog-row > span:first-child,
+.sales-table-row > span:first-child {
+  display: grid;
+  gap: var(--s-1);
+}
+
+.product-catalog-head,
+.sales-table-head {
+  border-top: none;
+  background: var(--surface-2);
+  color: var(--fg4);
+  font: var(--mono-sm);
+}
+
+.sales-playbook-header {
+  flex: 0 0 auto;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.sales-playbook-identity {
+  min-width: 0;
+}
+
+.sales-playbook-identity > button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.sales-playbook-identity > svg {
+  width: var(--s-8);
+  height: var(--s-8);
+  flex: 0 0 auto;
+  padding: var(--s-2);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--fg3);
+}
+
+.sales-playbook-identity > div {
+  min-width: 0;
+}
+
+.sales-playbook-identity h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sales-meta {
+  flex-wrap: wrap;
+  color: var(--fg3);
+}
+
+.sales-playbook-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.product-switcher {
+  display: grid;
+  gap: var(--s-1);
+  min-width: calc(var(--s-20) * 2);
+  color: var(--fg3);
+  font: var(--meta);
+}
+
+.product-switcher select {
+  min-height: var(--s-9);
+}
+
+.sales-playbook-detail > .workspace-tabs {
+  padding: 0 var(--s-5);
+}
+
+.sales-tab-content {
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  padding: var(--s-5);
+  overflow: auto;
+}
+
+.sales-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+  max-width: calc(var(--s-20) * 11);
+}
+
+.sales-field {
+  display: grid;
+  align-content: start;
+  gap: var(--s-1);
+  min-width: 0;
+  color: var(--fg2);
+  font: var(--label);
+}
+
+.sales-field input,
+.sales-field textarea,
+.sales-field select,
+.product-switcher select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+}
+
+.sales-field input,
+.sales-field select,
+.product-switcher select {
+  min-height: var(--s-10);
+  padding: 0 var(--s-3);
+}
+
+.sales-field textarea {
+  min-height: calc(var(--s-20) + var(--s-4));
+  padding: var(--s-3);
+  resize: vertical;
+}
+
+.sales-field input:focus,
+.sales-field textarea:focus,
+.sales-field select:focus,
+.product-switcher select:focus {
+  border-color: var(--cobalt);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.sales-field input:disabled {
+  background: var(--surface-2);
+  color: var(--fg4);
+}
+
+.sales-field-wide {
+  grid-column: 1 / -1;
+}
+
+.editor-main,
+.role-fields,
+.role-advanced-fields,
+.versions-workspace,
+.version-snapshot,
+.version-snapshot-grid,
+.version-snapshot-grid > div {
+  display: grid;
+  align-content: start;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.editor-heading p {
+  margin: var(--s-1) 0 0;
+  color: var(--fg3);
+}
+
+.sales-table-head,
+.sales-table-row {
+  display: grid;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+  padding: var(--s-3);
+}
+
+.roles-table .sales-table-head,
+.roles-table .sales-table-row {
+  grid-template-columns: minmax(calc(var(--s-20) * 2), 1.15fr) minmax(calc(var(--s-20) + var(--s-5)), .55fr) minmax(var(--s-20), .45fr) minmax(calc(var(--s-20) + var(--s-4)), .55fr) minmax(calc(var(--s-20) * 2), 1.5fr);
+}
+
+.version-table .sales-table-head,
+.version-table .sales-table-row {
+  grid-template-columns: minmax(var(--s-20), .45fr) minmax(calc(var(--s-20) * 2), .8fr) minmax(calc(var(--s-20) + var(--s-5)), .6fr) minmax(calc(var(--s-20) * 2), .8fr) minmax(calc(var(--s-20) * 2), 1fr);
+}
+
+button.sales-table-row {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--border-faint);
+  background: var(--surface);
+  cursor: pointer;
+  color: var(--fg);
+  text-align: left;
+}
+
+div.sales-table-row {
+  border-top: 1px solid var(--border-faint);
+}
+
+.sales-table-row-active,
+button.sales-table-row:hover {
+  background: var(--cobalt-50);
+}
+
+.role-inline-editor {
+  display: grid;
+  width: 100%;
+  box-sizing: border-box;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  border-top: 1px solid var(--cobalt-200);
+  border-bottom: 1px solid var(--border-faint);
+  background: var(--surface-2);
+}
+
+.role-basic-fields {
+  display: grid;
+  grid-template-columns: minmax(calc(var(--s-20) * 2), .8fr) minmax(calc(var(--s-20) * 3), 1.4fr);
+  align-items: start;
+  gap: var(--s-4);
+}
+
+.role-responsibility {
+  grid-row: span 2;
+}
+
+.sales-check {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  gap: var(--s-2);
+  min-height: var(--s-10);
+  color: var(--fg2);
+  font: var(--label);
+}
+
+.role-advanced {
+  border-top: 1px solid var(--border);
+  padding-top: var(--s-3);
+}
+
+.role-advanced summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: max-content;
+  color: var(--fg2);
+  cursor: pointer;
+  font: var(--label);
+  list-style: none;
+}
+
+.role-advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.role-advanced summary svg {
+  width: var(--s-4);
+  height: var(--s-4);
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.role-advanced[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.role-advanced-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-top: var(--s-4);
+}
+
+.sales-note,
+.sales-alert {
+  padding: var(--s-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--fg2);
+}
+
+.sales-alert {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: var(--s-2);
+  margin: var(--s-3) var(--s-5) 0;
+}
+
+.sales-alert span {
+  flex: 1;
+}
+
+.sales-alert-error {
+  border-color: var(--blocker);
+  background: var(--blocker-tint);
+}
+
+.sales-alert-conflict {
+  border-color: var(--unsurfaced);
+  background: var(--unsurfaced-tint);
+}
+
+.draft-bar {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-5);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.draft-bar > span {
+  flex: 1;
+  color: var(--fg2);
+  font: var(--label);
+}
+
+.sales-empty,
+.sales-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--s-20);
+  gap: var(--s-2);
+  color: var(--fg3);
+}
+
+.sales-empty {
+  height: 100%;
+  flex-direction: column;
+  text-align: center;
+}
+
+.sales-loading svg {
+  width: var(--s-5);
+  height: var(--s-5);
+  animation: sales-spin 1s linear infinite;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--s-5);
+  background: color-mix(in srgb, var(--ink) 32%, transparent);
+}
+
+.sales-dialog {
+  display: grid;
+  width: min(calc(var(--s-20) * 6), 100%);
+  gap: var(--s-4);
+  padding: var(--s-5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.dialog-actions,
+.version-actions {
+  justify-content: flex-end;
+}
+
+.version-snapshot {
+  padding: var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.version-snapshot > p,
+.legacy-access-snapshot > p {
+  margin: 0;
+  color: var(--fg2);
+}
+
+.version-snapshot-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.version-snapshot-grid span {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  min-width: 0;
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--border-faint);
+}
+
+@keyframes sales-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1366px) {
+  .product-switcher {
+    display: none;
+  }
+
+  .roles-table .sales-table-head,
+  .roles-table .sales-table-row {
+    grid-template-columns: minmax(calc(var(--s-20) * 2), 1.1fr) minmax(calc(var(--s-20) + var(--s-3)), .55fr) minmax(var(--s-20), .45fr) minmax(calc(var(--s-20) * 2), 1.4fr);
+  }
+
+  .roles-table .sales-table-head > span:nth-child(4),
+  .roles-table .sales-table-row > span:nth-child(4) {
+    display: none;
+  }
+}
+
+@media (max-width: 1280px) {
+  .sales-playbook-header {
+    align-items: flex-start;
+  }
+
+  .sales-playbook-actions {
+    max-width: calc(var(--s-20) * 5);
+  }
+
+  .product-switcher,
+  .sales-meta .mono:nth-child(2) {
+    display: none;
+  }
+
+  .sales-form-grid,
+  .role-basic-fields,
+  .role-advanced-fields,
+  .version-snapshot-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-field-wide,
+  .role-responsibility {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sales-loading svg { animation: none; }
+  .role-advanced summary svg { transition: none; }
+}

@@ -210,6 +210,88 @@ export type SourceDefinition = {
   usage_obligation?: 'required' | 'preferred' | 'optional' | 'fallback' | 'disabled' | 'required_for_identity' | 'required_for_coverage' | 'required_for_signal' | string;
 };
 
+export type ProductLifecycle = 'draft' | 'active' | 'archived';
+export type RolePriority = 'critical' | 'high' | 'normal';
+export type RoleScope = 'holding' | 'account' | 'site' | 'external';
+
+export type ProductDefinition = {
+  product_code: string;
+  name: string;
+  short_description: string;
+  customer_problem: string;
+  value_proposition: string;
+  use_contexts: string[];
+};
+
+export type SemanticBuyingRole = {
+  role_code: string;
+  display_name: string;
+  business_responsibility: string;
+  decision_rights: string[];
+  required: boolean;
+  priority: RolePriority;
+  scope: RoleScope;
+  reason: string;
+  expected_evidence: string[];
+  exclusions: string[];
+};
+
+export type AccessRouteRule = {
+  route_code: string;
+  name: string;
+  source_role_codes: string[];
+  target_role_codes: string[];
+  allowed_channels: string[];
+  required_assets: string[];
+  requires_human_review: boolean;
+  reason: string;
+  enabled: boolean;
+};
+
+export type AccessPlaybookDefinition = {
+  route_rules: AccessRouteRule[];
+  blocked_channels: string[];
+  available_assets: string[];
+  required_review_for: string[];
+};
+
+export type SalesPlaybookDraft = {
+  product_id: string;
+  draft_revision: number;
+  base_version_id: string | null;
+  product: ProductDefinition;
+  buying_roles: SemanticBuyingRole[];
+  access_playbook: AccessPlaybookDefinition;
+  updated_at: string;
+  updated_by: string;
+};
+
+export type ProductSummary = {
+  product_id: string;
+  product_code: string;
+  name: string;
+  lifecycle: ProductLifecycle;
+  active_version_id: string | null;
+  active_version_number: number | null;
+  draft_revision: number | null;
+  updated_at: string;
+};
+
+export type SalesPlaybookVersion = {
+  version_id: string;
+  product_id: string;
+  version_number: number;
+  product_definition_version_id: string;
+  buying_role_policy_version_id: string;
+  access_playbook_version_id: string | null;
+  product: ProductDefinition;
+  buying_roles: SemanticBuyingRole[];
+  access_playbook: AccessPlaybookDefinition | null;
+  published_at: string;
+  published_by: string;
+  is_active: boolean;
+};
+
 export type SourcePolicy = {
   source_ids: string[];
   source_logic: 'AND' | 'OR' | string;

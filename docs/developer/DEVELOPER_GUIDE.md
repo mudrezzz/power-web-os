@@ -1915,7 +1915,8 @@ Rules:
 - Load the portfolio artifact from `/demo/account_radar.json`.
 - Load selected-account plans from `/demo/access_plans/{account_id}.json`.
 - Render the selected account's Power Web Lite board from `artifact.power_web_board` on `Account Map`.
-- Render the selected account's playbook analysis from `artifact.playbook_analysis` on `Playbook`.
+- Render the selected account's playbook analysis from `artifact.playbook_analysis` under `Access Plans` -> `Rule analysis`.
+- Use the global `Playbook` screen only for backend product, semantic-role, access-rule and version configuration.
 - Load the ICP Radar artifact from `/demo/icp_radar.json`.
 - Keep `ICP Radar` as a separate upstream screen; do not merge it with `Accounts`.
 - Treat the ICP Radar catalog as list-first: one configured radar per wide row with stable columns for identity, status, metrics, run mode, and action, not a three-column card grid or floating metric layout that truncates names and counts on laptop screens.
@@ -2076,3 +2077,39 @@ If GitHub has Wiki enabled but the wiki git repository does not exist yet, creat
 ## Documentation Rules
 
 Update `ROADMAP.md`, architecture docs, demo docs, and user docs in the same slice when behavior changes.
+
+## Product And Semantic-Role Configuration
+
+The backend source of truth for the Power Web Discovery input is
+`power_web_os.application.sales_playbook`. Its canonical policy is product plus
+semantic buying roles. Use `SalesPlaybookService`; API routes must not compose
+SQLAlchemy directly.
+
+Draft writes require the current `draft_revision`. Publishing validates the
+product, at least one role and at least one required role, then creates
+immutable product and role snapshots. New definitions have
+`access_playbook_version_id=null`. Historical access snapshots are readable but
+frozen; the API returns `409 access_playbook_frozen` for mutation attempts and
+restore does not reactivate them.
+
+Role authoring requires display name, business responsibility, requiredness and
+scope. Role code is system-owned. Decision rights, priority override and
+exclusions are optional. Job titles, aliases, queries and expected evidence
+belong to account-specific hypotheses in a later slice.
+
+Workspace sections use `WorkspaceTabs`. Pill controls remain limited to filters
+and mode switches.
+
+Run the simplification gate without invoking providers:
+
+```powershell
+python -m pytest tests/test_sales_playbook_contracts.py tests/test_sales_playbook_api.py tests/test_power_web_discovery_contracts.py -q
+npm --prefix ./frontend run build
+npm --prefix ./frontend run power-web:playbook-simplification-dod
+python -m power_web_os.power_web_playbook_validation --slice 0.7.6.6.0.2 --restart-verified --tests-pass
+```
+
+The UI gate writes machine-readable geometry evidence under
+`frontend/test-results/`. It verifies the catalog/detail split, 95% detail
+width, inline role editor width, four basic role fields, RU/EN and 1280x720 plus
+1366x768 without overflow.

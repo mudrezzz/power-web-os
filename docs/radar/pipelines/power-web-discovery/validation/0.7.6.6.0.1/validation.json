@@ -1,0 +1,121 @@
+{
+  "schema_version": "power_web_playbook_validation.v1",
+  "slice_id": "0.7.6.6.0.1",
+  "pipeline_id": "power-web-discovery",
+  "validation_status": "PASS",
+  "generated_at": "2026-07-19T20:28:57.194011+00:00",
+  "requirements": [
+    {
+      "requirement_id": "PWF-PROD-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_contracts.py::test_product_publish_activate_restore_and_archive"
+      ]
+    },
+    {
+      "requirement_id": "PWF-ROLE-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_contracts.py::test_published_roles_require_semantic_fields"
+      ]
+    },
+    {
+      "requirement_id": "PWF-ROLE-02",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_contracts.py::test_title_hypothesis_cannot_mutate_role_policy"
+      ]
+    },
+    {
+      "requirement_id": "PWF-ACCESS-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_contracts.py::test_access_rules_reject_dangling_role_references"
+      ]
+    },
+    {
+      "requirement_id": "PWF-VERS-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_api.py::test_published_version_is_immutable_and_stale_draft_conflicts"
+      ]
+    },
+    {
+      "requirement_id": "PWF-API-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_api.py::test_sales_playbook_round_trip"
+      ]
+    },
+    {
+      "requirement_id": "PWF-UI-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_frontend_architecture_contract.py::test_playbook_workspace_uses_backend_product_contract"
+      ]
+    },
+    {
+      "requirement_id": "PWF-UI-02",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_frontend_architecture_contract.py::test_account_playbook_analysis_lives_in_access_plans"
+      ]
+    },
+    {
+      "requirement_id": "PWF-DEMO-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_api.py::test_smartdiagnostics_seed_is_idempotent"
+      ]
+    },
+    {
+      "requirement_id": "PWF-BENCH-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_benchmark_contract.py::test_sales_playbook_amendment_has_no_blind_leakage"
+      ]
+    },
+    {
+      "requirement_id": "PWF-COMPAT-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_board.py",
+        "tests/test_access_planning_workflow.py"
+      ]
+    },
+    {
+      "requirement_id": "PWF-NET-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_sales_playbook_contracts.py::test_sales_playbook_has_no_provider_dependency"
+      ]
+    },
+    {
+      "requirement_id": "PWF-PROC-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_radar_pipeline_documentation_contract.py::test_power_web_playbook_foundation_evidence_loop"
+      ]
+    }
+  ],
+  "runtime": {
+    "product_id": "product-smartdiagnostics",
+    "active_version_id": "sales-playbook-52395309-e69b-46ef-8887-ecb37310fcfd",
+    "draft_revision": 19,
+    "semantic_role_count": 8,
+    "access_route_count": 4,
+    "published_version_count": 1,
+    "restart_verified": true,
+    "ui_locales": [
+      "ru",
+      "en"
+    ],
+    "ui_viewports": [
+      "1280x720",
+      "1366x768"
+    ],
+    "provider_calls": 0,
+    "pipeline_runs_created": 0,
+    "blind_leakage": 0
+  }
+}

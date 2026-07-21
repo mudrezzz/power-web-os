@@ -13,18 +13,23 @@ from sqlalchemy.orm import Session
 
 from power_web_os.application.radar.configuration.catalog_seed import records_from_catalog_payload
 from power_web_os.persistence.repositories import SqlAlchemyRadarDefinitionRepository, SqlAlchemyRadarRepository
+from power_web_os.application.sales_playbook.seed import seed_smartdiagnostics
+from power_web_os.application.sales_playbook.service import SalesPlaybookService
+from power_web_os.persistence.sales_playbook_repositories import SqlAlchemySalesPlaybookRepository
 
 
 @dataclass(frozen=True, slots=True)
 class RadarCatalogSeedResult:
     radar_count: int
     definition_count: int
+    product_count: int = 0
 
     def to_payload(self) -> dict[str, Any]:
         return {
             "artifact_type": "radar_catalog_seed_result",
             "radar_count": self.radar_count,
             "definition_count": self.definition_count,
+            "product_count": self.product_count,
         }
 
 
@@ -38,7 +43,9 @@ def seed_radar_catalog(session: Session, catalog_payload: dict[str, Any]) -> Rad
     for definition in seed_records.definitions:
         definition_repository.upsert(definition)
 
+    seed_smartdiagnostics(SalesPlaybookService(SqlAlchemySalesPlaybookRepository(session)))
     return RadarCatalogSeedResult(
         radar_count=len(seed_records.radars),
         definition_count=len(seed_records.definitions),
+        product_count=1,
     )

@@ -44,6 +44,19 @@ Square icon-only control (default 36px, radius `--r-md`). States: rest transpare
 
 Selectable pill (h30, radius `--r-pill`, `530` weight). Props: `active`, `icon`, `tone` (`neutral` | `cobalt`). Selected = `--cobalt-50` / `--cobalt-200` / `--cobalt-700`. Use for filters and quick toggles.
 
+## WorkspaceTabs
+
+Underline navigation for real sections of one workspace. The component owns
+`tablist`, `tab` and `tabpanel` relationships, roving focus, Arrow Left/Right,
+Home and End navigation, and horizontal overflow on narrow screens. The active
+tab uses a cobalt underline; inactive tabs have no pill background or rounded
+container.
+
+Use `WorkspaceTabs` for page sections such as Radar candidates/runs/settings,
+candidate detail, run diagnostics, Access Plans and product configuration. Do
+not use pill chips for section navigation. Keep `Chip` and segmented controls
+for filters, display modes and bounded option switches.
+
 ## Badge
 
 Static pill label (h22, radius `--r-pill`, `600`/11.5px). Props: `tone` (`ally` · `blocker` · `unsurfaced` · `cobalt` · `neutral`), `icon`, `solid`. Tinted by default (tint bg + colored text); `solid` fills with the tone color + white text. Use for stance, stage, counts.
