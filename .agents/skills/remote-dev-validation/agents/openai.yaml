@@ -1,0 +1,4 @@
+interface:
+  display_name: "Remote dev validation"
+  short_description: "Run tests on the remote contour"
+  default_prompt: "Validate this change through the isolated remote development contour"

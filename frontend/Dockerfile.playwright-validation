@@ -1,0 +1,17 @@
+# syntax=docker/dockerfile:1.7
+FROM mcr.microsoft.com/playwright:v1.60.0-noble AS base
+
+WORKDIR /workspace/frontend
+
+COPY frontend/package*.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci
+
+COPY frontend ./
+COPY ui-design-system /workspace/ui-design-system
+
+CMD ["npm", "run", "power-web:handoff-dod"]
+
+FROM base AS control
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends docker.io docker-compose-v2 \
+    && rm -rf /var/lib/apt/lists/*

@@ -1,5 +1,13 @@
 # System Architecture Overview
 
+## Development Execution Boundary
+
+Codex validation is remote-first. Isolated credential-free Compose projects own
+tests/builds, while one locked persistent Compose project owns the shared dev
+UI/API and server-side state. `scripts/remote_dev.ps1` is the only orchestration
+boundary; local Docker/test execution is human-only compatibility and cannot be
+used as acceptance evidence.
+
 ## Product Context
 
 Power Web OS is a strategy layer for complex B2B sales. It runs ABM-oriented ICP Radars to discover and qualify target accounts, builds a dynamic influence map around accepted accounts, applies customer-specific sales playbook rules, and recommends explainable access routes.
@@ -124,8 +132,10 @@ architecture decision in
   review-needed entities;
 - `signal-monitoring`: a frequent candidate-first process that checks known
   candidates for recent configured intent signals;
-- `power-web-discovery`: a future account-access process for people, roles,
-  relationships, partner paths, and buying-committee structure.
+- `power-web-discovery`: an account-centric process for people, roles,
+  relationships and buying-committee structure. Its immutable Radar-to-account
+  handoff is implemented; retrieval, identity resolution and independent runs
+  remain future slices.
 
 The registry for per-pipeline AS IS/TO BE documents lives in
 `docs/radar/pipelines/README.md`. The current

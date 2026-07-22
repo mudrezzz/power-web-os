@@ -5,8 +5,9 @@ import type {
   SalesPlaybookVersion,
   SemanticBuyingRole,
 } from '../types';
+import { radarApiBaseUrl } from './radarApi';
 
-const baseUrl = 'http://127.0.0.1:8001/api/products';
+const baseUrl = `${radarApiBaseUrl()}/api/products`;
 
 export class SalesPlaybookApiError extends Error {
   constructor(message: string, readonly status: number) {

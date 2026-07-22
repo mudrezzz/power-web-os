@@ -5,6 +5,10 @@ description: Use after implementing a Radar pipeline TO BE slice to compare plan
 
 # Radar Pipeline TO BE To AS IS Finalize Skill
 
+Use only collected remote manifests and persisted remote run reports as runtime
+evidence. Run documentation tests/rendering through remote runners; never fall
+back to local tests or Docker when remote validation fails.
+
 ## Goal
 
 Finalize a Radar pipeline slice by reconciling the reviewed TO BE design with

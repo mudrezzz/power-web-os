@@ -13,6 +13,7 @@ from power_web_os.api.dependencies import default_job_queue, default_signal_moni
 from power_web_os.api.radar_routes import router as radar_router
 from power_web_os.api.signal_monitoring_routes import router as signal_monitoring_router
 from power_web_os.api.sales_playbook_routes import router as sales_playbook_router
+from power_web_os.api.power_web_handoff_routes import router as power_web_handoff_router
 from power_web_os.application.ports import JobQueue, SignalMonitoringJobQueue
 from power_web_os.application.radar.configuration.runtime_config import (
     build_effective_runtime_config_report,
@@ -103,6 +104,7 @@ def create_app(
     app.include_router(radar_router)
     app.include_router(signal_monitoring_router)
     app.include_router(sales_playbook_router)
+    app.include_router(power_web_handoff_router)
     return app
 
 

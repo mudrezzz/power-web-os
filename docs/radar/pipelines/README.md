@@ -14,7 +14,7 @@ the current candidate-discovery default.
 |---|---|---|---|
 | `candidate-discovery` | Find and qualify legal entities, sites, branches, projects, and review-needed upstream entities. | Infrequent: manual, monthly, quarterly, or after Radar settings change. | Implemented through the current Radar search pipeline with signal-monitoring handoff by default; docs still live at `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` until the migration slice splits the file. |
 | `signal-monitoring` | Monitor configured intent signals for known candidates over a recent time window. | Frequent: manual API/job execution now; scheduled cadence later. | Persisted live runtime, capability-driven source strategy, independent budgets/model profile, separate API/job/output contracts, and linked production UI controls exist. Recurrence remains planned. |
-| `power-web-discovery` | Discover people, roles, relationships, partner paths, buying committee structure, and access routes for accepted accounts. | Event-driven or account-workflow driven. | Architecture/contracts only: AS IS documents the current absence; TO BE and source/benchmark governance are defined by `0.7.6.6.0`. No runtime exists yet. |
+| `power-web-discovery` | Discover people, roles, relationships and buying committee structure for accepted accounts. | Event-driven or account-workflow driven. | Pre-search handoff is implemented: Radar product policy, account snapshot, product-scoped RoleDemand and optional signal lineage persist as `power_web_handoff.v1`. People retrieval and Power Web runs do not exist yet. |
 
 ## Required files
 
@@ -50,8 +50,9 @@ the per-pipeline folder.
 
 `power-web-discovery` has an architecture-baseline AS IS document from slice
 `0.7.6.6.0`. It explicitly documents that the current Board/Planner flow does
-not discover people. Its TO BE documents are reviewed design inputs, not claims
-about implemented runtime behavior.
+not discover people. Slice `0.7.6.6.1` adds the immutable pre-search handoff;
+TO BE documents remain design inputs until their status is `Implemented` and
+their validation report is `PASS`.
 
 For `signal-monitoring`, the first AS IS document now lives at
 `docs/radar/pipelines/signal-monitoring/RADAR_SIGNAL_MONITORING_AS_IS.md`.

@@ -34,33 +34,29 @@ Before starting a full run:
 
 ## Preferred Run Path
 
-Use the API/worker path because it matches the UI. In this repository the
-Docker dev stack publishes the API on host port `8001` and keeps container port
-`8000` internal. Try `http://127.0.0.1:8001` first. Use
-`http://127.0.0.1:8000` only for a manually started local uvicorn process
-(`power-web-os-api` / `python -m power_web_os.api`), and verify `/health`
-belongs to Power Web OS before queuing a run.
+Use the remote API/worker path because it matches the UI. Read API and frontend
+URLs from `deploy/remote-dev.env`; never use a loopback URL for Codex runtime
+validation.
 
-Before any Docker/API-backed Radar self-test, rebuild the backend image without
-asking the user:
+Before any API-backed Radar self-test, deploy the current workspace:
 
 ```powershell
-docker compose up -d --build
+powershell -ExecutionPolicy Bypass -File scripts/remote_dev.ps1 -Action Deploy -SessionId <id>
 ```
 
-If Docker is not available in the session, report that as a blocker. Do not run
-against a stale container image and do not ask the user whether to rebuild.
+If remote SSH/Docker is unavailable, report a blocker. Do not use local Docker
+or a stale release.
 
 1. Verify API health:
 
    ```powershell
-   Invoke-RestMethod http://127.0.0.1:8001/health
+   powershell -ExecutionPolicy Bypass -File scripts/remote_dev.ps1 -Action Exec -SessionId <id> -Runner stack -Command "curl -fsS `$POWER_WEB_OS_REMOTE_API_URL/health"
    ```
 
 2. Verify Radar catalog:
 
    ```powershell
-   Invoke-RestMethod http://127.0.0.1:8001/api/radars
+   powershell -ExecutionPolicy Bypass -File scripts/remote_dev.ps1 -Action Exec -SessionId <id> -Runner stack -Command "curl -fsS `$POWER_WEB_OS_REMOTE_API_URL/api/radars"
    ```
 
 3. Queue a run:
@@ -71,7 +67,7 @@ against a stale container image and do not ask the user whether to rebuild.
      requester = "codex-self-test"
      task_context = @{ source = "codex_self_test" }
    } | ConvertTo-Json -Depth 5
-   Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8001/api/radars/toir-quick-live/runs -ContentType "application/json" -Body $body
+   powershell -ExecutionPolicy Bypass -File scripts/remote_dev.ps1 -Action Exec -SessionId <id> -Runner stack -AllowProviderCalls -Command "<announced bounded API run command>"
    ```
 
 4. Poll `GET /api/radar-runs/{run_id}` every 10-15 seconds.
@@ -81,11 +77,8 @@ against a stale container image and do not ask the user whether to rebuild.
    worker/runtime config if available, and useful log commands instead of
    pretending the run completed.
 
-If `8001` is not running but `8000` answers, do not assume it is this project:
-check that `/health` reports Power Web OS and `/api/radars` exists. If the API
-stack is not running, either ask whether to start the Docker stack or use the
-documented CLI/demo path only when it exercises the same code path the user
-wants tested.
+Never substitute another host or local process when the configured remote API
+is unavailable. Repair/deploy the remote contour or stop as blocked.
 
 ## After Terminal State
 

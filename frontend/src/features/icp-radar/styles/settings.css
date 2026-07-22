@@ -309,3 +309,68 @@
   gap: var(--s-3);
 }
 
+.power-web-policy-settings > .card,
+.power-web-handoff-panel > .card {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.power-web-section-header,
+.power-web-ready-title,
+.power-web-product-row,
+.power-web-preflight-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.power-web-section-header {
+  justify-content: space-between;
+}
+
+.power-web-product-list,
+.power-web-role-list {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.power-web-product-row,
+.power-web-role-list > div {
+  min-width: 0;
+  padding: var(--s-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.power-web-product-row > span:first-of-type,
+.power-web-role-list > div {
+  display: grid;
+  gap: var(--s-1);
+  flex: 1;
+}
+
+.power-web-product-row svg {
+  width: var(--s-5);
+  height: var(--s-5);
+}
+
+.power-web-review-ack {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+}
+
+.power-web-preflight-summary {
+  flex-wrap: wrap;
+}
+
+.power-web-role-group {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.power-web-role-list > div {
+  grid-template-columns: minmax(12rem, 0.5fr) minmax(18rem, 1fr) auto;
+  align-items: center;
+}

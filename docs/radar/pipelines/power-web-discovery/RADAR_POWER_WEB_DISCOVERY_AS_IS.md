@@ -1,11 +1,13 @@
 # Power Web Discovery AS IS
 
-Status: current after slice `0.7.6.6.0.2`.
+Status: current after slice `0.7.6.6.1`.
 
 ## Executive statement
 
-Power Web OS does not discover people today. The current product can display
-already supplied roles and can build access routes from those supplied records,
+Power Web OS does not discover people today. It can now prepare an immutable,
+evidence-complete account handoff with exact product and semantic-role demand
+snapshots. The current product can also display already supplied roles and
+build access routes from those supplied records,
 but it has no people-search, identity-resolution, employment-validation or
 relationship-discovery runtime.
 
@@ -49,6 +51,42 @@ existing account-specific explanation of route decisions remains available
 under Access Plans as Rule analysis. `SmartDiagnostics` is seeded as an active
 product with eight semantic roles.
 
+## Account handoff and role demand
+
+The implemented pre-search boundary is:
+
+```text
+completed Radar candidate run
+  -> canonical evidence-complete candidate
+  -> versioned Radar product policy
+  -> immutable account identity snapshot
+  -> product-scoped semantic RoleDemand sets
+  -> optional correctly linked signal snapshot
+  -> power_web_handoff.v1
+```
+
+A Radar owns an ordered, immutable-versioned list of published products. The
+same product may be shared by several Radars. A handoff selects all bound
+products by default or an explicit non-empty subset and freezes their active
+Sales Playbook and Buying Role Policy versions. Similar roles from different
+products remain separate and retain product lineage.
+
+Accepted candidates are eligible immediately. Review-needed candidates require
+an explicit persisted acknowledgement. The account identity is stable by INN,
+then OGRN; without either it is provisional and scoped to the source candidate
+run. Source-less, rejected and wrong-Radar candidates are blocked.
+
+Signal context is optional and may only come from the latest completed Signal
+Monitoring run for the same Radar, source candidate run and candidate scope.
+The handoff copies only product-safe outcomes and evidence refs. It does not
+change role policy or claim that people were searched.
+
+The Radar Settings UI owns product bindings. Candidate detail has a Power Web
+tab that shows readiness, product versions, signal lineage and review-needed
+acknowledgement. A successful action says `Ready for people discovery` and
+shows the immutable brief. It creates no `power-web-run-*`, candidate run,
+signal run or provider call.
+
 ## Current data flow
 
 ```mermaid
@@ -90,7 +128,7 @@ influence.
 ## Missing capabilities
 
 - No independent `power_web_discovery` run, lineage, budget or artifact.
-- No role-demand planning or source-lane scheduling.
+- No job-title/query hypothesis generation or source-lane scheduling from role demands.
 - No public HH search or other people-source retrieval.
 - No source-native `PersonProfile` retention.
 - No reversible identity hypotheses or confirmed identity contract.
@@ -156,3 +194,21 @@ account-specific job titles from this configuration.
 - `PWS-BENCH-01`: the accepted benchmark remains evaluator-only with blind leakage zero.
 - `PWS-NET-01`: the slice performs no provider calls and creates no search runs.
 - `PWS-PROC-01`: TO BE, tests, machine validation and this finalized AS IS record are traceable.
+
+## Slice 0.7.6.6.1 implementation change record
+
+- `PW-HO-POL-01`: Radar-product bindings are a separate ordered immutable policy.
+- `PW-HO-PROD-01`: each handoff freezes exact active product and role-policy versions.
+- `PW-HO-ELIG-01`: accepted and acknowledged review-needed admission is explicit.
+- `PW-HO-PROV-01`: only canonical evidence-complete candidates enter the handoff.
+- `PW-HO-ID-01`: stable INN/OGRN and provisional scoped account identities are deterministic.
+- `PW-HO-ROLE-01`: RoleDemand contains semantic policy and no titles, queries or expected answers.
+- `PW-HO-ROLE-02`: product role sets are never silently merged.
+- `PW-HO-SIG-01`: signal context is optional and lineage-checked.
+- `PW-HO-IDEM-01`: persisted handoff snapshots are immutable and idempotent.
+- `PW-HO-API-01`: policy and handoffs survive API/worker restart.
+- `PW-HO-UI-01`: Radar Settings and candidate detail expose the same backend truth.
+- `PW-HO-ARCH-01`: Power Web application logic remains provider-neutral and package-owned.
+- `PW-HO-BENCH-01`: blind controls remain evaluator-only with leakage zero.
+- `PW-HO-NET-01`: provider calls and new pipeline runs are zero.
+- `PW-HO-PROC-01`: TO BE, manifest, tests, Docker evidence, validation and AS IS are traceable.

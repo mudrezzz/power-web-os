@@ -16,6 +16,7 @@ from power_web_os.application.sales_playbook.contracts import (
 from power_web_os.application.sales_playbook.service import SalesPlaybookService
 
 SMARTDIAGNOSTICS_PRODUCT_ID = "product-smartdiagnostics"
+INDUSTRIAL_ENERGY_OPTIMIZATION_PRODUCT_ID = "product-industrial-energy-optimization"
 
 
 def seed_smartdiagnostics(service: SalesPlaybookService) -> bool:
@@ -41,6 +42,53 @@ def seed_smartdiagnostics(service: SalesPlaybookService) -> bool:
     service.create_from_draft(draft)
     service.publish(SMARTDIAGNOSTICS_PRODUCT_ID, published_by="demo-seed", activate=True)
     return True
+
+
+def seed_industrial_energy_optimization(service: SalesPlaybookService) -> bool:
+    if any(item.product_id == INDUSTRIAL_ENERGY_OPTIMIZATION_PRODUCT_ID for item in service.list_products()):
+        return False
+    now = datetime.now(UTC)
+    draft = SalesPlaybookDraft(
+        product_id=INDUSTRIAL_ENERGY_OPTIMIZATION_PRODUCT_ID,
+        draft_revision=1,
+        product=ProductDefinition(
+            product_code="industrial-energy-optimization",
+            name="Industrial Energy Optimization",
+            short_description="Energy performance analysis and optimization for industrial production sites.",
+            customer_problem="High energy intensity, fragmented metering and limited control over production utilities.",
+            value_proposition="Reduce energy cost and operational risk through measurable, production-aware optimization.",
+            use_contexts=("Industrial energy efficiency", "Utility optimization", "Energy data quality"),
+        ),
+        buying_roles=_industrial_energy_roles(),
+        access_playbook=AccessPlaybookDefinition(),
+        updated_at=now,
+        updated_by="demo-seed",
+    )
+    service.create_from_draft(draft)
+    service.publish(INDUSTRIAL_ENERGY_OPTIMIZATION_PRODUCT_ID, published_by="demo-seed", activate=True)
+    return True
+
+
+def _industrial_energy_roles() -> tuple[SemanticBuyingRole, ...]:
+    rows = (
+        ("energy_performance_owner", "Energy performance owner", "Owns site or company energy performance and efficiency targets.", True, RoleScope.ACCOUNT),
+        ("production_utilities_owner", "Production utilities owner", "Owns production utilities, operating modes and site resource balance.", True, RoleScope.SITE),
+        ("economic_sponsor", "Economic sponsor", "Owns the economic outcome and investment decision.", True, RoleScope.ACCOUNT),
+        ("implementation_integration_owner", "Implementation and integration owner", "Owns implementation, industrial data integration and operational support.", True, RoleScope.ACCOUNT),
+        ("operational_champion", "Operational champion", "Validates daily operating practice and adoption constraints.", False, RoleScope.SITE),
+        ("metering_data_owner", "Metering and data owner", "Owns metering completeness, data quality and access to energy measurements.", False, RoleScope.SITE),
+    )
+    return tuple(
+        SemanticBuyingRole(
+            role_code=code,
+            display_name=name,
+            business_responsibility=responsibility,
+            required=required,
+            priority=RolePriority.HIGH if required else RolePriority.NORMAL,
+            scope=scope,
+        )
+        for code, name, responsibility, required, scope in rows
+    )
 
 
 def _role(

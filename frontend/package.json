@@ -12,8 +12,10 @@
     "radar:pipeline-split-ui-dod": "node scripts/radar-pipeline-split-ui-dod.mjs",
     "radar:settings-lazy-loading-dod": "node scripts/radar-settings-lazy-loading-dod.mjs",
     "radar:catalog-recovery-dod": "node scripts/radar-catalog-recovery-dod.mjs",
+    "radar:history-migration-check": "node scripts/radar-history-migration-check.mjs",
     "power-web:playbook-foundation-dod": "node scripts/power-web-playbook-foundation-dod.mjs",
     "power-web:playbook-simplification-dod": "node scripts/power-web-playbook-simplification-dod.mjs",
+    "power-web:handoff-dod": "node scripts/power-web-handoff-dod.mjs",
     "settings:toggle-smoke": "node scripts/settings-toggle-smoke.mjs"
   },
   "dependencies": {

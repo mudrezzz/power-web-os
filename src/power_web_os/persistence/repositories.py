@@ -20,8 +20,6 @@ from power_web_os.application.radar.lifecycle.records import (
     RadarRunOutputSummaryRecord,
     RadarRunRecord,
     RadarRunStatus,
-    RadarReviewDecisionRecord,
-    RadarRunTechnicalTraceRecord,
 )
 from power_web_os.persistence.models import (
     RadarDefinitionModel,
@@ -29,19 +27,19 @@ from power_web_os.persistence.models import (
     RadarRunEventModel,
     RadarRunModel,
     RadarRunOutputModel,
-    RadarReviewDecisionModel,
-    RadarRunTechnicalTraceModel,
+    RadarRunOutputSummaryModel,
     utc_now,
 )
 from power_web_os.persistence.record_mappers import (
     definition_record as _definition_record,
     radar_record as _radar_record,
-    review_decision_record as _review_decision_record,
     run_event_record as _run_event_record,
     run_output_record as _run_output_record,
     run_record as _run_record,
-    technical_trace_record as _technical_trace_record,
 )
+from power_web_os.persistence.run_summary_projection import run_display_metadata, summary_run_record
+from power_web_os.persistence.review_repository import SqlAlchemyRadarReviewDecisionRepository
+from power_web_os.persistence.technical_trace_repository import SqlAlchemyRadarRunTechnicalTraceRepository
 
 
 class SqlAlchemyRadarRepository:
@@ -115,6 +113,7 @@ class SqlAlchemyRadarRunRepository:
 
     def create(self, record: RadarRunRecord) -> RadarRunRecord:
         now = utc_now()
+        display = run_display_metadata(record.run_metadata)
         model = RadarRunModel(
             run_id=record.run_id,
             radar_id=record.radar_id,
@@ -129,6 +128,7 @@ class SqlAlchemyRadarRunRepository:
             error_message=record.error_message,
             error_metadata_json=dict(record.error_metadata),
             run_metadata_json=dict(record.run_metadata),
+            **display,
             created_at=record.created_at or now,
             updated_at=record.updated_at or now,
         )
@@ -158,6 +158,18 @@ class SqlAlchemyRadarRunRepository:
             .order_by(RadarRunModel.queued_at)
         )
         return tuple(_run_record(model) for model in self._session.scalars(stmt).all())
+
+    def list_summaries_for_radar(
+        self,
+        radar_id: str,
+        *,
+        pipeline_id: str = "candidate_discovery",
+    ) -> tuple[RadarRunRecord, ...]:
+        stmt = self._summary_select().where(
+            RadarRunModel.radar_id == radar_id,
+            RadarRunModel.pipeline_id == pipeline_id,
+        ).order_by(RadarRunModel.queued_at)
+        return tuple(summary_run_record(row) for row in self._session.execute(stmt))
 
     def latest_for_radar(self, radar_id: str, *, pipeline_id: str = "candidate_discovery") -> RadarRunRecord | None:
         stmt = (
@@ -202,22 +214,50 @@ class SqlAlchemyRadarRunRepository:
         row = self._session.execute(stmt).first()
         if row is None:
             return None
-        return RadarRunRecord(
-            run_id=row.run_id,
-            radar_id=row.radar_id,
-            pipeline_id=row.pipeline_id,
-            source_run_id=row.source_run_id,
-            status=RadarRunStatus(row.status),
-            queued_at=row.queued_at,
-            started_at=row.started_at,
-            completed_at=row.completed_at,
-            idempotency_key=row.idempotency_key,
-            correlation_id=row.correlation_id,
-            error_message=row.error_message,
-            error_metadata={},
-            run_metadata={},
-            created_at=row.created_at,
-            updated_at=row.updated_at,
+        return _summary_run_record(row)
+
+    def latest_summaries_by_radar(
+        self,
+        *,
+        pipeline_id: str = "candidate_discovery",
+    ) -> dict[str, RadarRunRecord]:
+        stmt = (
+            self._summary_select()
+            .where(
+                RadarRunModel.pipeline_id == pipeline_id,
+                RadarRunModel.status == RadarRunStatus.COMPLETED.value,
+            )
+            .order_by(RadarRunModel.radar_id, RadarRunModel.queued_at.desc())
+        )
+        latest: dict[str, RadarRunRecord] = {}
+        for row in self._session.execute(stmt):
+            if row.radar_id in latest:
+                continue
+            latest[row.radar_id] = summary_run_record(row)
+        return latest
+
+    @staticmethod
+    def _summary_select():
+        return select(
+            RadarRunModel.run_id,
+            RadarRunModel.radar_id,
+            RadarRunModel.pipeline_id,
+            RadarRunModel.source_run_id,
+            RadarRunModel.status,
+            RadarRunModel.queued_at,
+            RadarRunModel.started_at,
+            RadarRunModel.completed_at,
+            RadarRunModel.idempotency_key,
+            RadarRunModel.correlation_id,
+            RadarRunModel.error_message,
+            RadarRunModel.display_execution_mode,
+            RadarRunModel.display_requester,
+            RadarRunModel.display_run_profile,
+            RadarRunModel.display_benchmark_profile,
+            RadarRunModel.display_benchmark_mode,
+            RadarRunModel.display_signal_execution_mode,
+            RadarRunModel.created_at,
+            RadarRunModel.updated_at,
         )
 
     def count_for_radar(self, radar_id: str, *, pipeline_id: str = "candidate_discovery") -> int:
@@ -226,6 +266,14 @@ class SqlAlchemyRadarRunRepository:
             RadarRunModel.pipeline_id == pipeline_id,
         )
         return int(self._session.scalar(stmt) or 0)
+
+    def counts_by_radar(self, *, pipeline_id: str = "candidate_discovery") -> dict[str, int]:
+        stmt = (
+            select(RadarRunModel.radar_id, func.count())
+            .where(RadarRunModel.pipeline_id == pipeline_id)
+            .group_by(RadarRunModel.radar_id)
+        )
+        return {str(radar_id): int(count) for radar_id, count in self._session.execute(stmt)}
 
     def update_status(
         self,
@@ -254,11 +302,11 @@ class SqlAlchemyRadarRunRepository:
             model.error_metadata_json = dict(error_metadata)
         if run_metadata is not None:
             model.run_metadata_json = dict(run_metadata)
+            for field, value in run_display_metadata(run_metadata).items():
+                setattr(model, field, value)
         model.updated_at = now
         self._session.flush()
         return _run_record(model)
-
-
 class SqlAlchemyRadarRunOutputRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -287,6 +335,18 @@ class SqlAlchemyRadarRunOutputRepository:
         model.review_needed_candidate_count = public_surface.review_needed_count
         model.artifact_payload_json = dict(record.artifact_payload)
         model.updated_at = record.updated_at or now
+        summary = self._session.get(RadarRunOutputSummaryModel, record.run_id)
+        if summary is None:
+            summary = RadarRunOutputSummaryModel(run_id=record.run_id)
+            self._session.add(summary)
+        summary.artifact_version = record.artifact_version
+        summary.source_count = len(record.sources_payload)
+        summary.candidate_count = public_surface.candidate_count
+        summary.contract_issue_count = len(record.contract_validation_payload)
+        summary.visible_candidate_count = public_surface.candidate_count
+        summary.accepted_candidate_count = public_surface.accepted_count
+        summary.review_needed_candidate_count = public_surface.review_needed_count
+        summary.updated_at = record.updated_at or now
         self._session.flush()
         return _run_output_record(model)
 
@@ -295,6 +355,34 @@ class SqlAlchemyRadarRunOutputRepository:
         return _run_output_record(model) if model is not None else None
 
     def get_summary(self, run_id: str) -> RadarRunOutputSummaryRecord | None:
+        row = self._session.execute(
+            select(
+                RadarRunOutputSummaryModel.run_id,
+                RadarRunOutputSummaryModel.artifact_version,
+                RadarRunOutputSummaryModel.source_count,
+                RadarRunOutputSummaryModel.candidate_count,
+                RadarRunOutputSummaryModel.contract_issue_count,
+                RadarRunOutputSummaryModel.visible_candidate_count,
+                RadarRunOutputSummaryModel.accepted_candidate_count,
+                RadarRunOutputSummaryModel.review_needed_candidate_count,
+                RadarRunOutputSummaryModel.updated_at,
+            ).where(RadarRunOutputSummaryModel.run_id == run_id)
+        ).one_or_none()
+        if row is None:
+            return None
+        return RadarRunOutputSummaryRecord(
+            run_id=row.run_id,
+            artifact_version=row.artifact_version,
+            source_count=row.source_count,
+            candidate_count=row.candidate_count,
+            contract_issue_count=row.contract_issue_count,
+            visible_candidate_count=row.visible_candidate_count,
+            accepted_candidate_count=row.accepted_candidate_count,
+            review_needed_candidate_count=row.review_needed_candidate_count,
+            updated_at=row.updated_at,
+        )
+
+    def get_legacy_summary(self, run_id: str) -> RadarRunOutputSummaryRecord | None:
         row = self._session.execute(
             select(
                 RadarRunOutputModel.run_id,
@@ -322,104 +410,45 @@ class SqlAlchemyRadarRunOutputRepository:
             updated_at=row.updated_at,
         )
 
+    def get_summaries(self, run_ids: tuple[str, ...]) -> dict[str, RadarRunOutputSummaryRecord]:
+        if not run_ids:
+            return {}
+        rows = self._session.execute(
+            select(
+                RadarRunOutputSummaryModel.run_id,
+                RadarRunOutputSummaryModel.artifact_version,
+                RadarRunOutputSummaryModel.source_count,
+                RadarRunOutputSummaryModel.candidate_count,
+                RadarRunOutputSummaryModel.contract_issue_count,
+                RadarRunOutputSummaryModel.visible_candidate_count,
+                RadarRunOutputSummaryModel.accepted_candidate_count,
+                RadarRunOutputSummaryModel.review_needed_candidate_count,
+                RadarRunOutputSummaryModel.updated_at,
+            ).where(RadarRunOutputSummaryModel.run_id.in_(run_ids))
+        )
+        return {
+            row.run_id: RadarRunOutputSummaryRecord(
+                run_id=row.run_id,
+                artifact_version=row.artifact_version,
+                source_count=row.source_count,
+                candidate_count=row.candidate_count,
+                contract_issue_count=row.contract_issue_count,
+                visible_candidate_count=row.visible_candidate_count,
+                accepted_candidate_count=row.accepted_candidate_count,
+                review_needed_candidate_count=row.review_needed_candidate_count,
+                updated_at=row.updated_at,
+            )
+            for row in rows
+        }
+
+    def summary_coverage(self) -> tuple[int, int]:
+        output_count = int(self._session.scalar(select(func.count()).select_from(RadarRunOutputModel)) or 0)
+        summary_count = int(self._session.scalar(select(func.count()).select_from(RadarRunOutputSummaryModel)) or 0)
+        return output_count, summary_count
+
     def list_all(self) -> tuple[RadarRunOutputRecord, ...]:
         stmt = select(RadarRunOutputModel).order_by(RadarRunOutputModel.run_id)
         return tuple(_run_output_record(model) for model in self._session.scalars(stmt).all())
-
-class SqlAlchemyRadarReviewDecisionRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def upsert(self, record: RadarReviewDecisionRecord) -> RadarReviewDecisionRecord:
-        model = self._find_subject(
-            run_id=record.run_id,
-            candidate_id=record.candidate_id,
-            subject_type=record.subject_type,
-            subject_id=record.subject_id,
-        )
-        now = utc_now()
-        if model is None:
-            model = RadarReviewDecisionModel(decision_id=record.decision_id, created_at=record.created_at or now)
-            self._session.add(model)
-        model.run_id = record.run_id
-        model.radar_id = record.radar_id
-        model.candidate_id = record.candidate_id
-        model.subject_type = record.subject_type
-        model.subject_id = record.subject_id
-        model.status = record.status
-        model.reviewer = record.reviewer
-        model.comment = record.comment
-        model.decision_payload_json = dict(record.decision_payload)
-        model.score_impact_json = dict(record.score_impact)
-        model.reviewed_at = record.reviewed_at or now
-        model.updated_at = record.updated_at or now
-        self._session.flush()
-        return _review_decision_record(model)
-
-    def get(
-        self,
-        *,
-        run_id: str,
-        candidate_id: str,
-        subject_type: str,
-        subject_id: str,
-    ) -> RadarReviewDecisionRecord | None:
-        model = self._find_subject(
-            run_id=run_id,
-            candidate_id=candidate_id,
-            subject_type=subject_type,
-            subject_id=subject_id,
-        )
-        return _review_decision_record(model) if model is not None else None
-
-    def list_for_run(self, run_id: str) -> tuple[RadarReviewDecisionRecord, ...]:
-        stmt = (
-            select(RadarReviewDecisionModel)
-            .where(RadarReviewDecisionModel.run_id == run_id)
-            .order_by(
-                RadarReviewDecisionModel.candidate_id,
-                RadarReviewDecisionModel.subject_type,
-                RadarReviewDecisionModel.subject_id,
-            )
-        )
-        return tuple(_review_decision_record(model) for model in self._session.scalars(stmt).all())
-
-    def delete(
-        self,
-        *,
-        run_id: str,
-        candidate_id: str,
-        subject_type: str,
-        subject_id: str,
-    ) -> bool:
-        model = self._find_subject(
-            run_id=run_id,
-            candidate_id=candidate_id,
-            subject_type=subject_type,
-            subject_id=subject_id,
-        )
-        if model is None:
-            return False
-        self._session.delete(model)
-        self._session.flush()
-        return True
-
-    def _find_subject(
-        self,
-        *,
-        run_id: str,
-        candidate_id: str,
-        subject_type: str,
-        subject_id: str,
-    ) -> RadarReviewDecisionModel | None:
-        stmt = select(RadarReviewDecisionModel).where(
-            RadarReviewDecisionModel.run_id == run_id,
-            RadarReviewDecisionModel.candidate_id == candidate_id,
-            RadarReviewDecisionModel.subject_type == subject_type,
-            RadarReviewDecisionModel.subject_id == subject_id,
-        )
-        return self._session.scalars(stmt).first()
-
 
 class SqlAlchemyRadarRunEventRepository:
     def __init__(self, session: Session) -> None:
@@ -456,43 +485,5 @@ class SqlAlchemyRadarRunEventRepository:
     def next_sequence(self, run_id: str) -> int:
         value = self._session.scalar(
             select(func.max(RadarRunEventModel.sequence)).where(RadarRunEventModel.run_id == run_id)
-        )
-        return int(value or 0) + 1
-
-
-class SqlAlchemyRadarRunTechnicalTraceRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def append(self, record: RadarRunTechnicalTraceRecord) -> RadarRunTechnicalTraceRecord:
-        model = RadarRunTechnicalTraceModel(
-            trace_id=record.trace_id,
-            run_id=record.run_id,
-            sequence=record.sequence,
-            phase=record.phase,
-            node_name=record.node_name,
-            trace_type=record.trace_type,
-            title=record.title,
-            summary=record.summary,
-            duration_ms=record.duration_ms,
-            payload_json=dict(record.payload),
-            redaction_report_json=dict(record.redaction_report),
-            created_at=record.created_at or utc_now(),
-        )
-        self._session.add(model)
-        self._session.flush()
-        return _technical_trace_record(model)
-
-    def list_for_run(self, run_id: str) -> tuple[RadarRunTechnicalTraceRecord, ...]:
-        stmt = (
-            select(RadarRunTechnicalTraceModel)
-            .where(RadarRunTechnicalTraceModel.run_id == run_id)
-            .order_by(RadarRunTechnicalTraceModel.sequence)
-        )
-        return tuple(_technical_trace_record(model) for model in self._session.scalars(stmt).all())
-
-    def next_sequence(self, run_id: str) -> int:
-        value = self._session.scalar(
-            select(func.max(RadarRunTechnicalTraceModel.sequence)).where(RadarRunTechnicalTraceModel.run_id == run_id)
         )
         return int(value or 0) + 1

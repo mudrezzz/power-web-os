@@ -1,5 +1,6 @@
 # Architecture Decision Records
 
+- [Radar product policy and immutable Power Web handoff](2026-07-22-radar-product-policy-and-power-web-handoff.md)
 - [Power Web Discovery configuration excludes access strategy](2026-07-21-power-web-discovery-configuration-excludes-access-strategy.md)
 
 ADRs capture decisions that shape product architecture.

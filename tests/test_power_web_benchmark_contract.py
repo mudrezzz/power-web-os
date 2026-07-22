@@ -12,13 +12,13 @@ from power_web_os.application.radar.power_web_discovery.benchmark import (
     PowerWebBenchmark,
     PowerWebBenchmarkFreeze,
     PowerWebBenchmarkPlanningContext,
+    PowerWebBenchmarkRoleDemand,
     PowerWebBlindControls,
     ProfileControl,
     RelationshipControl,
     benchmark_sha256,
     verify_benchmark_freeze,
 )
-from power_web_os.application.radar.power_web_discovery.contracts import RoleDemand
 
 
 def _benchmark() -> PowerWebBenchmark:
@@ -85,11 +85,12 @@ def _benchmark() -> PowerWebBenchmark:
             account_name="Visible planning account",
             product_context="Industrial product",
             role_policy=tuple(
-                RoleDemand(
+                PowerWebBenchmarkRoleDemand(
                     demand_id=f"role-{index}",
                     role=f"Required role {index}",
+                    required=True,
                     scope="account",
-                    reason="Benchmark role policy.",
+                    reason="Visible benchmark role policy.",
                 )
                 for index in range(8)
             ),
@@ -205,3 +206,14 @@ def test_sales_playbook_amendment_has_no_blind_leakage() -> None:
     assert payload["blind_control_values"] == []
     assert "blind-person-profile" not in encoded
     assert "provenance_url" not in encoded
+
+
+def test_handoff_contract_has_no_blind_control_fields() -> None:
+    from power_web_os.application.radar.power_web_discovery.contracts import PowerWebHandoffSnapshot
+
+    schema = json.dumps(PowerWebHandoffSnapshot.model_json_schema(), ensure_ascii=False).casefold()
+
+    assert "blind_controls" not in schema
+    assert "expected_answer" not in schema
+    assert "identity_pair" not in schema
+    assert "provenance_urls" not in schema

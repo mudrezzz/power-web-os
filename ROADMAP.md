@@ -9438,38 +9438,85 @@ Required proof before Done:
 
 ### Slice 0.7.6.6.1: Power Web account handoff and buying-committee role demand
 
-- Status: Ready
-- Goal: Create immutable account handoff and explainable role-demand plans without rerunning candidate discovery or signal monitoring.
+- Status: Done
+- Goal: Create a versioned Radar-to-product Power Web policy and an immutable multi-product account handoff that compiles explainable RoleDemand sets without rerunning candidate discovery or signal monitoring.
 - User value: The system knows which internal and external roles must be found for a product/account before searching for people.
-- Problem statement: Current rendering accepts arbitrary roles, but RoleDemand has no authoritative product-owned semantic policy or immutable account input snapshot. Slice 0.7.6.6.0.2 establishes the product-plus-role configuration source and removes access-strategy coupling.
-- Scope: Assemble an evidence-complete candidate run plus optional signal snapshot; snapshot account/provenance, qualification/signals, Radar definition, ProductDefinition and BuyingRolePolicy versions and as-of time; compile RoleDemand only from role code, responsibility, requiredness, scope and effective priority; reject invalid or incompatible inputs.
+- Problem statement: Radars discover a reusable account universe, while products own different semantic buying roles. The system currently has no authoritative many-to-many Radar/product binding, no immutable handoff of exact product versions, and no run contract that can later support initial, incremental and full-rediscovery Power Web work without fragmenting one account graph by product.
+- Scope:
+  - Add a versioned RadarPowerWebPolicy to the existing Radar settings, persisted independently from candidate-discovery and signal-monitoring definitions.
+  - Bind each Radar to zero, one or many product IDs; one product may be used by many Radars. Roles remain owned by the product and are never copied into Radar settings.
+  - Resolve active published product and buying-role-policy versions at handoff and persist their exact immutable snapshots.
+  - Allow a Power Web handoff to use all Radar-bound products or an explicit subset; reject products not bound to that Radar.
+  - Create one account-centric preparation/run context for all selected products, with a separate ProductRoleDemandSet per product.
+  - Compile RoleDemand from product version, role code, responsibility, requiredness, scope and effective priority; do not silently merge similar roles across products.
+  - Snapshot candidate identity, product-safe provenance, source candidate run, Radar policy version, selected products, optional signal context, as_of and lineage.
+  - Mark the first handoff as run_kind=initial with previous_power_web_run_id=null.
+  - Persist and expose a pre-search brief grouped by product; this slice performs no people retrieval.
 - Out of scope:
-  - No people provider calls.
-  - No identity/influence decision or Access Plan generation.
-  - No mutation of source pipelines.
-- Implementation notes: Depends on completed 0.7.6.6.0.2; RoleDemand has no AccessPlaybook or authored expected-evidence dependency; LLM cannot decide required roles; account-specific title/query/evidence hypotheses belong to 0.7.6.6.2; source and configuration lineage is immutable.
+  - People-search provider calls, profile extraction, identity resolution, employment validation and graph construction.
+  - Recurring scheduler or automatic cadence execution.
+  - Per-product, per-account or per-source-lane cadence overrides.
+  - Merging equivalent roles across products.
+  - Rerunning candidate discovery or signal monitoring during handoff.
+  - Access Playbook or access-route constraints.
+- Implementation notes:
+  - Product owns product meaning and semantic roles; Radar owns which products apply to its discovered accounts; each Power Web run owns an immutable effective snapshot.
+  - Radar settings expose product bindings, while backend storage versions the Power Web policy separately so unrelated Radar edits do not silently change it.
+  - Version resolution is explicit at handoff with basis=active_at_handoff. Historical runs never follow later product activation changes.
+  - A run may cover all bound products or a validated subset. One future person may satisfy roles for several products, but the demands remain product-scoped and independently explainable.
+  - Signal observations are optional context only and cannot add, remove or reprioritize semantic roles.
+  - The scheduler is intentionally deferred to 0.7.6.6.7.1 after incremental semantics and persisted runtime exist.
 - Tests:
-  - Recorded role-policy matrix.
-  - Preflight failures and snapshot immutability.
-  - Fail-on-call isolation for candidate/signal executors.
+  - One Radar binds two products; one product binds to two Radars without copied configuration.
+  - RadarPowerWebPolicy survives API/DB/restart round-trip and has immutable versions.
+  - Handoff resolves and snapshots exact active product and role-policy versions.
+  - All-products and valid-subset handoffs work; an unbound product is rejected.
+  - Archived, unpublished or missing products produce explicit preflight blockers.
+  - A later product publication does not mutate an old handoff; a new handoff resolves the new active version.
+  - Similar roles from two products remain two product-scoped RoleDemand records.
+  - Wrong Radar, unfinished/source-less candidate run and invalid signal lineage are rejected explicitly.
+  - Fail-on-call providers prove zero candidate, signal and people-search calls.
+  - Docker/UI test verifies persisted policy, grouped pre-search brief and restart round-trip.
 - Docs:
   - Create slice TO BE/PDF, manifest and validation report.
   - Document handoff and role-taxonomy ownership; finalize AS IS.
-- Demo impact: Show a pre-search brief of required, optional and missing roles before budget spend.
-- Acceptance criteria: Hard DoD: every run snapshots account, source lineage, ProductDefinition and BuyingRolePolicy versions; every RoleDemand traces to one semantic role with responsibility, requiredness, scope and effective priority; no AccessPlaybook or authored expected-evidence dependency; no hidden role defaults, candidate/signal/people/LLM calls; explicit preflight failures; validation PASS and finalized AS IS.
-- Risks:
-  - Product policy may be incomplete; fail preflight instead of inventing mandatory roles.
-  - Signal context stays optional and product-safe.
-  - Snapshot/version mismatch must be explicit and must not fall back to the latest configuration silently.
+- Demo impact: Seed a Radar bound to at least two published products. From one evidence-complete candidate, create an initial handoff for all products and another for a subset. Show grouped role-demand counts, exact version lineage, readiness and blockers without starting people search.
+- Acceptance criteria:
+  - Radar-to-product binding is explicit, versioned and many-to-many.
+  - Editing bindings creates zero candidate-discovery and signal-monitoring runs.
+  - A handoff can select all bound products or a subset, but never an unbound product.
+  - Exact product and role-policy versions are snapshotted with source candidate lineage and as_of.
+  - Every RoleDemand references exactly one product and one semantic role.
+  - Similar roles across products are not silently merged.
+  - Historical handoffs remain unchanged after product activation or Radar-policy edits.
+  - Missing, unpublished, archived or incompatible inputs produce explicit blockers.
+  - Persisted handoff has run_kind=initial and no hidden recurring schedule.
+  - RoleDemand has no AccessPlaybook, expected-evidence, title or query dependency.
+  - Provider calls and new candidate/signal runs equal zero.
+  - UI -> API -> DB -> restart -> UI round-trip passes.
+  - Power Web evidence loop and validation report have PASS before Done.
+- Risks: Multi-product fan-out can multiply future retrieval work; product-version drift can make runs incomparable; role overlap can cause duplicate future tasks; and optional signal context can be mistaken for role ownership. The slice controls these risks through immutable snapshots, product-scoped demands, explicit lineage and no provider execution.
 - Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.1.acceptance.json
 - Behavior change: true
 - Dependencies: Ready after 0.7.6.6.0.2 PASS.
 - Pipeline: power-web-discovery
 - Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.1/validation.json
 
+### Slice 0.7.6.6.1.1: Remote-first development and validation contour
+
+- Status: Done
+- Goal: Move all Codex Docker, test, build, Playwright and runtime validation to isolated remote contours on 213.148.13.45 with no silent local fallback.
+- Scope: Canonical remote orchestration, isolated validation Compose sessions, persistent release/shared/current dev stack, server-owned secrets, artifact collection, locking, procedural skill migration and process guardrails.
+- Behavior change: false
+- Blocks: 0.7.6.6.2
+- Definition of Done: Remote Probe/Sync/Test/Deploy/Exec/Collect/Logs/Cleanup are validated; workspace SHA matches; backend, frontend build and Playwright execute remotely; validation sessions and persistent stack are isolated; lock and non-zero propagation are proven; server-owned .env is neither copied nor exposed; provider calls and unrequested product runs are zero; restart/persistence and safe cleanup pass; all procedural skills are remote-first; collected validation.json reports PASS; local Docker/test invocations are zero.
+- Depends on: 0.7.6.6.1 (Done)
+- Process notes: Behavior change false. Product pipeline semantics are unchanged. Remote failure blocks validation. Product/provider runs require an explicit live action and AllowProviderCalls.
+- Validation: Remote backend architecture and handoff tests; remote frontend architecture tests and production build; remote power-web:handoff-dod; intentional failing command; parallel isolation; lifecycle lock contention; public HTTP checks; API/worker restart; artifact collection; cleanup preservation; roadmap and diff checks through remote runners.
+
 ### Slice 0.7.6.6.2: Power Web people search planning, source lanes and HH retrieval
 
-- Status: Backlog
+- Status: Ready
 - Goal: Plan, accept, schedule and execute auditable role-scoped people searches, including a compliant mandatory HH.ru lane.
 - User value: Users see where/how each role was searched and whether HH and official sources were actually covered.
 - Problem statement: There is no people source strategy, accepted query plan, HH connector or ledger preventing selected lanes from disappearing.
@@ -9667,38 +9714,45 @@ Required proof before Done:
 ### Slice 0.7.6.6.6: Power Web checkpoints, recovery, budgets and incremental discovery
 
 - Status: Backlog
-- Goal: Make Power Web discovery bounded, recoverable and incremental while preserving coverage and evidence integrity.
+- Goal: Make initial, incremental and full-rediscovery Power Web runs bounded, recoverable and temporally correct while preserving account/product/role/source coverage and evidence integrity.
 - User value: Source failures do not erase the map, repeat runs do not duplicate people and coverage stops are understandable.
 - Problem statement: Multi-source people search becomes unbounded/fragile without independent budgets, checkpoints, bounded revision, salvage, fingerprints and watermarks.
 - Scope:
-  - Add task/provider/retry/verification/enrichment budgets and events.
-  - Checkpoint planning, retrieval, extraction, identity and role coverage.
-  - Allow one bounded revision for critical gaps, primary/backup retry and source-backed salvage.
-  - Add fingerprints, dedupe and account/role/lane watermarks.
-  - Do not advance failed/policy/budget lanes; expose honest terminal states.
+  - Define run kinds initial, incremental and full_rediscovery inside one Power Web Discovery pipeline.
+  - Persist previous-run lineage and watermarks per account + product + role + source lane.
+  - Build incremental windows from the last successful lane watermark with a configurable overlap; the initial default overlap is 7 days.
+  - Do not advance watermarks for failed, policy-limited or budget-limited lanes.
+  - Detect new profiles, evidence, title/employment changes, newly public sources and previously unfilled role gaps.
+  - Make full rediscovery re-plan broad source coverage while preserving historical identities and claims.
+  - Add explicit no-change, stale, coverage-incomplete, recovery and terminal states.
+  - Keep checkpoints, retries and budgets bounded and auditable.
 - Out of scope:
-  - No recurring scheduler.
-  - No unlimited enrichment.
-  - No source-pipeline budget changes.
-- Implementation notes:
-  - Share provider-neutral budget primitives only.
-  - Checkpoint decisions cite gaps/receipts/budget.
-  - Incremental runs preserve immutable lineage.
+  - Recurring scheduler, cadence persistence or scheduling UI; these are owned by 0.7.6.6.7.1.
+  - Unlimited retries or provider budgets.
+  - Treating a disappeared page or absent evidence as proof that employment ended.
+  - Per-account/product/lane cadence overrides.
+  - Signal Monitoring or candidate-discovery scheduling changes.
+- Implementation notes: Every incremental or full-rediscovery run points to the previous Power Web run. Absence is a gap or stale-evidence state, never an automatic former-employment conclusion. Unknown-date evidence remains reviewable. The temporal mechanics implemented here are consumed by the recurring scheduler in 0.7.6.6.7.1.
 - Tests:
-  - Transport/schema/ref/identity/budget/policy failure matrix.
-  - Retry/revision/salvage bounds.
-  - Two-run dedupe/watermark and three-pipeline budget isolation.
+  - Recorded initial -> incremental -> full-rediscovery sequence preserves lineage and immutable history.
+  - Successful lanes advance watermarks and apply overlap; failed/policy/budget-limited lanes do not.
+  - Existing confirmed and review evidence is not republished as new.
+  - A disappeared source cannot by itself change current employment to former.
+  - A no-change incremental run completes successfully with auditable coverage.
+  - Product/role/source lane coverage and budget decisions remain explicit.
 - Docs:
   - Create TO BE/PDF/manifest and state-machine docs.
   - Finalize AS IS with actual limits.
 - Demo impact: Diagnostics show coverage, budgets, retries, salvage, duplicates and gaps.
-- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
-- Every task/lane has a terminal ledger outcome.
-- Retries/revisions/enrichment are bounded and counted.
-- Salvage creates no source-less people or confirmed identities.
-- Second run republishes zero old profiles/evidence as new.
-- Failed/limited lanes do not advance watermarks or create false not-found.
-- Other pipeline counters remain unchanged; validation and AS IS pass.
+- Acceptance criteria:
+  - One Power Web pipeline supports all three run kinds with explicit previous-run lineage.
+  - Per-lane watermarks and overlap are deterministic and persisted.
+  - Failed or limited lanes never advance freshness.
+  - Incremental runs expose additions, changes, retained evidence and unresolved gaps.
+  - Full rediscovery re-plans broadly without erasing history.
+  - No missing source is interpreted as dismissal or former employment.
+  - No recurring scheduler is hidden in this slice.
+  - Recorded validation passes before the scheduling slice may start.
 - Risks:
   - Merge corrections complicate incremental graphs; version decisions.
   - Reserve tuning must be benchmark-driven.
@@ -9714,35 +9768,38 @@ Required proof before Done:
 - User value: Users can launch, monitor and reopen a historical Power Web run with proven source lineage.
 - Problem statement: Recorded behavior is not a product runtime until lineage, artifacts, budgets and failures persist independently.
 - Scope:
-  - Add pipeline_id=power_web_discovery with source candidate run and optional signal run ids.
-  - Create separate output repository/table and product-safe artifact.
-  - Add preflight, create/history/direct/report/graph/diagnostics APIs.
-  - Add queued service, executor, factory, Celery queue and CLI/demo commands.
-  - Persist immutable input, plan, profiles, identity/role graph, evidence, budgets and checkpoints.
-  - Support idempotency, filtered histories and restart round-trip.
+  - Persist Power Web runs, artifacts, jobs and reports with source candidate/signal lineage, RadarPowerWebPolicy version and exact product/role versions.
+  - Persist run_kind=initial|incremental|full_rediscovery and previous_power_web_run_id.
+  - Provide API/job/manual execution paths for all three run types.
+  - Persist watermarks, freshness summaries, change sets and terminal diagnostics.
+  - Add scheduler-ready scalar summary fields so future due-run scans do not load full artifacts.
+  - Preserve restart, idempotency and separate Power Web provider budgets.
 - Out of scope:
-  - No full graph UI.
-  - No periodic scheduler.
-  - No Access Planner semantic change beyond stable handoff.
+  - Recurring scheduler, cadence calculation and automatic due-run creation; these belong to 0.7.6.6.7.1.
+  - Power Web review UI and graph UX.
+  - Candidate-discovery or Signal Monitoring execution changes.
 - Implementation notes:
   - Routes are transport-only, jobs pass run ids, persistence stores but does not decide.
   - Other pipeline latest/history/counters must not switch.
   - Keep history lightweight and heavy resources lazy.
 - Tests:
-  - Migration/round-trip/lineage tests.
-  - API idempotency/preflight/history/error tests.
-  - Fail-on-call job isolation, restart persistence and bounded Docker live run.
+  - Persistence/API/job round-trip for all three run kinds and previous-run chains.
+  - Historical product/policy snapshots remain immutable after configuration edits.
+  - Watermarks, freshness and change summaries survive API/worker restart.
+  - Idempotency prevents duplicate manual jobs.
+  - Scheduler-ready summaries are readable without loading artifacts.
+  - Live initial plus explicitly triggered incremental run prove runtime without recurring execution.
 - Docs:
   - Create TO BE/PDF/manifest and update backend/API/job/runbook docs.
   - Finalize runtime AS IS.
 - Demo impact: Launch and inspect a real persisted third-pipeline run.
-- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
-- Distinct run id, pipeline id, lineage, budgets and artifact exist.
-- Creating Power Web causes zero candidate/signal runs or provider calls.
-- Histories/outputs remain separate and failures explicit.
-- One bounded live run yields profiles, graph and diagnostics.
-- Report survives backend/worker restart.
-- Validation is PASS and AS IS reconciled.
+- Acceptance criteria:
+  - Persisted Power Web runtime remains one pipeline with three explicit run kinds.
+  - Every non-initial run has valid previous-run lineage.
+  - Run summaries expose enough scalar freshness data for 0.7.6.6.7.1.
+  - Manual API/jobs survive restart and do not mix candidate, signal or Power Web budgets.
+  - No recurring job is created before 0.7.6.6.7.1.
+  - Live initial and manual incremental artifacts are readable and evidence-complete.
 - Risks:
   - People artifacts can be large; use scalar summaries/lazy endpoints.
   - Shared lifecycle migration needs cross-pipeline regression.
@@ -9750,6 +9807,69 @@ Required proof before Done:
 - Behavior change: true
 - Pipeline: power-web-discovery
 - Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.7/validation.json
+
+### Slice 0.7.6.6.7.1: Power Web refresh policy, recurring scheduler and freshness diagnostics
+
+- Status: Backlog
+- Goal: Turn Power Web from a one-time people search into a controlled recurring account-graph refresh with separate initial, incremental and full-rediscovery cadences.
+- User value: Users keep account Power Webs current as people change employers and titles, new profiles and publications appear, and previously missing buying roles become discoverable, without repeatedly launching uncontrolled full searches.
+- Problem statement: People and public evidence are temporally unstable. A single cadence is either too expensive or too incomplete: incremental monitoring should be frequent and narrow, while full rediscovery should be rarer and broad. The product needs explicit policy, deterministic due-run calculation, idempotent scheduling and honest freshness diagnostics.
+- Scope:
+  - Extend RadarPowerWebPolicy in Radar settings with automatic-refresh enablement and separate initial, incremental and full-rediscovery policies.
+  - Initial trigger: manual or on_candidate_accepted; default manual.
+  - Incremental cadence: manual, weekly, monthly or quarterly; default monthly when automatic refresh is enabled.
+  - Full-rediscovery cadence: manual, quarterly or semiannual; default quarterly when automatic refresh is enabled.
+  - Automatic refresh is disabled by default and supports pause/resume without deleting history.
+  - Persist effective overlap, initially 7 days, with value and basis in run snapshots.
+  - Schedule only evidence-complete accounts with a valid handoff and successful initial run.
+  - Create due runs through persisted idempotent jobs, never direct provider calls from the scheduler.
+  - Product/role-policy changes mark affected account graphs stale and full-rediscovery-due.
+  - Calculate freshness per account, product, role and source lane.
+  - Expose last/next timestamps, stale reasons, due reason, policy version and idempotency key.
+  - Keep manual initial, incremental and full refresh available at any time.
+  - Use a deterministic clock and explicit Radar timezone.
+  - Expose policy in Radar settings and freshness in the Power Web surface.
+- Out of scope:
+  - Separate global Power Web configuration UI.
+  - Per-account, per-product or per-lane cadence overrides.
+  - Automatic refresh triggered by Signal Monitoring events.
+  - Treating a missing profile/page as evidence that employment ended.
+  - Changes to candidate-discovery or Signal Monitoring schedules.
+  - Unbounded retries, concurrency or provider budgets.
+- Implementation notes: Cadence ownership stays with the Radar because the Radar defines the reusable account universe and products to pursue. Power Web remains one pipeline with three run kinds. Due dates anchor to the last successful run of the relevant kind; failed runs do not postpone the next due run or advance watermarks. Full rediscovery re-plans source coverage, while incremental runs use per-lane watermarks and overlap. A scheduler tick creates at most one idempotent run per eligible account chain and reads scalar summaries rather than full artifacts.
+- Tests:
+  - Policy API/DB/restart round-trip with defaults, pause/resume and explicit timezone.
+  - Deterministic due-date tests across month boundaries and time zones.
+  - Ten scheduler ticks create exactly one due run per account chain.
+  - Concurrent schedulers and worker restart create no duplicate runs.
+  - on_candidate_accepted is opt-in; manual remains the default.
+  - Product/role-policy activation marks affected graphs stale and full-rediscovery-due.
+  - Successful no-change incremental runs update freshness; failed/limited runs do not.
+  - Manual refresh works while automatic refresh is disabled.
+  - Candidate and signal schedules/counters remain unchanged.
+  - Docker gate executes one genuinely scheduled incremental run and verifies persisted report after restart.
+  - Playwright verifies Radar policy, pause/resume, next refresh and stale diagnostics in RU/EN.
+- Docs: Create TO BE Markdown/PDF and acceptance manifest before code. After validation PASS, update Power Web AS IS Markdown/PDF, scheduler ADR, Developer Guide, User Guide, demo runbook and roadmap closeout with actual scheduled run IDs and freshness evidence.
+- Demo impact: The demo Radar exposes two bound products, automatic Power Web refresh disabled by default, and a controlled example where enabling monthly incremental plus quarterly full rediscovery creates one due incremental run. The UI shows last/next refresh, stale roles and pause state.
+- Acceptance criteria:
+  - One Radar policy controls Power Web cadence for its bound products without a separate configuration surface.
+  - Initial discovery is manual by default; automatic refresh is opt-in.
+  - Incremental and full-rediscovery cadences are independent and persisted.
+  - Ten repeated scheduler ticks and concurrent workers create zero duplicate runs.
+  - Every automatic run has due reason, policy version, previous-run lineage and idempotency key.
+  - Successful lanes advance freshness; failed, policy-limited and budget-limited lanes do not.
+  - Product/role changes make affected graphs explicitly stale.
+  - Missing sources never automatically create former-employment claims.
+  - Manual refresh works when scheduling is paused or disabled.
+  - Candidate-discovery and Signal Monitoring schedules are unchanged.
+  - A real Docker scheduled incremental run completes within bounded budgets and survives restart.
+  - Validation report has PASS and contains scheduler ledger, run IDs, freshness matrix and retrospective.
+- Risks: Recurring people search can multiply cost, duplicate jobs, amplify stale evidence and create false employment changes. Defaults therefore remain opt-in, cadence is bounded, scheduling is idempotent, freshness is per lane, and absence never becomes a confirmed personnel change.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.7.1.acceptance.json
+- Behavior change: true
+- Dependencies: Blocked until 0.7.6.6.6 incremental semantics and 0.7.6.6.7 persisted runtime/API/jobs are Done.
+- Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.7.1/validation.json
 
 ### Slice 0.7.6.6.8: Power Web guided and blind quality benchmark
 
@@ -9791,6 +9911,7 @@ Required proof before Done:
   - Source volatility requires versioned as-of and accepted equivalent URLs.
 - Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.8.acceptance.json
 - Behavior change: true
+- Dependencies: Blocked until 0.7.6.6.7.1 proves recurring scheduling, temporal run lineage and freshness diagnostics.
 - Pipeline: power-web-discovery
 - Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.8/validation.json
 
@@ -9801,40 +9922,41 @@ Required proof before Done:
 - User value: Users inspect who was found, resolve profiles, approve roles/relationships, see gaps and understand route changes.
 - Problem statement: A graph is unusable if identities/relations cannot be checked or corrected and unresolved hypotheses silently become Access Planner facts.
 - Scope:
-  - Add third pipeline panel with history, lineage, status, budgets and diagnostics.
-  - Render typed account/person/profile/role/external nodes, evidence edges and gaps.
-  - Add profile detail, evidence, side-by-side identity review, merge/separate, role and relationship actions.
-  - Version and persist reversible review decisions.
-  - Adapt only contract-allowed graph states to Account/PowerWebRole and show route effects.
+  - Show account-centric Power Web results grouped or filtered by product and semantic role.
+  - Show run kind, previous-run lineage, last initial/full discovery, last incremental refresh and change summary.
+  - Show next scheduled refresh, paused/disabled state, stale accounts/roles/source lanes and coverage gaps from 0.7.6.6.7.1.
+  - Support human review of identities, employment and evidence without losing product provenance.
+  - Keep manual refresh available for eligible accounts.
 - Out of scope:
-  - No outreach/CRM execution.
-  - No scheduler editor.
-  - No biometric UI.
-- Implementation notes:
-  - Use design system, shell, Lucide and RU/EN.
-  - Graph is a work surface; every element opens evidence.
-  - Keep selected run lineage consistent without silent latest fallback.
+  - A separate global scheduler settings screen.
+  - Per-account/product/lane cadence overrides.
+  - Inferring employment termination from missing evidence.
+  - Access-strategy workflow.
+- Implementation notes: Cadence is edited only in Radar settings. Power Web UI consumes the effective policy and run freshness contracts, and renders missing or old evidence as stale/unverified rather than false certainty.
 - Tests:
-  - Frontend build/architecture/lazy-loading contracts.
-  - Playwright direct links, history, graph/detail/review/handoff.
-  - Review audit/restart and 1280x720/1366x768 RU/EN visual QA.
+  - Multi-product graph preserves product/role provenance.
+  - Initial, incremental and full-rediscovery histories are distinguishable.
+  - Last/next refresh, pause state, stale reasons and change sets match backend summaries.
+  - Manual refresh works while automatic refresh is disabled.
+  - Review actions target the selected Power Web run and identity.
+  - RU/EN and desktop viewports have no overlap or body scrolling.
 - Docs:
   - Create TO BE/PDF/manifest and update user/developer/demo/frontend/handoff docs.
   - Finalize UI/handoff AS IS.
 - Demo impact: Show the complete company -> signal -> Power Web -> Access Plan product chain.
-- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
-- Every node/edge has evidence or explicit hypothesis/gap reason.
-- Anonymous profiles differ visibly from resolved people.
-- Review actions are reversible, audited and restart-safe.
-- UI/API counts agree with zero duplicate identities or empty detail.
-- Access Planner consumes only allowed states and routes reference causing evidence.
-- Three pipeline histories/budgets/artifacts remain separate.
-- Responsive RU/EN Playwright, validation and AS IS pass.
+- Acceptance criteria:
+  - A user can understand which products and roles each person supports.
+  - Freshness, next refresh and stale coverage are explicit and cannot be mistaken for confirmed current employment.
+  - Scheduler settings are not duplicated outside Radar settings.
+  - Manual refresh and human review remain available.
+  - UI counters and histories agree with persisted Power Web endpoints.
+  - Benchmark and restart gates pass.
 - Risks:
   - Dense graphs need groups/filters/focus/evidence panel, not decorative layout.
   - Review overlays must not rewrite source truth.
 - Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.9.acceptance.json
 - Behavior change: true
+- Dependencies: Blocked until 0.7.6.6.8 benchmark PASS; consumes cadence and freshness contracts from 0.7.6.6.7.1.
 - Pipeline: power-web-discovery
 - Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.9/validation.json
 
@@ -10428,4 +10550,4 @@ None.
 
 ## Next Recommended Task
 
-Slice 0.7.6.4.18.1.4.3: Candidate evidence completeness and duplicate-safe public surface
+Slice 0.7.6.6.2: Power Web people search planning, source lanes and HH retrieval

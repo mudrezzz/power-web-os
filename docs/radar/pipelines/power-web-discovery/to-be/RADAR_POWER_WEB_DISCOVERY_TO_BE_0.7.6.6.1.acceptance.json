@@ -1,0 +1,31 @@
+{
+  "schema_version": "radar_pipeline_acceptance.v1",
+  "slice_id": "0.7.6.6.1",
+  "pipeline_id": "power-web-discovery",
+  "behavior_change": true,
+  "to_be_markdown": "docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.1.md",
+  "to_be_pdf": "docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.1.pdf",
+  "as_is_markdown": "docs/radar/pipelines/power-web-discovery/RADAR_POWER_WEB_DISCOVERY_AS_IS.md",
+  "as_is_pdf": "docs/radar/pipelines/power-web-discovery/RADAR_POWER_WEB_DISCOVERY_AS_IS.pdf",
+  "validation_json": "docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.1/validation.json",
+  "validation_markdown": "docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.1/VALIDATION_REPORT.md",
+  "requirements": [
+    {"id": "PW-HO-POL-01", "mandatory": true, "description": "Radar product policy is immutable, ordered and many-to-many.", "test_node_ids": ["tests/test_power_web_handoff_contracts.py::test_radar_product_policy_is_ordered_and_versioned"]},
+    {"id": "PW-HO-PROD-01", "mandatory": true, "description": "Handoff freezes exact active product versions.", "test_node_ids": ["tests/test_power_web_handoff_contracts.py::test_role_demands_freeze_product_versions"]},
+    {"id": "PW-HO-ELIG-01", "mandatory": true, "description": "Accepted and acknowledged review-needed eligibility is enforced.", "test_node_ids": ["tests/test_power_web_handoff_contracts.py::test_review_needed_candidate_requires_acknowledgement"]},
+    {"id": "PW-HO-PROV-01", "mandatory": true, "description": "Only evidence-complete canonical candidates are admitted.", "test_node_ids": ["tests/test_power_web_handoff_contracts.py::test_source_less_candidate_is_rejected"]},
+    {"id": "PW-HO-ID-01", "mandatory": true, "description": "Stable and provisional account identity is deterministic.", "test_node_ids": ["tests/test_power_web_handoff_contracts.py::test_account_identity_prefers_inn_and_scopes_provisional_ids"]},
+    {"id": "PW-HO-ROLE-01", "mandatory": true, "description": "RoleDemand contains semantic policy without search inventions.", "test_node_ids": ["tests/test_power_web_handoff_contracts.py::test_role_demand_contract_excludes_search_inventions"]},
+    {"id": "PW-HO-ROLE-02", "mandatory": true, "description": "Product role sets remain separate without silent merging.", "test_node_ids": ["tests/test_power_web_handoff_contracts.py::test_equal_role_codes_from_two_products_are_not_merged"]},
+    {"id": "PW-HO-SIG-01", "mandatory": true, "description": "Optional signal context is selected only from matching lineage and scope.", "test_node_ids": ["tests/test_power_web_handoff_contracts.py::test_signal_selector_uses_latest_matching_candidate_scope"]},
+    {"id": "PW-HO-IDEM-01", "mandatory": true, "description": "Handoffs are immutable and idempotent.", "test_node_ids": ["tests/test_persisted_power_web_handoff.py::test_handoff_is_immutable_and_idempotent"]},
+    {"id": "PW-HO-API-01", "mandatory": true, "description": "Policy and handoff round-trip through API and persistence.", "test_node_ids": ["tests/test_power_web_handoff_api.py::test_power_web_policy_and_handoff_round_trip"]},
+    {"id": "PW-HO-UI-01", "mandatory": true, "description": "Radar settings and candidate detail expose an honest ready brief.", "test_node_ids": ["tests/test_frontend_architecture_contract.py::test_radar_power_web_handoff_ui_contract"]},
+    {"id": "PW-HO-ARCH-01", "mandatory": true, "description": "Power Web application boundaries remain provider-neutral.", "test_node_ids": ["tests/test_backend_architecture_contract.py::test_power_web_handoff_package_boundaries"]},
+    {"id": "PW-HO-BENCH-01", "mandatory": true, "description": "Blind benchmark controls do not leak into handoff planning.", "test_node_ids": ["tests/test_power_web_benchmark_contract.py::test_handoff_contract_has_no_blind_control_fields"]},
+    {"id": "PW-HO-NET-01", "mandatory": true, "description": "Handoff creates no providers or pipeline runs.", "test_node_ids": ["tests/test_power_web_handoff_api.py::test_handoff_has_zero_provider_and_pipeline_calls"]},
+    {"id": "PW-HO-PROC-01", "mandatory": true, "description": "Evidence-loop artifacts are traceable.", "test_node_ids": ["tests/test_radar_pipeline_documentation_contract.py::test_power_web_handoff_evidence_loop"]}
+  ],
+  "recorded_acceptance": {},
+  "live_acceptance": {}
+}

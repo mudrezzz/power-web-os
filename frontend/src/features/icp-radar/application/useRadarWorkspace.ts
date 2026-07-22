@@ -27,6 +27,7 @@ import { useRadarConfigOverrides } from './useRadarConfigOverrides';
 import { useRadarNavigation } from './useRadarNavigation';
 import { useSignalValidationOverlay } from './useSignalValidationOverlay';
 import type { RadarBackendController } from './useRadarBackend';
+import type { CandidateDetailTab } from '../modelTypes';
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
@@ -103,7 +104,9 @@ export function useRadarWorkspace({
     const params = new URLSearchParams(window.location.search);
     const runId = params.get('runId');
     const signalRunId = params.get('signalRunId');
-    const selection = `${runId ?? ''}|${signalRunId ?? ''}`;
+    const candidateId = params.get('candidateId');
+    const handoffId = params.get('handoffId');
+    const selection = `${runId ?? ''}|${signalRunId ?? ''}|${candidateId ?? ''}|${handoffId ?? ''}`;
     if ((!runId && !signalRunId) || appliedDirectSelection === selection || backend.runState.mode === 'loading') {
       return;
     }
@@ -118,6 +121,9 @@ export function useRadarWorkspace({
       navigation.setSelectedRadarId(radarId);
       navigation.setSelectedTab(signalRunId ? 'operations' : 'shortlist');
       navigation.clearCandidateState();
+      if (candidateId && !signalRunId) {
+        navigation.openLiveCandidate(candidateId, 'power_web');
+      }
     });
   }, [appliedDirectSelection, backend, backend.runState.mode, navigation]);
 
@@ -363,6 +369,16 @@ export function useRadarWorkspace({
     }
   }
 
+  function openLiveCandidate(candidateId: string, tab: CandidateDetailTab = 'overview') {
+    navigation.openLiveCandidate(candidateId, tab);
+    updateCandidateQuery(candidateId, null);
+  }
+
+  function closeLiveCandidate() {
+    navigation.setDetailLiveCandidateId(null);
+    updateCandidateQuery(null, null);
+  }
+
   function selectCandidateDetailTab(tab: Parameters<typeof navigation.setCandidateDetailTab>[0]) {
     navigation.setCandidateDetailTab(tab);
     if (!selectedRadar || backend.runState.mode !== 'api') {
@@ -443,6 +459,8 @@ export function useRadarWorkspace({
     runSignalMonitoring: backend.runSignalMonitoring,
     loadSignalReport: backend.loadSignalReport,
     selectRun,
+    openLiveCandidate,
+    closeLiveCandidate,
     selectCandidateDetailTab,
     selectSignalRun,
     createRadar,
@@ -468,5 +486,16 @@ function updateRunQuery(runId: string | null, signalRunId: string | null) {
   } else {
     url.searchParams.delete('signalRunId');
   }
+  url.searchParams.delete('candidateId');
+  url.searchParams.delete('handoffId');
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function updateCandidateQuery(candidateId: string | null, handoffId: string | null) {
+  const url = new URL(window.location.href);
+  if (candidateId) url.searchParams.set('candidateId', candidateId);
+  else url.searchParams.delete('candidateId');
+  if (handoffId) url.searchParams.set('handoffId', handoffId);
+  else url.searchParams.delete('handoffId');
   window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
 }

@@ -20,3 +20,4 @@ frontend/dist/
 *.tsbuildinfo
 demo/output/
 docs/qa/screenshots/
+.remote-validation/

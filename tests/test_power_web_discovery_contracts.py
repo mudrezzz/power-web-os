@@ -150,10 +150,15 @@ def test_existing_power_web_contracts_remain_compatible() -> None:
 def test_role_demand_does_not_require_authored_expected_evidence() -> None:
     demand = RoleDemand(
         demand_id="role-demand-1",
-        role="Outcome owner",
+        product_id="product-1",
+        sales_playbook_version_id="playbook-v1",
+        buying_role_policy_version_id="roles-v1",
+        semantic_role_code="outcome_owner",
+        display_name="Outcome owner",
+        responsibility="Owns the business outcome.",
         required=True,
+        priority="high",
         scope="account",
-        reason="Compiled from immutable semantic-role responsibility.",
     )
 
-    assert demand.expected_evidence == ()
+    assert "expected_evidence" not in demand.model_fields

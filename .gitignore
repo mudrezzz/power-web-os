@@ -12,6 +12,7 @@ build/
 node_modules/
 frontend/dist/
 frontend/test-results/
+.remote-validation/
 *.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts

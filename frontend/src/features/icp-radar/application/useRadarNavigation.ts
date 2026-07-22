@@ -17,9 +17,13 @@ export function useRadarNavigation() {
   useEffect(() => {
     if (detailCandidateId || detailLiveCandidateId) {
       document.querySelector('.workspace-body')?.scrollTo({ top: 0 });
-      setCandidateDetailTab('overview');
     }
   }, [detailCandidateId, detailLiveCandidateId]);
+
+  function openLiveCandidate(candidateId: string, tab: CandidateDetailTab = 'overview') {
+    setDetailLiveCandidateId(candidateId);
+    setCandidateDetailTab(tab);
+  }
 
   function clearCandidateState() {
     setExpandedCandidateId(null);
@@ -28,6 +32,7 @@ export function useRadarNavigation() {
     setDetailLiveCandidateId(null);
     setRunDiagnosticsOpen(false);
     setRunPreflightOpen(false);
+    setCandidateDetailTab('overview');
   }
 
   function openRadar(radar: ICPRadarCatalogItem) {
@@ -54,6 +59,7 @@ export function useRadarNavigation() {
     setExpandedLiveCandidateId,
     detailLiveCandidateId,
     setDetailLiveCandidateId,
+    openLiveCandidate,
     runDiagnosticsOpen,
     setRunDiagnosticsOpen,
     runPreflightOpen,

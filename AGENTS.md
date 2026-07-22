@@ -277,6 +277,84 @@ AS IS change record. The roadmap CLI must reject `Done` while this evidence is
 missing or failed. Autofix may make at most five local corrective passes and
 must not weaken the approved TO BE or DoD.
 
+## Execution transparency
+
+The desktop client may collapse tool activity into generic messages such as
+"Background terminal completed". Do not rely on those cards as the user's only
+record of what happened. Maintain a concise, user-facing execution audit in the
+chat through commentary updates and the final response.
+
+Before substantial work:
+
+- State the exact skills selected for the task and briefly explain why each one
+  applies. If no skill is needed, say so.
+- Announce any skill selected later in the task before reading or applying its
+  workflow.
+- State whether the task is expected to invoke external providers, consume paid
+  tokens, start product runs, rebuild Docker, or create background processes.
+
+Before each terminal or external-tool batch:
+
+- Show the exact command or commands that will run, together with their purpose.
+- For a very long generated command, show the executable, arguments, affected
+  paths, and purpose; do not dump a large generated payload into chat.
+- Announce file edits with the affected paths and intended change before editing.
+- Announce web searches, provider calls, MCP/app actions, image generation,
+  Docker operations, Radar/Signal/Power Web runs, and Git writes before calling
+  them.
+- Never display secrets, credentials, authorization headers, private provider
+  payloads, or raw environment-variable values. Replace sensitive values with
+  explicit placeholders such as `<redacted>`.
+
+For background or long-running work:
+
+- Identify the command, why it is running in the background, and the process or
+  session identifier when available.
+- Clearly distinguish polling or waiting on an existing process from starting a
+  new process.
+- Do not start a duplicate provider, benchmark, Docker, migration, or test run
+  merely because the UI rendered another background-terminal card.
+- Report completion, failure, cancellation, or timeout. Do not leave a process
+  required by the user's request running when sending the final response.
+
+Before finishing, include an execution summary containing:
+
+- Skills actually used, including implicitly selected skills.
+- Commands and external tools actually executed. Repeated identical polls may be
+  grouped with a count.
+- Tests and checks with their outcome; identify required checks that were not run.
+- Provider-backed/product runs, their IDs when applicable, and whether paid token
+  usage occurred.
+- Any background processes still running. State `none` when there are none.
+
+Keep the audit readable: explain intent in normal language, group repetitive
+read-only inspection commands, and retain exactness for state-changing,
+provider-backed, validation, Docker, and Git commands.
+
+## Mandatory remote execution contour
+
+Codex must execute Power Web OS tests and runtime validation on the configured
+remote development server through `scripts/remote_dev.ps1`.
+
+- Local work is limited to editing, Git and roadmap mutations, static source
+  inspection, diff inspection, and invoking the remote orchestrator.
+- Do not run local Docker Compose, pytest, npm builds, Playwright, migrations,
+  demo seed, or Radar/Signal/Power Web product runs.
+- Read `deploy/remote-dev.env`; do not infer host, paths, URLs, or ports.
+- Use `$remote-dev-validation` for Probe, Sync, remote tests, artifact
+  collection, and cleanup. Use `$deploy-remote-dev` for the persistent dev
+  release.
+- A remote failure blocks validation. Never silently fall back to local
+  execution.
+- State the remote session ID and contour before each validation batch.
+- Provider-backed commands require an explicit user-visible live-action notice,
+  `-Runner stack`, and `-AllowProviderCalls`.
+- Collect the remote session manifest and required allowlisted validation
+  artifacts before roadmap closeout.
+
+Local Docker compatibility remains available to a human developer only; it is
+not a Codex execution path.
+
 ## Skills routing
 
 Use these skills when available:
@@ -291,6 +369,7 @@ Use these skills when available:
 - `$demo-maintenance` for creating or updating the realistic demo example.
 - `$frontend-design-system` for all frontend UI work, including screens, components, CSS, layout, visual QA, frontend copy, responsive behavior, and design reviews. This skill is mandatory whenever frontend app files are created or changed.
 - `$deploy-remote-dev` for uploading or rebuilding the configured remote Docker dev stack without exposing `.env` secrets.
+- `$remote-dev-validation` for all remote Probe, Sync, test, build, Playwright, execution, evidence collection, and validation-session cleanup work.
 - `$radar-run-diagnostics` when the user provides a Radar run id and asks what happened, why results look wrong, whether the behavior matches the roadmap, or what corrective slice should come next.
 - `$radar-run-self-test` when the user asks Codex to start a Radar run itself, poll it to completion or timeout, and then diagnose the result without making the user act as the tester.
 - `$radar-run-autofix` when the user asks Codex to run Radar, diagnose the result, compare it with `ROADMAP.md`, and automatically patch non-architectural defects in a bounded correction loop before rerunning.

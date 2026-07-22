@@ -5,6 +5,11 @@ description: Diagnose a completed, failed, queued, or running Power Web OS Radar
 
 # Radar Run Diagnostics Skill
 
+Use the configured remote API and `remote_dev.ps1 -Action Exec -Runner stack`
+when persisted evidence must be read from the running system. Do not start local
+Docker/API processes and do not fall back to local runtime state. Read-only
+diagnosis does not require `-AllowProviderCalls`.
+
 ## Goal
 
 Produce a critical run diagnosis anchored in persisted evidence, not generic

@@ -5,6 +5,10 @@ description: Use after a Radar search pipeline slice changes implemented behavio
 
 # Radar Pipeline AS IS Sync Skill
 
+Use collected remote session manifests and persisted remote artifacts as the
+implemented-behavior evidence. Execute rendering and documentation contracts in
+remote runners; remote failure blocks finalization.
+
 ## Goal
 
 Update the canonical AS IS Radar pipeline documentation after an implementation

@@ -10,18 +10,30 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from .contracts import EmploymentState, IdentityHypothesisState, RoleDemand
+from .contracts import EmploymentState, IdentityHypothesisState
 
 
 class BenchmarkModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+class PowerWebBenchmarkRoleDemand(BenchmarkModel):
+    """Frozen v1 benchmark role input; production handoffs use contracts.RoleDemand."""
+
+    demand_id: str
+    role: str
+    required: bool
+    scope: str
+    aliases: tuple[str, ...] = ()
+    expected_evidence: tuple[str, ...] = ()
+    reason: str
+
+
 class PowerWebBenchmarkPlanningContext(BenchmarkModel):
     account_id: str
     account_name: str
     product_context: str
-    role_policy: tuple[RoleDemand, ...] = Field(min_length=8)
+    role_policy: tuple[PowerWebBenchmarkRoleDemand, ...] = Field(min_length=8)
     allowed_source_lanes: tuple[str, ...] = Field(min_length=1)
 
 

@@ -62,9 +62,12 @@ Implement one small, complete, tested, documented product increment.
   fixtures, malformed-output negative fixtures, and targeted provider probes
   where relevant. A long live run is a final smoke/benchmark step, not the first
   validation signal.
+- Execute every test, build, Playwright, Docker, migration, seed, and product
+  runtime command through `scripts/remote_dev.ps1`. Local execution is
+  forbidden; remote failure is a blocker and never triggers local fallback.
 - For any Radar slice that changes pipeline behavior, run the Radar control loop
-  after tests are green:
-  1. rebuild Docker/API/worker with `docker compose up -d --build`;
+  after remote tests are green:
+  1. deploy/rebuild remote Docker/API/worker with `remote_dev.ps1 -Action Deploy`;
   2. run the documented bounded Radar smoke or benchmark smoke;
   3. diagnose the persisted run id with `radar-run-diagnostics`;
   4. compare observed behavior against the current slice and previously
@@ -96,11 +99,12 @@ Before finishing:
 - Tests were added or updated.
 - For complex LLM pipelines, fast preflight/recorded/negative tests were added
   or explicitly documented as out of scope for the slice.
-- For behavior-changing Radar slices, Docker/API/worker was rebuilt before the
+- For behavior-changing Radar slices, remote Docker/API/worker was rebuilt before the
   run, a persisted smoke/benchmark run was diagnosed, and any mismatch with
   completed slices produced either an autofix or an explicit roadmap/process
   correction.
 - Relevant tests were run.
+- The remote session manifest and required validation artifacts were collected.
 - Backend architecture contract tests were run when backend boundaries changed.
 - Docs were updated.
 - Demo was updated if needed.

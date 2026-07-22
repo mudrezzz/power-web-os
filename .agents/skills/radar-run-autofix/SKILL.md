@@ -45,22 +45,18 @@ Before the first run:
 5. Run static/offline preflight when available.
 6. Never print `.env`, secrets, request headers, bearer tokens, provider API
    keys, or raw hidden reasoning fields.
-7. For local OpenRouter live probes and runs, use repository `.env` as the
-   credential source of truth. Do not trust an inherited `OPENROUTER_API_KEY`
-   process variable when diagnosing provider auth failures.
-8. For the API/worker path, prefer the Docker dev API host port
-   `http://127.0.0.1:8001`. Use `http://127.0.0.1:8000` only for a manual local
-   uvicorn process after verifying `/health` and `/api/radars` belong to Power
-   Web OS.
-9. Before any Docker/API-backed run, rebuild the stack yourself:
+7. For OpenRouter probes and runs, use only the server-owned shared `.env`.
+   Never read, print, copy, or replace it.
+8. Read remote API/frontend URLs from `deploy/remote-dev.env`; local loopback is
+   not a Codex fallback.
+9. Before any API-backed run, deploy the current workspace remotely:
 
    ```powershell
-   docker compose up -d --build
+   powershell -ExecutionPolicy Bypass -File scripts/remote_dev.ps1 -Action Deploy -SessionId <id>
    ```
 
-   Do not ask the user whether to rebuild, and do not treat a run against a
-   stale backend image as evidence for current workspace code. Mention Docker
-   only when Docker is unavailable or the rebuild fails.
+   Announce provider usage and use `-Runner stack -AllowProviderCalls` for live
+   commands. Remote failure blocks the loop; never execute locally.
 
 ## Run And Diagnose
 
@@ -219,12 +215,8 @@ original failed evidence or describe it as a pass under the revised policy.
 Each corrective patch must run the narrowest meaningful tests first, then
 broader tests when risk is meaningful. Prefer:
 
-```powershell
-python -m pytest tests/test_radar_adaptive_execution.py -q
-python -m pytest tests/test_live_icp_radar.py tests/test_radar_preflight.py -q
-python -m pytest tests/test_backend_api.py tests/test_radar_jobs.py -q
-python -m pytest tests/test_backend_architecture_contract.py -q
-```
+Run these suites through `remote_dev.ps1 -Action Test -Runner backend`; keep the
+exact pytest command in `-Command` and retain the remote session manifest.
 
 Run additional tests when the changed files require them. If frontend files are
 changed, use the frontend design system skill and run frontend contracts/build.

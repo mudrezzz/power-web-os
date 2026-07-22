@@ -1,0 +1,55 @@
+services:
+  validation-redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
+  backend-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend.validation
+    environment:
+      POWER_WEB_OS_ENV: test
+      POWER_WEB_OS_DATABASE_URL: sqlite:////tmp/power_web_os_validation.sqlite3
+      POWER_WEB_OS_CELERY_BROKER_URL: redis://validation-redis:6379/0
+      POWER_WEB_OS_CELERY_RESULT_BACKEND: redis://validation-redis:6379/1
+      POWER_WEB_OS_RUN_LIVE_DADATA_TESTS: "0"
+    depends_on:
+      validation-redis:
+        condition: service_healthy
+    tmpfs:
+      - /tmp
+
+  frontend-tests:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.validation
+
+  playwright-tests:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.playwright-validation
+      target: base
+    environment:
+      POWER_WEB_OS_API_BASE_URL: ${POWER_WEB_OS_REMOTE_API_URL}
+      POWER_WEB_OS_HANDOFF_UI_BASE_URL: ${POWER_WEB_OS_REMOTE_FRONTEND_URL}
+    volumes:
+      - ./frontend/test-results:/workspace/frontend/test-results
+
+  playwright-control-tests:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.playwright-validation
+      target: control
+    environment:
+      POWER_WEB_OS_API_BASE_URL: ${POWER_WEB_OS_REMOTE_API_URL}
+      POWER_WEB_OS_HANDOFF_UI_BASE_URL: ${POWER_WEB_OS_REMOTE_FRONTEND_URL}
+      COMPOSE_PROJECT_NAME: ${POWER_WEB_OS_REMOTE_COMPOSE_PROJECT:-power-web-os-dev}
+      POWER_WEB_OS_REMOTE_CURRENT_PATH: ${POWER_WEB_OS_REMOTE_CURRENT_PATH:-/opt/power-web-os/current}
+    volumes:
+      - ./frontend/test-results:/workspace/frontend/test-results
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${POWER_WEB_OS_REMOTE_CURRENT_PATH:-/opt/power-web-os/current}:${POWER_WEB_OS_REMOTE_CURRENT_PATH:-/opt/power-web-os/current}
