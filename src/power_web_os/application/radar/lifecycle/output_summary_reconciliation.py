@@ -41,6 +41,8 @@ class RadarOutputSummaryReconciliationService:
                     candidates_payload=output.candidates_payload,
                 )
                 summary = self._repository.get_summary(output.run_id)
+                legacy_reader = getattr(self._repository, "get_legacy_summary", None)
+                legacy_summary = legacy_reader(output.run_id) if legacy_reader else summary
                 expected = (
                     surface.candidate_count,
                     surface.candidate_count,
@@ -53,7 +55,13 @@ class RadarOutputSummaryReconciliationService:
                     summary.accepted_candidate_count,
                     summary.review_needed_candidate_count,
                 ) if summary else None
-                if actual == expected:
+                legacy_actual = (
+                    legacy_summary.candidate_count,
+                    legacy_summary.visible_candidate_count,
+                    legacy_summary.accepted_candidate_count,
+                    legacy_summary.review_needed_candidate_count,
+                ) if legacy_summary else None
+                if actual == expected and legacy_actual == expected:
                     unchanged += 1
                     continue
                 self._repository.upsert(output)
@@ -66,3 +74,9 @@ class RadarOutputSummaryReconciliationService:
             unchanged=unchanged,
             invalid=invalid,
         )
+
+    def reconcile_fast_if_complete(self) -> RadarOutputSummaryReconciliationResult:
+        coverage = getattr(self._repository, "summary_coverage", lambda: (0, -1))()
+        if coverage[0] == coverage[1] and coverage[0] > 0:
+            return RadarOutputSummaryReconciliationResult(scanned=coverage[0], unchanged=coverage[0])
+        return self.reconcile()

@@ -148,3 +148,11 @@ def test_smartdiagnostics_seed_is_idempotent(tmp_path: Path) -> None:
     versions = client.get("/api/products/product-smartdiagnostics/versions").json()
     assert len(versions) == 1
     assert len(versions[0]["buying_roles"]) == 8
+    energy = client.get("/api/products/product-industrial-energy-optimization/versions").json()
+    assert len(energy) == 1
+    assert len(energy[0]["buying_roles"]) == 6
+    policy = client.get("/api/radars/benchmark-sibur-holding-contour/power-web-policy").json()
+    assert [item["product_id"] for item in policy["product_bindings"]] == [
+        "product-smartdiagnostics",
+        "product-industrial-energy-optimization",
+    ]

@@ -490,6 +490,94 @@ export type RadarReviewDecisionDto = {
   updated_at: string | null;
 };
 
+export type RadarPowerWebProductBindingDto = {
+  product_id: string;
+  position: number;
+};
+
+export type RadarPowerWebPolicyDto = {
+  policy_version_id: string;
+  radar_id: string;
+  version_number: number;
+  product_bindings: RadarPowerWebProductBindingDto[];
+  created_at: string;
+  created_by: string;
+};
+
+export type PowerWebHandoffPreflightDto = {
+  ready: boolean;
+  radar_id: string;
+  source_candidate_run_id: string;
+  candidate_id: string;
+  policy_version_id: string | null;
+  selected_product_ids: string[];
+  candidate_status: string | null;
+  account_identity_status: string | null;
+  linked_signal_run_id: string | null;
+  role_demand_count: number;
+  blockers: string[];
+  warnings: string[];
+};
+
+export type PowerWebRoleDemandDto = {
+  demand_id: string;
+  product_id: string;
+  sales_playbook_version_id: string;
+  buying_role_policy_version_id: string;
+  semantic_role_code: string;
+  display_name: string;
+  responsibility: string;
+  required: boolean;
+  priority: string;
+  scope: string;
+};
+
+export type PowerWebHandoffDto = {
+  schema_version: 'power_web_handoff.v1';
+  handoff_id: string;
+  status: 'ready';
+  radar_id: string;
+  radar_power_web_policy_version_id: string;
+  source_candidate_run_id: string;
+  source_candidate_id: string;
+  source_signal_run_id: string | null;
+  account: {
+    account_id: string;
+    identity_status: 'stable' | 'provisional';
+    identity_basis: 'inn' | 'ogrn' | 'source_candidate';
+    legal_name: string;
+    entity_type: string;
+    inn: string | null;
+    ogrn: string | null;
+    evidence_refs: string[];
+  };
+  product_role_demand_sets: Array<{
+    product: {
+      product_id: string;
+      product_code: string;
+      name: string;
+      sales_playbook_version_id: string;
+      buying_role_policy_version_id: string;
+    };
+    role_demands: PowerWebRoleDemandDto[];
+  }>;
+  review_needed_acknowledgement: { reviewer: string; comment: string | null } | null;
+  created_at: string;
+  created_by: string;
+  run_kind: 'initial';
+  previous_power_web_run_id: null;
+};
+
+export type PowerWebHandoffCreateDto = {
+  source_candidate_run_id: string;
+  candidate_id: string;
+  product_ids: string[];
+  include_latest_signal_context: boolean;
+  review_needed_acknowledgement?: { acknowledged: true; reviewer: string; comment?: string };
+  idempotency_key: string;
+  requester: string;
+};
+
 export class RadarApiClient {
   readonly baseUrl: string;
 
@@ -520,6 +608,57 @@ export class RadarApiClient {
       method: 'PUT',
       body: JSON.stringify(request),
     });
+  }
+
+  getPowerWebPolicy(radarId: string) {
+    return this.request<RadarPowerWebPolicyDto | null>(
+      `/api/radars/${encodeURIComponent(radarId)}/power-web-policy`,
+    );
+  }
+
+  updatePowerWebPolicy(
+    radarId: string,
+    request: { expected_policy_version_id: string | null; product_ids: string[]; requester: string },
+  ) {
+    return this.request<RadarPowerWebPolicyDto>(
+      `/api/radars/${encodeURIComponent(radarId)}/power-web-policy`,
+      { method: 'PUT', body: JSON.stringify(request) },
+    );
+  }
+
+  getPowerWebHandoffPreflight(
+    radarId: string,
+    sourceCandidateRunId: string,
+    candidateId: string,
+    productIds?: string[],
+    reviewAcknowledged = false,
+  ) {
+    const params = new URLSearchParams({
+      source_candidate_run_id: sourceCandidateRunId,
+      candidate_id: candidateId,
+      review_acknowledged: String(reviewAcknowledged),
+    });
+    productIds?.forEach((productId) => params.append('product_ids', productId));
+    return this.request<PowerWebHandoffPreflightDto>(
+      `/api/radars/${encodeURIComponent(radarId)}/power-web-handoff/preflight?${params.toString()}`,
+    );
+  }
+
+  createPowerWebHandoff(radarId: string, request: PowerWebHandoffCreateDto) {
+    return this.request<PowerWebHandoffDto>(
+      `/api/radars/${encodeURIComponent(radarId)}/power-web-handoffs`,
+      { method: 'POST', body: JSON.stringify(request) },
+    );
+  }
+
+  listPowerWebHandoffs(radarId: string, sourceCandidateRunId: string, candidateId: string) {
+    const params = new URLSearchParams({
+      source_candidate_run_id: sourceCandidateRunId,
+      candidate_id: candidateId,
+    });
+    return this.request<PowerWebHandoffDto[]>(
+      `/api/radars/${encodeURIComponent(radarId)}/power-web-handoffs?${params.toString()}`,
+    );
   }
 
   queueRadarRun(radarId: string, request: RadarRunRequestDto) {

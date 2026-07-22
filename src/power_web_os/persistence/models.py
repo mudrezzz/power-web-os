@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, JSON, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from power_web_os.application.radar.lifecycle.records import RadarRunStatus
@@ -144,6 +144,66 @@ class RadarDefinitionModel(Base):
     radar: Mapped[RadarModel] = relationship(back_populates="definitions")
 
 
+class RadarPowerWebPolicyVersionModel(Base):
+    __tablename__ = "radar_power_web_policy_versions"
+    __table_args__ = (
+        UniqueConstraint("radar_id", "version_number", name="uq_radar_power_web_policy_version"),
+    )
+
+    policy_version_id: Mapped[str] = mapped_column(String(180), primary_key=True)
+    radar_id: Mapped[str] = mapped_column(ForeignKey("radars.radar_id"), nullable=False, index=True)
+    version_number: Mapped[int] = mapped_column(nullable=False)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    created_by: Mapped[str] = mapped_column(String(160), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class RadarPowerWebPolicyProductBindingModel(Base):
+    __tablename__ = "radar_power_web_policy_product_bindings"
+    __table_args__ = (
+        UniqueConstraint("policy_version_id", "position", name="uq_radar_power_web_policy_position"),
+    )
+
+    policy_version_id: Mapped[str] = mapped_column(
+        ForeignKey("radar_power_web_policy_versions.policy_version_id"), primary_key=True
+    )
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.product_id"), primary_key=True)
+    position: Mapped[int] = mapped_column(nullable=False)
+
+
+class RadarPowerWebPolicyHeadModel(Base):
+    __tablename__ = "radar_power_web_policy_heads"
+
+    radar_id: Mapped[str] = mapped_column(ForeignKey("radars.radar_id"), primary_key=True)
+    active_policy_version_id: Mapped[str] = mapped_column(
+        ForeignKey("radar_power_web_policy_versions.policy_version_id"), nullable=False, unique=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class PowerWebHandoffModel(Base):
+    __tablename__ = "power_web_handoffs"
+    __table_args__ = (UniqueConstraint("idempotency_key", name="uq_power_web_handoff_idempotency"),)
+
+    handoff_id: Mapped[str] = mapped_column(String(180), primary_key=True)
+    radar_id: Mapped[str] = mapped_column(ForeignKey("radars.radar_id"), nullable=False, index=True)
+    policy_version_id: Mapped[str] = mapped_column(
+        ForeignKey("radar_power_web_policy_versions.policy_version_id"), nullable=False
+    )
+    source_candidate_run_id: Mapped[str] = mapped_column(
+        ForeignKey("radar_runs.run_id"), nullable=False, index=True
+    )
+    source_candidate_id: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
+    source_signal_run_id: Mapped[str | None] = mapped_column(ForeignKey("radar_runs.run_id"), nullable=True)
+    account_id: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="ready")
+    idempotency_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    request_fingerprint: Mapped[str] = mapped_column(String(80), nullable=False)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_by: Mapped[str] = mapped_column(String(160), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
 class RadarRunModel(Base):
     __tablename__ = "radar_runs"
     # Durable run state is the product truth; future worker queues are adapters.
@@ -156,6 +216,28 @@ class RadarRunModel(Base):
         CheckConstraint(
             "pipeline_id in ('candidate_discovery', 'signal_monitoring')",
             name="ck_radar_runs_pipeline_id",
+        ),
+        Index(
+            "ix_radar_runs_summary_covering",
+            "pipeline_id",
+            "status",
+            "radar_id",
+            "queued_at",
+            "run_id",
+            "source_run_id",
+            "started_at",
+            "completed_at",
+            "idempotency_key",
+            "correlation_id",
+            "error_message",
+            "display_execution_mode",
+            "display_requester",
+            "display_run_profile",
+            "display_benchmark_profile",
+            "display_benchmark_mode",
+            "display_signal_execution_mode",
+            "created_at",
+            "updated_at",
         ),
     )
 
@@ -172,6 +254,12 @@ class RadarRunModel(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     run_metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    display_execution_mode: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    display_requester: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    display_run_profile: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    display_benchmark_profile: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    display_benchmark_mode: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    display_signal_execution_mode: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -218,6 +306,21 @@ class RadarRunOutputModel(Base):
 
     run: Mapped[RadarRunModel] = relationship(back_populates="output")
 
+
+class RadarRunOutputSummaryModel(Base):
+    """Lightweight read model kept outside rows containing multi-megabyte artifacts."""
+
+    __tablename__ = "radar_run_output_summaries"
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("radar_runs.run_id"), primary_key=True)
+    artifact_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    source_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    candidate_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    contract_issue_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    visible_candidate_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    accepted_candidate_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    review_needed_candidate_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
 
 class SignalMonitoringRunOutputModel(Base):
     __tablename__ = "radar_signal_monitoring_outputs"

@@ -59,17 +59,21 @@ RadarContext = Annotated[RadarApiContext, Depends(get_radar_api_context)]
 
 @router.get("/radars", response_model=list[RadarSummaryResponse])
 def list_radars(context: RadarContext) -> list[RadarSummaryResponse]:
+    latest_by_radar = context.run_repository.latest_summaries_by_radar()
+    counts_by_radar = context.run_repository.counts_by_radar()
+    output_by_run_id = context.output_repository.get_summaries(tuple(
+        run.run_id for run in latest_by_radar.values()
+    ))
     responses: list[RadarSummaryResponse] = []
     for radar in context.radar_repository.list():
-        latest_run = context.run_repository.latest_summary_for_radar(radar.radar_id)
+        latest_run = latest_by_radar.get(radar.radar_id)
         runs = (latest_run,) if latest_run else ()
-        outputs = _output_summaries_for_runs(context, runs)
         responses.append(
             radar_summary_response(
                 radar,
                 runs=runs,
-                outputs_by_run_id=outputs,
-                run_count=context.run_repository.count_for_radar(radar.radar_id),
+                outputs_by_run_id=output_by_run_id,
+                run_count=counts_by_radar.get(radar.radar_id, 0),
             )
         )
     return responses
@@ -84,7 +88,7 @@ def get_radar(
     radar = context.radar_repository.get(radar_id)
     if radar is None:
         raise HTTPException(status_code=404, detail=f"Radar not found: {radar_id}")
-    runs = context.run_repository.list_for_radar(radar_id) if include_runs else ()
+    runs = context.run_repository.list_summaries_for_radar(radar_id) if include_runs else ()
     summaries = _output_summaries_for_runs(context, runs)
     return radar_detail_response(
         radar,
@@ -103,7 +107,7 @@ def list_radar_runs(
     radar = context.radar_repository.get(radar_id)
     if radar is None:
         raise HTTPException(status_code=404, detail=f"Radar not found: {radar_id}")
-    runs = tuple(reversed(context.run_repository.list_for_radar(radar_id)))[:limit]
+    runs = tuple(reversed(context.run_repository.list_summaries_for_radar(radar_id)))[:limit]
     outputs = _output_summaries_for_runs(context, runs)
     return [run_summary_response(run, output=outputs.get(run.run_id), include_run_metadata=False) for run in runs]
 

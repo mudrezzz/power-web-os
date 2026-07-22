@@ -1963,8 +1963,20 @@ The frontend default locale is `en`. The supported locales are `en` and `ru`, an
 The initial Power Web discovery boundary lives in
 `src/power_web_os/application/radar/power_web_discovery`. It contains only
 provider-neutral contracts, benchmark isolation/freeze rules, source capability
-cards and an architecture validator. It does not contain a people-search
-runtime.
+cards, Radar-product policy and immutable handoff services. It does not contain
+a people-search runtime.
+
+Radar product bindings are stored separately from the Radar definition. Create
+handoffs through `/api/radars/{radar_id}/power-web-handoffs` only after the
+preflight endpoint accepts the candidate, selected products and optional
+review-needed acknowledgement. A handoff freezes exact product and role-policy
+versions plus candidate/signal lineage; it is not a `radar_run` and must never
+start a provider. Validate the Docker/UI contour with:
+
+```powershell
+npm --prefix ./frontend run power-web:handoff-dod
+python -m power_web_os.power_web_handoff_validation --slice 0.7.6.6.1 --tests-pass --restart-verified
+```
 
 The current `PowerWebRole`, `PowerWebBoard` and Access Planner consume supplied
 roles. Do not treat them as evidence that a person was discovered or that

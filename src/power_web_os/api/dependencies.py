@@ -20,6 +20,11 @@ from power_web_os.persistence import (
     SqlAlchemyRadarRunTechnicalTraceRepository,
     SqlAlchemySignalMonitoringRunOutputRepository,
     SqlAlchemySalesPlaybookRepository,
+    SqlAlchemyPowerWebCandidateReader,
+    SqlAlchemyPowerWebHandoffRepository,
+    SqlAlchemyPowerWebProductReader,
+    SqlAlchemyPowerWebSignalReader,
+    SqlAlchemyRadarPowerWebPolicyRepository,
     session_scope,
 )
 from power_web_os.application.sales_playbook.service import SalesPlaybookService
@@ -64,9 +69,31 @@ class RadarApiContext:
     runtime_config_report: dict[str, object]
 
 
+@dataclass(frozen=True, slots=True)
+class PowerWebHandoffApiContext:
+    radar_repository: SqlAlchemyRadarRepository
+    policy_repository: SqlAlchemyRadarPowerWebPolicyRepository
+    handoff_repository: SqlAlchemyPowerWebHandoffRepository
+    candidate_reader: SqlAlchemyPowerWebCandidateReader
+    product_reader: SqlAlchemyPowerWebProductReader
+    signal_reader: SqlAlchemyPowerWebSignalReader
+
+
 def get_sales_playbook_service(request: Request) -> Iterator[SalesPlaybookService]:
     with session_scope(request.app.state.session_factory) as session:
         yield SalesPlaybookService(SqlAlchemySalesPlaybookRepository(session))
+
+
+def get_power_web_handoff_api_context(request: Request) -> Iterator[PowerWebHandoffApiContext]:
+    with session_scope(request.app.state.session_factory) as session:
+        yield PowerWebHandoffApiContext(
+            radar_repository=SqlAlchemyRadarRepository(session),
+            policy_repository=SqlAlchemyRadarPowerWebPolicyRepository(session),
+            handoff_repository=SqlAlchemyPowerWebHandoffRepository(session),
+            candidate_reader=SqlAlchemyPowerWebCandidateReader(session),
+            product_reader=SqlAlchemyPowerWebProductReader(session),
+            signal_reader=SqlAlchemyPowerWebSignalReader(session),
+        )
 
 
 def default_job_queue() -> JobQueue:

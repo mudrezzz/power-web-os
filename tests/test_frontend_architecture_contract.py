@@ -494,3 +494,25 @@ def test_icp_radar_operations_tab_owns_run_level_controls() -> None:
     assert "live-radar-run-toolbar" not in shortlist
     assert ".live-radar-run-toolbar" not in css
     assert ".radar-operations-stack" in css
+def test_radar_power_web_handoff_ui_contract() -> None:
+    feature = Path("frontend/src/features/icp-radar")
+    screen = (feature / "ICPRadarScreen.tsx").read_text(encoding="utf-8")
+    detail = (feature / "liveDetail.tsx").read_text(encoding="utf-8")
+    settings = (feature / "settings.tsx").read_text(encoding="utf-8")
+    navigation = (feature / "application/useRadarNavigation.ts").read_text(encoding="utf-8")
+    workspace = (feature / "application/useRadarWorkspace.ts").read_text(encoding="utf-8")
+    handoff = (feature / "components/PowerWebHandoffPanel.tsx").read_text(encoding="utf-8")
+    policy = (feature / "components/PowerWebPolicySettings.tsx").read_text(encoding="utf-8")
+    shortlist = (feature / "components/RadarShortlist.tsx").read_text(encoding="utf-8")
+
+    assert "PowerWebPolicySettings" in settings
+    assert "PowerWebHandoffPanel" in detail
+    assert "showPowerWeb" in detail
+    assert "openLiveCandidate(candidateId, 'power_web')" in shortlist
+    assert "candidateId" in workspace and "handoffId" in workspace
+    assert "openLiveCandidate" in navigation
+    assert "radar-power-web-policy" in policy
+    assert "power-web-handoff-ready" in handoff
+    assert "provider" not in handoff.casefold()
+    assert "runSignalMonitoring" not in handoff
+    assert "runRadar" not in handoff

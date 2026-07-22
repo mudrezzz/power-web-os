@@ -9,6 +9,8 @@ import { ScoringModelEditor, ScoringModelSummary } from './settingsScoring';
 import { ValidationReportView } from './settingsValidation';
 import { AiSuggestButton, SettingsBlockCard } from './settingsBlocks';
 import type { SettingsBlockId } from './settingsHeader';
+import { PowerWebPolicySettings } from './components/PowerWebPolicySettings';
+import type { PowerWebHandoffBackendController } from './application/usePowerWebHandoffBackend';
 
 // Settings is block-editable by design: each block owns its save/discard controls so radar editing stays reviewable.
 
@@ -22,6 +24,8 @@ export function RadarSettings({
   onSave,
   validationErrors,
   runConfiguration,
+  powerWebBackend,
+  radarId,
 }: {
   dirty: boolean;
   draft: EditableRadarDefinitionDraft;
@@ -32,6 +36,8 @@ export function RadarSettings({
   onSave: () => void;
   validationErrors: string[];
   runConfiguration: RadarRunConfigurationDto | null;
+  powerWebBackend: PowerWebHandoffBackendController;
+  radarId: string;
 }) {
   const { t } = useTranslation();
   const editorState: RadarEditorState = {
@@ -175,6 +181,7 @@ export function RadarSettings({
           <ValidationReportView report={draft.validation_report} />
         </SettingsBlockCard>
       </div>
+      <PowerWebPolicySettings backend={powerWebBackend} radarId={radarId} />
     </div>
   );
 }

@@ -20,15 +20,20 @@ export function CandidateDetailTabs({
   activeTab,
   onTabChange,
   showTrace = false,
+  showPowerWeb = false,
 }: {
   activeTab: CandidateDetailTab;
   onTabChange: (tab: CandidateDetailTab) => void;
   showTrace?: boolean;
+  showPowerWeb?: boolean;
 }) {
   const { t } = useTranslation();
-  const tabs: CandidateDetailTab[] = showTrace
-    ? ['overview', 'qualification', 'signals', 'sources', 'journal', 'trace']
-    : ['overview', 'qualification', 'signals', 'sources', 'journal', 'trace'];
+  const tabs: CandidateDetailTab[] = [
+    'overview', 'qualification', 'signals', 'sources',
+    ...(showPowerWeb ? ['power_web' as const] : []),
+    'journal',
+    ...(showTrace ? ['trace' as const] : []),
+  ];
   return <WorkspaceTabs
     id="candidate-detail"
     activeId={activeTab}

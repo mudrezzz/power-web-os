@@ -17,6 +17,10 @@ import {
   useSignalMonitoringBackend,
   type SignalMonitoringBackendController,
 } from './useSignalMonitoringBackend';
+import {
+  usePowerWebHandoffBackend,
+  type PowerWebHandoffBackendController,
+} from './usePowerWebHandoffBackend';
 
 const terminalStatuses = new Set(['completed', 'failed']);
 const pollingIntervalMs = 2000;
@@ -84,7 +88,7 @@ export type RadarBackendController = {
   ) => Promise<boolean>;
   saveSignalReview: (decision: SignalValidationDecision | null) => Promise<boolean>;
   resetSignalReview: (radarId: string, candidateId: string, signalCode: string) => Promise<boolean>;
-} & SignalMonitoringBackendController;
+} & SignalMonitoringBackendController & PowerWebHandoffBackendController;
 
 export function useRadarBackend({
   fallbackCatalog,
@@ -523,6 +527,7 @@ export function useRadarBackend({
     selectedCandidateRunByRadarId: selectedRunByRadarId,
     selectCandidateRun: selectRadarRun,
   });
+  const powerWebHandoff = usePowerWebHandoffBackend({ api, mode: runState.mode });
 
   const pollRun = useCallback(async (radarId: string, runId: string, startedAt: number) => {
     if (pollCancel.current) {
@@ -738,6 +743,7 @@ export function useRadarBackend({
     saveSignalReview,
     resetSignalReview,
     ...signalMonitoring,
+    ...powerWebHandoff,
   };
 }
 

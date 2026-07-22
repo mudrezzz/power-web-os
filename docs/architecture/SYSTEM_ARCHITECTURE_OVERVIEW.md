@@ -124,8 +124,10 @@ architecture decision in
   review-needed entities;
 - `signal-monitoring`: a frequent candidate-first process that checks known
   candidates for recent configured intent signals;
-- `power-web-discovery`: a future account-access process for people, roles,
-  relationships, partner paths, and buying-committee structure.
+- `power-web-discovery`: an account-centric process for people, roles,
+  relationships and buying-committee structure. Its immutable Radar-to-account
+  handoff is implemented; retrieval, identity resolution and independent runs
+  remain future slices.
 
 The registry for per-pipeline AS IS/TO BE documents lives in
 `docs/radar/pipelines/README.md`. The current

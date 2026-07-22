@@ -14,6 +14,13 @@ from power_web_os.persistence.repositories import (
 )
 from power_web_os.persistence.signal_monitoring_repositories import SqlAlchemySignalMonitoringRunOutputRepository
 from power_web_os.persistence.sales_playbook_repositories import SqlAlchemySalesPlaybookRepository
+from power_web_os.persistence.power_web_handoff_repositories import (
+    SqlAlchemyPowerWebCandidateReader,
+    SqlAlchemyPowerWebHandoffRepository,
+    SqlAlchemyPowerWebProductReader,
+    SqlAlchemyPowerWebSignalReader,
+    SqlAlchemyRadarPowerWebPolicyRepository,
+)
 
 __all__ = [
     "Base",
@@ -27,6 +34,11 @@ __all__ = [
     "SqlAlchemyRadarRunTechnicalTraceRepository",
     "SqlAlchemySignalMonitoringRunOutputRepository",
     "SqlAlchemySalesPlaybookRepository",
+    "SqlAlchemyPowerWebCandidateReader",
+    "SqlAlchemyPowerWebHandoffRepository",
+    "SqlAlchemyPowerWebProductReader",
+    "SqlAlchemyPowerWebSignalReader",
+    "SqlAlchemyRadarPowerWebPolicyRepository",
     "create_database_engine",
     "create_session_factory",
     "session_scope",

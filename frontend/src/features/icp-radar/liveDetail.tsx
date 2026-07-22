@@ -17,6 +17,8 @@ import { CandidateDetailTabs, Metric, ScoreBox } from './detailPrimitives';
 import { LiveRunDossierPanel, LiveRunJournalFallback } from './liveDossier';
 import { LiveSignalReviewTable } from './liveSignalReview';
 import { SignalMonitoringCandidateDetail } from './components/SignalMonitoringCandidateDetail';
+import { PowerWebHandoffPanel } from './components/PowerWebHandoffPanel';
+import type { PowerWebHandoffBackendController } from './application/usePowerWebHandoffBackend';
 import { LiveRunTechnicalTracePanel } from './liveTrace';
 import {
   type CandidateDetailTab,
@@ -54,6 +56,8 @@ export function LiveRadarCandidateDetailView({
   qualificationReview,
   radarId,
   radarName,
+  powerWebBackend,
+  sourceCandidateRunId,
   signalValidation,
   signalMonitoringCandidate,
 }: {
@@ -73,6 +77,8 @@ export function LiveRadarCandidateDetailView({
   qualificationReview: QualificationReviewOverlay;
   radarId: string;
   radarName: string;
+  powerWebBackend: PowerWebHandoffBackendController;
+  sourceCandidateRunId: string;
   signalValidation: SignalValidationOverlay;
   signalMonitoringCandidate: SignalMonitoringCandidateSurface | null;
 }) {
@@ -113,7 +119,7 @@ export function LiveRadarCandidateDetailView({
             <Mono>{t('icpRadar.intent')} {candidate.score.intent_score}</Mono>
           </div>
         </header>
-        <CandidateDetailTabs activeTab={activeTab} showTrace={Boolean(artifact.technical_trace)} onTabChange={onTabChange} />
+        <CandidateDetailTabs activeTab={activeTab} showPowerWeb showTrace={Boolean(artifact.technical_trace)} onTabChange={onTabChange} />
       </div>
 
       <div className="icp-candidate-detail-panel">
@@ -211,6 +217,15 @@ export function LiveRadarCandidateDetailView({
               <LiveSourceSummary missingRefs={candidateSourceRefs.filter((ref) => !sourcesByRef.has(ref))} sources={usedSources} />
             </section>
           </Card>
+        )}
+
+        {activeTab === 'power_web' && (
+          <PowerWebHandoffPanel
+            backend={powerWebBackend}
+            candidate={candidate}
+            radarId={radarId}
+            runId={sourceCandidateRunId}
+          />
         )}
 
         {activeTab === 'journal' && (

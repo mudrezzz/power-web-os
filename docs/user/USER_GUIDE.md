@@ -165,6 +165,20 @@ Access rules are not part of people-discovery configuration. Old published
 versions can still show their historical rules read-only, marked as compatibility
 data, but current products do not create or edit access rules.
 
+### Prepare a candidate for Power Web Discovery
+
+Open a Radar's Settings and bind one or more published products in the Power
+Web section. Then open an evidence-complete candidate and choose the Power Web
+tab. All bound products are selected by default; you may keep a non-empty
+subset. Accepted candidates are ready immediately. A review-needed candidate
+requires an explicit acknowledgement before preparation.
+
+`Prepare Power Web` creates an immutable search brief with the account identity,
+source candidate run, exact product versions, semantic roles grouped by product
+and optional linked signal context. The result says `Ready for people
+discovery`. It does not mean that people were already found, and it does not
+start web search in the current slice.
+
 ### Playbook analysis
 
 Open `Access Plans`, then choose `Rule analysis`, to see how the customer's

@@ -1,4 +1,4 @@
-import { ArrowRight, ChevronDown, ChevronRight, Radar, Settings, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronRight, Radar, Search, Settings, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Eyebrow, Mono } from '../../components/primitives';
 import type {
@@ -14,6 +14,7 @@ export function LiveRadarShortlistTable({
   expandedCandidateId,
   onOpenDetails,
   onOpenSettings,
+  onPreparePowerWeb,
   onToggleCandidate,
   signalMonitoringSurface,
 }: {
@@ -21,11 +22,11 @@ export function LiveRadarShortlistTable({
   expandedCandidateId: string | null;
   onOpenDetails: (candidateId: string) => void;
   onOpenSettings: () => void;
+  onPreparePowerWeb: (candidateId: string) => void;
   onToggleCandidate: (candidateId: string) => void;
   signalMonitoringSurface: SignalMonitoringCandidateSurfaceArtifact | null;
 }) {
   const { t } = useTranslation();
-
   if (!artifact) {
     return (
       <Card>
@@ -46,7 +47,6 @@ export function LiveRadarShortlistTable({
     );
   }
   const surfaceCounts = liveSurfaceCounts(artifact.candidates);
-
   return (
     <>
       {artifact.candidates.length === 0 ? (
@@ -128,6 +128,7 @@ export function LiveRadarShortlistTable({
                         candidate={candidate}
                         monitoring={monitoring}
                         onOpenDetails={() => onOpenDetails(candidate.candidate_id)}
+                        onPreparePowerWeb={() => onPreparePowerWeb(candidate.candidate_id)}
                       />
                     )}
                   </div>
@@ -174,10 +175,12 @@ export function LiveRadarCandidatePreview({
   candidate,
   monitoring,
   onOpenDetails,
+  onPreparePowerWeb,
 }: {
   candidate: LiveRadarCandidate;
   monitoring: SignalMonitoringCandidateSurface | null;
   onOpenDetails: () => void;
+  onPreparePowerWeb: () => void;
 }) {
   const { t } = useTranslation();
   const monitoringOutcomes = monitoring?.outcomes ?? [];
@@ -252,9 +255,14 @@ export function LiveRadarCandidatePreview({
           </section>
         </div>
         <div className="icp-preview-actions">
-          <Button icon={<ArrowRight aria-hidden="true" />} variant="default" onClick={onOpenDetails}>
-            {t('icpRadar.openDetails')}
-          </Button>
+      <div className="inline-actions">
+        <Button icon={<Search aria-hidden="true" />} variant="default" onClick={onPreparePowerWeb}>
+          {t('icpRadar.powerWeb.prepareAction')}
+        </Button>
+        <Button icon={<ArrowRight aria-hidden="true" />} variant="quiet" onClick={onOpenDetails}>
+          {t('icpRadar.openDetails')}
+        </Button>
+      </div>
         </div>
       </div>
     </div>

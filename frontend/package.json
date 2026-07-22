@@ -14,6 +14,7 @@
     "radar:catalog-recovery-dod": "node scripts/radar-catalog-recovery-dod.mjs",
     "power-web:playbook-foundation-dod": "node scripts/power-web-playbook-foundation-dod.mjs",
     "power-web:playbook-simplification-dod": "node scripts/power-web-playbook-simplification-dod.mjs",
+    "power-web:handoff-dod": "node scripts/power-web-handoff-dod.mjs",
     "settings:toggle-smoke": "node scripts/settings-toggle-smoke.mjs"
   },
   "dependencies": {

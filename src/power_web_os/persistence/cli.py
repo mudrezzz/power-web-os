@@ -23,6 +23,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m power_web_os.persistence")
     parser.add_argument("command", choices=("seed-radars", "reconcile-radar-output-summaries"))
     parser.add_argument("--database-url", default=None)
+    parser.add_argument("--fast-if-complete", action="store_true")
     parser.add_argument(
         "--icp-radar-input",
         type=Path,
@@ -38,8 +39,10 @@ def main() -> None:
             catalog = build_icp_radar_catalog_from_workbook(args.icp_radar_input)
             payload = seed_radar_catalog(session, catalog).to_payload()
         else:
-            payload = RadarOutputSummaryReconciliationService(
+            service = RadarOutputSummaryReconciliationService(
                 SqlAlchemyRadarRunOutputRepository(session)
-            ).reconcile().to_payload()
+            )
+            result = service.reconcile_fast_if_complete() if args.fast_if_complete else service.reconcile()
+            payload = result.to_payload()
 
     print(json.dumps(payload, ensure_ascii=False, indent=2))

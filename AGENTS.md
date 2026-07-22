@@ -277,6 +277,60 @@ AS IS change record. The roadmap CLI must reject `Done` while this evidence is
 missing or failed. Autofix may make at most five local corrective passes and
 must not weaken the approved TO BE or DoD.
 
+## Execution transparency
+
+The desktop client may collapse tool activity into generic messages such as
+"Background terminal completed". Do not rely on those cards as the user's only
+record of what happened. Maintain a concise, user-facing execution audit in the
+chat through commentary updates and the final response.
+
+Before substantial work:
+
+- State the exact skills selected for the task and briefly explain why each one
+  applies. If no skill is needed, say so.
+- Announce any skill selected later in the task before reading or applying its
+  workflow.
+- State whether the task is expected to invoke external providers, consume paid
+  tokens, start product runs, rebuild Docker, or create background processes.
+
+Before each terminal or external-tool batch:
+
+- Show the exact command or commands that will run, together with their purpose.
+- For a very long generated command, show the executable, arguments, affected
+  paths, and purpose; do not dump a large generated payload into chat.
+- Announce file edits with the affected paths and intended change before editing.
+- Announce web searches, provider calls, MCP/app actions, image generation,
+  Docker operations, Radar/Signal/Power Web runs, and Git writes before calling
+  them.
+- Never display secrets, credentials, authorization headers, private provider
+  payloads, or raw environment-variable values. Replace sensitive values with
+  explicit placeholders such as `<redacted>`.
+
+For background or long-running work:
+
+- Identify the command, why it is running in the background, and the process or
+  session identifier when available.
+- Clearly distinguish polling or waiting on an existing process from starting a
+  new process.
+- Do not start a duplicate provider, benchmark, Docker, migration, or test run
+  merely because the UI rendered another background-terminal card.
+- Report completion, failure, cancellation, or timeout. Do not leave a process
+  required by the user's request running when sending the final response.
+
+Before finishing, include an execution summary containing:
+
+- Skills actually used, including implicitly selected skills.
+- Commands and external tools actually executed. Repeated identical polls may be
+  grouped with a count.
+- Tests and checks with their outcome; identify required checks that were not run.
+- Provider-backed/product runs, their IDs when applicable, and whether paid token
+  usage occurred.
+- Any background processes still running. State `none` when there are none.
+
+Keep the audit readable: explain intent in normal language, group repetitive
+read-only inspection commands, and retain exactness for state-changing,
+provider-backed, validation, Docker, and Git commands.
+
 ## Skills routing
 
 Use these skills when available:

@@ -924,6 +924,33 @@ def test_radar_signal_monitoring_does_not_import_candidate_discovery_internals()
     assert violations == {}
 
 
+def test_power_web_handoff_package_boundaries() -> None:
+    power_web_root = BACKEND_ROOT / "application" / "radar" / "power_web_discovery"
+    forbidden = {
+        "power_web_os.application.radar.candidate_discovery",
+        "power_web_os.application.radar.signal_monitoring",
+        "power_web_os.persistence",
+        "fastapi",
+        "sqlalchemy",
+        "celery",
+        "httpx",
+        "requests",
+        "openai",
+    }
+    violations: dict[str, list[str]] = {}
+    for path in sorted(power_web_root.rglob("*.py")):
+        found = sorted(
+            module
+            for module in imported_modules(path)
+            for prefix in forbidden
+            if module == prefix or module.startswith(f"{prefix}.")
+        )
+        if found:
+            violations[path.as_posix()] = found
+
+    assert violations == {}
+
+
 def test_api_modules_do_not_own_persistence_queries_or_domain_scoring() -> None:
     api_dir = BACKEND_ROOT / "api"
     violations: dict[str, list[str]] = {}

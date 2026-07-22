@@ -5,16 +5,13 @@ import { Button, Card, Eyebrow } from '../../components/primitives';
 import type { ICPRadarArtifact, ICPRadarCatalogArtifact, LiveICPRadarRunArtifact, SignalMonitoringReportArtifact } from '../../types';
 import { useRadarWorkspace } from './application/useRadarWorkspace';
 import type { RadarBackendController } from './application/useRadarBackend';
-import {
-  CandidateTable,
-  EmptyShortlist,
-  FixtureRadarCandidateDetailView,
-} from './candidateViews';
-import { LiveRadarCandidateDetailView, LiveRadarShortlistTable } from './liveCandidateViews';
+import { FixtureRadarCandidateDetailView } from './candidateViews';
+import { LiveRadarCandidateDetailView } from './liveCandidateViews';
 import { RadarCatalogScreen } from './components/RadarCatalogScreen';
 import { RadarDetailHeader } from './components/RadarDetailHeader';
 import { RadarOperationsView } from './components/RadarOperationsView';
 import { RadarRunSelector } from './components/RadarRunSelector';
+import { RadarShortlist } from './components/RadarShortlist';
 import './icpRadar.css';
 const RadarSettings = lazy(() => import('./settings').then((module) => ({ default: module.RadarSettings })));
 export function ICPRadarScreen({
@@ -91,7 +88,7 @@ export function ICPRadarScreen({
         activeTab={navigation.candidateDetailTab}
         artifact={workspace.selectedLiveArtifact}
         candidate={workspace.detailLiveCandidate}
-        onBack={() => navigation.setDetailLiveCandidateId(null)}
+        onBack={workspace.closeLiveCandidate}
         onQualificationReviewChange={workspace.saveQualificationReviewDecision}
         onSignalDecisionChange={workspace.saveLiveSignalDecision}
         onSignalDecisionReset={workspace.resetLiveSignalDecision}
@@ -99,6 +96,11 @@ export function ICPRadarScreen({
         qualificationReview={workspace.liveQualificationReview}
         radarId={workspace.selectedRadar.radar_id}
         radarName={workspace.selectedRadar.name}
+        powerWebBackend={backend}
+        sourceCandidateRunId={workspace.selectedRun?.run_id
+          ?? workspace.selectedLiveArtifact.dossier?.run_context.run_id
+          ?? workspace.selectedLiveArtifact.run_metadata.task_id
+          ?? ''}
         signalValidation={workspace.liveSignalValidation}
         signalMonitoringCandidate={workspace.selectedSignalSurface?.candidates.find(
           (item) => item.candidate_id === workspace.detailLiveCandidate!.candidate_id,
@@ -176,6 +178,8 @@ export function ICPRadarScreen({
             dirty={workspace.settingsDirty}
             draft={workspace.activeSettingsDraft}
             editingBlock={workspace.editingBlock}
+            powerWebBackend={backend}
+            radarId={workspace.selectedRadar.radar_id}
             onCancel={workspace.discardSettingsDraft}
             onDraftChange={workspace.setSettingsDraft}
             onEdit={workspace.setEditingBlock}
@@ -202,49 +206,5 @@ export function ICPRadarScreen({
         <RadarShortlist workspace={workspace} />
       )}
     </section>
-  );
-}
-
-function RadarShortlist({
-  workspace,
-}: {
-  workspace: ReturnType<typeof useRadarWorkspace>;
-}) {
-  const { navigation } = workspace;
-  if (workspace.selectedFixtureArtifact) {
-    return (
-      <CandidateTable
-        artifact={workspace.selectedFixtureArtifact}
-        expandedCandidateId={navigation.expandedCandidateId}
-        onOpenDetails={navigation.setDetailCandidateId}
-        onToggleCandidate={(candidateId) => navigation.setExpandedCandidateId(
-          navigation.expandedCandidateId === candidateId ? null : candidateId,
-        )}
-        radarId={workspace.selectedRadar!.radar_id}
-        signalValidation={workspace.signalValidation}
-      />
-    );
-  }
-
-  if (workspace.radarViewModel?.sourceKind === 'live') {
-    return (
-      <LiveRadarShortlistTable
-        artifact={workspace.selectedLiveArtifact}
-        expandedCandidateId={navigation.expandedLiveCandidateId}
-        onOpenDetails={navigation.setDetailLiveCandidateId}
-        onOpenSettings={() => navigation.setSelectedTab('settings')}
-        onToggleCandidate={(candidateId) => navigation.setExpandedLiveCandidateId(
-          navigation.expandedLiveCandidateId === candidateId ? null : candidateId,
-        )}
-        signalMonitoringSurface={workspace.selectedSignalSurface}
-      />
-    );
-  }
-
-  return (
-    <EmptyShortlist
-      radar={workspace.selectedRadar!}
-      onOpenSettings={() => navigation.setSelectedTab('settings')}
-    />
   );
 }

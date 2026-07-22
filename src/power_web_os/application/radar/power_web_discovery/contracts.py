@@ -28,12 +28,169 @@ class PowerWebContract(BaseModel):
 
 class RoleDemand(PowerWebContract):
     demand_id: str = Field(min_length=1)
-    role: str = Field(min_length=1)
+    product_id: str = Field(min_length=1)
+    sales_playbook_version_id: str = Field(min_length=1)
+    buying_role_policy_version_id: str = Field(min_length=1)
+    semantic_role_code: str = Field(min_length=1)
+    display_name: str = Field(min_length=1)
+    responsibility: str = Field(min_length=1)
     required: bool = True
+    priority: Literal["critical", "high", "normal"]
     scope: str = Field(min_length=1)
-    aliases: tuple[str, ...] = ()
-    expected_evidence: tuple[str, ...] = ()
-    reason: str = Field(min_length=1)
+
+
+class RadarProductBinding(PowerWebContract):
+    product_id: str = Field(min_length=1)
+    position: int = Field(ge=0)
+
+
+class RadarPowerWebPolicyVersion(PowerWebContract):
+    policy_version_id: str = Field(min_length=1)
+    radar_id: str = Field(min_length=1)
+    version_number: int = Field(ge=1)
+    product_bindings: tuple[RadarProductBinding, ...] = ()
+    created_at: datetime
+    created_by: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def require_unique_ordered_products(self) -> "RadarPowerWebPolicyVersion":
+        product_ids = [item.product_id for item in self.product_bindings]
+        positions = [item.position for item in self.product_bindings]
+        if len(product_ids) != len(set(product_ids)):
+            raise ValueError("power web policy contains duplicate product ids")
+        if positions != list(range(len(positions))):
+            raise ValueError("power web policy positions must be contiguous and ordered")
+        return self
+
+
+class SemanticRoleSnapshot(PowerWebContract):
+    role_code: str = Field(min_length=1)
+    display_name: str = Field(min_length=1)
+    responsibility: str = Field(min_length=1)
+    required: bool
+    priority: Literal["critical", "high", "normal"]
+    scope: str = Field(min_length=1)
+
+
+class ProductHandoffSource(PowerWebContract):
+    product_id: str = Field(min_length=1)
+    lifecycle: Literal["draft", "active", "archived"]
+    sales_playbook_version_id: str | None = None
+    product_definition_version_id: str | None = None
+    buying_role_policy_version_id: str | None = None
+    product_code: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    short_description: str = ""
+    roles: tuple[SemanticRoleSnapshot, ...] = ()
+
+
+class ProductSnapshot(PowerWebContract):
+    product_id: str = Field(min_length=1)
+    product_code: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    short_description: str = ""
+    sales_playbook_version_id: str = Field(min_length=1)
+    product_definition_version_id: str = Field(min_length=1)
+    buying_role_policy_version_id: str = Field(min_length=1)
+
+
+class ProductRoleDemandSet(PowerWebContract):
+    product: ProductSnapshot
+    role_demands: tuple[RoleDemand, ...] = Field(min_length=1)
+
+
+class CandidateHandoffSource(PowerWebContract):
+    radar_id: str = Field(min_length=1)
+    source_candidate_run_id: str = Field(min_length=1)
+    run_pipeline_id: str = Field(min_length=1)
+    run_status: str = Field(min_length=1)
+    candidate_id: str = Field(min_length=1)
+    legal_name: str = Field(min_length=1)
+    entity_type: str = "legal_entity"
+    candidate_surface_status: Literal["accepted_product_candidate", "review_needed_candidate"]
+    product_acceptance_status: str = Field(min_length=1)
+    inn: str | None = None
+    ogrn: str | None = None
+    evidence_refs: tuple[str, ...] = ()
+    upstream_source_refs: tuple[str, ...] = ()
+
+
+class AccountIdentitySnapshot(PowerWebContract):
+    account_id: str = Field(min_length=1)
+    identity_status: Literal["stable", "provisional"]
+    identity_basis: Literal["inn", "ogrn", "source_candidate"]
+    legal_name: str = Field(min_length=1)
+    entity_type: str = Field(min_length=1)
+    inn: str | None = None
+    ogrn: str | None = None
+    evidence_refs: tuple[str, ...] = Field(min_length=1)
+    source_candidate_run_id: str = Field(min_length=1)
+    source_candidate_id: str = Field(min_length=1)
+
+
+class SignalOutcomeSnapshot(PowerWebContract):
+    signal_code: str = Field(min_length=1)
+    outcome: str = Field(min_length=1)
+    temporal_status: str | None = None
+    evidence_refs: tuple[str, ...] = ()
+    reason: str | None = None
+
+
+class PowerWebSignalContextSnapshot(PowerWebContract):
+    signal_run_id: str = Field(min_length=1)
+    radar_id: str = Field(min_length=1)
+    source_candidate_run_id: str = Field(min_length=1)
+    candidate_id: str = Field(min_length=1)
+    completed_at: datetime
+    outcomes: tuple[SignalOutcomeSnapshot, ...] = ()
+
+
+class ReviewNeededAcknowledgement(PowerWebContract):
+    acknowledged: Literal[True] = True
+    reviewer: str = Field(min_length=1)
+    comment: str | None = None
+    acknowledged_at: datetime
+
+
+class PowerWebHandoffSnapshot(PowerWebContract):
+    schema_version: Literal["power_web_handoff.v1"] = "power_web_handoff.v1"
+    handoff_id: str = Field(min_length=1)
+    status: Literal["ready"] = "ready"
+    radar_id: str = Field(min_length=1)
+    radar_power_web_policy_version_id: str = Field(min_length=1)
+    source_candidate_run_id: str = Field(min_length=1)
+    source_candidate_id: str = Field(min_length=1)
+    source_signal_run_id: str | None = None
+    account: AccountIdentitySnapshot
+    product_role_demand_sets: tuple[ProductRoleDemandSet, ...] = Field(min_length=1)
+    signal_context: PowerWebSignalContextSnapshot | None = None
+    review_needed_acknowledgement: ReviewNeededAcknowledgement | None = None
+    as_of: datetime
+    created_at: datetime
+    created_by: str = Field(min_length=1)
+    idempotency_key: str = Field(min_length=1)
+    request_fingerprint: str = Field(min_length=1)
+    run_kind: Literal["initial"] = "initial"
+    previous_power_web_run_id: None = None
+
+    @property
+    def role_demand_count(self) -> int:
+        return sum(len(item.role_demands) for item in self.product_role_demand_sets)
+
+
+class PowerWebHandoffPreflight(PowerWebContract):
+    ready: bool
+    radar_id: str = Field(min_length=1)
+    source_candidate_run_id: str = Field(min_length=1)
+    candidate_id: str = Field(min_length=1)
+    policy_version_id: str | None = None
+    selected_product_ids: tuple[str, ...] = ()
+    candidate_status: str | None = None
+    account_identity_status: str | None = None
+    linked_signal_run_id: str | None = None
+    role_demand_count: int = 0
+    blockers: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
 
 
 class SourceEvidence(PowerWebContract):

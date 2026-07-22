@@ -1,0 +1,169 @@
+{
+  "schema_version": "power_web_handoff_validation.v1",
+  "slice_id": "0.7.6.6.1",
+  "pipeline_id": "power-web-discovery",
+  "validation_status": "PASS",
+  "generated_at": "2026-07-22T10:26:39.890686+00:00",
+  "requirements": [
+    {
+      "requirement_id": "PW-HO-POL-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_handoff_contracts.py::test_radar_product_policy_is_ordered_and_versioned"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-PROD-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_handoff_contracts.py::test_role_demands_freeze_product_versions"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-ELIG-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_handoff_contracts.py::test_review_needed_candidate_requires_acknowledgement"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-PROV-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_handoff_contracts.py::test_source_less_candidate_is_rejected"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-ID-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_handoff_contracts.py::test_account_identity_prefers_inn_and_scopes_provisional_ids"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-ROLE-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_handoff_contracts.py::test_role_demand_contract_excludes_search_inventions"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-ROLE-02",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_handoff_contracts.py::test_equal_role_codes_from_two_products_are_not_merged"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-SIG-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_handoff_contracts.py::test_signal_selector_uses_latest_matching_candidate_scope"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-IDEM-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_persisted_power_web_handoff.py::test_handoff_is_immutable_and_idempotent"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-API-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_handoff_api.py::test_power_web_policy_and_handoff_round_trip"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-UI-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_frontend_architecture_contract.py::test_radar_power_web_handoff_ui_contract"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-ARCH-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_backend_architecture_contract.py::test_power_web_handoff_package_boundaries"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-BENCH-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_benchmark_contract.py::test_handoff_contract_has_no_blind_control_fields"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-NET-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_handoff_api.py::test_handoff_has_zero_provider_and_pipeline_calls"
+      ]
+    },
+    {
+      "requirement_id": "PW-HO-PROC-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_radar_pipeline_documentation_contract.py::test_power_web_handoff_evidence_loop"
+      ]
+    }
+  ],
+  "runtime": {
+    "radar_id": "benchmark-sibur-holding-contour",
+    "candidate_run_id": "radar-run-fixture-power-web-handoff",
+    "signal_run_id": "signal-run-fixture-power-web-handoff",
+    "policy_version_id": "radar-power-web-policy-1e75592f-1a98-4a8a-916d-4e70aaed8ebc",
+    "product_count": 2,
+    "all_product_role_count": 14,
+    "subset_role_count": 8,
+    "handoff_ids": [
+      "power-web-handoff-aed4f0dc-7067-4bb8-a6ce-ade3b776e2f6",
+      "power-web-handoff-fd0187c2-9de3-4ea8-b47c-cd93e8ecc5c9"
+    ],
+    "handoff_role_counts": [
+      14,
+      14
+    ],
+    "provider_calls": 0,
+    "new_pipeline_runs": 0,
+    "blind_leakage": 0,
+    "restart_verified": true,
+    "ui_evidence": {
+      "validation_status": "PASS",
+      "radar_id": "benchmark-sibur-holding-contour",
+      "candidate_run_id": "radar-run-fixture-power-web-handoff",
+      "products": 2,
+      "all_roles": 14,
+      "subset_roles": 8,
+      "runs_before": 61,
+      "runs_after": 61,
+      "results": [
+        {
+          "locale": "ru",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "candidateId": "ao-sibur-him-prom-demo",
+          "review": false,
+          "role_count": 14,
+          "handoff_id": "power-web-handoff-aed4f0dc-7067-4bb8-a6ce-ade3b776e2f6"
+        },
+        {
+          "locale": "en",
+          "viewport": {
+            "width": 1366,
+            "height": 768
+          },
+          "candidateId": "ao-permskie-poliefiry-demo",
+          "review": true,
+          "role_count": 14,
+          "handoff_id": "power-web-handoff-fd0187c2-9de3-4ea8-b47c-cd93e8ecc5c9"
+        }
+      ]
+    }
+  }
+}

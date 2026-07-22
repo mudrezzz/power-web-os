@@ -423,3 +423,34 @@ def test_power_web_playbook_simplification_evidence_loop() -> None:
     assert all(requirement in to_be.read_text(encoding="utf-8") for requirement in requirements)
     assert all(requirement in as_is.read_text(encoding="utf-8") for requirement in requirements)
     assert all(validation_results.get(requirement) == "PASS" for requirement in requirements)
+
+
+def test_power_web_handoff_evidence_loop() -> None:
+    base = Path("docs/radar/pipelines/power-web-discovery")
+    as_is = base / "RADAR_POWER_WEB_DISCOVERY_AS_IS.md"
+    to_be = base / "to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.1.md"
+    manifest = json.loads(to_be.with_suffix(".acceptance.json").read_text(encoding="utf-8"))
+    validation = json.loads(
+        (base / "validation/0.7.6.6.1/validation.json").read_text(encoding="utf-8")
+    )
+    requirements = {item["id"] for item in manifest["requirements"] if item.get("mandatory", True)}
+    validation_results = {
+        item["requirement_id"]: item["status"] for item in validation["requirements"]
+    }
+    runtime = validation["runtime"]
+
+    assert "Status: Implemented" in to_be.read_text(encoding="utf-8")
+    assert to_be.with_suffix(".pdf").exists()
+    assert as_is.with_suffix(".pdf").exists()
+    assert validation["validation_status"] == "PASS"
+    assert runtime["product_count"] == 2
+    assert runtime["all_product_role_count"] == 14
+    assert runtime["subset_role_count"] == 8
+    assert runtime["restart_verified"] is True
+    assert runtime["provider_calls"] == 0
+    assert runtime["new_pipeline_runs"] == 0
+    assert runtime["blind_leakage"] == 0
+    assert len(runtime["ui_evidence"]["results"]) == 2
+    assert all(requirement in to_be.read_text(encoding="utf-8") for requirement in requirements)
+    assert all(requirement in as_is.read_text(encoding="utf-8") for requirement in requirements)
+    assert all(validation_results.get(requirement) == "PASS" for requirement in requirements)
