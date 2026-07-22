@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type {
   PowerWebHandoffDto,
   PowerWebHandoffPreflightDto,
@@ -49,6 +49,7 @@ export function usePowerWebHandoffBackend({
   const [powerWebProductVersions, setProductVersions] = useState<Record<string, SalesPlaybookVersion>>({});
   const [powerWebPreflightByKey, setPreflightByKey] = useState<Record<string, PowerWebHandoffPreflightDto>>({});
   const [powerWebHandoffsByKey, setHandoffsByKey] = useState<Record<string, PowerWebHandoffDto[]>>({});
+  const candidateBriefGeneration = useRef<Record<string, number>>({});
 
   const loadPowerWebPolicy = useCallback(async (radarId: string) => {
     if (mode !== 'api') return;
@@ -106,10 +107,13 @@ export function usePowerWebHandoffBackend({
   ) => {
     if (mode !== 'api') return;
     const key = powerWebCandidateKey(radarId, runId, candidateId);
+    const generation = (candidateBriefGeneration.current[key] ?? 0) + 1;
+    candidateBriefGeneration.current[key] = generation;
     const [preflight, handoffs] = await Promise.all([
       api.getPowerWebHandoffPreflight(radarId, runId, candidateId, productIds, acknowledged),
       api.listPowerWebHandoffs(radarId, runId, candidateId),
     ]);
+    if (candidateBriefGeneration.current[key] !== generation) return;
     setPreflightByKey((current) => ({ ...current, [key]: preflight }));
     setHandoffsByKey((current) => ({ ...current, [key]: handoffs }));
   }, [api, mode]);

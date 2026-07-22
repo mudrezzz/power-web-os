@@ -5,6 +5,11 @@ description: Use before substantial Radar search pipeline changes to create a TO
 
 # Radar Pipeline TO BE Design Skill
 
+All planned runtime and validation commands must target
+`scripts/remote_dev.ps1` runners and include remote session evidence. Do not put
+active local Docker, pytest, npm, Playwright, migration, seed, or loopback API
+commands in a TO BE acceptance section.
+
 ## Goal
 
 Create a reviewable TO BE design before implementing a substantial Radar search

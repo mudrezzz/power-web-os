@@ -48,6 +48,11 @@ Web discovery run.
 
 ## How To Run
 
+Codex runs this demo only on the configured remote contour through
+`scripts/remote_dev.ps1`. Remote failure blocks validation; local Docker, seed,
+tests and provider runs are not fallback paths. The commands below are
+human-only local compatibility instructions.
+
 One-command Docker dev stack:
 
 ```bash

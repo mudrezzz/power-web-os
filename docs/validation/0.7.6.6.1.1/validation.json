@@ -1,0 +1,75 @@
+{
+  "schema_version": "remote_dev_validation.v1",
+  "slice_id": "0.7.6.6.1.1",
+  "validation_status": "PASS",
+  "validated_at": "2026-07-22T18:13:00Z",
+  "server": "213.148.13.45",
+  "ssh_target": "flowise",
+  "primary_session_id": "20260722-remote-first-proof",
+  "parallel_session_id": "20260722-remote-parallel-b",
+  "closeout_session_id": "20260722-remote-closeout",
+  "post_cleanup_session_id": "20260722-remote-postcheck",
+  "roadmap_postcheck_session_id": "20260722-roadmap-postcheck",
+  "validation_compose_project": "pwos-val-20260722-remote-first-proof",
+  "persistent_compose_project": "power-web-os-dev",
+  "validated_workspace_sha256": "ee1bad8cab3f7695992ea13857ed9f05d0edd47600d442f6c1c1afa76f158d36",
+  "closeout_workspace_sha256": "6e33429abdafcccdf4f71c0ace58288942e7d805cf7e9b52cb5739caa5eed555",
+  "roadmap_postcheck_workspace_sha256": "8c287832fe478d1b268321ca12d484d20c36a8011e63d0eee7acfefd938b4630",
+  "release_path": "/opt/power-web-os/releases/20260722-remote-first-proof",
+  "public_urls": {
+    "frontend": "http://213.148.13.45:5173",
+    "api": "http://213.148.13.45:8001"
+  },
+  "requirements": [
+    {"requirement_id": "RDV-PROBE-01", "status": "PASS", "evidence": ["SSH, Docker 29.1.3, Compose 2.40.3, disk, memory, env presence and lock probe"]},
+    {"requirement_id": "RDV-SYNC-01", "status": "PASS", "evidence": ["local and remote archive SHA verification in Sync", "validated_workspace_sha256"]},
+    {"requirement_id": "RDV-TEST-01", "status": "PASS", "evidence": ["remote backend regression: 82 passed", "remote frontend production build: PASS", "remote Playwright handoff DoD: PASS"]},
+    {"requirement_id": "RDV-FAIL-01", "status": "PASS", "evidence": ["intentional remote exit 23 propagated as non-zero"]},
+    {"requirement_id": "RDV-ISO-01", "status": "PASS", "evidence": ["parallel-a and parallel-b ran concurrently in distinct pwos-val projects"]},
+    {"requirement_id": "RDV-LOCK-01", "status": "PASS", "evidence": ["second lifecycle Exec returned remote_stack_busy; remote exit 75", "Playwright control runner executes under flock"]},
+    {"requirement_id": "RDV-DEPLOY-01", "status": "PASS", "evidence": ["atomic current release activation", "public frontend, health and Radar catalog HTTP checks"]},
+    {"requirement_id": "RDV-SECRET-01", "status": "PASS", "evidence": ["server-owned shared/.env retained with mode 600", "env contents were neither printed nor collected"]},
+    {"requirement_id": "RDV-ART-01", "status": "PASS", "evidence": ["frontend/test-results/power-web-handoff.json collected through allowlist"]},
+    {"requirement_id": "RDV-RESTART-01", "status": "PASS", "evidence": ["API and worker restarted", "handoff hash remained a1dafe965b3cb04bcd5c88e872ab3496be37cfb8fa0a0a4e1984a9729ec8f9b6"]},
+    {"requirement_id": "RDV-PROC-01", "status": "PASS", "evidence": ["AGENTS.md and procedural skills use remote-first workflow", "remote process and roadmap postcheck: 14 passed", "roadmap tracker artifacts are up to date"]},
+    {"requirement_id": "RDV-CLEAN-01", "status": "PASS", "evidence": ["both validation projects and workspaces removed", "shared/current/release/cache and persistent stack retained"]}
+  ],
+  "test_results": {
+    "remote_backend_regression": {"status": "PASS", "passed": 82, "warnings": 1},
+    "remote_process_contracts": {"status": "PASS", "passed": 9},
+    "remote_roadmap_postcheck": {"status": "PASS", "passed": 14, "roadmap_check": "PASS"},
+    "remote_frontend_build": {"status": "PASS"},
+    "remote_playwright": {"status": "PASS", "locales": ["ru", "en"], "viewports": ["1280x720", "1366x768"]},
+    "remote_control_runner": {"status": "PASS", "docker_socket": true, "compose_version": "2.40.3"}
+  },
+  "runtime_evidence": {
+    "provider_calls": 0,
+    "candidate_discovery_runs_created": 0,
+    "signal_monitoring_runs_created": 0,
+    "power_web_discovery_runs_created": 0,
+    "handoff_fixture_runs_before": 2,
+    "handoff_fixture_runs_after": 2,
+    "local_docker_invocations": 0,
+    "local_pytest_invocations": 0,
+    "local_npm_invocations": 0,
+    "local_playwright_invocations": 0,
+    "restart_persistence_verified": true,
+    "validation_cleanup_verified": true,
+    "post_cleanup_exec_verified": true
+  },
+  "artifacts": [
+    "frontend/test-results/power-web-handoff.json",
+    ".remote-validation/20260722-remote-first-proof/manifest.json",
+    ".remote-validation/20260722-remote-parallel-b/manifest.json",
+    ".remote-validation/20260722-remote-closeout/manifest.json",
+    ".remote-validation/20260722-roadmap-postcheck/manifest.json"
+  ],
+  "rca": [
+    "Remote UI exposed a hardcoded localhost Product API origin; it now reuses the canonical remote-aware Radar API base URL.",
+    "Candidate handoff preflight had an async stale-response race; empty selections no longer execute and late responses are ignored.",
+    "Playwright could race with an already persisted handoff; the DoD script now accepts the resulting ready-state transition.",
+    "One Docker snapshot export failed transiently and passed unchanged on bounded retry; persistent data was not affected.",
+    "Validation artifacts must be collected before a later Sync recreates the session workspace."
+    ,"Exec and Logs now retain the local manifest when a validation workspace has already been cleaned."
+  ]
+}

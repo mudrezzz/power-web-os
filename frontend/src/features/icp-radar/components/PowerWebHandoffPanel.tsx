@@ -36,10 +36,10 @@ export function PowerWebHandoffPanel({
   useEffect(() => { void backend.loadPowerWebPolicy(radarId); }, [backend.loadPowerWebPolicy, radarId]);
   useEffect(() => { setSelected(defaultProducts); }, [defaultProducts]);
   useEffect(() => {
-    if (defaultProducts.length) {
+    if (selected.length) {
       void backend.loadPowerWebCandidateBrief(radarId, runId, candidate.candidate_id, selected, acknowledged);
     }
-  }, [acknowledged, backend.loadPowerWebCandidateBrief, candidate.candidate_id, defaultProducts.length, radarId, runId, selected.join('|')]);
+  }, [acknowledged, backend.loadPowerWebCandidateBrief, candidate.candidate_id, radarId, runId, selected.join('|')]);
   useEffect(() => {
     if (!handoff || requestedHandoffId) return;
     const url = new URL(window.location.href);

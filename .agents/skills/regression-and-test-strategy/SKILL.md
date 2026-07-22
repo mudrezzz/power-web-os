@@ -33,6 +33,11 @@ For complex LLM-backed pipelines, also consider:
 
 ## Process
 
+All execution uses one announced remote session through
+`scripts/remote_dev.ps1`. Use `backend`, `frontend`, or `playwright` runners;
+never run project tests or Docker locally and never silently fall back when the
+remote contour is unavailable.
+
 1. Inspect the current slice or change.
 2. Identify affected components.
 3. Identify existing tests.
@@ -42,6 +47,8 @@ For complex LLM-backed pipelines, also consider:
    - smoke tests for user-visible flows
    - integration tests for cross-component changes
    - full regression when risk is broad
+6. Sync once, execute selected layers in isolated remote containers, collect the
+   manifest/evidence, and clean only that validation session.
    - for LLM pipelines, prefer fast preflight/recorded/negative tests before
      running expensive live-provider flows
 6. Run the selected commands if available.

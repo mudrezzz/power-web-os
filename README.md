@@ -47,6 +47,13 @@ The next recommended product slice is `Slice 0.6.4: Take-into-work handoff from 
 
 ## Quick Start
 
+Codex development and validation are remote-first. Use
+`scripts/remote_dev.ps1` and `deploy/remote-dev.env`; see
+`docs/deployment/REMOTE_DEV_SERVER.md`. Tests, builds, Playwright, migrations,
+seed, Docker lifecycle actions and product runs must not execute locally.
+
+The commands below are retained for human-only local compatibility.
+
 One-command local Radar stack with Docker:
 
 ```bash

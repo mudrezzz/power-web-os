@@ -1,0 +1,43 @@
+{
+  "schema_version": "remote_history_migration.v1",
+  "validation_status": "PASS",
+  "session_id": "20260722-history-migration",
+  "server": "213.148.13.45",
+  "radar_id": "benchmark-sibur-holding-contour",
+  "uploaded_source_sha256": "2c324810e07d153669810ff3de8eb3db3a07ad6b00642600b4cb2865db90d0ef",
+  "recovered_database_sha256": "7e3698cef460fb31682f363880c627212585edd355ec8ce4df652dd35947b5e5",
+  "server_backup": "/opt/power-web-os/shared/backups/power_web_os.sqlite3.before-20260722-history-migration.bak",
+  "migrated_counts": {
+    "all_lifecycle_runs": 109,
+    "candidate_outputs": 69,
+    "signal_outputs": 12,
+    "technical_traces": 6957,
+    "benchmark_candidate_runs": 46,
+    "benchmark_signal_runs": 15
+  },
+  "latest_candidate_surface": {
+    "run_id": "radar-run-b03fac86-7307-448f-8deb-c1ea1794956c",
+    "visible": 91,
+    "accepted": 84,
+    "review_needed": 7
+  },
+  "historical_direct_run": {
+    "run_id": "radar-run-3bbf9c0f-330e-4468-8901-966a751234a8",
+    "visible": 77,
+    "accepted": 71,
+    "review_needed": 6
+  },
+  "recovery": {
+    "integrity_check": "ok",
+    "foreign_key_issues": 0,
+    "unreadable_trace_count": 5,
+    "affected_run_id": "radar-run-d8e4e3f7-b98a-40c8-a1d9-ca3a8b0d2249",
+    "affected_radar_id": "toir-quick-live",
+    "core_runs_or_outputs_lost": 0
+  },
+  "restart_persistence": "PASS",
+  "remote_playwright": "PASS",
+  "provider_calls": 0,
+  "product_runs_created": 0,
+  "screenshot": "frontend/test-results/radar-history-migration.png"
+}

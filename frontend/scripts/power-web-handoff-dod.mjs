@@ -49,11 +49,20 @@ try {
     await page.goto(`${baseURL}/?runId=${runId}&candidateId=${scenario.candidateId}`, { waitUntil: 'domcontentloaded' });
     await page.locator('[data-testid="power-web-handoff-preflight"], [data-testid="power-web-handoff-ready"]').first().waitFor({ timeout: 45_000 });
     const ready = page.locator('[data-testid="power-web-handoff-ready"]');
-    if (!await ready.count()) {
-      if (scenario.review) {
-        await page.locator('.power-web-review-ack input').check();
+    if (scenario.review && !await ready.isVisible().catch(() => false)) {
+      await page.locator('.power-web-review-ack input').check();
+    }
+    await page.waitForFunction(() => {
+      const readyState = document.querySelector('[data-testid="power-web-handoff-ready"]');
+      const prepare = document.querySelector('[data-testid="prepare-power-web"]');
+      return Boolean(readyState) || (prepare instanceof HTMLButtonElement && !prepare.disabled);
+    }, null, { timeout: 45_000 });
+    if (!await ready.isVisible().catch(() => false)) {
+      try {
+        await page.locator('[data-testid="prepare-power-web"]:not([disabled])').click({ timeout: 5_000 });
+      } catch (clickError) {
+        if (!await ready.isVisible().catch(() => false)) throw clickError;
       }
-      await page.locator('[data-testid="prepare-power-web"]').click();
       await ready.waitFor({ timeout: 30_000 });
     }
     const roleCount = await page.locator('.power-web-role-list > div').count();

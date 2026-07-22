@@ -5,6 +5,11 @@ description: Use when creating, updating, or validating the project demo. Ensure
 
 # Demo Maintenance Skill
 
+Execute demo seed, migration, Docker, test, build, and visual validation only
+through the announced remote session and `scripts/remote_dev.ps1`. Never use a
+local runtime fallback. Demo seed is an explicit remote stack action and must
+not invoke providers.
+
 ## Goal
 
 Keep a realistic demo that shows the current working product clearly and convincingly.

@@ -9502,6 +9502,18 @@ Required proof before Done:
 - Pipeline: power-web-discovery
 - Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.1/validation.json
 
+### Slice 0.7.6.6.1.1: Remote-first development and validation contour
+
+- Status: Done
+- Goal: Move all Codex Docker, test, build, Playwright and runtime validation to isolated remote contours on 213.148.13.45 with no silent local fallback.
+- Scope: Canonical remote orchestration, isolated validation Compose sessions, persistent release/shared/current dev stack, server-owned secrets, artifact collection, locking, procedural skill migration and process guardrails.
+- Behavior change: false
+- Blocks: 0.7.6.6.2
+- Definition of Done: Remote Probe/Sync/Test/Deploy/Exec/Collect/Logs/Cleanup are validated; workspace SHA matches; backend, frontend build and Playwright execute remotely; validation sessions and persistent stack are isolated; lock and non-zero propagation are proven; server-owned .env is neither copied nor exposed; provider calls and unrequested product runs are zero; restart/persistence and safe cleanup pass; all procedural skills are remote-first; collected validation.json reports PASS; local Docker/test invocations are zero.
+- Depends on: 0.7.6.6.1 (Done)
+- Process notes: Behavior change false. Product pipeline semantics are unchanged. Remote failure blocks validation. Product/provider runs require an explicit live action and AllowProviderCalls.
+- Validation: Remote backend architecture and handoff tests; remote frontend architecture tests and production build; remote power-web:handoff-dod; intentional failing command; parallel isolation; lifecycle lock contention; public HTTP checks; API/worker restart; artifact collection; cleanup preservation; roadmap and diff checks through remote runners.
+
 ### Slice 0.7.6.6.2: Power Web people search planning, source lanes and HH retrieval
 
 - Status: Ready
@@ -10538,4 +10550,4 @@ None.
 
 ## Next Recommended Task
 
-Slice 0.7.6.6.1: Account handoff and role demand
+Slice 0.7.6.6.2: Power Web people search planning, source lanes and HH retrieval

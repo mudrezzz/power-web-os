@@ -5,6 +5,11 @@ description: "Use for any Power Web OS frontend work: building or modifying scre
 
 # Frontend Design System
 
+Run frontend builds and Playwright/visual checks through
+`scripts/remote_dev.ps1` with remote `frontend` or `playwright` runners. Never
+run npm or browser automation locally. Collect screenshots/traces through the
+artifact allowlist before closeout.
+
 ## Mandatory Workflow
 
 1. Read `ui-design-system/START-HERE.md` first.

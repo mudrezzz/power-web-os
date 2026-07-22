@@ -47,6 +47,10 @@ def build_parser() -> argparse.ArgumentParser:
     status_parser.add_argument("status", choices=sorted(VALID_STATUSES))
     status_parser.add_argument("--note", default="")
 
+    track_parser = subparsers.add_parser("update-track")
+    track_parser.add_argument("slice_id")
+    track_parser.add_argument("track")
+
     section_parser = subparsers.add_parser("set-section")
     section_parser.add_argument("slice_id")
     section_parser.add_argument("key")
@@ -138,6 +142,10 @@ def _run(args: argparse.Namespace, repository: SQLiteRoadmapRepository) -> int:
                 raise ValueError("\n".join(problems))
         repository.update_status(args.slice_id, args.status, note=args.note)
         print(f"Updated {args.slice_id} to {args.status}")
+        return 0
+    if args.command == "update-track":
+        repository.update_track(args.slice_id, args.track)
+        print(f"Updated {args.slice_id} track to {args.track}")
         return 0
     if args.command == "set-section":
         repository.set_section(args.slice_id, args.key, args.value)
