@@ -1,0 +1,19 @@
+{
+  "profile_id": "power_web_people_search_default",
+  "pipeline_id": "power-web-discovery",
+  "description": "Default non-secret model roles for Power Web title planning and public-web people search.",
+  "roles": {
+    "people_title_planner": {
+      "primary_model": "openai/gpt-5-mini",
+      "backup_model": "",
+      "temperature": 0,
+      "max_attempts": 2
+    },
+    "people_search_extractor": {
+      "primary_model": "openai/gpt-5-mini",
+      "backup_model": "",
+      "temperature": 0,
+      "max_attempts": 2
+    }
+  }
+}

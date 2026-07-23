@@ -33,11 +33,15 @@ identity merge decisions reversible.
 
 ## Current status
 
-The package currently contains architecture contracts, accepted benchmark
-validation/freeze rules, source capability cards and a bounded HH public-web
-probe contract. The accepted workbook intake retains no private contacts.
-Retrieval, persistence, API, jobs and UI are intentionally deferred to child
-slices.
+The package contains architecture contracts, accepted benchmark
+validation/freeze rules, source capability cards, immutable account handoff and
+the pre-persistence `people_search_stage.v1` runtime. The people-search stage
+compiles eight semantic role demands into accepted account-role title
+hypotheses, 24 mandatory official/HH/generic tasks, bounded retries and query
+revisions, product-safe receipts, source leads and role coverage checkpoints.
+Source leads are inputs for profile extraction; they are not people, employment
+claims or Power Web graph nodes. Runtime persistence, API, jobs and UI remain
+deferred to slices `0.7.6.6.7` through `0.7.6.6.9`.
 
 ## Input configuration
 
@@ -51,3 +55,7 @@ Slice `0.7.6.6.0.2` narrows that handoff to product plus semantic roles.
 AccessPlaybook routes are not a discovery input. Account title variants,
 queries and evidence hints will be generated later as reviewable hypotheses,
 not authored into the global role policy.
+
+Slice `0.7.6.6.2` implements that generation and bounded public retrieval. HH
+is accessed only as an `hh.ru`-restricted ordinary web-search lane. The stage
+never uses HH API, authentication, crawling or private contacts.

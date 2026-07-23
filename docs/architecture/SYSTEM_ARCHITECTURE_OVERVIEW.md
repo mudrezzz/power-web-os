@@ -764,8 +764,17 @@ pipeline after Candidate Discovery and Signal Monitoring. The current
 `PowerWebRole`/`PowerWebBoard`/Access Planner path remains a deterministic
 read-model and planning boundary; it does not search for people.
 
-The future pipeline receives an accepted account snapshot, compiles role demand,
-retrieves public source-native profiles, retains reversible identity hypotheses,
+Slice `0.7.6.6.2` adds a separate pre-persistence people-search stage. It
+consumes `power_web_handoff.v1`, accepts account-specific role/title
+hypotheses deterministically, executes official-company, HH public-web and
+generic-web lanes with independent budgets, and emits `people_search_stage.v1`.
+The artifact owns decisions, tasks, provider attempts, receipts, source leads
+and coverage checkpoints. It does not create people, employment or graph
+claims; those remain downstream extraction and identity-resolution work.
+
+The pipeline receives an accepted account snapshot, compiles role demand and
+retrieves public source leads. Future stages extract source-native profiles,
+retain reversible identity hypotheses,
 validates employment and relationships, and emits an evidence-backed reviewable
 graph. Only reviewed states are adapted to the existing Access Planner input.
 

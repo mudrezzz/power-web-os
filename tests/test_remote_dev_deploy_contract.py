@@ -27,6 +27,7 @@ def test_remote_orchestrator_has_all_actions_and_guards() -> None:
         assert f'"{action}"' in script
     for marker in [
         "provider_calls_blocked",
+        "safeOfflinePytestPattern",
         "artifact_not_allowed",
         "remote_stack_busy",
         "workspace_sha256",
@@ -43,6 +44,10 @@ def test_remote_orchestrator_has_all_actions_and_guards() -> None:
         "ImportHistory never permits provider calls",
         "ALLOW_PARTIAL_TRACE_RECOVERY",
         "unreadable_trace_count",
+        "ConvertTo-Base64Text",
+        "tr -d '\\015' < $(ConvertTo-ShellLiteral $remoteScript) | bash",
+        ".validation-artifacts/${normalized}",
+        "demo-output/validation-artifacts/${normalized}",
     ]:
         assert marker in script
     assert "LocalEnvPath" not in script
@@ -59,6 +64,16 @@ def test_history_import_is_explicit_locked_and_does_not_weaken_normal_sync() -> 
     assert "cp -a \"`$target_db\" \"`$backup_db\"" in script
     assert "mv -f \"`$target_db.incoming\" \"`$target_db\"" in script
     assert '"--exclude=demo/output"' in script
+
+
+def test_collect_prefers_fresh_export_over_repository_copy() -> None:
+    script = read("scripts/remote_dev.ps1")
+    exported_check = 'if [ -f "`$exported" ]'
+    direct_check = 'elif [ -f "`$direct" ]'
+
+    assert exported_check in script
+    assert direct_check in script
+    assert script.index(exported_check) < script.index(direct_check)
 
 
 def test_compatibility_wrapper_only_delegates() -> None:
@@ -78,6 +93,7 @@ def test_validation_compose_is_isolated_and_socket_is_control_only() -> None:
     assert ".env" not in compose
     assert len([line for line in compose.splitlines() if "/var/run/docker.sock" in line]) == 1
     assert "playwright-control-tests:" in compose
+    assert "./.validation-artifacts:/workspace/.validation-artifacts" in compose
     assert "mcr.microsoft.com/playwright:v1.60.0-noble" in read(
         "frontend/Dockerfile.playwright-validation"
     )

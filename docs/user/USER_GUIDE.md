@@ -177,7 +177,14 @@ requires an explicit acknowledgement before preparation.
 source candidate run, exact product versions, semantic roles grouped by product
 and optional linked signal context. The result says `Ready for people
 discovery`. It does not mean that people were already found, and it does not
-start web search in the current slice.
+start web search from the UI.
+
+The backend now has a separately validated people-search stage that can turn
+this brief into account-specific role/title hypotheses and public source leads
+from official, HH.ru-indexed and general web search. It is still an engineering
+CLI validation contour: results are not yet stored as Power Web runs and are not
+shown in the product UI. A source lead is only a page worth examining; it is not
+a confirmed person or employment fact.
 
 ### Playbook analysis
 

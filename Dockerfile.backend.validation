@@ -8,7 +8,7 @@ ENV POWER_WEB_OS_ENV=test
 WORKDIR /workspace
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git \
+    && apt-get install -y --no-install-recommends fonts-dejavu-core git \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md alembic.ini ./

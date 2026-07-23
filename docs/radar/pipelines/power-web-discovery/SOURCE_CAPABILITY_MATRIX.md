@@ -1,6 +1,6 @@
 # Power Web discovery source capability matrix
 
-Status: architecture baseline for slice `0.7.6.6.0`.
+Status: implemented capability policy through slice `0.7.6.6.2`.
 
 | Source | Access | Allowed use | Retained fields | Freshness | Outcome |
 |---|---|---|---|---|---|
@@ -19,3 +19,9 @@ public product-safe metadata only, no private contacts, no automated outreach,
 no authorization/CAPTCHA/robots bypass and no raw page/provider payload
 retention. Image evidence additionally forbids face embeddings and reverse-face
 search.
+
+The `people_search_quality` acceptance profile actively schedules only
+`official_company`, `hh_public_web` and `generic_web`. Other available lanes are
+contracted but remain disabled in this stage. An inaccessible HH page may be
+retained only as a limited citation lead; it cannot confirm identity or
+employment.

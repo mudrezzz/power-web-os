@@ -1,0 +1,47 @@
+{
+  "schema_version": "radar_pipeline_acceptance.v1",
+  "slice_id": "0.7.6.6.2",
+  "pipeline_id": "power-web-discovery",
+  "behavior_change": true,
+  "to_be_markdown": "docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.2.md",
+  "to_be_pdf": "docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.2.pdf",
+  "as_is_markdown": "docs/radar/pipelines/power-web-discovery/RADAR_POWER_WEB_DISCOVERY_AS_IS.md",
+  "as_is_pdf": "docs/radar/pipelines/power-web-discovery/RADAR_POWER_WEB_DISCOVERY_AS_IS.pdf",
+  "validation_json": "docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.2/validation.json",
+  "validation_markdown": "docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.2/VALIDATION_REPORT.md",
+  "requirements": [
+    {"id": "PW-PS-ASIS-01", "mandatory": true, "description": "Detailed pre-code AS IS and real eight-role baseline handoff are recorded.", "test_node_ids": ["tests/test_radar_pipeline_documentation_contract.py::test_power_web_people_search_evidence_loop"]},
+    {"id": "PW-PS-IN-01", "mandatory": true, "description": "Planning input accounts for every immutable RoleDemand with exact lineage, including the 14-demand two-product handoff.", "test_node_ids": ["tests/test_power_web_people_search_planning.py::test_planning_input_preserves_all_handoff_demands", "tests/test_power_web_people_search_planning.py::test_recorded_two_product_handoff_preserves_all_fourteen_demands"]},
+    {"id": "PW-PS-HYP-01", "mandatory": true, "description": "Hypotheses cannot mutate role policy or product lineage; schema recovery is bounded.", "test_node_ids": ["tests/test_power_web_people_search_planning.py::test_hypothesis_acceptance_cannot_mutate_role_policy", "tests/test_power_web_people_search_planning.py::test_hypothesis_planner_uses_one_bounded_schema_retry"]},
+    {"id": "PW-PS-HYP-02", "mandatory": true, "description": "Duplicate, unrelated and private-value hypotheses are rejected with reasons.", "test_node_ids": ["tests/test_power_web_people_search_planning.py::test_hypothesis_acceptance_rejects_duplicates_unrelated_and_private_values"]},
+    {"id": "PW-PS-LANE-01", "mandatory": true, "description": "Quality plan has HH, official and generic mandatory lanes per role without fallback masquerading.", "test_node_ids": ["tests/test_power_web_people_search_pipeline.py::test_quality_plan_has_three_mandatory_lanes_per_role", "tests/test_power_web_people_search_planning.py::test_missing_official_domain_is_not_executable_without_generic_masquerading"]},
+    {"id": "PW-PS-LANE-02", "mandatory": true, "description": "Every selected source decision has a terminal outcome.", "test_node_ids": ["tests/test_power_web_people_search_pipeline.py::test_every_selected_lane_has_terminal_outcome"]},
+    {"id": "PW-PS-HH-01", "mandatory": true, "description": "HH tasks are domain restricted and perform zero HH API calls.", "test_node_ids": ["tests/test_power_web_people_search_pipeline.py::test_hh_tasks_are_domain_restricted_and_never_use_hh_api"]},
+    {"id": "PW-PS-AUD-01", "mandatory": true, "description": "Every executed task has a product-safe receipt and lineage.", "test_node_ids": ["tests/test_power_web_people_search_pipeline.py::test_executed_tasks_have_product_safe_receipts"]},
+    {"id": "PW-PS-NEG-01", "mandatory": true, "description": "Provider failure never becomes searched-no-results.", "test_node_ids": ["tests/test_power_web_people_search_pipeline.py::test_provider_failure_never_becomes_searched_no_results"]},
+    {"id": "PW-PS-BUD-01", "mandatory": true, "description": "People-search budgets, retries and query revisions are independent, bounded and auditable.", "test_node_ids": ["tests/test_power_web_people_search_pipeline.py::test_people_search_budget_is_independent_and_bounded", "tests/test_power_web_people_search_pipeline.py::test_successful_no_results_gets_one_bounded_query_revision"]},
+    {"id": "PW-PS-SEC-01", "mandatory": true, "description": "Artifact rejects raw payload, HTML, credentials, contacts and hidden reasoning.", "test_node_ids": ["tests/test_power_web_people_search_contracts.py::test_people_search_artifact_rejects_private_or_raw_fields"]},
+    {"id": "PW-PS-BENCH-01", "mandatory": true, "description": "Blind controls are evaluator-only and every miss has a path reason.", "test_node_ids": ["tests/test_power_web_people_search_validation.py::test_people_search_planning_has_zero_blind_control_leakage"]},
+    {"id": "PW-PS-ARCH-01", "mandatory": true, "description": "Application package remains provider-neutral and isolated.", "test_node_ids": ["tests/test_backend_architecture_contract.py::test_power_web_people_search_package_boundaries"]},
+    {"id": "PW-PS-LIVE-01", "mandatory": true, "description": "Remote live artifact satisfies eight-role and three-lane thresholds.", "test_node_ids": ["tests/test_power_web_people_search_validation.py::test_live_acceptance_requires_eight_roles_and_three_lanes"]},
+    {"id": "PW-PS-PROC-01", "mandatory": true, "description": "AS IS, TO BE, manifest, remote evidence, validation and finalized AS IS are traceable.", "test_node_ids": ["tests/test_radar_pipeline_documentation_contract.py::test_power_web_people_search_evidence_loop"]}
+  ],
+  "recorded_acceptance": {
+    "role_demands": 14,
+    "blind_controls_in_planning": 0,
+    "orphan_lane_decisions": 0,
+    "receipt_gaps": 0
+  },
+  "live_acceptance": {
+    "role_demands": 8,
+    "initial_mandatory_lane_decisions": 24,
+    "mandatory_lanes": ["official_company", "hh_public_web", "generic_web"],
+    "minimum_lanes_with_retained_lead": 3,
+    "minimum_roles_with_relevant_lead": 4,
+    "maximum_provider_calls": 48,
+    "maximum_hypothesis_provider_calls": 2,
+    "unrecovered_mandatory_lane_errors": 0,
+    "hh_api_calls": 0,
+    "controls_in_planning_count": 0
+  }
+}

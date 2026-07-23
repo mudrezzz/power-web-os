@@ -1,0 +1,299 @@
+{
+  "schema_version": "power_web_people_search_validation.v1",
+  "slice_id": "0.7.6.6.2",
+  "pipeline_id": "power-web-discovery",
+  "validation_status": "PASS",
+  "generated_at": "2026-07-22T22:50:46.552959+00:00",
+  "remote_session_id": "20260722-c9515e9-pwps",
+  "workspace_sha256": "ddddbd7685017ee887297402c395555ed5a8a421281208d10aa9a264b1477e49",
+  "stage_id": "people-search-stage-9b8e0bac39a759b264af",
+  "handoff_id": "power-web-handoff-be8763ab-00ad-4cbf-8ff5-d5a84990d285",
+  "requirements": [
+    {
+      "requirement_id": "PW-PS-ASIS-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_radar_pipeline_documentation_contract.py::test_power_web_people_search_evidence_loop"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-IN-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_people_search_planning.py::test_planning_input_preserves_all_handoff_demands",
+        "tests/test_power_web_people_search_planning.py::test_recorded_two_product_handoff_preserves_all_fourteen_demands"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-HYP-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_people_search_planning.py::test_hypothesis_acceptance_cannot_mutate_role_policy",
+        "tests/test_power_web_people_search_planning.py::test_hypothesis_planner_uses_one_bounded_schema_retry"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-HYP-02",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_people_search_planning.py::test_hypothesis_acceptance_rejects_duplicates_unrelated_and_private_values"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-LANE-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_people_search_pipeline.py::test_quality_plan_has_three_mandatory_lanes_per_role",
+        "tests/test_power_web_people_search_planning.py::test_missing_official_domain_is_not_executable_without_generic_masquerading"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-LANE-02",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_people_search_pipeline.py::test_every_selected_lane_has_terminal_outcome"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-HH-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_people_search_pipeline.py::test_hh_tasks_are_domain_restricted_and_never_use_hh_api"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-AUD-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_people_search_pipeline.py::test_executed_tasks_have_product_safe_receipts"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-NEG-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_people_search_pipeline.py::test_provider_failure_never_becomes_searched_no_results"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-BUD-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_people_search_pipeline.py::test_people_search_budget_is_independent_and_bounded",
+        "tests/test_power_web_people_search_pipeline.py::test_successful_no_results_gets_one_bounded_query_revision"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-SEC-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_people_search_contracts.py::test_people_search_artifact_rejects_private_or_raw_fields"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-BENCH-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_people_search_validation.py::test_people_search_planning_has_zero_blind_control_leakage"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-ARCH-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_backend_architecture_contract.py::test_power_web_people_search_package_boundaries"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-LIVE-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_power_web_people_search_validation.py::test_live_acceptance_requires_eight_roles_and_three_lanes"
+      ]
+    },
+    {
+      "requirement_id": "PW-PS-PROC-01",
+      "status": "PASS",
+      "evidence": [
+        "tests/test_radar_pipeline_documentation_contract.py::test_power_web_people_search_evidence_loop"
+      ]
+    }
+  ],
+  "evaluation": {
+    "schema_version": "people_search_post_run_evaluation.v1",
+    "stage_id": "people-search-stage-9b8e0bac39a759b264af",
+    "benchmark_id": "sibur-priority-power-web",
+    "benchmark_version": "1.0.0",
+    "controls_in_planning_count": 0,
+    "leakage_terms": [],
+    "role_demands": 8,
+    "roles_with_accepted_hypothesis": 8,
+    "mandatory_lane_decisions": 24,
+    "executed_mandatory_lanes": 24,
+    "unrecovered_mandatory_lane_errors": 0,
+    "budget_limited_mandatory_lanes": 0,
+    "receipt_gaps": 0,
+    "orphan_decisions": 0,
+    "silent_task_drops": 0,
+    "leads_by_lane": {
+      "generic_web": 29,
+      "hh_public_web": 22,
+      "official_company": 29
+    },
+    "roles_with_relevant_leads": 4,
+    "provider_calls": 26,
+    "planner_calls": 1,
+    "hh_api_calls": 0,
+    "privacy_flags_pass": true,
+    "profile_controls": [
+      {
+        "control_id": "profile-control-zhalyuk-official-2026",
+        "source_lane": "official_company",
+        "found": false,
+        "path_reason": "source_not_found",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-zhalyuk-industry-2025",
+        "source_lane": "industry_web",
+        "found": false,
+        "path_reason": "lane_not_enabled_in_acceptance_profile",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-malyavin-official-2024",
+        "source_lane": "official_company",
+        "found": false,
+        "path_reason": "source_not_found",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-malyavin-industry-2025",
+        "source_lane": "industry_web",
+        "found": false,
+        "path_reason": "lane_not_enabled_in_acceptance_profile",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-shein-official-2024",
+        "source_lane": "official_company",
+        "found": false,
+        "path_reason": "source_not_found",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-shein-industry-2025",
+        "source_lane": "industry_web",
+        "found": false,
+        "path_reason": "lane_not_enabled_in_acceptance_profile",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-stroev-official-2025",
+        "source_lane": "official_company",
+        "found": false,
+        "path_reason": "source_not_found",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-stroev-publication-2025",
+        "source_lane": "publications_events",
+        "found": false,
+        "path_reason": "lane_not_enabled_in_acceptance_profile",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-muzafarov-publication-2025",
+        "source_lane": "industry_web",
+        "found": false,
+        "path_reason": "lane_not_enabled_in_acceptance_profile",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-anonymous-zapsib-toir-hh",
+        "source_lane": "hh_public_web",
+        "found": false,
+        "path_reason": "source_not_found",
+        "matched_urls": []
+      }
+    ],
+    "false_negatives": [
+      {
+        "control_id": "profile-control-zhalyuk-official-2026",
+        "source_lane": "official_company",
+        "found": false,
+        "path_reason": "source_not_found",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-zhalyuk-industry-2025",
+        "source_lane": "industry_web",
+        "found": false,
+        "path_reason": "lane_not_enabled_in_acceptance_profile",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-malyavin-official-2024",
+        "source_lane": "official_company",
+        "found": false,
+        "path_reason": "source_not_found",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-malyavin-industry-2025",
+        "source_lane": "industry_web",
+        "found": false,
+        "path_reason": "lane_not_enabled_in_acceptance_profile",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-shein-official-2024",
+        "source_lane": "official_company",
+        "found": false,
+        "path_reason": "source_not_found",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-shein-industry-2025",
+        "source_lane": "industry_web",
+        "found": false,
+        "path_reason": "lane_not_enabled_in_acceptance_profile",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-stroev-official-2025",
+        "source_lane": "official_company",
+        "found": false,
+        "path_reason": "source_not_found",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-stroev-publication-2025",
+        "source_lane": "publications_events",
+        "found": false,
+        "path_reason": "lane_not_enabled_in_acceptance_profile",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-muzafarov-publication-2025",
+        "source_lane": "industry_web",
+        "found": false,
+        "path_reason": "lane_not_enabled_in_acceptance_profile",
+        "matched_urls": []
+      },
+      {
+        "control_id": "profile-control-anonymous-zapsib-toir-hh",
+        "source_lane": "hh_public_web",
+        "found": false,
+        "path_reason": "source_not_found",
+        "matched_urls": []
+      }
+    ]
+  },
+  "execution_audit": {
+    "candidate_discovery_runs_created": 0,
+    "signal_monitoring_runs_created": 0,
+    "power_web_runs_created": 0,
+    "hh_api_calls": 0
+  }
+}

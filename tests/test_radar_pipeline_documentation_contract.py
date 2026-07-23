@@ -454,3 +454,32 @@ def test_power_web_handoff_evidence_loop() -> None:
     assert all(requirement in to_be.read_text(encoding="utf-8") for requirement in requirements)
     assert all(requirement in as_is.read_text(encoding="utf-8") for requirement in requirements)
     assert all(validation_results.get(requirement) == "PASS" for requirement in requirements)
+
+
+def test_power_web_people_search_evidence_loop() -> None:
+    base = Path("docs/radar/pipelines/power-web-discovery")
+    as_is = base / "RADAR_POWER_WEB_DISCOVERY_AS_IS.md"
+    to_be = base / "to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.2.md"
+    baseline = base / "validation/0.7.6.6.2/BASELINE_DIAGNOSTIC.md"
+    manifest = json.loads(to_be.with_suffix(".acceptance.json").read_text(encoding="utf-8"))
+    requirements = {item["id"] for item in manifest["requirements"] if item.get("mandatory", True)}
+
+    assert manifest["slice_id"] == "0.7.6.6.2"
+    assert manifest["pipeline_id"] == "power-web-discovery"
+    assert baseline.exists()
+    assert "power-web-handoff-be8763ab-00ad-4cbf-8ff5-d5a84990d285" in baseline.read_text(encoding="utf-8")
+    assert to_be.with_suffix(".pdf").exists()
+    assert requirements
+    assert all(item.get("test_node_ids") for item in manifest["requirements"] if item.get("mandatory", True))
+    assert all(requirement in to_be.read_text(encoding="utf-8") for requirement in requirements)
+    if "Status: Implemented" in to_be.read_text(encoding="utf-8"):
+        validation = json.loads(
+            (base / "validation/0.7.6.6.2/validation.json").read_text(encoding="utf-8")
+        )
+        validation_results = {
+            item["requirement_id"]: item["status"] for item in validation["requirements"]
+        }
+        assert validation["validation_status"] == "PASS"
+        assert "0.7.6.6.2" in as_is.read_text(encoding="utf-8")
+        assert all(requirement in as_is.read_text(encoding="utf-8") for requirement in requirements)
+        assert all(validation_results.get(requirement) == "PASS" for requirement in requirements)

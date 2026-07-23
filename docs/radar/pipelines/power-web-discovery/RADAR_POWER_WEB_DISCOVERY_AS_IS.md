@@ -1,15 +1,20 @@
 # Power Web Discovery AS IS
 
-Status: current after slice `0.7.6.6.1`.
+Status: implemented through runtime slice `0.7.6.6.2`.
 
 ## Executive statement
 
-Power Web OS does not discover people today. It can now prepare an immutable,
-evidence-complete account handoff with exact product and semantic-role demand
-snapshots. The current product can also display already supplied roles and
-build access routes from those supplied records,
-but it has no people-search, identity-resolution, employment-validation or
-relationship-discovery runtime.
+Power Web OS now converts an immutable, evidence-complete account handoff into
+an auditable people-source search stage. It proposes account-specific
+title/function hypotheses for every semantic role, accepts them
+deterministically, executes bounded official-company, public HH and generic-web
+lanes, and retains product-safe source leads, receipts and coverage decisions.
+
+The stage deliberately does not claim that a source lead is a person. It has no
+person-profile extraction, cross-source identity resolution,
+employment validation or relationship discovery. The existing product can
+also display already supplied roles and build access routes from those supplied
+records, but those downstream read models do not own retrieval decisions.
 
 Power Web OS now has a persisted global discovery-configuration foundation. A
 product owns versioned semantic buying roles. This foundation defines what a
@@ -91,7 +96,13 @@ signal run or provider call.
 
 ```mermaid
 flowchart LR
-  Input[Caller supplies Account and PowerWebRole records]
+  Handoff[power_web_handoff.v1]
+  Plan[Role and lane planning]
+  Retrieve[Bounded public-web retrieval]
+  Stage[people_search_stage.v1]
+  Review[Source leads for profile extraction]
+  Handoff --> Plan --> Retrieve --> Stage --> Review
+  Input[Caller-supplied PowerWebRole records]
   Board[PowerWebBoard read model]
   Planner[Access Planner]
   Output[Graph view and suggested routes]
@@ -101,9 +112,10 @@ flowchart LR
   Planner --> Output
 ```
 
-Current sequence: caller-supplied `Account` and `PowerWebRole` records ->
+The new discovery sequence stops at reviewable source leads. The compatibility
+sequence remains caller-supplied `Account` and `PowerWebRole` records ->
 `PowerWebBoard` read model and Access Planner -> graph view and suggested
-routes. There is no retrieval or identity-validation step in this sequence.
+routes. Source leads are not silently projected into that compatibility path.
 
 ### `PowerWebRole`
 
@@ -127,15 +139,76 @@ influence.
 
 ## Missing capabilities
 
-- No independent `power_web_discovery` run, lineage, budget or artifact.
-- No job-title/query hypothesis generation or source-lane scheduling from role demands.
-- No public HH search or other people-source retrieval.
+- No persisted `power-web-run-*`, database output, API or job lifecycle; the
+  current stage artifact is an explicit file produced by CLI composition.
 - No source-native `PersonProfile` retention.
 - No reversible identity hypotheses or confirmed identity contract.
 - No current/former/unknown employment validation.
 - No evidence-backed relationship or influence projection.
-- No benchmark, quality evaluator or path-level miss reasons.
-- No privacy/retention enforcement specific to people data.
+- No database, API, job, history or UI for the people-search runtime.
+- No quality claim for profile-control recall; the accepted live run found zero
+  of ten evaluator-only profile controls.
+
+## Implemented people-search stage
+
+The application package now owns planning input, title-hypothesis proposals,
+deterministic acceptance, source-lane decisions, independent budgets, task
+scheduling, lead normalization, receipts, coverage checkpoints and artifact
+projection. OpenRouter transport and public-web response normalization remain
+in an integration adapter. The CLI composes these ports around an existing
+handoff and writes an explicit file artifact; there is still no people-search
+output table, API, worker task or run lifecycle.
+
+The current executable boundary is:
+
+```text
+power_web_handoff.v1
+  -> planning input
+  -> account-specific title/function proposals
+  -> deterministic acceptance with role lineage
+  -> official_company + hh_public_web + generic_web decisions
+  -> bounded provider execution and one bounded revision
+  -> product-safe receipts and source leads
+  -> role coverage checkpoints
+  -> people_search_stage.v1
+```
+
+The `people_search_quality` profile starts three mandatory tasks for each of
+eight roles. `official_company` requires an account-owned domain with a
+product-safe evidence ref. `hh_public_web` uses normal web search restricted to
+`hh.ru`; it performs no HH API, OAuth, authentication or crawling. `generic_web`
+is a separate lane. Professional network, publication/event,
+procurement/patent and industry lanes remain capability contracts but are not
+enabled in this acceptance profile.
+
+The profile permits 2 planner calls, 40 search tasks, 48 provider calls, 80
+source verifications, one query revision per role/lane and one provider retry
+per task. Candidate-discovery and signal-monitoring counters are neither read
+nor changed. A provider failure has a distinct outcome and cannot become
+`searched_no_results`; every selected lane keeps a terminal ledger state.
+
+The accepted remote execution used handoff
+`power-web-handoff-be8763ab-00ad-4cbf-8ff5-d5a84990d285`. It belongs to
+`Benchmark / SIBUR holding contour`, candidate
+`ao-sibur-him-prom-demo`, account `account-inn-5905001527`, and contains exactly
+eight SmartDiagnostics `RoleDemand` records. Stage
+`people-search-stage-9b8e0bac39a759b264af` executed all 24 mandatory lane
+decisions and 2 bounded query revisions, producing 26 receipts and 80 retained
+leads: 29 official, 22 HH and 29 generic-web. Four of eight roles had at least
+one account/role-relevant lead. It used 1 planner call and 26 search-provider
+calls, with no receipt gaps, orphan decisions, silent drops, mandatory-lane
+provider errors or HH API calls.
+
+The source-verification counter reached its limit after all mandatory tasks had
+executed, so the artifact completion state is `completed_with_limits`; the
+limit only prevented retaining additional citations. Blind controls were
+loaded after execution and did not enter planning. None of the ten profile
+controls was retrieved: five disabled-lane controls report
+`lane_not_enabled_in_acceptance_profile`, while the enabled official/HH controls
+report `source_not_found`. This is a diagnosed retrieval-quality gap, not an
+identity failure and not a public quality claim. The slice proves bounded,
+auditable retrieval wiring; later slices must extract profiles and improve
+benchmark recall without weakening provenance.
 
 ## Preserved compatibility boundary
 
@@ -212,3 +285,21 @@ account-specific job titles from this configuration.
 - `PW-HO-BENCH-01`: blind controls remain evaluator-only with leakage zero.
 - `PW-HO-NET-01`: provider calls and new pipeline runs are zero.
 - `PW-HO-PROC-01`: TO BE, manifest, tests, Docker evidence, validation and AS IS are traceable.
+
+## Slice 0.7.6.6.2 implementation change record
+
+- `PW-PS-ASIS-01`: the pre-code baseline and real eight-role handoff are retained in the slice evidence.
+- `PW-PS-IN-01`: planning accounts for all RoleDemand records with exact product, version and account lineage; the recorded two-product path preserves all fourteen demands.
+- `PW-PS-HYP-01`: provider proposals cannot mutate role policy or lineage, and schema recovery is bounded to two planner calls.
+- `PW-PS-HYP-02`: duplicate, unrelated and private-value proposals are rejected with explicit reasons; deterministic role-based fallback remains available.
+- `PW-PS-LANE-01`: every quality-profile role receives independent official, HH public-web and generic-web decisions; an unverified official domain is not replaced by generic search.
+- `PW-PS-LANE-02`: every selected lane has a terminal scheduling or execution outcome in the ledger.
+- `PW-PS-HH-01`: HH retrieval is domain-restricted public web search with zero HH API, OAuth, authentication or crawler calls.
+- `PW-PS-AUD-01`: every executed task has a product-safe receipt with task, role, product, hypothesis, source and provider lineage.
+- `PW-PS-NEG-01`: provider errors remain provider errors and never become searched-negative outcomes.
+- `PW-PS-BUD-01`: planner, retrieval, retry, revision and verification counters are independent, bounded and included in the stage artifact.
+- `PW-PS-SEC-01`: artifacts retain no raw provider payload, HTML, credentials, headers, private contacts or hidden reasoning.
+- `PW-PS-BENCH-01`: blind controls are loaded only by the evaluator; planning leakage is zero and every miss has a path-level reason.
+- `PW-PS-ARCH-01`: people-search application services remain provider-neutral and isolated from Candidate Discovery, Signal Monitoring, transport, persistence and worker frameworks.
+- `PW-PS-LIVE-01`: remote stage `people-search-stage-9b8e0bac39a759b264af` passed the eight-role, 24-lane, receipt, lead, relevance and budget acceptance thresholds.
+- `PW-PS-PROC-01`: baseline, TO BE/PDF, acceptance manifest, recorded tests, remote live artifact, PASS validation and this finalized AS IS record are traceable.

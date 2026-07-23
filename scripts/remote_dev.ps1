@@ -41,7 +41,7 @@ function Require-Key {
     if (-not $Values.ContainsKey($Key) -or [string]::IsNullOrWhiteSpace($Values[$Key])) {
         throw "Missing required remote config key: ${Key}"
     }
-    return $Values[$Key]
+    return ([string]$Values[$Key]).Trim()
 }
 
 function Test-CommandAvailable {
@@ -67,8 +67,15 @@ function Assert-SafeSessionId {
 
 function ConvertTo-ShellLiteral {
     param([string]$Value)
-    if ($Value.Contains("'")) { throw "Unsafe single quote in remote value." }
-    return "'${Value}'"
+    $normalized = $Value.Trim()
+    if ($normalized.Contains("'")) { throw "Unsafe single quote in remote value." }
+    return "'${normalized}'"
+}
+
+function ConvertTo-Base64Text {
+    param([string]$Value)
+    $normalized = $Value.Replace("`r", "")
+    return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($normalized))
 }
 
 function Invoke-Native {
@@ -100,15 +107,19 @@ function Invoke-SshScript {
     try {
         [System.IO.File]::WriteAllText(
             $localScript,
-            $Script.Replace("`r`n", "`n"),
+            $Script.Replace("`r", ""),
             [System.Text.UTF8Encoding]::new($false)
         )
+        if ([System.IO.File]::ReadAllBytes($localScript) -contains 13) {
+            throw "Remote shell script contains a carriage return after normalization."
+        }
         & scp $localScript "${sshTarget}:${remoteScript}"
         if ($LASTEXITCODE -ne 0) {
             $script:LastNativeExitCode = $LASTEXITCODE
             return
         }
-        & ssh $sshTarget bash $remoteScript
+        $executeRemoteScript = "tr -d '\015' < $(ConvertTo-ShellLiteral $remoteScript) | bash"
+        & ssh $sshTarget $executeRemoteScript
         $remoteExitCode = $LASTEXITCODE
         & ssh $sshTarget rm -f -- $remoteScript
         $script:LastNativeExitCode = $remoteExitCode
@@ -185,6 +196,11 @@ function Write-RemoteManifest {
 function Assert-ProviderPermission {
     param([string]$Value)
     if ($AllowProviderCalls) { return }
+    $safeOfflinePytestPattern = '(?is)^python\s+-m\s+pytest(?:\s|$)'
+    if ($Value -match $safeOfflinePytestPattern) { return }
+    $safeHandoffPostPattern = '(?is)^curl\s+[^;&|]*(-x|--request)\s+post[^;&|]*http://127\.0\.0\.1:8001/api/radars/[a-z0-9-]+/power-web-handoffs\s*$'
+    $safeEncodedHandoffPostPattern = "(?is)^printf\s+'%s'\s+'[a-z0-9+/=]+'\s+\|\s+base64\s+-d\s+\|\s+curl\s+[^;&|]*(-x|--request)\s+post[^;&|]*http://127\.0\.0\.1:8001/api/radars/[a-z0-9-]+/power-web-handoffs\s*$"
+    if ($Value -match $safeHandoffPostPattern -or $Value -match $safeEncodedHandoffPostPattern) { return }
     $providerPattern = '(?i)(run-radar|run-signal|run-power-web|signal-monitoring-runs|power-web-runs|curl\s+.*(-x|--request)\s+post|invoke-restmethod\s+.*-method\s+post|openrouter)'
     if ($Value -match $providerPattern) {
         throw "provider_calls_blocked: use -Runner stack -AllowProviderCalls for an explicitly announced live action"
@@ -274,7 +290,7 @@ $workspace = "${validationRoot}/${SessionId}"
 $composeProject = "pwos-val-${SessionId}".ToLowerInvariant()
 $branch = (& git -C $RepoRoot rev-parse --abbrev-ref HEAD).Trim()
 $commit = (& git -C $RepoRoot rev-parse HEAD).Trim()
-$dirty = [bool]((& git -C $RepoRoot status --porcelain).Count)
+$dirty = [bool](@(& git -C $RepoRoot status --porcelain).Count)
 $script:ManifestPath = Join-Path $SessionStore "${SessionId}/manifest.json"
 if (Test-Path $script:ManifestPath) {
     $script:Manifest = Get-Content -LiteralPath $script:ManifestPath -Raw | ConvertFrom-Json
@@ -341,7 +357,7 @@ docker compose -p $(ConvertTo-ShellLiteral $devComposeProject) -f $(ConvertTo-Sh
             }
             default { throw "Test runner must be backend, frontend or playwright." }
         }
-        $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Command))
+        $encoded = ConvertTo-Base64Text ($Command.Trim())
         $runTestScript = @"
 set -euo pipefail
 test -d $(ConvertTo-ShellLiteral $workspace)
@@ -350,7 +366,7 @@ $(Get-ComposeExports)
 command=`$(printf '%s' $(ConvertTo-ShellLiteral $encoded) | base64 -d)
 docker compose -p $(ConvertTo-ShellLiteral $composeProject) -f docker-compose.validation.yml run -T --rm --build $(ConvertTo-ShellLiteral $service) bash -lc "`$command"
 "@
-        $runTestEncoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($runTestScript))
+        $runTestEncoded = ConvertTo-Base64Text $runTestScript
         if ($service -eq "playwright-control-tests") {
             $testScript = @"
 set -euo pipefail
@@ -387,7 +403,7 @@ cd $(ConvertTo-ShellLiteral "${remoteBase}/current")
 $(Get-ComposeExports)
 docker compose -p $(ConvertTo-ShellLiteral $devComposeProject) up -d
 "@
-        $upEncoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($upCommand))
+        $upEncoded = ConvertTo-Base64Text $upCommand
         $deployScript = @"
 set -euo pipefail
 mkdir -p $(ConvertTo-ShellLiteral $sharedRoot) $(ConvertTo-ShellLiteral "${sharedRoot}/demo-output") $(ConvertTo-ShellLiteral $releaseRoot)
@@ -442,14 +458,14 @@ echo release=$(ConvertTo-ShellLiteral $release)
         if ($Runner -ne "stack") { throw "Exec currently requires -Runner stack." }
         Assert-ProviderPermission $Command
         Add-ManifestCommand -Kind "Exec" -Value $Command
-        $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Command))
+        $encoded = ConvertTo-Base64Text ($Command.Trim())
         $stackCommand = @"
 cd $(ConvertTo-ShellLiteral "${remoteBase}/current")
 $(Get-ComposeExports)
 command=`$(printf '%s' $(ConvertTo-ShellLiteral $encoded) | base64 -d)
 bash -lc "`$command"
 "@
-        $stackEncoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($stackCommand))
+        $stackEncoded = ConvertTo-Base64Text $stackCommand
         $execScript = @"
 set -euo pipefail
 test -d $(ConvertTo-ShellLiteral "${remoteBase}/current")
@@ -560,7 +576,7 @@ print(f"source_integrity=recovered source_run_count={run_count} unreadable_trace
 for trace_id, reason in unreadable:
     print(f"unreadable_trace={trace_id} reason={reason}")
 "@
-        $integrityEncoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($integrityCode))
+        $integrityEncoded = ConvertTo-Base64Text $integrityCode
         $backupDatabase = "${sharedRoot}/backups/power_web_os.sqlite3.before-${SessionId}.bak"
         $lifecycleCommand = @"
 set -euo pipefail
@@ -611,7 +627,7 @@ curl -fsS $(ConvertTo-ShellLiteral "${apiUrl}/api/radars") >/dev/null
 rm -f -- $(ConvertTo-ShellLiteral $remoteDatabase) $(ConvertTo-ShellLiteral "${stagingDirectory}/power_web_os.recovered.sqlite3")
 printf '%s\n' "history_import=completed" "uploaded_source_sha256=`$remote_sha" "imported_database_sha256=`$import_sha" "backup=`$backup_db"
 "@
-        $lifecycleEncoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($lifecycleCommand))
+        $lifecycleEncoded = ConvertTo-Base64Text $lifecycleCommand
         $importScript = @"
 set -euo pipefail
 locked_command=`$(printf '%s' $(ConvertTo-ShellLiteral $lifecycleEncoded) | base64 -d)
@@ -636,7 +652,16 @@ exit "`$code"
         Add-ManifestCommand -Kind "Collect" -Value $normalized
         $localPath = Join-Path $RepoRoot ($normalized.Replace('/', [IO.Path]::DirectorySeparatorChar))
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $localPath) | Out-Null
-        Invoke-Native -FilePath "scp" -Arguments @("${sshTarget}:${workspace}/${normalized}", $localPath)
+        $resolveArtifactScript = @"
+set -euo pipefail
+direct=$(ConvertTo-ShellLiteral "${workspace}/${normalized}")
+exported=$(ConvertTo-ShellLiteral "${workspace}/.validation-artifacts/${normalized}")
+shared_export=$(ConvertTo-ShellLiteral "${sharedRoot}/demo-output/validation-artifacts/${normalized}")
+if [ -f "`$exported" ]; then printf '%s' "`$exported"; elif [ -f "`$direct" ]; then printf '%s' "`$direct"; elif [ -f "`$shared_export" ]; then printf '%s' "`$shared_export"; else exit 4; fi
+"@
+        $remoteArtifactPath = ((Invoke-SshScript $resolveArtifactScript) | Out-String).Trim()
+        Stop-OnNativeFailure "artifact path resolution"
+        Invoke-Native -FilePath "scp" -Arguments @("${sshTarget}:${remoteArtifactPath}", $localPath)
         Stop-OnNativeFailure "artifact collection"
     }
     "Logs" {

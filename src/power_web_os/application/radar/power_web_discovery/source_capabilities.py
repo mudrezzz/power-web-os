@@ -86,7 +86,7 @@ def default_source_capability_cards() -> tuple[PowerWebSourceCapabilityCard, ...
     return (
         PowerWebSourceCapabilityCard(
             source_id="hh_public_web",
-            lane="professional_profile",
+            lane="hh_public_web",
             access_mode="public_search_only",
             domain_restrictions=("hh.ru",),
             allowed_operations=("web_search", "read_public_indexed_page"),

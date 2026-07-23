@@ -20,6 +20,8 @@ services:
     depends_on:
       validation-redis:
         condition: service_healthy
+    volumes:
+      - ./.validation-artifacts:/workspace/.validation-artifacts
     tmpfs:
       - /tmp
 

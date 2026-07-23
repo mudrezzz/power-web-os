@@ -1048,3 +1048,29 @@ def test_job_modules_are_thin_application_entrypoints() -> None:
             violations[path.as_posix()] = found
 
     assert violations == {}
+def test_power_web_people_search_package_boundaries() -> None:
+    package = Path("src/power_web_os/application/radar/power_web_discovery/people_search")
+    forbidden = (
+        "power_web_os.application.radar.candidate_discovery",
+        "power_web_os.application.radar.signal_monitoring",
+        "power_web_os.persistence",
+        "power_web_os.integrations",
+        "fastapi",
+        "sqlalchemy",
+        "celery",
+        "httpx",
+        "requests",
+        "openai",
+    )
+    assert package.exists()
+    for path in package.glob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        modules = [node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module]
+        modules.extend(
+            alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names
+        )
+        violations = [
+            module for module in modules
+            if any(module == prefix or module.startswith(f"{prefix}.") for prefix in forbidden)
+        ]
+        assert not violations, f"{path} crosses people-search application boundaries: {violations}"

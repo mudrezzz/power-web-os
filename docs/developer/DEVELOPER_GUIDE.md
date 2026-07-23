@@ -1968,11 +1968,11 @@ The frontend default locale is `en`. The supported locales are `en` and `ru`, an
 
 ## Power Web Discovery Architecture
 
-The initial Power Web discovery boundary lives in
-`src/power_web_os/application/radar/power_web_discovery`. It contains only
+The Power Web discovery boundary lives in
+`src/power_web_os/application/radar/power_web_discovery`. It contains
 provider-neutral contracts, benchmark isolation/freeze rules, source capability
-cards, Radar-product policy and immutable handoff services. It does not contain
-a people-search runtime.
+cards, Radar-product policy, immutable handoff services and the bounded
+pre-persistence people-search stage under `people_search/`.
 
 Radar product bindings are stored separately from the Radar definition. Create
 handoffs through `/api/radars/{radar_id}/power-web-handoffs` only after the
@@ -1989,6 +1989,26 @@ python -m power_web_os.power_web_handoff_validation --slice 0.7.6.6.1 --tests-pa
 The current `PowerWebRole`, `PowerWebBoard` and Access Planner consume supplied
 roles. Do not treat them as evidence that a person was discovered or that
 employment was validated.
+
+`people_search_stage.v1` converts one exact eight-role SmartDiagnostics handoff
+into accepted account-role title hypotheses, 24 initial source-lane decisions,
+bounded retrieval receipts, source leads and role coverage checkpoints. The
+mandatory lanes are `official_company`, `hh_public_web` and `generic_web`.
+Successful no-result searches may receive one bounded query revision. Provider
+errors use a separate bounded retry and never become searched-negative.
+
+This stage deliberately has no API, database output, job or UI history. Run it
+only through the remote stack with explicit provider permission:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/remote_dev.ps1 `
+  -Action Exec -SessionId <session> -Runner stack -AllowProviderCalls `
+  -Command "python -m power_web_os.power_web_people_search --handoff-id <handoff> --official-domain <domain> --official-domain-evidence-ref <source-ref> --output <safe-output-path>"
+```
+
+The output contains source leads, not `PersonProfile`, confirmed identities,
+employment claims or Power Web graph nodes. Validate the completed artifact
+post-run with `python -m power_web_os.power_web_people_search_validation`.
 
 HH.ru is initially a public-web lane. Build queries through the `hh_public_web`
 capability card and restrict ordinary search to `hh.ru`. Do not add HH API

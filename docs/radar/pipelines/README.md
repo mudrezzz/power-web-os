@@ -14,7 +14,7 @@ the current candidate-discovery default.
 |---|---|---|---|
 | `candidate-discovery` | Find and qualify legal entities, sites, branches, projects, and review-needed upstream entities. | Infrequent: manual, monthly, quarterly, or after Radar settings change. | Implemented through the current Radar search pipeline with signal-monitoring handoff by default; docs still live at `docs/radar/RADAR_SEARCH_PIPELINE_AS_IS.md` until the migration slice splits the file. |
 | `signal-monitoring` | Monitor configured intent signals for known candidates over a recent time window. | Frequent: manual API/job execution now; scheduled cadence later. | Persisted live runtime, capability-driven source strategy, independent budgets/model profile, separate API/job/output contracts, and linked production UI controls exist. Recurrence remains planned. |
-| `power-web-discovery` | Discover people, roles, relationships and buying committee structure for accepted accounts. | Event-driven or account-workflow driven. | Pre-search handoff is implemented: Radar product policy, account snapshot, product-scoped RoleDemand and optional signal lineage persist as `power_web_handoff.v1`. People retrieval and Power Web runs do not exist yet. |
+| `power-web-discovery` | Discover people, roles, relationships and buying committee structure for accepted accounts. | Event-driven or account-workflow driven. | Immutable `power_web_handoff.v1` is implemented. A bounded pre-persistence CLI stage now produces accepted title hypotheses, official/HH/generic retrieval receipts, source leads and coverage checkpoints as `people_search_stage.v1`. Persisted Power Web runs, profiles, identities, jobs and UI remain planned. |
 
 ## Required files
 
@@ -50,7 +50,8 @@ the per-pipeline folder.
 
 `power-web-discovery` has an architecture-baseline AS IS document from slice
 `0.7.6.6.0`. It explicitly documents that the current Board/Planner flow does
-not discover people. Slice `0.7.6.6.1` adds the immutable pre-search handoff;
+not discover people. Slice `0.7.6.6.1` adds the immutable pre-search handoff and
+slice `0.7.6.6.2` adds bounded source-lead retrieval without claiming people;
 TO BE documents remain design inputs until their status is `Implemented` and
 their validation report is `PASS`.
 

@@ -9516,7 +9516,7 @@ Required proof before Done:
 
 ### Slice 0.7.6.6.2: Power Web people search planning, source lanes and HH retrieval
 
-- Status: Ready
+- Status: Done
 - Goal: Plan, accept, schedule and execute auditable role-scoped people searches, including a compliant mandatory HH.ru lane.
 - User value: Users see where/how each role was searched and whether HH and official sources were actually covered.
 - Problem statement: There is no people source strategy, accepted query plan, HH connector or ledger preventing selected lanes from disappearing.
@@ -9568,34 +9568,121 @@ Required proof before Done:
 ### Slice 0.7.6.6.2.1: HH.ru authorized API integration and licensed resume access
 
 - Status: Backlog
-- Goal: Add licensed HH resume access only after credentials, budget and an approved usage model exist.
-- Problem statement: Public-web HH results are useful source leads but cannot provide licensed resume coverage; authorized API access is currently unavailable and expensive.
-- Scope: Confirm contractual/privacy terms; add an integration-layer HH OAuth/API adapter behind the Power Web source port; add explicit budgets, rate limits, retained-field policy and audit; compare licensed coverage with hh_public_web without changing identity rules.
-- Out of scope: No work before credentials, budget and approved usage exist; no scraping or authorization bypass; no automatic identity confirmation from one resume; no private-contact export or automated outreach.
-- Implementation notes: Keep disabled by default; integration adapter owns OAuth/transport only; application owns capability/evidence semantics; public-web lane remains independently available.
-- Tests: Contract/licensing preflight and fail-closed credential tests; recorded adapter fixtures before bounded live API tests; budget, redaction, retention and architecture checks.
-- Docs: Create TO BE/PDF/acceptance manifest only after access approval; add provider/compliance ADR and update Power Web AS IS only if implemented.
-- Acceptance criteria: Hard DoD: approved access and use model; bounded licensed calls; no secrets or private contacts in artifacts; source receipts and budget audit complete; identity rules unchanged; validation PASS. Otherwise the slice remains Backlog/Blocked and does not block 0.7.6.6.1-0.7.6.6.9.
-- Risks: API terms may not permit ABM usage; licensed access may be cost-prohibitive; resume data requires stricter retention and access controls.
+- Goal: Determine whether HH.ru resume data may legally and technically support the ABM use case and, only after written approval, design a customer-owned licensed connector.
+- User value: The product does not depend on an unavailable or contractually incompatible resume API, while preserving a controlled path to licensed HH enrichment when a customer has valid rights.
+- Problem statement: HH application-level APIs can support employer, vacancy and labor-market intelligence, but resume search requires employer-user authorization and licensed rights; the standard developer agreement may not permit ABM, advertising, third-party processing or a shared derived people database.
+- Scope:
+  - Obtain a written HH position on ABM use, derived employment/role data, end-user entitlements, retention/deletion, third-party LLM processing and licensed resume access.
+  - Separate hh_labor_market_api from hh_resume_api capabilities.
+  - Record one formal outcome: approved, labor_market_only or rejected.
+  - If approved, design a disabled-by-default customer-owned OAuth connector with per-user entitlements, bounded calls, minimal retained fields, audit and deletion.
+  - Compare licensed resume coverage with public-web HH leads without changing identity rules.
+- Out of scope:
+  - No resume API implementation or live resume calls before written approval, credentials, budget and an accepted usage model.
+  - No employer impersonation, shared platform credential, scraping, authorization bypass, private-contact export or automated outreach.
+  - No transmission of HH resume data to OpenRouter or another third party unless explicitly permitted in writing.
+- Implementation notes: This slice is a contractual and capability gate, not a dependency of the core Power Web pipeline. Public HH URLs and labor-market metadata remain separate source capabilities. A customer opening or purchasing access in HH is an external action; Power Web may retain a public profile reference but must not ingest licensed data without the approved connector.
+- Tests: Contract/capability decision-table tests; fail-closed authorization and entitlement tests; zero-call proof before approval; recorded adapter fixtures and retention/redaction tests only after an approved outcome.
+- Docs: Create a decision record and compliance ADR first. Create implementation TO BE/PDF/acceptance manifest only after approved access and usage terms exist.
+- Acceptance criteria: Hard DoD: written HH decision is attached; capability matrix distinguishes labor-market and resume access; permitted users, fields, purposes, retention, deletion and third-party processing are explicit; one approved/labor_market_only/rejected outcome is machine-readable; zero resume calls occur before approval; any implemented connector is customer-owned, entitlement-aware, bounded, redacted and disabled by default; otherwise the slice remains Backlog/Blocked and does not block 0.7.6.6.2.2-0.7.6.6.9.
+- Risks: Standard terms may reject ABM usage; licensed access may be costly; customer credentials do not by themselves authorize platform-wide use; resume data requires stricter privacy, retention and access controls.
 - Behavior change: true
+- Pipeline: power-web-discovery
+
+### Slice 0.7.6.6.2.2: Account-aligned Power Web benchmark cohorts, role/person lead validation and empty-result integrity
+
+- Status: Ready
+- Goal: Measure retrieval quality only where public evidence is known to exist, while separately measuring real-world yield across a broad account portfolio and preserving useful role-only results.
+- User value: A user can distinguish a weak algorithm from a company with little public data, and receives useful account-specific roles, titles and profile references even when no named person or direct contact is available.
+- Problem statement: The first people-search stage evaluated one account against controls from other SIBUR entities, mixed unavailable public data with algorithm misses, accepted weak provider relevance labels and treated role discovery, person discovery and reachability as one quality claim.
+- Scope:
+  - Introduce power_web_benchmark.v2 with separate gold_controls and portfolio_cohort.
+  - Gold controls are evaluator-only, account-aligned and preflighted as publicly reachable at freeze time.
+  - Portfolio cohort covers 15 or more evidence-complete Radar candidates with varied public-data density and measures yield rather than unknowable recall.
+  - Split outputs into account_role_evidence, person_or_profile_lead and reachability_lead.
+  - Add deterministic account, role, person/profile and URL relevance validation; provider labels remain advisory.
+  - Preserve named and anonymous public profile references, including HH resume URLs, without claiming identity, employment or contact availability.
+  - Add explicit empty-result and coverage states.
+  - Compare at least two OpenRouter search engines on the same frozen query subset.
+  - Produce role, person/profile and reachability funnels separately.
+- Out of scope:
+  - No HH resume API/OAuth, private-contact ingestion, identity merge, employment confirmation or outreach.
+  - No requirement that every company has public people data.
+  - No direct Yandex, Brave or commercial people-data connector unless the conditional 0.7.6.6.2.3 slice is activated.
+  - No reachability result may block Power Web Discovery quality.
+- Implementation notes: Power Web value is cumulative: semantic role demand -> account-specific role/title evidence -> anonymous or named profile -> resolved person and employment -> public reachability. A missing later level never erases an earlier evidence-backed result. Stage recall denominators contain only controls for the same account and available at benchmark freeze. Controls that later disappear become versioned control_unavailable outcomes, not silent algorithm misses. Broad-portfolio results use yield, coverage, cost and false-association metrics rather than recall.
+- Tests:
+  - Benchmark schema/freeze tests for account binding, as_of, availability proof and blind isolation.
+  - Positive role/title and named/anonymous profile controls plus cross-account, wrong-role, generic-page and duplicate-URL negatives.
+  - Deterministic relevance validator tests proving generic company cards, contact pages, generic HH search pages and unrelated vacancies cannot become person-role leads.
+  - Empty-result state tests for full coverage, provider, budget, capability and policy limitations.
+  - Engine-comparison fixtures and remote live portfolio evaluation.
+- Docs: Create RCA, current AS IS delta, TO BE Markdown/PDF, acceptance manifest, benchmark v2 schema/freeze report and machine validation report. Finalize AS IS only after remote live PASS.
+- Demo impact: Diagnostics show separate Role map, People and Reachability funnels; a role-only or anonymous-profile result is visible as useful evidence rather than an empty Power Web.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- Gold cohort contains at least 4 evidence-rich industrial accounts, 16 account-role/title controls, 12 named or anonymous public-profile controls and 12 negative controls.
+- Portfolio cohort contains at least 15 evidence-complete Radar candidates and reports public-data density without using unknown ground truth as recall.
+- 100% gold controls have account binding, role binding, public availability proof, as_of and evaluator-only provenance at freeze.
+- Zero controls from another account enter a stage denominator; zero out-of-scope controls are reported as source_not_found.
+- Role recall, person/profile recall and reachability yield are calculated independently.
+- Contact or reachability absence reduces none of the role/person quality metrics.
+- All positive controls are retained in the expected role/profile state; zero negative, cross-entity or wrong-role controls are accepted as verified person-role leads.
+- Provider-only relevance acceptances, generic HH pages accepted as people and duplicate-URL metric inflation are zero.
+- Every empty result is classified as no_public_evidence_after_full_coverage, coverage_incomplete_provider, coverage_incomplete_budget, source_unavailable, source_blocked_policy, role_exists_person_not_identified, person_found_employment_unconfirmed, profile_found_reachability_not_found or licensed_access_required.
+- At least two OpenRouter engines are compared on identical frozen queries with recall, unique gain, latency, cost and error evidence.
+- Blind controls in planning and production benchmark hardcodes are zero.
+- HH resume API/auth/crawling calls, Candidate Discovery runs and Signal Monitoring runs are zero.
+- Remote live evidence, baseline semantic diff, validation_status=PASS and AS IS reconciliation are complete.
+- Risks: Public sources can disappear after freeze; preserve availability evidence and versioned amendments. Portfolio yield can vary by industry and company disclosure culture; do not convert it into a universal quality claim. A wider cohort increases provider cost; use a bounded breadth pass before depth search.
+- Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.2.2.acceptance.json
+- Behavior change: true
+- Dependencies: Blocks 0.7.6.6.3 until PASS. HH contractual slice 0.7.6.6.2.1 is explicitly non-blocking.
+- Pipeline: power-web-discovery
+- Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.2.2/validation.json
+
+### Slice 0.7.6.6.2.3: Russian-web multi-engine retrieval benchmark and source portfolio selection
+
+- Status: Backlog
+- Goal: Select an evidence-backed primary and fallback Russian-web source portfolio if the existing OpenRouter engines cannot satisfy the account-aligned benchmark.
+- User value: People discovery is not tied to one unstable search index and can use the strongest available Russian-web coverage within bounded cost and compliance rules.
+- Problem statement: A single OpenRouter search engine may miss Russian corporate pages, HH citations, publications or regional sources even when the pipeline logic is correct.
+- Scope:
+  - Run identical frozen account/role queries through selected OpenRouter engines and direct Yandex Search, Brave Search, Exa/people and Perplexity candidates.
+  - Normalize receipts and source leads through one provider-neutral contract.
+  - Compare gold-control recall, unique useful gain, cross-entity errors, latency, cost, rate limits and source overlap.
+  - Select primary, fallback and unsupported engines by source lane.
+  - Keep Firecrawl-class retrieval/extraction capability separate from independent search-index value.
+- Out of scope:
+  - No commercial people database adoption without a separate coverage/privacy/DPA gate.
+  - No provider-specific relevance decision in application code.
+  - No HH resume API or LinkedIn restricted API dependency.
+- Implementation notes: This is conditional corrective work. Activate it only if 0.7.6.6.2.2 cannot meet its frozen quality/yield thresholds with the current OpenRouter portfolio. Engine selection is configuration, never benchmark-company hardcode.
+- Tests: Recorded multi-engine normalization and failure fixtures; identical-query contract; budget and fallback tests; live frozen benchmark with independent receipts and no silent engine switching.
+- Docs: Create provider capability matrix, cost/coverage report, ADR and TO BE/PDF/manifest if activated.
+- Demo impact: Diagnostics identify which engine supplied each retained lead and why fallback was used.
+- Acceptance criteria: Hard DoD if activated: identical frozen queries and controls for every engine; 100% executions have engine-specific receipts and costs; selected portfolio improves gold recall or unique useful yield over baseline without new false associations; primary/fallback decisions are evidence-backed and configurable; provider errors remain explicit; budgets are bounded; blind leakage is zero; remote validation PASS and AS IS reconciliation complete.
+- Risks: Provider pricing and index quality can change; preserve dated capability snapshots and avoid permanent quality claims from one run.
+- Behavior change: true
+- Dependencies: Conditional on a documented 0.7.6.6.2.2 source-coverage shortfall.
 - Pipeline: power-web-discovery
 
 ### Slice 0.7.6.6.3: Power Web person profile extraction and evidence completeness
 
-- Status: Backlog
+- Status: Blocked
 - Goal: Extract source-owned person profiles and claim-level provenance without prematurely declaring cross-source identity.
 - User value: Every named or anonymous profile is inspectable with its source facts and uncertainties.
 - Problem statement: Raw pages cannot safely become people without schema validation, source linking, anonymous-profile support and evidence-complete projection.
 - Scope:
-  - Extract names/anonymous ids, titles, employers/units, geography, timeline, education, skills, responsibilities, publications, events and public business channels.
+  - Extract names/anonymous ids, titles, employers/units, geography, timeline, education, skills, responsibilities, publications and events.
   - Keep one PersonProfile per source and one evidence link per claim.
-  - Preserve HH anonymous/partial profiles without invented names.
+  - Preserve HH anonymous/partial profiles and PublicProfileReference URLs without inventing names or treating the URL as a direct contact.
   - Capture product-safe image descriptors and exact/near-duplicate fingerprints without face embeddings.
   - Add validation, bounded repair/backup, deterministic salvage and explicit gaps.
 - Out of scope:
   - No identity confirmation.
   - No cross-photo face recognition.
-  - No private contact harvesting/outreach.
+  - No reachability search, private contact harvesting, paid-data ingestion or outreach.
+  - Absence of a contact cannot invalidate an evidence-complete PersonProfile.
 - Implementation notes:
   - A source proves only claims present in it.
   - Persist sanitized metadata, not raw provider/HTML/image data.
@@ -9611,7 +9698,9 @@ Required proof before Done:
 - Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
 - Every visible profile/claim resolves to evidence.
 - Anonymous profiles remain anonymous until supported.
+- Public profile URLs are retained as source references, not represented as email/phone contacts.
 - Source-less claims remain diagnostics, not public truth.
+- Missing reachability blocks zero profile-extraction requirements.
 - Recovery is bounded and fully diagnosed.
 - No biometric template/raw image/secret/raw provider payload is persisted.
 - Validation is PASS and AS IS reconciled.
@@ -9620,6 +9709,7 @@ Required proof before Done:
   - Visual artifacts are optional and volatile.
 - Acceptance manifest: docs/radar/pipelines/power-web-discovery/to-be/RADAR_POWER_WEB_DISCOVERY_TO_BE_0.7.6.6.3.acceptance.json
 - Behavior change: true
+- Dependencies: Blocked until 0.7.6.6.2.2 validation_status=PASS.
 - Pipeline: power-web-discovery
 - Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.3/validation.json
 
@@ -9676,12 +9766,14 @@ Required proof before Done:
 - Problem statement: A resolved person is not automatically a current employee, role occupant, champion or blocker.
 - Scope:
   - Validate current/former/unknown employment from dated claims.
-  - Map identities/profiles to RoleDemand with fit, confidence, evidence and alternatives.
+  - Map identities and anonymous/named profiles to RoleDemand with fit, confidence, evidence and alternatives.
+  - Create account-specific role slots even when no occupant is identified, preserving role/title/function evidence.
   - Represent internal people and external integrators, partners, suppliers and competitors in one typed graph.
   - Create evidence-backed relationship/influence hypotheses with fact/hypothesis/review states.
-  - Compute coverage and explicit missing-role gaps.
+  - Compute role-map coverage and explicit missing-person gaps independently from reachability.
 - Out of scope:
   - No title-only authority/stance confirmation.
+  - No requirement for a direct contact or public profile channel.
   - No outreach or route execution.
   - No graph editing UI.
 - Implementation notes:
@@ -9699,9 +9791,11 @@ Required proof before Done:
 - Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
 - Every mapped person has current/former/unknown employment.
 - Every occupied role has identity/profile evidence and rationale.
+- Account-specific role slots with no identified person remain useful, evidence-backed graph nodes with explicit gaps.
 - Every confirmed edge has evidence; hypotheses remain visibly separate.
 - Title alone confirms zero influence/champion/blocker/economic-buyer states.
 - Every required unfilled role has coverage and miss reason.
+- Reachability absence changes zero role/person validation outcomes.
 - Validation is PASS and AS IS reconciled.
 - Risks:
   - Public sources lag changes; preserve dates/uncertainty.
@@ -9711,6 +9805,45 @@ Required proof before Done:
 - Pipeline: power-web-discovery
 - Validation report: docs/radar/pipelines/power-web-discovery/validation/0.7.6.6.5/validation.json
 
+### Slice 0.7.6.6.5.1: Power Web reachability and public-profile enrichment pipeline
+
+- Status: Backlog
+- Goal: Find evidence-backed public routes to a role or person without making contact availability a prerequisite for Power Web quality.
+- User value: Sales can act on a company-specific role, anonymous resume, named professional profile, corporate route or public business channel even when no private email or phone is available.
+- Problem statement: Profile evidence and contactability have different value, reliability, legal constraints and source access. Combining them makes useful role/person discovery look like failure and encourages unsafe contact harvesting.
+- Scope:
+  - Introduce independent pipeline id power-web-reachability with source_power_web_run_id lineage.
+  - Accept evidence-backed account role slots, anonymous profiles and resolved people as input.
+  - Produce PublicProfileReference, PublicBusinessChannel, OrganizationalRoute and LicensedAccessOpportunity records.
+  - Support LinkedIn/public professional profile URLs, HH resume URLs, event/publication pages, corporate department contacts, switchboard/forms and other publicly presented business channels.
+  - Validate URL ownership, account/person binding, channel type, public availability and provenance.
+  - Use separate planning, budgets, receipts, terminal states and diagnostics.
+  - Allow one user action to launch discovery and reachability while preserving two independent results.
+- Out of scope:
+  - No private-contact harvesting, employer impersonation, paid-access purchase, licensed-data ingestion, authentication bypass, automated friend request, messaging or outreach.
+  - No claim that a public profile URL is a direct contact.
+  - No reachability failure may fail or erase a completed Power Web Discovery result.
+- Implementation notes: Value states are cumulative: role_only, anonymous_profile, named_profile, employment_confirmed, public_profile_reachable, public_business_channel and licensed_access_required. A user may independently open a public or licensed URL under the source service's terms; Power Web stores only the permitted reference and product-safe metadata unless a later approved connector exists.
+- Tests: Role-only organizational-route fixtures; anonymous HH and named professional-profile fixtures; wrong-person/wrong-company URL negatives; public-channel ownership validation; duplicate and stale URL handling; privacy/redaction/no-outreach architecture tests; independent failure and budget tests.
+- Docs: Create separate AS IS/TO BE/PDF, capability matrix, privacy ADR, acceptance manifest and runbook for reachability.
+- Demo impact: Power Web shows separate Role/person result and How to reach result, including profile links and explicit licensed_access_required states.
+- Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
+- Reachability has an independent run/output contract, source Power Web lineage, budgets and terminal state.
+- A completed discovery remains completed when reachability is empty, failed, blocked or not run.
+- Zero direct contacts are required for Power Web Discovery PASS.
+- Every visible URL/channel has provenance and validated account/person ownership or remains review_needed.
+- Anonymous HH/profile references remain useful without invented identity or contact data.
+- Public profile references are never represented as email/phone.
+- Private contacts, paid data, outreach actions, raw pages and secrets retained by the application equal zero.
+- Every miss has an explicit no_public_reachability, source_unavailable, licensed_access_required, policy_limited, provider_limited or budget_limited reason.
+- Independent tests, remote live evidence, validation_status=PASS and AS IS reconciliation are complete.
+- Risks: Profile and contact data have higher privacy and contractual risk than role discovery; public URLs can become stale; external services may prohibit automated use.
+- Acceptance manifest: docs/radar/pipelines/power-web-reachability/to-be/POWER_WEB_REACHABILITY_TO_BE_0.7.6.6.5.1.acceptance.json
+- Behavior change: true
+- Dependencies: Starts after 0.7.6.6.5 establishes evidence-backed role/person inputs. HH licensed connector 0.7.6.6.2.1 remains optional.
+- Pipeline: power-web-reachability
+- Validation report: docs/radar/pipelines/power-web-reachability/validation/0.7.6.6.5.1/validation.json
+
 ### Slice 0.7.6.6.6: Power Web checkpoints, recovery, budgets and incremental discovery
 
 - Status: Backlog
@@ -9718,21 +9851,19 @@ Required proof before Done:
 - User value: Source failures do not erase the map, repeat runs do not duplicate people and coverage stops are understandable.
 - Problem statement: Multi-source people search becomes unbounded/fragile without independent budgets, checkpoints, bounded revision, salvage, fingerprints and watermarks.
 - Scope:
-  - Define run kinds initial, incremental and full_rediscovery inside one Power Web Discovery pipeline.
+  - Define initial, incremental and full_rediscovery kinds for Power Web Discovery.
   - Persist previous-run lineage and watermarks per account + product + role + source lane.
-  - Build incremental windows from the last successful lane watermark with a configurable overlap; the initial default overlap is 7 days.
-  - Do not advance watermarks for failed, policy-limited or budget-limited lanes.
-  - Detect new profiles, evidence, title/employment changes, newly public sources and previously unfilled role gaps.
-  - Make full rediscovery re-plan broad source coverage while preserving historical identities and claims.
+  - Detect new role evidence, profiles, identity/employment changes and unfilled-role gaps.
+  - Keep discovery and reachability checkpoints, budgets, watermarks and failures independent when both are launched in one user cycle.
+  - A reachability refresh may consume the latest evidence-complete discovery result without forcing a full people rediscovery.
   - Add explicit no-change, stale, coverage-incomplete, recovery and terminal states.
-  - Keep checkpoints, retries and budgets bounded and auditable.
 - Out of scope:
   - Recurring scheduler, cadence persistence or scheduling UI; these are owned by 0.7.6.6.7.1.
   - Unlimited retries or provider budgets.
   - Treating a disappeared page or absent evidence as proof that employment ended.
   - Per-account/product/lane cadence overrides.
   - Signal Monitoring or candidate-discovery scheduling changes.
-- Implementation notes: Every incremental or full-rediscovery run points to the previous Power Web run. Absence is a gap or stale-evidence state, never an automatic former-employment conclusion. Unknown-date evidence remains reviewable. The temporal mechanics implemented here are consumed by the recurring scheduler in 0.7.6.6.7.1.
+- Implementation notes: Every incremental/full discovery points to its previous discovery run. Every reachability run points to one immutable source Power Web run and its own previous reachability run when applicable. Failure or absence in either child contour does not rewrite the other result. Disappeared evidence remains stale/unknown rather than proof of employment termination or loss of reachability.
 - Tests:
   - Recorded initial -> incremental -> full-rediscovery sequence preserves lineage and immutable history.
   - Successful lanes advance watermarks and apply overlap; failed/policy/budget-limited lanes do not.
@@ -9768,20 +9899,16 @@ Required proof before Done:
 - User value: Users can launch, monitor and reopen a historical Power Web run with proven source lineage.
 - Problem statement: Recorded behavior is not a product runtime until lineage, artifacts, budgets and failures persist independently.
 - Scope:
-  - Persist Power Web runs, artifacts, jobs and reports with source candidate/signal lineage, RadarPowerWebPolicy version and exact product/role versions.
-  - Persist run_kind=initial|incremental|full_rediscovery and previous_power_web_run_id.
-  - Provide API/job/manual execution paths for all three run types.
-  - Persist watermarks, freshness summaries, change sets and terminal diagnostics.
-  - Add scheduler-ready scalar summary fields so future due-run scans do not load full artifacts.
-  - Preserve restart, idempotency and separate Power Web provider budgets.
+  - Persist Power Web Discovery runs/artifacts/jobs/reports with candidate, signal, product and role lineage.
+  - Persist Power Web Reachability runs/artifacts/jobs/reports separately with source_power_web_run_id.
+  - Keep independent histories, budgets, terminal states, watermarks and scalar summaries while allowing one user command to coordinate both.
+  - Preserve run_kind, previous-run chains, freshness summaries, change sets, idempotency and restart safety for each contour.
+  - Ensure Candidate Discovery and Signal Monitoring latest/history/counters never switch to either Power Web contour.
 - Out of scope:
   - Recurring scheduler, cadence calculation and automatic due-run creation; these belong to 0.7.6.6.7.1.
   - Power Web review UI and graph UX.
   - Candidate-discovery or Signal Monitoring execution changes.
-- Implementation notes:
-  - Routes are transport-only, jobs pass run ids, persistence stores but does not decide.
-  - Other pipeline latest/history/counters must not switch.
-  - Keep history lightweight and heavy resources lazy.
+- Implementation notes: Routes remain transport-only and jobs pass run IDs. Discovery and reachability use separate output contracts and repositories or discriminated storage ownership; one child failure never changes the other child terminal result. Heavy artifacts remain lazy-loaded.
 - Tests:
   - Persistence/API/job round-trip for all three run kinds and previous-run chains.
   - Historical product/policy snapshots remain immutable after configuration edits.
@@ -9815,20 +9942,12 @@ Required proof before Done:
 - User value: Users keep account Power Webs current as people change employers and titles, new profiles and publications appear, and previously missing buying roles become discoverable, without repeatedly launching uncontrolled full searches.
 - Problem statement: People and public evidence are temporally unstable. A single cadence is either too expensive or too incomplete: incremental monitoring should be frequent and narrow, while full rediscovery should be rarer and broad. The product needs explicit policy, deterministic due-run calculation, idempotent scheduling and honest freshness diagnostics.
 - Scope:
-  - Extend RadarPowerWebPolicy in Radar settings with automatic-refresh enablement and separate initial, incremental and full-rediscovery policies.
-  - Initial trigger: manual or on_candidate_accepted; default manual.
-  - Incremental cadence: manual, weekly, monthly or quarterly; default monthly when automatic refresh is enabled.
-  - Full-rediscovery cadence: manual, quarterly or semiannual; default quarterly when automatic refresh is enabled.
-  - Automatic refresh is disabled by default and supports pause/resume without deleting history.
-  - Persist effective overlap, initially 7 days, with value and basis in run snapshots.
-  - Schedule only evidence-complete accounts with a valid handoff and successful initial run.
-  - Create due runs through persisted idempotent jobs, never direct provider calls from the scheduler.
-  - Product/role-policy changes mark affected account graphs stale and full-rediscovery-due.
-  - Calculate freshness per account, product, role and source lane.
-  - Expose last/next timestamps, stale reasons, due reason, policy version and idempotency key.
-  - Keep manual initial, incremental and full refresh available at any time.
-  - Use a deterministic clock and explicit Radar timezone.
-  - Expose policy in Radar settings and freshness in the Power Web surface.
+  - Extend RadarPowerWebPolicy with automatic Power Web Discovery refresh settings.
+  - Schedule initial, incremental and full discovery through persisted idempotent jobs.
+  - Allow optional reachability refresh after a discovery produces new or changed role/person evidence; keep it separately pausable and independently budgeted.
+  - Manual reachability refresh remains available without forcing people rediscovery.
+  - Expose separate last/next timestamps, stale reasons, due reasons, policy versions and idempotency keys for discovery and reachability.
+  - Keep automatic refresh disabled by default with deterministic Radar timezone.
 - Out of scope:
   - Separate global Power Web configuration UI.
   - Per-account, per-product or per-lane cadence overrides.
@@ -9836,7 +9955,7 @@ Required proof before Done:
   - Treating a missing profile/page as evidence that employment ended.
   - Changes to candidate-discovery or Signal Monitoring schedules.
   - Unbounded retries, concurrency or provider budgets.
-- Implementation notes: Cadence ownership stays with the Radar because the Radar defines the reusable account universe and products to pursue. Power Web remains one pipeline with three run kinds. Due dates anchor to the last successful run of the relevant kind; failed runs do not postpone the next due run or advance watermarks. Full rediscovery re-plans source coverage, while incremental runs use per-lane watermarks and overlap. A scheduler tick creates at most one idempotent run per eligible account chain and reads scalar summaries rather than full artifacts.
+- Implementation notes: Radar owns cadence policy, but discovery and reachability remain separate run chains. A failed reachability run does not postpone discovery, advance discovery watermarks or mark the Power Web stale.
 - Tests:
   - Policy API/DB/restart round-trip with defaults, pause/resume and explicit timezone.
   - Deterministic due-date tests across month boundaries and time zones.
@@ -9874,15 +9993,17 @@ Required proof before Done:
 ### Slice 0.7.6.6.8: Power Web guided and blind quality benchmark
 
 - Status: Backlog
-- Goal: Measure real Power Web quality against hidden user controls with explicit miss diagnostics and persisted guided/blind evidence.
+- Goal: Measure role-map discovery, person/profile discovery, identity/employment quality and reachability yield as separate evidence-backed dimensions against hidden controls and broad portfolio cohorts.
 - User value: The team knows whether the system finds the right roles/people, avoids false merges and produces a useful access graph.
-- Problem statement: Completion/profile count does not prove retrieval, identity, employment, role, relationship or handoff quality.
+- Problem statement: A single Power Web score cannot distinguish unavailable public data, a search failure, a correct role-only map, a found person without contact, or a contact-enrichment failure.
 - Scope:
-  - Add guided smoke and blind profiles with separate metadata/budgets.
-  - Load blind baseline only after run.
-  - Measure role/person recall, identity precision/recall, false merges, employment accuracy, relationship provenance, lane coverage, review/gap rates and handoff readiness.
-  - Report per-control funnel from planning through role/relationship projection.
-  - Run Docker/API guided and blind benchmarks and one consolidated closeout.
+  - Add guided and blind profiles with separate metadata/budgets.
+  - Load blind baseline only after runs.
+  - Evaluate gold-control recall separately from broad portfolio yield.
+  - Report role/title recall, named/anonymous profile recall, identity precision/recall, false merges, employment accuracy, relationship provenance, public profile-reference yield and public business-channel yield.
+  - Report per-control funnel through planning, retrieval, profile, identity, role projection and optional reachability.
+  - Keep no-public-data, coverage-incomplete and licensed-access states separate.
+  - Run remote persisted guided/blind acceptance and one consolidated closeout.
 - Out of scope:
   - No public market-wide claim.
   - No blind hints or production hardcodes.
@@ -9900,11 +10021,14 @@ Required proof before Done:
   - Document dataset version/metrics/non-claim wording and finalize AS IS with run ids/RCA.
 - Demo impact: Benchmark report explains each found, missed, merged, rejected or review-needed control.
 - Acceptance criteria: Hard DoD; the slice cannot be marked Done until all conditions pass:
-- Docker rebuilt; at least one guided and one blind persisted run complete or reach accepted bounded terminal state.
+- Remote stack rebuilt; guided and blind persisted discovery runs complete or reach accepted bounded terminal states.
+- Reachability benchmark runs are linked but evaluated separately and may be empty without failing role/person quality.
 - Blind metadata proves zero controls entered pipeline behavior.
-- All approved metric thresholds pass and zero different-person controls auto-merge.
-- Zero visible graph elements lack provenance; every miss has a path reason.
-- Access Planner consumes reviewed graph without manual translation.
+- Gold-control and portfolio-cohort denominators are never mixed.
+- Approved role/person/identity/employment thresholds pass and zero different-person controls auto-merge.
+- Reachability reports profile/channel yield, ownership precision and licensed-access states without requiring private contacts.
+- Zero visible graph or reachability elements lack provenance; every miss has a path reason.
+- Access Planner consumes the reviewed role/person graph without requiring reachability.
 - Validation/process retrospective/AS IS reconciliation are complete.
 - Risks:
   - One-industry overfit; keep generic production rules and add later datasets.
@@ -9923,10 +10047,11 @@ Required proof before Done:
 - Problem statement: A graph is unusable if identities/relations cannot be checked or corrected and unresolved hypotheses silently become Access Planner facts.
 - Scope:
   - Show account-centric Power Web results grouped or filtered by product and semantic role.
-  - Show run kind, previous-run lineage, last initial/full discovery, last incremental refresh and change summary.
-  - Show next scheduled refresh, paused/disabled state, stale accounts/roles/source lanes and coverage gaps from 0.7.6.6.7.1.
-  - Support human review of identities, employment and evidence without losing product provenance.
-  - Keep manual refresh available for eligible accounts.
+  - Separate UI sections and counters for Role map, People/profiles and Reachability.
+  - Render role-only, anonymous profile, named profile, employment-confirmed, public-profile, public-business-channel and licensed-access-required states distinctly.
+  - Show independent discovery/reachability run IDs, histories, budgets, freshness and failures while preserving one coordinated user workflow.
+  - Support human review of identities, employment, evidence and channel ownership without losing product provenance.
+  - Keep manual discovery and reachability refresh actions independently available.
 - Out of scope:
   - A separate global scheduler settings screen.
   - Per-account/product/lane cadence overrides.
@@ -9945,12 +10070,12 @@ Required proof before Done:
   - Finalize UI/handoff AS IS.
 - Demo impact: Show the complete company -> signal -> Power Web -> Access Plan product chain.
 - Acceptance criteria:
-  - A user can understand which products and roles each person supports.
-  - Freshness, next refresh and stale coverage are explicit and cannot be mistaken for confirmed current employment.
-  - Scheduler settings are not duplicated outside Radar settings.
-  - Manual refresh and human review remain available.
-  - UI counters and histories agree with persisted Power Web endpoints.
-  - Benchmark and restart gates pass.
+  - A user can understand which products and semantic roles each person or role-only slot supports.
+  - A missing contact cannot make an evidence-backed role/person result appear empty or failed.
+  - Public profile links, business channels and licensed-access opportunities are visually distinct.
+  - Discovery and reachability histories, budgets, statuses and freshness do not mix.
+  - Access Planner receives reviewed role/person facts without requiring direct contacts.
+  - RU/EN and desktop viewports pass without overlap or body scrolling; validation PASS and AS IS reconciliation complete.
 - Risks:
   - Dense graphs need groups/filters/focus/evidence panel, not decorative layout.
   - Review overlays must not rewrite source truth.
@@ -10550,4 +10675,4 @@ None.
 
 ## Next Recommended Task
 
-Slice 0.7.6.6.2: Power Web people search planning, source lanes and HH retrieval
+Slice 0.7.6.6.2.2: Account-aligned Power Web benchmark cohorts, role/person lead validation and empty-result integrity
